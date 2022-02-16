@@ -1,15 +1,22 @@
 // TODO (done): open window
+// TODO (done): basic directsound
 // TODO: play sounds with directsound
 
 #include <windows.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <gl/gl.h>
 #include <gl/glu.h>
+#include <dsound.h>
+#include <math.h>
+
 #include "common.h"
+#include "win32_game.h"
 
 #undef near
 #undef far
 
+global_variable int64 perf_counter_frequency;
 global_variable bool32 is_running = true;
 
 typedef char GLchar;
@@ -63,6 +70,36 @@ GL_GET_PROGRAM_INFO_LOG *glGetProgramInfoLog;
 GL_GET_PROGRAMIV *glGetProgramiv;
 GL_UNIFORM_3FV *glUniform3fv;
 GL_UNIFORM_4FV *glUniform4fv;
+
+internal int64 win32_get_perf_counter() {
+    LARGE_INTEGER perf_counter;
+    QueryPerformanceCounter(&perf_counter);
+    return perf_counter.QuadPart;
+}
+
+internal real32 win32_get_elapsed_time(int64 start_perf_counter) {
+    return (real32) (win32_get_perf_counter() - start_perf_counter) / perf_counter_frequency;
+}
+
+#if 0
+internal real64 win32_get_wall_clock_time() {
+    LARGE_INTEGER perf_counter;
+    QueryPerformanceCounter(&perf_counter);
+    return (real64) perf_counter.QuadPart / perf_counter_frequency;
+}
+#endif
+
+internal void debug_print(char *format, ...) {
+    char buf[256];
+    va_list args;
+    va_start(args, format);
+    int32 num_chars_outputted = vsnprintf(buf, sizeof(buf), format, args);
+
+    assert(num_chars_outputted > 0 && num_chars_outputted < sizeof(buf));
+
+    OutputDebugStringA(buf);
+    va_end(args);
+}
 
 internal bool32 win32_init_opengl(HDC hdc) {
     PIXELFORMATDESCRIPTOR desired_pixel_format = {};
@@ -132,11 +169,68 @@ internal bool32 win32_init_opengl(HDC hdc) {
     }
 }
 
-struct Win32_Display_Output {
-    int32 width;
-    int32 height;
-};
+#define DIRECT_SOUND_CREATE(name) HRESULT WINAPI name(LPGUID lpGuid, LPDIRECTSOUND* ppDS, LPUNKNOWN pUnkOuter)
+typedef DIRECT_SOUND_CREATE(DirectSoundCreateProc);
 
+internal bool32 win32_init_directsound(HWND window, Win32_Sound_Output *win32_sound_output) { 
+    HMODULE directsound_library = LoadLibrary("dsound.dll");
+    if (directsound_library) {
+        DirectSoundCreateProc *direct_sound_create = (DirectSoundCreateProc *) GetProcAddress(directsound_library, "DirectSoundCreate");
+
+        LPDIRECTSOUND DirectSound;
+        if (direct_sound_create(NULL, &DirectSound, NULL) == DS_OK) {
+            if (DirectSound->SetCooperativeLevel(window, DSSCL_PRIORITY) == DS_OK) {
+                // assume bit_depth is evenly divisible by 8
+                int32 bytes_per_sample = (win32_sound_output->bit_depth / 8) * 2;
+
+                DSBUFFERDESC primary_buffer_desc = {};
+                primary_buffer_desc.dwSize = sizeof(DSBUFFERDESC);
+                primary_buffer_desc.dwFlags = DSBCAPS_PRIMARYBUFFER;
+                primary_buffer_desc.guid3DAlgorithm = GUID_NULL;
+
+                LPDIRECTSOUNDBUFFER primary_buffer;
+                if (DirectSound->CreateSoundBuffer(&primary_buffer_desc, &primary_buffer, NULL) == DS_OK) {
+                    WAVEFORMATEX wave_format = {};
+                    wave_format.wFormatTag = WAVE_FORMAT_PCM;
+                    wave_format.nChannels = 2;
+                    wave_format.nSamplesPerSec = win32_sound_output->samples_per_second;
+                    wave_format.wBitsPerSample = (WORD) win32_sound_output->bit_depth;
+                    wave_format.nBlockAlign = (wave_format.nChannels * wave_format.wBitsPerSample) / 8;
+                    wave_format.nAvgBytesPerSec =  wave_format.nSamplesPerSec * wave_format.nBlockAlign;
+                    wave_format.cbSize = 0;
+
+                    DSBUFFERDESC secondary_buffer_desc = {};
+                    secondary_buffer_desc.dwSize = sizeof(DSBUFFERDESC);
+                    secondary_buffer_desc.dwFlags = DSBCAPS_GLOBALFOCUS | DSBCAPS_GETCURRENTPOSITION2;
+                    secondary_buffer_desc.dwBufferBytes = win32_sound_output->samples_per_second * bytes_per_sample; // this buffer holds 1 second of audio
+                    secondary_buffer_desc.dwReserved = 0;
+                    secondary_buffer_desc.lpwfxFormat = &wave_format;
+                    secondary_buffer_desc.guid3DAlgorithm = GUID_NULL;
+                                
+                    if (DirectSound->CreateSoundBuffer(&secondary_buffer_desc, &win32_sound_output->sound_buffer, NULL) == DS_OK) {
+                        OutputDebugStringA("Initialized secondary buffer\n");
+                        return true;
+                    } else {
+                        OutputDebugStringA("Could not initialize secondary buffer\n");
+                        return false;
+                    }    
+                } else {
+                    OutputDebugStringA("Could not initialize primary buffer\n");
+                    return false;
+                }
+            } else {
+                OutputDebugStringA("Could not set DirectSound cooperative level\n");
+                return false;
+            }
+        } else {
+            OutputDebugStringA("Could not initialize DirectSound interface\n");
+            return false;
+        }
+    } else {
+        OutputDebugStringA("Could not load DirectSound library");
+        return false;
+    }
+}
 
 LRESULT CALLBACK WindowProc(HWND hwnd,
                             UINT message,
@@ -164,16 +258,85 @@ LRESULT CALLBACK WindowProc(HWND hwnd,
     return DefWindowProc(hwnd, message, wParam, lParam); 
 }
 
+global_variable int32 samples_written = 0;
+
+void fill_sound_buffer(Win32_Sound_Output *sound_output) {
+    LPDIRECTSOUNDBUFFER sound_buffer = sound_output->sound_buffer;
+    // assuming 60fps, we want 1/60th of a second worth of samples
+    DWORD num_samples = (DWORD) ((1.0f / 60.0f) * sound_output->samples_per_second);
+    DWORD bytes_to_write = num_samples * sound_output->bytes_per_sample;
+
+    LPVOID block1;
+    DWORD block1_size;
+    LPVOID block2;
+    DWORD block2_size;
+
+    real32 frequency = 262.0f;
+
+    // FIXME: sound_buffer->Lock is returning invalid params error intermittently
+    // TODO: this assumes that we're running at a stable 60fps
+    //       if we drop down to 30, then we would want to lock more bytes
+    HRESULT lock_result = sound_buffer->Lock(samples_written * sound_output->bytes_per_sample,
+                                             bytes_to_write,
+                                             &block1, &block1_size,
+                                             &block2, &block2_size,
+                                             0);
+    if (lock_result == DS_OK) {
+        DWORD num_all_channel_samples_to_write = block1_size / sound_output->bytes_per_sample;
+        int16 *byte_to_write = (int16 *) block1;
+        for (uint32 i = 0; i < num_all_channel_samples_to_write; i++) {
+            real32 x = (real32) samples_written / sound_output->samples_per_second;
+            int16 sample = (int16) (100.0f * sinf(frequency * 2.0f * PI * x));
+
+            *(byte_to_write++) = sample;
+            *(byte_to_write++) = sample;
+            samples_written++;
+        }
+
+        if (block1_size < bytes_to_write) {
+            byte_to_write = (int16 *) block2;
+            num_all_channel_samples_to_write = block2_size / sound_output->bytes_per_sample;
+            for (uint32 i = 0; i < num_all_channel_samples_to_write; i++) {
+                real32 x = (real32) samples_written / sound_output->samples_per_second;
+                int16 sample = (int16) (100.0f * sinf(frequency * 2.0f * PI * x));
+
+                *(byte_to_write++) = sample;
+                *(byte_to_write++) = sample;
+                samples_written++;
+            }
+        }
+
+        sound_buffer->Unlock(&block1, block1_size, &block2, block2_size);
+    } else {
+        debug_print("Could not lock sound buffer region\n");
+    }
+
+    debug_print("samples written: %d\n", samples_written);
+}
+
 int WinMain(HINSTANCE hInstance,
             HINSTANCE hPrevInstance,
             LPSTR lpCmdLine,
             int nShowCmd) {
+    LARGE_INTEGER perf_counter_frequency_result;
+    QueryPerformanceFrequency(&perf_counter_frequency_result);
+    perf_counter_frequency = perf_counter_frequency_result.QuadPart;
+
+    int64 last_perf_counter = win32_get_perf_counter();
+
     UINT desired_min_timer_resolution_ms = 1;
     bool32 sleep_is_granular = timeBeginPeriod(desired_min_timer_resolution_ms) == TIMERR_NOERROR;
 
     Win32_Display_Output display_output = {};
     display_output.width = 1280;
     display_output.height = 720;
+
+    Win32_Sound_Output sound_output = {};
+    sound_output.samples_per_second = 44100;
+    sound_output.bit_depth = 16;
+    sound_output.bytes_per_sample = (sound_output.bit_depth / 8) * 2;
+    sound_output.buffer_size = sound_output.bytes_per_sample * sound_output.samples_per_second;
+    sound_output.is_playing = false;
     
     char* window_class_name = "WindowClassName";
     WNDCLASSEX window_class = {};
@@ -220,7 +383,8 @@ int WinMain(HINSTANCE hInstance,
             
             HDC hdc = GetDC(window);
             bool32 opengl_is_valid = win32_init_opengl(hdc);
-            
+            bool32 directsound_is_valid = win32_init_directsound(window, &sound_output);
+
             MSG message;
 
             POINT center_point = { display_output.width / 2, display_output.height / 2 };
@@ -235,7 +399,7 @@ int WinMain(HINSTANCE hInstance,
             
             ShowCursor(0);
             
-            if (opengl_is_valid) {
+            if (opengl_is_valid && directsound_is_valid) {
                 while (is_running) {
                     if (PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) {
                         if (message.message == WM_QUIT) {
@@ -283,22 +447,35 @@ int WinMain(HINSTANCE hInstance,
                         }
                     }
 
-                    // real32 work_time = win32_get_elapsed_time(last_wall_clock_time, win32_get_wall_clock_time());
-                    // real32 target_frame_time = 1.0f / REFRESH_RATE;
-                    // if (work_time < target_frame_time) {
-                    //     if (sleep_is_granular) {
-                    //         DWORD sleep_ms = (DWORD) ((target_frame_time - work_time) * 1000);
-                    //         Sleep(sleep_ms);
-                    //     }
+                    fill_sound_buffer(&sound_output);
+                    if (!sound_output.is_playing) {
+                        sound_output.sound_buffer->Play(0, 0, DSBPLAY_LOOPING);
+                        sound_output.is_playing = true;
+                    }
 
-                    //     while (work_time < target_frame_time) {
-                    //         work_time = win32_get_elapsed_time(last_wall_clock_time, win32_get_wall_clock_time());
-                    //     }
-                    // } else {
-                    //     // TODO: logging, missed frame
-                    // }
-                    
+                    real64 work_time = win32_get_elapsed_time(last_perf_counter);
+
+                    debug_print("work time before sleep: %f\n", work_time);
+
+                    real32 target_frame_time = 1.0f / 60.0f;
+                    if (work_time < target_frame_time) {
+                        if (sleep_is_granular) {
+                            DWORD sleep_ms = (DWORD) ((target_frame_time - work_time) * 1000);
+                            Sleep(sleep_ms);
+                        }
+                        while (work_time < target_frame_time) {
+                            work_time = win32_get_elapsed_time(last_perf_counter);
+                        }
+                    } else {
+                        // TODO: logging, missed frame
+                    }
+
+                    debug_print("frame time: %f\n", work_time);
+                    debug_print("\n");
+
                     SwapBuffers(hdc);
+
+                    last_perf_counter = win32_get_perf_counter();
                 }
             } else {
                 // TODO: logging
@@ -308,7 +485,6 @@ int WinMain(HINSTANCE hInstance,
             wglMakeCurrent(NULL, NULL);
             
             ReleaseDC(window, hdc);
-        
         } else {
             // TODO: logging
         }

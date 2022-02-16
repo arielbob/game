@@ -4,6 +4,8 @@
 #define local_persist static
 #define internal static
 
+#define PI 3.14159265358979323846f
+
 #if GAME_SLOW
 #define assert(expression) if (!(expression)) { *(int *)0 = 0; }
 #else
