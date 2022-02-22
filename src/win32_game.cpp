@@ -11,6 +11,7 @@
 #include <math.h>
 
 #include "common.h"
+#include "platform.h"
 #include "win32_game.h"
 
 #undef near
@@ -100,6 +101,80 @@ internal void debug_print(char *format, ...) {
     OutputDebugStringA(buf);
     va_end(args);
 }
+
+// NOTE: we create a file handle so that we deny other processes from writing to it before we're done with it.
+//       this is done with the FILE_SHARE_READ flag. other processes can only read it, but not write or delete it
+//       until we close the file.
+//       this is also useful if the file is not null-terminated. to read a file like that, we would first
+//       get the file size, allocate memory of that size, then put the contents of the file into the allocated
+//       memory. to loop through it, we need to know the size of it, since it is not null-terminated, so we use
+//       the value we got from the call to GetFileSize. we do not want the file size or its contents to change
+//       while we're using it, or else our file size we're using to read the file would be out of date.
+bool32 platform_open_file(char *filename, Platform_File *file_result) {
+    HANDLE file_handle = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
+    if (file_handle) {
+        file_result->file_handle = file_handle;
+        LARGE_INTEGER file_size;
+        if (GetFileSizeEx(file_handle, &file_size)) {
+            // TODO: we only support up to 4.2 GB files right now (32 bits)
+            // will have to stream it in if we want more
+            assert(file_size.QuadPart <= 0xffffffff);
+            uint32 file_size_32 = file_size.u.LowPart;
+            file_result->file_size = file_size_32;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool32 platform_read_file(Platform_File platform_file, File_Data *file_data, Arena *arena) {
+    assert(platform_file.file_handle);
+    uint32 file_size_32 = platform_file.file_size;
+    file_data->contents = (char *) arena_allocate(arena, file_size_32);
+
+    HANDLE file_handle = platform_file.file_handle;
+    DWORD number_of_bytes_read;
+    if (ReadFile(file_handle, file_data->contents, file_size_32, &number_of_bytes_read, 0)) {
+        // NOTE: we make sure that the number of bytes read is the same as the file size we got when we opened
+        //       the file. if this is not the case, the file has been modified, and we should error (this should
+        //       not happen, since our platform_open_file procedure prevents the file handle from being modified
+        //       while we have it opened).
+        assert(number_of_bytes_read == file_size_32);
+        // NOTE: we save the file size again since we don't want to keep having to use platform_file.
+        //       platform_file is only used when we need the handle. once we have the file's contents we don't
+        //       need it anymore.
+        file_data->size = file_size_32;
+        return true;
+    } else {
+        file_data->contents = 0;
+        debug_print("Could not read file\n");
+        return false;
+    }
+}
+
+void platform_close_file(Platform_File platform_file) {
+    assert(platform_file.file_handle);
+    CloseHandle(platform_file.file_handle);
+}
+
+#if 0
+bool32 platform_get_file_size(char *filename, uint32 *file_size_32_result) {
+    HANDLE file_handle = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
+    if (file_handle) {
+        LARGE_INTEGER file_size;
+        if (GetFileSizeEx(file_handle, &file_size)) {
+            // TODO: we only support up to 4.2 GB files right now (32 bits)
+            // will have to stream it in if we want more
+            assert(file_size.QuadPart <= 0xffffffff);
+            *file_size_32_result = file_size.u.LowPart;
+            return true;
+        }
+    }
+
+    return false;
+}
+#endif
 
 internal bool32 win32_init_opengl(HDC hdc) {
     PIXELFORMATDESCRIPTOR desired_pixel_format = {};
@@ -276,6 +351,7 @@ void fill_sound_buffer(Win32_Sound_Output *sound_output) {
     // FIXME: sound_buffer->Lock is returning invalid params error intermittently
     // TODO: this assumes that we're running at a stable 60fps
     //       if we drop down to 30, then we would want to lock more bytes
+    //       well, not really - it's more like we want to have some room for variation around our target FPS
     HRESULT lock_result = sound_buffer->Lock(samples_written * sound_output->bytes_per_sample,
                                              bytes_to_write,
                                              &block1, &block1_size,
@@ -452,6 +528,10 @@ int WinMain(HINSTANCE hInstance,
                         sound_output.sound_buffer->Play(0, 0, DSBPLAY_LOOPING);
                         sound_output.is_playing = true;
                     }
+
+                    // TODO: debug view for audio
+                    // TODO: implement
+                    gl_render(&game_state);
 
                     real64 work_time = win32_get_elapsed_time(last_perf_counter);
 

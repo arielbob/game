@@ -15,4 +15,9 @@ struct Win32_Sound_Output {
     bool32 is_playing;
 };
 
+struct Platform_File {
+    HANDLE file_handle;
+    uint32 file_size;
+};
+
 #endif
