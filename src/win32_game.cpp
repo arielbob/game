@@ -11,8 +11,11 @@
 #include <math.h>
 
 #include "common.h"
+#include "memory.h"
 #include "platform.h"
 #include "win32_game.h"
+
+#include "memory.cpp"
 
 #undef near
 #undef far
@@ -72,6 +75,8 @@ GL_GET_PROGRAMIV *glGetProgramiv;
 GL_UNIFORM_3FV *glUniform3fv;
 GL_UNIFORM_4FV *glUniform4fv;
 
+#include "game_gl.cpp"
+
 internal int64 win32_get_perf_counter() {
     LARGE_INTEGER perf_counter;
     QueryPerformanceCounter(&perf_counter);
@@ -90,8 +95,8 @@ internal real64 win32_get_wall_clock_time() {
 }
 #endif
 
-internal void debug_print(char *format, ...) {
-    char buf[256];
+void debug_print(char *format, ...) {
+    char buf[2048];
     va_list args;
     va_start(args, format);
     int32 num_chars_outputted = vsnprintf(buf, sizeof(buf), format, args);
@@ -111,7 +116,13 @@ internal void debug_print(char *format, ...) {
 //       the value we got from the call to GetFileSize. we do not want the file size or its contents to change
 //       while we're using it, or else our file size we're using to read the file would be out of date.
 bool32 platform_open_file(char *filename, Platform_File *file_result) {
-    HANDLE file_handle = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
+    // TODO: may want to handle long paths
+    // TODO: this does not handle unicode paths; would have to use GetFullPathNameW
+    char path_result[MAX_PATH];
+    DWORD path_length_without_null = GetFullPathNameA(filename, MAX_PATH, path_result, NULL);
+    assert(path_length_without_null > 0 && path_length_without_null < MAX_PATH);
+
+    HANDLE file_handle = CreateFile(path_result, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
     if (file_handle) {
         file_result->file_handle = file_handle;
         LARGE_INTEGER file_size;
@@ -128,10 +139,16 @@ bool32 platform_open_file(char *filename, Platform_File *file_result) {
     return false;
 }
 
+#if 1
 bool32 platform_read_file(Platform_File platform_file, File_Data *file_data, Arena *arena) {
     assert(platform_file.file_handle);
     uint32 file_size_32 = platform_file.file_size;
-    file_data->contents = (char *) arena_allocate(arena, file_size_32);
+    // TODO: maybe we can just have file_data already have the memory allocated in file_data->contents?
+    //       i think this is a nicer API.. so we can remove the step of calling arena_alloc and just do
+    //       *file_data->contents = whatever, or pass the pointer to whatever procedure.
+    //       also, we wouldn't have to pass in an extra argument all the time.
+    //       i think we can just modify region_push() to return a pointer instead of an arena.
+    file_data->contents = (char *) arena_alloc(arena, file_size_32);
 
     HANDLE file_handle = platform_file.file_handle;
     DWORD number_of_bytes_read;
@@ -152,6 +169,7 @@ bool32 platform_read_file(Platform_File platform_file, File_Data *file_data, Are
         return false;
     }
 }
+#endif
 
 void platform_close_file(Platform_File platform_file) {
     assert(platform_file.file_handle);
@@ -390,10 +408,38 @@ void fill_sound_buffer(Win32_Sound_Output *sound_output) {
     debug_print("samples written: %d\n", samples_written);
 }
 
+bool32 win32_init_memory(Memory *memory) {
+    uint32 global_stack_size = GIGABYTES(1);
+
+    uint32 total_memory_size = global_stack_size;
+    void *memory_base = VirtualAlloc(0, total_memory_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+
+    if (memory_base) {
+        void *global_stack_base = (uint8 *) memory_base + 0;
+        Stack_Allocator global_stack = make_stack_allocator(global_stack_base, global_stack_size);
+        memory->global_stack = global_stack;
+
+        memory->is_initted = true;
+
+        return true;
+    }
+    
+    return false;
+}
+
+void platform_zero_memory(void *base, uint32 size) {
+    ZeroMemory(base, size);
+}
+
 int WinMain(HINSTANCE hInstance,
             HINSTANCE hPrevInstance,
             LPSTR lpCmdLine,
             int nShowCmd) {
+#if 0
+    char path_result[MAX_PATH];
+    // DWORD path_length = GetFullPathNameA("C:/dghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijkl", MAX_PATH, path_result, NULL);
+#endif
+
     LARGE_INTEGER perf_counter_frequency_result;
     QueryPerformanceFrequency(&perf_counter_frequency_result);
     perf_counter_frequency = perf_counter_frequency_result.QuadPart;
@@ -461,6 +507,9 @@ int WinMain(HINSTANCE hInstance,
             bool32 opengl_is_valid = win32_init_opengl(hdc);
             bool32 directsound_is_valid = win32_init_directsound(window, &sound_output);
 
+            Memory memory;
+            bool32 memory_is_valid = win32_init_memory(&memory);
+
             MSG message;
 
             POINT center_point = { display_output.width / 2, display_output.height / 2 };
@@ -475,7 +524,7 @@ int WinMain(HINSTANCE hInstance,
             
             ShowCursor(0);
             
-            if (opengl_is_valid && directsound_is_valid) {
+            if (memory_is_valid && opengl_is_valid && directsound_is_valid) {
                 while (is_running) {
                     if (PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) {
                         if (message.message == WM_QUIT) {
@@ -531,7 +580,10 @@ int WinMain(HINSTANCE hInstance,
 
                     // TODO: debug view for audio
                     // TODO: implement
-                    gl_render(&game_state);
+                    // gl_render(&game_state);
+                    gl_init(&memory, display_output);
+
+                    verify(&memory.global_stack);
 
                     real64 work_time = win32_get_elapsed_time(last_perf_counter);
 

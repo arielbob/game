@@ -12,6 +12,12 @@
 #define assert(expression)
 #endif
 
+#define array_length(array) sizeof(array) / sizeof((array)[0])
+
+#define KILOBYTES(n) 1024 * (n)
+#define MEGABYTES(n) 1024 * KILOBYTES(n)
+#define GIGABYTES(n) 1024 * MEGABYTES(n)
+
 typedef int8_t int8;
 typedef int16_t int16;
 typedef int32_t int32;

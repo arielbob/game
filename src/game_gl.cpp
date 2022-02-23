@@ -1,12 +1,34 @@
+#include "platform.h"
+#include "game_gl.h"
+
 real32 vertices[] = {
     -0.5f, -0.5f, 0.0f,
     0.5f, -0.5f, 0.0f,
     0.0f, 0.5f, 0.0f,
 };
 
-void gl_init(Win32_Display_Output display_output) {
-    // TODO: add memory stuff
-    // Marker m = begin_region();
+void gl_init(Memory *memory, Win32_Display_Output display_output) {
+#if 1
+    Marker m = begin_region(memory);
+
+    Platform_File platform_file;
+    bool32 file_exists = platform_open_file("../src/shaders/basic.vs", &platform_file);
+    assert(file_exists);
+
+    // TODO: change region_push() to just return a pointer
+    Arena arena = region_push(memory, platform_file.file_size);
+
+    File_Data shader_file_data;
+    bool32 result = platform_read_file(platform_file, &shader_file_data, &arena);
+    assert(result);
+
+    // NOTE: should not trust that contents is null terminated - this is just for testing
+    debug_print(shader_file_data.contents);
+    
+    end_region(memory, m);
+    platform_close_file(platform_file);
+
+#endif
     // uint32 file_size = platform_get_file_size("basic.vs");
     // Arena memory = push_memory(file_size);
     // File_Data vertex_shader_source = platform_read_file("basic.vs", memory);
@@ -15,8 +37,6 @@ void gl_init(Win32_Display_Output display_output) {
 
     // File_Data vertex_shader_file = platform_read_file("basic.vs");
     // File_Data fragment_shader_file = platform_read_file("fragment.vs");
-
-    // platform_close_file(platform_file);
 }
 
 void gl_draw_triangle(Win32_Display_Output display_output) {
