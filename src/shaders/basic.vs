@@ -15,8 +15,8 @@ out vec4 frag_color;
 
 void main() {
     //frag_pos = vec3(model * vec4(pos, 1.0));
-    gl_Position = pos;
-    frag_color = vecf(1.0, 1.0, 1.0, 1.0);
+    gl_Position = vec4(pos, 1.0);
+    frag_color = vec4(1.0, 1.0, 1.0, 1.0);
 
     // TODO: add transform to normal vector
     // TODO: this transform doesn't handle non-uniform scale

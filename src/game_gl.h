@@ -11,4 +11,9 @@
 #define GL_LINK_STATUS                    0x8B82
 #define GL_MULTISAMPLE                    0x809D
 
+enum Shader_Type {
+    VERTEX,
+    FRAGMENT
+};
+
 #endif

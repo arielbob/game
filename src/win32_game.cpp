@@ -107,6 +107,20 @@ void debug_print(char *format, ...) {
     va_end(args);
 }
 
+void debug_printn(char *format, int32 n, ...) {
+    char buf[2048];
+    va_list args;
+    va_start(args, n);
+    
+    assert(n < sizeof(buf));
+    int32 num_chars_outputted = vsnprintf(buf, n, format, args);
+
+    assert(num_chars_outputted > 0 && num_chars_outputted < sizeof(buf));
+
+    OutputDebugStringA(buf);
+    va_end(args);
+}
+
 // NOTE: we create a file handle so that we deny other processes from writing to it before we're done with it.
 //       this is done with the FILE_SHARE_READ flag. other processes can only read it, but not write or delete it
 //       until we close the file.
@@ -520,6 +534,8 @@ int WinMain(HINSTANCE hInstance,
             ShowCursor(0);
             
             if (memory_is_valid && opengl_is_valid && directsound_is_valid) {
+                gl_init(&memory, display_output);
+
                 while (is_running) {
                     if (PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) {
                         if (message.message == WM_QUIT) {
@@ -576,8 +592,8 @@ int WinMain(HINSTANCE hInstance,
                     // TODO: debug view for audio
                     // TODO: implement
                     // gl_render(&game_state);
-                    gl_init(&memory, display_output);
-
+                    gl_draw_triangle(display_output);
+                    
                     verify(&memory.global_stack);
 
                     real64 work_time = win32_get_elapsed_time(last_perf_counter);
