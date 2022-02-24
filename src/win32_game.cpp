@@ -140,18 +140,13 @@ bool32 platform_open_file(char *filename, Platform_File *file_result) {
 }
 
 #if 1
-bool32 platform_read_file(Platform_File platform_file, File_Data *file_data, Arena *arena) {
+bool32 platform_read_file(Platform_File platform_file, File_Data *file_data) {
     assert(platform_file.file_handle);
     uint32 file_size_32 = platform_file.file_size;
-    // TODO: maybe we can just have file_data already have the memory allocated in file_data->contents?
-    //       i think this is a nicer API.. so we can remove the step of calling arena_alloc and just do
-    //       *file_data->contents = whatever, or pass the pointer to whatever procedure.
-    //       also, we wouldn't have to pass in an extra argument all the time.
-    //       i think we can just modify region_push() to return a pointer instead of an arena.
-    file_data->contents = (char *) arena_alloc(arena, file_size_32);
-
     HANDLE file_handle = platform_file.file_handle;
+
     DWORD number_of_bytes_read;
+    assert(file_data->contents);
     if (ReadFile(file_handle, file_data->contents, file_size_32, &number_of_bytes_read, 0)) {
         // NOTE: we make sure that the number of bytes read is the same as the file size we got when we opened
         //       the file. if this is not the case, the file has been modified, and we should error (this should

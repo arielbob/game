@@ -15,11 +15,9 @@ void gl_init(Memory *memory, Win32_Display_Output display_output) {
     bool32 file_exists = platform_open_file("../src/shaders/basic.vs", &platform_file);
     assert(file_exists);
 
-    // TODO: change region_push() to just return a pointer
-    Arena arena = region_push(memory, platform_file.file_size);
-
-    File_Data shader_file_data;
-    bool32 result = platform_read_file(platform_file, &shader_file_data, &arena);
+    File_Data shader_file_data = {};
+    shader_file_data.contents = (char *) region_push(memory, platform_file.file_size);
+    bool32 result = platform_read_file(platform_file, &shader_file_data);
     assert(result);
 
     // NOTE: should not trust that contents is null terminated - this is just for testing

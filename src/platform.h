@@ -13,7 +13,7 @@ struct File_Data {
 
 void debug_print(char *format, ...);
 bool32 platform_open_file(char *filename, Platform_File *file_result);
-bool32 platform_read_file(Platform_File platform_file, File_Data *file_data, Arena *arena);
+bool32 platform_read_file(Platform_File platform_file, File_Data *file_data);
 void platform_close_file(Platform_File platform_file);
 void platform_zero_memory(void *base, uint32 size);
 
