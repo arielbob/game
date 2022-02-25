@@ -1,10 +1,26 @@
 #include "platform.h"
+#include "math.h"
 #include "game_gl.h"
+
+// TODO: draw other 2D primitives: boxes, lines, etc
+// TODO: draw text
+
+/*
+This uses a left-handed coordinate system: positive x is right, positive y is up, positive z is into the screen.
+Use your left hand to figure out the direction of the cross product of two vectors.
+In 2D, (0, 0) is at the bottom left, positive x is right, positive y is up.
+ */
 
 real32 vertices[] = {
     -0.5f, -0.5f, 0.0f,
     0.5f, -0.5f, 0.0f,
     0.0f, 0.5f, 0.0f,
+};
+
+real32 triangle_vertices[] = {
+    0.0f, 0.0f, 0.0f,
+    0.5f, 1.0f, 0.0f,
+    1.0f, 0.0f, 0.0f,
 };
 
 uint32 triangle_shader;
@@ -62,6 +78,12 @@ uint32 gl_compile_and_link_shaders(char *vertex_shader_source, uint32 vertex_sha
     return gl_program_id;
 }
 
+void gl_set_uniform_mat4(uint32 shader_id, char* uniform_name, Mat4 *m) {
+    int32 uniform_location = glGetUniformLocation(shader_id, uniform_name);
+    assert(uniform_location > -1);
+    glUniformMatrix4fv(uniform_location, 1, GL_FALSE, (real32 *) m);
+}
+
 void gl_init(Memory *memory, Win32_Display_Output display_output) {
     uint32 vbo;
     glGenVertexArrays(1, &triangle_vao);
@@ -69,7 +91,7 @@ void gl_init(Memory *memory, Win32_Display_Output display_output) {
 
     glBindVertexArray(triangle_vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(triangle_vertices), triangle_vertices, GL_STATIC_DRAW);
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,
                           3 * sizeof(real32), (void *) 0);
@@ -107,6 +129,27 @@ void gl_init(Memory *memory, Win32_Display_Output display_output) {
                                                   fragment_shader_file_data.size);
 
     end_region(memory, m);
+}
+
+// NOTE: This draws a triangle that has its bottom left corner at position.
+//       Position is based on percentages, so 50% x and 50%y would put the bottom left corner of the triangle
+//       in the middle of the screen.
+void gl_draw_triangle(Win32_Display_Output display_output, Vec2 position,
+                      real32 width_pixels, real32 height_pixels) {
+    glUseProgram(triangle_shader);
+    glBindVertexArray(triangle_vao);
+
+    Vec2 clip_space_position = make_vec2(position.x * 2.0f - 1.0f,
+                                         position.y * 2.0f - 1.0f);
+    
+    real32 clip_space_width  = width_pixels / (display_output.width / 2.0f);
+    real32 clip_space_height = height_pixels / (display_output.height / 2.0f);
+
+    Mat4 model_matrix = (make_translate_matrix(make_vec3(clip_space_position, 0.0f)) *
+                         make_scale_matrix(y_axis, clip_space_height) *
+                         make_scale_matrix(x_axis, clip_space_width));
+    gl_set_uniform_mat4(triangle_shader, "model", &model_matrix);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
 }
 
 void gl_draw_triangle(Win32_Display_Output display_output) {

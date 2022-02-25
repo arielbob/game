@@ -10,15 +10,16 @@
 #include <dsound.h>
 #include <math.h>
 
+#undef near
+#undef far
+
 #include "common.h"
+#include "math.h"
 #include "memory.h"
 #include "platform.h"
 #include "win32_game.h"
 
 #include "memory.cpp"
-
-#undef near
-#undef far
 
 global_variable int64 perf_counter_frequency;
 global_variable bool32 is_running = true;
@@ -161,6 +162,7 @@ bool32 platform_read_file(Platform_File platform_file, File_Data *file_data) {
 
     DWORD number_of_bytes_read;
     assert(file_data->contents);
+    // NOTE: file_data->contents will NOT be null-terminated
     if (ReadFile(file_handle, file_data->contents, file_size_32, &number_of_bytes_read, 0)) {
         // NOTE: we make sure that the number of bytes read is the same as the file size we got when we opened
         //       the file. if this is not the case, the file has been modified, and we should error (this should
@@ -592,7 +594,9 @@ int WinMain(HINSTANCE hInstance,
                     // TODO: debug view for audio
                     // TODO: implement
                     // gl_render(&game_state);
-                    gl_draw_triangle(display_output);
+                    gl_draw_triangle(display_output,
+                                     make_vec2(0.5f, 0.5f),
+                                     100.0f, 100.0f);
                     
                     verify(&memory.global_stack);
 

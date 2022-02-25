@@ -2,8 +2,8 @@
 
 layout (location = 0) in vec3 pos;
 
-/*
 uniform mat4 model;
+/*
 uniform mat4 cpv_matrix;
 uniform vec4 color;
 */
@@ -14,8 +14,9 @@ out vec4 frag_color;
 //out vec2 uv;
 
 void main() {
-    //frag_pos = vec3(model * vec4(pos, 1.0));
-    gl_Position = vec4(pos, 1.0);
+    // frag_pos = vec3(model * vec4(pos, 1.0));
+    gl_Position = model * vec4(pos, 1.0);
+    // gl_Position = vec4(pos, 1.0);
     frag_color = vec4(1.0, 1.0, 1.0, 1.0);
 
     // TODO: add transform to normal vector
