@@ -1,5 +1,6 @@
 #include "platform.h"
 #include "math.h"
+#include "hash_table.h"
 #include "game_gl.h"
 
 // TODO: draw other 2D primitives: boxes, lines, etc
@@ -23,7 +24,6 @@ real32 triangle_vertices[] = {
     1.0f, 0.0f, 0.0f,
 };
 
-uint32 triangle_shader;
 uint32 triangle_vao;
 
 uint32 gl_create_shader(char *shader_source, uint32 shader_source_size, Shader_Type shader_type) {
@@ -84,7 +84,45 @@ void gl_set_uniform_mat4(uint32 shader_id, char* uniform_name, Mat4 *m) {
     glUniformMatrix4fv(uniform_location, 1, GL_FALSE, (real32 *) m);
 }
 
+uint32 gl_load_shader(Memory *memory, char *vertex_shader_filename, char *fragment_shader_filename) {
+    Marker m = begin_region(memory);
+
+    // NOTE: vertex shader
+    Platform_File platform_file;
+    bool32 file_exists = platform_open_file(vertex_shader_filename, &platform_file);
+    assert(file_exists);
+
+    File_Data vertex_shader_file_data = {};
+    vertex_shader_file_data.contents = (char *) region_push(memory, platform_file.file_size);
+    bool32 result = platform_read_file(platform_file, &vertex_shader_file_data);
+    assert(result);
+
+    platform_close_file(platform_file);
+
+    // NOTE: fragment shader
+    file_exists = platform_open_file(fragment_shader_filename, &platform_file);
+    assert(file_exists);
+
+    File_Data fragment_shader_file_data = {};
+    fragment_shader_file_data.contents = (char *) region_push(memory, platform_file.file_size);
+    result = platform_read_file(platform_file, &fragment_shader_file_data);
+    assert(result);
+
+    uint32 shader_id = gl_compile_and_link_shaders(vertex_shader_file_data.contents,
+                                                   vertex_shader_file_data.size,
+                                                   fragment_shader_file_data.contents,
+                                                   fragment_shader_file_data.size);
+
+    end_region(memory, m);
+    return shader_id;
+}
+
+// TODO: move this somewhere better
+global_variable GL_State gl_state = {};
+
 void gl_init(Memory *memory, Win32_Display_Output display_output) {
+    gl_state.shader_ids_table = make_hash_table<uint32>((Allocator *) &memory->hash_table_stack);
+
     uint32 vbo;
     glGenVertexArrays(1, &triangle_vao);
     glGenBuffers(1, &vbo);
@@ -100,35 +138,8 @@ void gl_init(Memory *memory, Win32_Display_Output display_output) {
     glBindVertexArray(0);
     glUseProgram(0);
 
-    Marker m = begin_region(memory);
-
-    // NOTE: vertex shader
-    Platform_File platform_file;
-    bool32 file_exists = platform_open_file("../src/shaders/basic.vs", &platform_file);
-    assert(file_exists);
-
-    File_Data vertex_shader_file_data = {};
-    vertex_shader_file_data.contents = (char *) region_push(memory, platform_file.file_size);
-    bool32 result = platform_read_file(platform_file, &vertex_shader_file_data);
-    assert(result);
-
-    platform_close_file(platform_file);
-
-    // NOTE: fragment shader
-    file_exists = platform_open_file("../src/shaders/basic.fs", &platform_file);
-    assert(file_exists);
-
-    File_Data fragment_shader_file_data = {};
-    fragment_shader_file_data.contents = (char *) region_push(memory, platform_file.file_size);
-    result = platform_read_file(platform_file, &fragment_shader_file_data);
-    assert(result);
-
-    triangle_shader = gl_compile_and_link_shaders(vertex_shader_file_data.contents,
-                                                  vertex_shader_file_data.size,
-                                                  fragment_shader_file_data.contents,
-                                                  fragment_shader_file_data.size);
-
-    end_region(memory, m);
+    uint32 basic_shader_id = gl_load_shader(memory, "../src/shaders/basic.vs", "../src/shaders/basic.fs");
+    hash_table_add(&gl_state.shader_ids_table, make_string("basic"), basic_shader_id);
 }
 
 // NOTE: This draws a triangle that has its bottom left corner at position.
@@ -136,7 +147,10 @@ void gl_init(Memory *memory, Win32_Display_Output display_output) {
 //       in the middle of the screen.
 void gl_draw_triangle(Win32_Display_Output display_output, Vec2 position,
                       real32 width_pixels, real32 height_pixels) {
-    glUseProgram(triangle_shader);
+    uint32 triangle_shader_id;
+    uint32 shader_exists = hash_table_find(gl_state.shader_ids_table, make_string("basic"), &triangle_shader_id);
+    assert(shader_exists);
+    glUseProgram(triangle_shader_id);
     glBindVertexArray(triangle_vao);
 
     Vec2 clip_space_position = make_vec2(position.x * 2.0f - 1.0f,
@@ -148,12 +162,14 @@ void gl_draw_triangle(Win32_Display_Output display_output, Vec2 position,
     Mat4 model_matrix = (make_translate_matrix(make_vec3(clip_space_position, 0.0f)) *
                          make_scale_matrix(y_axis, clip_space_height) *
                          make_scale_matrix(x_axis, clip_space_width));
-    gl_set_uniform_mat4(triangle_shader, "model", &model_matrix);
+    gl_set_uniform_mat4(triangle_shader_id, "model", &model_matrix);
     glDrawArrays(GL_TRIANGLES, 0, 3);
 }
 
+#if 0
 void gl_draw_triangle(Win32_Display_Output display_output) {
     glUseProgram(triangle_shader);
     glBindVertexArray(triangle_vao);
     glDrawArrays(GL_TRIANGLES, 0, 3);
 }
+#endif

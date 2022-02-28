@@ -1,6 +1,8 @@
 #ifndef GAME_GL_H
 #define GAME_GL_H
 
+#include "hash_table.h"
+
 // copy constants from here: https://www.khronos.org/registry/OpenGL/api/GL/glext.h
 #define GL_ARRAY_BUFFER                   0x8892
 #define GL_STATIC_DRAW                    0x88E4
@@ -14,6 +16,10 @@
 enum Shader_Type {
     VERTEX,
     FRAGMENT
+};
+
+struct GL_State {
+    Hash_Table<uint32> shader_ids_table;
 };
 
 #endif
