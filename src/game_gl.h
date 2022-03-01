@@ -20,6 +20,7 @@ enum Shader_Type {
 
 struct GL_State {
     Hash_Table<uint32> shader_ids_table;
+    Hash_Table<uint32> debug_vaos_table;
 };
 
 #endif

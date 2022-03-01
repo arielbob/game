@@ -37,6 +37,7 @@ struct Hash_Table {
     Allocator *allocator;
 };
 
+// TODO: we may want to be able to specify how many buckets we want
 template <class Value_Type>
 Hash_Table<Value_Type> make_hash_table(Allocator *allocator) {
     Hash_Table<Value_Type> hash_table = {};

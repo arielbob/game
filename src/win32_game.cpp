@@ -20,6 +20,7 @@
 #include "win32_game.h"
 
 #include "memory.cpp"
+#include "game.cpp"
 
 global_variable int64 perf_counter_frequency;
 global_variable bool32 is_running = true;
@@ -420,7 +421,7 @@ void fill_sound_buffer(Win32_Sound_Output *sound_output) {
 }
 
 bool32 win32_init_memory(Memory *memory) {
-    uint32 global_stack_size = GIGABYTES(1);
+    uint32 global_stack_size = MEGABYTES(8);
     uint32 hash_table_stack_size = MEGABYTES(8);
 
     uint32 total_memory_size = global_stack_size + hash_table_stack_size;
@@ -541,7 +542,8 @@ int WinMain(HINSTANCE hInstance,
             ShowCursor(0);
             
             if (memory_is_valid && opengl_is_valid && directsound_is_valid) {
-                gl_init(&memory, display_output);
+                GL_State gl_state = {};
+                gl_init(&memory, &gl_state, display_output);
 
                 while (is_running) {
                     if (PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) {
@@ -598,15 +600,12 @@ int WinMain(HINSTANCE hInstance,
 
                     // TODO: debug view for audio
                     // TODO: implement
-                    // gl_render(&game_state);
-                    gl_draw_triangle(display_output,
-                                     make_vec2(0.5f, 0.5f),
-                                     100.0f, 100.0f);
+                    update();
+                    gl_render(&gl_state, display_output);
                     
                     verify(&memory.global_stack);
 
                     real64 work_time = win32_get_elapsed_time(last_perf_counter);
-
                     debug_print("work time before sleep: %f\n", work_time);
 
                     real32 target_frame_time = 1.0f / 60.0f;

@@ -1,5 +1,26 @@
 #include "memory.h"
 
+Arena_Allocator make_arena_allocator(void *base, uint32 size) {
+    Arena_Allocator arena;
+    arena.type = ARENA_ALLOCATOR;
+    arena.size = size;
+    arena.used = 0;
+    return arena;
+}
+
+void *arena_push(Arena_Allocator *arena, uint32 size, bool32 zero_memory = true) {
+    assert((arena->used + size) <= arena->size);
+
+    void *start_byte = (void *) (((uint8 *) arena->base) + arena->used);
+    arena->used += size;
+
+    if (zero_memory) {
+        platform_zero_memory(start_byte, size);
+    } 
+   
+    return start_byte;
+}
+
 Stack_Allocator make_stack_allocator(void *base, uint32 size) {
     Stack_Allocator stack;
     stack.type = STACK_ALLOCATOR;
@@ -71,6 +92,11 @@ void *allocate(Allocator *allocator, uint32 size, bool32 zero_memory = true) {
             Stack_Allocator *stack = (Stack_Allocator *) allocator;
             return region_push(stack, size, zero_memory);
         } break;
+        case ARENA_ALLOCATOR:
+        {
+            Arena_Allocator *arena = (Arena_Allocator *) allocator;
+            return arena_push(arena, size, zero_memory);
+        }
         default:
         {
             assert(false);

@@ -4,6 +4,7 @@
 #include "game_gl.h"
 
 // TODO: draw other 2D primitives: boxes, lines, etc
+// TODO: 2D drawing functions using pixel position instead of percentages
 // TODO: draw text
 
 /*
@@ -17,14 +18,6 @@ real32 vertices[] = {
     0.5f, -0.5f, 0.0f,
     0.0f, 0.5f, 0.0f,
 };
-
-real32 triangle_vertices[] = {
-    0.0f, 0.0f, 0.0f,
-    0.5f, 1.0f, 0.0f,
-    1.0f, 0.0f, 0.0f,
-};
-
-uint32 triangle_vao;
 
 uint32 gl_create_shader(char *shader_source, uint32 shader_source_size, Shader_Type shader_type) {
     GLenum type = 0;
@@ -78,10 +71,23 @@ uint32 gl_compile_and_link_shaders(char *vertex_shader_source, uint32 vertex_sha
     return gl_program_id;
 }
 
-void gl_set_uniform_mat4(uint32 shader_id, char* uniform_name, Mat4 *m) {
+// TODO: should these be inline?
+inline void gl_set_uniform_mat4(uint32 shader_id, char* uniform_name, Mat4 *m) {
     int32 uniform_location = glGetUniformLocation(shader_id, uniform_name);
     assert(uniform_location > -1);
     glUniformMatrix4fv(uniform_location, 1, GL_FALSE, (real32 *) m);
+}
+
+inline void gl_set_uniform_vec3(uint32 shader_id, char* uniform_name, Vec3 *v) {
+    int32 uniform_location = glGetUniformLocation(shader_id, uniform_name);
+    assert(uniform_location > -1);
+    glUniform3fv(uniform_location, 1, (real32 *) v);
+}
+
+inline void gl_set_uniform_vec4(uint32 shader_id, char* uniform_name, Vec4 *v) {
+    int32 uniform_location = glGetUniformLocation(shader_id, uniform_name);
+    assert(uniform_location > -1);
+    glUniform4fv(uniform_location, 1, (real32 *) v);
 }
 
 uint32 gl_load_shader(Memory *memory, char *vertex_shader_filename, char *fragment_shader_filename) {
@@ -117,17 +123,23 @@ uint32 gl_load_shader(Memory *memory, char *vertex_shader_filename, char *fragme
     return shader_id;
 }
 
-// TODO: move this somewhere better
-global_variable GL_State gl_state = {};
+void gl_init(Memory *memory, GL_State *gl_state, Win32_Display_Output display_output) {
+    uint32 vbo, vao, ebo;
 
-void gl_init(Memory *memory, Win32_Display_Output display_output) {
-    gl_state.shader_ids_table = make_hash_table<uint32>((Allocator *) &memory->hash_table_stack);
+    // NOTE: triangle mesh
+    real32 triangle_vertices[] = {
+        0.0f, 0.0f, 0.0f,
+        0.5f, 1.0f, 0.0f,
+        1.0f, 0.0f, 0.0f,
+    };
 
-    uint32 vbo;
-    glGenVertexArrays(1, &triangle_vao);
+    gl_state->shader_ids_table = make_hash_table<uint32>((Allocator *) &memory->hash_table_stack);
+    gl_state->debug_vaos_table = make_hash_table<uint32>((Allocator *) &memory->hash_table_stack);
+
+    glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
 
-    glBindVertexArray(triangle_vao);
+    glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(triangle_vertices), triangle_vertices, GL_STATIC_DRAW);
 
@@ -136,21 +148,78 @@ void gl_init(Memory *memory, Win32_Display_Output display_output) {
     glEnableVertexAttribArray(0);
     
     glBindVertexArray(0);
-    glUseProgram(0);
+    hash_table_add(&gl_state->debug_vaos_table, make_string("triangle"), vao);
 
+    // NOTE: square mesh
+    real32 square_vertices[] = {
+        0.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f,
+        1.0f, 1.0f, 0.0f,
+        1.0f, 0.0f, 0.0f,
+    };
+    uint32 square_indices[] = {
+        0, 1, 2,
+        0, 2, 3
+    };
+
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
+    glGenBuffers(1, &ebo);
+
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(square_vertices), square_vertices, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(square_indices), square_indices, GL_STATIC_DRAW); 
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,
+                          3 * sizeof(real32), (void *) 0);
+    glEnableVertexAttribArray(0);
+    
+    glBindVertexArray(0);
+    hash_table_add(&gl_state->debug_vaos_table, make_string("square"), vao);
+
+    // NOTE: line mesh
+    real32 line_vertices[] = {
+        0.0f, 0.0f, 0.0f,
+        1.0f, 1.0f, 0.0f,
+    };
+
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
+
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(line_vertices), line_vertices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,
+                          3 * sizeof(real32), (void *) 0);
+    glEnableVertexAttribArray(0);
+    
+    glBindVertexArray(0);
+    hash_table_add(&gl_state->debug_vaos_table, make_string("line"), vao);
+
+    // NOTE: shaders
     uint32 basic_shader_id = gl_load_shader(memory, "../src/shaders/basic.vs", "../src/shaders/basic.fs");
-    hash_table_add(&gl_state.shader_ids_table, make_string("basic"), basic_shader_id);
+    hash_table_add(&gl_state->shader_ids_table, make_string("basic"), basic_shader_id);
 }
 
 // NOTE: This draws a triangle that has its bottom left corner at position.
 //       Position is based on percentages, so 50% x and 50%y would put the bottom left corner of the triangle
 //       in the middle of the screen.
-void gl_draw_triangle(Win32_Display_Output display_output, Vec2 position,
-                      real32 width_pixels, real32 height_pixels) {
-    uint32 triangle_shader_id;
-    uint32 shader_exists = hash_table_find(gl_state.shader_ids_table, make_string("basic"), &triangle_shader_id);
+void gl_draw_triangle(GL_State *gl_state,
+                      Win32_Display_Output display_output, Vec2 position,
+                      real32 width_pixels, real32 height_pixels,
+                      Vec3 color) {
+    uint32 basic_shader_id;
+    uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("basic"), &basic_shader_id);
     assert(shader_exists);
-    glUseProgram(triangle_shader_id);
+    glUseProgram(basic_shader_id);
+
+    uint32 triangle_vao;
+    uint32 vao_exists = hash_table_find(gl_state->debug_vaos_table, make_string("triangle"), &triangle_vao);
+    assert(vao_exists);
     glBindVertexArray(triangle_vao);
 
     Vec2 clip_space_position = make_vec2(position.x * 2.0f - 1.0f,
@@ -162,14 +231,106 @@ void gl_draw_triangle(Win32_Display_Output display_output, Vec2 position,
     Mat4 model_matrix = (make_translate_matrix(make_vec3(clip_space_position, 0.0f)) *
                          make_scale_matrix(y_axis, clip_space_height) *
                          make_scale_matrix(x_axis, clip_space_width));
-    gl_set_uniform_mat4(triangle_shader_id, "model", &model_matrix);
+    gl_set_uniform_mat4(basic_shader_id, "model", &model_matrix);
+
+    gl_set_uniform_vec3(basic_shader_id, "color", &color);
+
     glDrawArrays(GL_TRIANGLES, 0, 3);
 }
 
-#if 0
-void gl_draw_triangle(Win32_Display_Output display_output) {
-    glUseProgram(triangle_shader);
-    glBindVertexArray(triangle_vao);
-    glDrawArrays(GL_TRIANGLES, 0, 3);
+void gl_draw_line(GL_State *gl_state,
+                  Win32_Display_Output display_output,
+                  Vec2 start, Vec2 end,
+                  Vec3 color) {
+    uint32 basic_shader_id;
+    uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("basic"), &basic_shader_id);
+    assert(shader_exists);
+    glUseProgram(basic_shader_id);
+
+    uint32 line_vao;
+    uint32 vao_exists = hash_table_find(gl_state->debug_vaos_table, make_string("line"), &line_vao);
+    assert(vao_exists);
+    glBindVertexArray(line_vao);
+
+    Vec2 clip_space_start = make_vec2(start.x * 2.0f - 1.0f,
+                                      start.y * 2.0f - 1.0f);
+    Vec2 clip_space_end = make_vec2(end.x * 2.0f - 1.0f,
+                                    end.y * 2.0f - 1.0f);
+    Vec2 clip_space_length = clip_space_end - clip_space_start;
+
+    Mat4 model_matrix = (make_translate_matrix(make_vec3(clip_space_start, 0.0f)) *
+                         make_scale_matrix(y_axis, clip_space_length.y) *
+                         make_scale_matrix(x_axis, clip_space_length.x));
+    gl_set_uniform_mat4(basic_shader_id, "model", &model_matrix);
+
+    gl_set_uniform_vec3(basic_shader_id, "color", &color);
+
+    glDrawArrays(GL_LINES, 0, 3);
 }
-#endif
+
+void gl_draw_quad(GL_State *gl_state,
+                  Win32_Display_Output display_output, Vec2 position,
+                  real32 width_pixels, real32 height_pixels,
+                  Vec3 color) {
+    uint32 basic_shader_id;
+    uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("basic"), &basic_shader_id);
+    assert(shader_exists);
+    glUseProgram(basic_shader_id);
+
+    uint32 square_vao;
+    uint32 vao_exists = hash_table_find(gl_state->debug_vaos_table, make_string("square"), &square_vao);
+    assert(vao_exists);
+    glBindVertexArray(square_vao);
+
+    Vec2 clip_space_position = make_vec2(position.x * 2.0f - 1.0f,
+                                         position.y * 2.0f - 1.0f);
+    
+    real32 clip_space_width  = width_pixels / (display_output.width / 2.0f);
+    real32 clip_space_height = height_pixels / (display_output.height / 2.0f);
+
+    Mat4 model_matrix = (make_translate_matrix(make_vec3(clip_space_position, 0.0f)) *
+                         make_scale_matrix(y_axis, clip_space_height) *
+                         make_scale_matrix(x_axis, clip_space_width));
+    gl_set_uniform_mat4(basic_shader_id, "model", &model_matrix);
+
+    gl_set_uniform_vec3(basic_shader_id, "color", &color);
+
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+}
+
+void gl_render(GL_State *gl_state, Win32_Display_Output display_output) {
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glLineWidth(1.0f);
+
+    local_persist real32 t = 0.0f;
+
+    real32 quad_x_offset = sinf(t) * (50.0f / display_output.width);
+    t += 0.01f;
+
+    gl_draw_quad(gl_state, display_output,
+                 make_vec2(0.5f + quad_x_offset, 0.5f),
+                 100.0f, 100.0f,
+                 make_vec3(0.0f, 1.0f, 0.0f));
+
+    gl_draw_triangle(gl_state, display_output,
+                     make_vec2(0.5f, 0.5f),
+                     100.0f, 100.0f,
+                     make_vec3(1.0f, 0.0f, 0.0f));
+
+    real32 square_width_percentage = (100.0f / display_output.width);
+    real32 square_height_percentage = (100.0f / display_output.height);
+    gl_draw_line(gl_state, display_output,
+                 make_vec2(0.75f, 0.25f), make_vec2(0.5f + quad_x_offset, 0.5f),
+                 make_vec3(1.0f, 1.0f, 1.0f));
+    gl_draw_line(gl_state, display_output,
+                 make_vec2(0.75f, 0.25f), make_vec2(0.5f + quad_x_offset + square_width_percentage, 0.5f),
+                 make_vec3(1.0f, 1.0f, 1.0f));
+    gl_draw_line(gl_state, display_output,
+                 make_vec2(0.75f, 0.25f), make_vec2(0.5f + quad_x_offset, 0.5f + square_height_percentage),
+                 make_vec3(1.0f, 1.0f, 1.0f));
+    gl_draw_line(gl_state, display_output,
+                 make_vec2(0.75f, 0.25f),
+                 make_vec2(0.5f + quad_x_offset + square_width_percentage, 0.5f + square_height_percentage),
+                 make_vec3(1.0f, 1.0f, 1.0f));
+}
