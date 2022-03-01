@@ -3,7 +3,7 @@
 #include "hash_table.h"
 #include "game_gl.h"
 
-// TODO: draw other 2D primitives: boxes, lines, etc
+// TODO (done): draw other 2D primitives: boxes, lines, etc
 // TODO: 2D drawing functions using pixel position instead of percentages
 // TODO: draw text
 
@@ -201,7 +201,7 @@ void gl_init(Memory *memory, GL_State *gl_state, Win32_Display_Output display_ou
     hash_table_add(&gl_state->debug_vaos_table, make_string("line"), vao);
 
     // NOTE: shaders
-    uint32 basic_shader_id = gl_load_shader(memory, "../src/shaders/basic.vs", "../src/shaders/basic.fs");
+    uint32 basic_shader_id = gl_load_shader(memory, "src/shaders/basic.vs", "src/shaders/basic.fs");
     hash_table_add(&gl_state->shader_ids_table, make_string("basic"), basic_shader_id);
 }
 
