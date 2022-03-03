@@ -373,6 +373,24 @@ void gl_draw_quad(GL_State *gl_state,
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 }
 
+void draw_sound_cursor(GL_State *gl_state,
+                       Win32_Display_Output display_output, Win32_Sound_Output *win32_sound_output,
+                       real32 cursor_position, Vec3 color) {
+    real32 cursor_width = 10.0f;
+    real32 cursor_x = ((cursor_position *
+                        display_output.width) - cursor_width / 2.0f);
+    real32 cursor_height = 20.0f;
+    gl_draw_triangle(gl_state, display_output,
+                     cursor_x, display_output.height - 202 - cursor_height,
+                     cursor_width, cursor_height,
+                     color);
+
+    gl_draw_line(gl_state, display_output,
+                 make_vec2(cursor_position * display_output.width, display_output.height - 202.0f),
+                 make_vec2(cursor_position * display_output.width, (real32) display_output.height),
+                 color);
+}
+
 void draw_sound_buffer(GL_State *gl_state,
                        Win32_Display_Output display_output, Win32_Sound_Output *win32_sound_output) {
     int32 max_samples = win32_sound_output->buffer_size / win32_sound_output->bytes_per_sample;
@@ -423,20 +441,10 @@ void draw_sound_buffer(GL_State *gl_state,
 
     }
 
-    real32 cursor_width = 10.0f;
-    real32 cursor_position = (real32) win32_sound_output->current_play_cursor / win32_sound_output->buffer_size;
-    real32 cursor_x = ((cursor_position *
-                        display_output.width) - cursor_width / 2.0f);
-    real32 cursor_height = 20.0f;
-    gl_draw_triangle(gl_state, display_output,
-                     cursor_x, display_output.height - height_offset - cursor_height,
-                     cursor_width, cursor_height,
-                     make_vec3(1.0f, 1.0f, 1.0f));
-
-    gl_draw_line(gl_state, display_output,
-                 make_vec2(cursor_position * display_output.width, display_output.height - height_offset),
-                 make_vec2(cursor_position * display_output.width, (real32) display_output.height),
-                 make_vec3(1.0f, 1.0f, 1.0f));
+    real32 play_cursor_position = (real32) win32_sound_output->current_play_cursor / win32_sound_output->buffer_size;
+    draw_sound_cursor(gl_state, display_output, win32_sound_output, play_cursor_position, make_vec3(1.0f, 1.0f, 1.0f));
+    real32 write_cursor_position = (real32) win32_sound_output->current_write_cursor / win32_sound_output->buffer_size;
+    draw_sound_cursor(gl_state, display_output, win32_sound_output, write_cursor_position, make_vec3(1.0f, 0.0f, 0.0f));
 }
 
 void gl_render(GL_State *gl_state, Win32_Display_Output display_output, Win32_Sound_Output *win32_sound_output) {

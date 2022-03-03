@@ -436,7 +436,18 @@ void fill_sound_buffer(Win32_Sound_Output *win32_sound_output,
     LPVOID block2;
     DWORD block2_size;
 
+    DWORD current_play_cursor, current_write_cursor;
+    if (win32_sound_output->sound_buffer->GetCurrentPosition(&current_play_cursor,
+                                                             &current_write_cursor) != DS_OK) {
+        debug_print("Could not get current sound buffer position\n");
+    }
+
+#if 0
     DWORD byte_to_lock = (win32_sound_output->current_sample_index * win32_sound_output->bytes_per_sample);
+#else
+    DWORD byte_to_lock = current_write_cursor;
+#endif
+    
     HRESULT lock_result = dest_sound_buffer->Lock(byte_to_lock,
                                              bytes_to_write,
                                              &block1, &block1_size,
@@ -444,6 +455,8 @@ void fill_sound_buffer(Win32_Sound_Output *win32_sound_output,
                                              0);
 
     // FIXME: sound_buffer->Lock is returning invalid params error intermittently
+    // FIXME: if the audio latency is less than the frame time and we're writing at the write cursor, we will be overwriting
+    //        audio that we've already written
     int16 *original_src_sound_buffer = src_sound_buffer;
     if (lock_result == DS_OK) {
         DWORD block1_num_samples = block1_size / win32_sound_output->bytes_per_sample;
@@ -675,12 +688,16 @@ int WinMain(HINSTANCE hInstance,
                         sound_output.sound_buffer->Play(0, 0, DSBPLAY_LOOPING);
                         sound_output.is_playing = true;
                     }
-
+                    
                     DWORD current_play_cursor, current_write_cursor;
                     if (sound_output.sound_buffer->GetCurrentPosition(&current_play_cursor,
                                                                       &current_write_cursor) == DS_OK) {
                         sound_output.current_play_cursor = current_play_cursor;
                         sound_output.current_write_cursor = current_write_cursor;
+                        real32 audio_latency_samples = ((real32) (current_write_cursor - current_play_cursor) /
+                                                        sound_output.bytes_per_sample);
+                        real32 audio_latency_ms = audio_latency_samples / sound_output.samples_per_second * 1000.0f;
+                        debug_print("audio latency; samples: %f, ms: %f\n", audio_latency_samples, audio_latency_ms);
                     }
                     gl_render(&gl_state, display_output, &sound_output);
                     
@@ -701,7 +718,7 @@ int WinMain(HINSTANCE hInstance,
                     } else {
                         // TODO: logging, missed frame
                     }
-
+                    
                     debug_print("frame time: %f\n", work_time);
                     debug_print("\n");
 
