@@ -17,6 +17,7 @@ struct Win32_Sound_Output {
     int16 *accumulated_sound_buffer;
     DWORD current_play_cursor;
     DWORD current_write_cursor;
+    DWORD last_write_cursor;
 };
 
 #endif

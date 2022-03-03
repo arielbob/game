@@ -22,10 +22,10 @@
 #include "memory.cpp"
 #include "game.cpp"
 
-#define TARGET_FRAMERATE 60
+#define TARGET_FRAMERATE 30
 #define SAMPLE_RATE 44100
 // NOTE: sound buffer holds a 10th of a second of audio
-#define SOUND_BUFFER_SAMPLE_COUNT SAMPLE_RATE / 10
+#define SOUND_BUFFER_SAMPLE_COUNT SAMPLE_RATE / 2
 
 global_variable int64 perf_counter_frequency;
 global_variable bool32 is_running = true;
@@ -457,7 +457,9 @@ void fill_sound_buffer(Win32_Sound_Output *win32_sound_output,
                                              &block2, &block2_size,
                                              0);
 
-    // FIXME: if the audio latency is less than the frame time and we're writing at the write cursor, we will be overwriting audio that we've already written
+    // FIXME: if the audio latency is less than the frame time and we're writing at the write cursor, we will be overwriting audio that we've already written.
+    //        and i think if we're not hitting our target framerate, we won't be writing enough and so there will be a gap between the last write cursor and
+    //        the play cursor at write time where there is no audio.
     int16 *original_src_sound_buffer = src_sound_buffer;
     if (lock_result == DS_OK) {
         int16 *buffer_pos_1 = (int16 *) block1;
@@ -634,6 +636,7 @@ int WinMain(HINSTANCE hInstance,
                 game_sound_output.max_samples = game_sound_output.buffer_size / sound_output.bytes_per_sample;
                 game_sound_output.samples_per_second = 44100;
 
+                bool32 is_paused = true;
                 while (is_running) {
                     if (PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) {
                         if (message.message == WM_QUIT) {
@@ -651,6 +654,10 @@ int WinMain(HINSTANCE hInstance,
                                 uint32 vk_code = (uint32) message.wParam;
                                 if (vk_code == VK_ESCAPE) {
                                     is_running = false;
+                                } else if (vk_code == VK_RIGHT) {
+                                    if (is_down && !was_down) {
+                                        is_paused = !is_paused;
+                                    }
                                 } else {
                                     // win32_process_keyboard_input(was_down, is_down, vk_code, &controller_state);
                                 }
@@ -681,27 +688,29 @@ int WinMain(HINSTANCE hInstance,
                         }
                     }
 
-                    // TODO: debug view for audio
-                    // TODO: implement
-                    uint32 num_samples = (uint32) ((1.0f / TARGET_FRAMERATE) * sound_output.samples_per_second);
-                    update(&game_sound_output, num_samples);
+                    if (!is_paused) {
+                        uint32 num_samples = (uint32) ((1.0f / TARGET_FRAMERATE) * sound_output.samples_per_second);
+                        update(&game_sound_output, num_samples);
 
-                    fill_sound_buffer(&sound_output, game_sound_output.sound_buffer, num_samples);
-                    if (!sound_output.is_playing) {
-                        sound_output.sound_buffer->Play(0, 0, DSBPLAY_LOOPING);
-                        sound_output.is_playing = true;
-                    }
+                        fill_sound_buffer(&sound_output, game_sound_output.sound_buffer, num_samples);
+                        if (!sound_output.is_playing) {
+                            sound_output.sound_buffer->Play(0, 0, DSBPLAY_LOOPING);
+                            sound_output.is_playing = true;
+                        }
                     
-                    DWORD current_play_cursor, current_write_cursor;
-                    if (sound_output.sound_buffer->GetCurrentPosition(&current_play_cursor,
-                                                                      &current_write_cursor) == DS_OK) {
-                        sound_output.current_play_cursor = current_play_cursor;
-                        sound_output.current_write_cursor = current_write_cursor;
-                        real32 audio_latency_samples = ((real32) (current_write_cursor - current_play_cursor) /
-                                                        sound_output.bytes_per_sample);
-                        real32 audio_latency_ms = audio_latency_samples / sound_output.samples_per_second * 1000.0f;
-                        debug_print("audio latency; samples: %f, ms: %f\n", audio_latency_samples, audio_latency_ms);
+                        sound_output.last_write_cursor = sound_output.current_write_cursor;
+                        DWORD current_play_cursor, current_write_cursor;
+                        if (sound_output.sound_buffer->GetCurrentPosition(&current_play_cursor,
+                                                                          &current_write_cursor) == DS_OK) {
+                            sound_output.current_play_cursor = current_play_cursor;
+                            sound_output.current_write_cursor = current_write_cursor;
+                            real32 audio_latency_samples = ((real32) (current_write_cursor - current_play_cursor) /
+                                                            sound_output.bytes_per_sample);
+                            real32 audio_latency_ms = audio_latency_samples / sound_output.samples_per_second * 1000.0f;
+                            debug_print("audio latency; samples: %f, ms: %f\n", audio_latency_samples, audio_latency_ms);
+                        }
                     }
+
                     gl_render(&gl_state, display_output, &sound_output);
                     
                     verify(&memory.global_stack);
