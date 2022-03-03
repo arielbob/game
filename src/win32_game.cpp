@@ -22,6 +22,11 @@
 #include "memory.cpp"
 #include "game.cpp"
 
+#define TARGET_FRAMERATE 30
+#define SAMPLE_RATE 44100
+// NOTE: sound buffer holds a 10th of a second of audio
+#define SOUND_BUFFER_SAMPLE_COUNT SAMPLE_RATE / 10
+
 global_variable int64 perf_counter_frequency;
 global_variable bool32 is_running = true;
 
@@ -307,7 +312,7 @@ internal bool32 win32_init_directsound(HWND window, Win32_Sound_Output *win32_so
                     DSBUFFERDESC secondary_buffer_desc = {};
                     secondary_buffer_desc.dwSize = sizeof(DSBUFFERDESC);
                     secondary_buffer_desc.dwFlags = DSBCAPS_GLOBALFOCUS | DSBCAPS_GETCURRENTPOSITION2;
-                    secondary_buffer_desc.dwBufferBytes = win32_sound_output->samples_per_second * bytes_per_sample; // this buffer holds 1 second of audio
+                    secondary_buffer_desc.dwBufferBytes = SOUND_BUFFER_SAMPLE_COUNT * bytes_per_sample;
                     secondary_buffer_desc.dwReserved = 0;
                     secondary_buffer_desc.lpwfxFormat = &wave_format;
                     secondary_buffer_desc.guid3DAlgorithm = GUID_NULL;
@@ -368,7 +373,7 @@ global_variable int32 samples_written = 0;
 void fill_sound_buffer(Win32_Sound_Output *sound_output) {
     LPDIRECTSOUNDBUFFER sound_buffer = sound_output->sound_buffer;
     // assuming 60fps, we want 1/60th of a second worth of samples
-    DWORD num_samples = (DWORD) ((1.0f / 60.0f) * sound_output->samples_per_second);
+    DWORD num_samples = (DWORD) ((1.0f / TARGET_FRAMERATE) * sound_output->samples_per_second);
     DWORD bytes_to_write = num_samples * sound_output->bytes_per_sample;
 
     LPVOID block1;
@@ -413,6 +418,64 @@ void fill_sound_buffer(Win32_Sound_Output *sound_output) {
         }
 
         sound_buffer->Unlock(&block1, block1_size, &block2, block2_size);
+    } else {
+        debug_print("Could not lock sound buffer region\n");
+    }
+
+    debug_print("samples written: %d\n", samples_written);
+}
+
+void fill_sound_buffer(Win32_Sound_Output *win32_sound_output,
+                       int16 *src_sound_buffer, uint32 num_samples) {
+    LPDIRECTSOUNDBUFFER dest_sound_buffer = win32_sound_output->sound_buffer;
+
+    DWORD bytes_to_write = num_samples * win32_sound_output->bytes_per_sample;
+
+    LPVOID block1;
+    DWORD block1_size;
+    LPVOID block2;
+    DWORD block2_size;
+
+    DWORD byte_to_lock = (win32_sound_output->current_sample_index * win32_sound_output->bytes_per_sample);
+    HRESULT lock_result = dest_sound_buffer->Lock(byte_to_lock,
+                                             bytes_to_write,
+                                             &block1, &block1_size,
+                                             &block2, &block2_size,
+                                             0);
+
+    // FIXME: sound_buffer->Lock is returning invalid params error intermittently
+    int16 *original_src_sound_buffer = src_sound_buffer;
+    if (lock_result == DS_OK) {
+        DWORD block1_num_samples = block1_size / win32_sound_output->bytes_per_sample;
+        int16 *byte_to_write = (int16 *) block1;
+        for (uint32 i = 0; i < block1_num_samples; i++) {
+            *(byte_to_write++) = *(src_sound_buffer++);
+            *(byte_to_write++) = *(src_sound_buffer++);
+        }
+
+        if (block1_size < bytes_to_write) {
+            byte_to_write = (int16 *) block2;
+            DWORD block2_num_samples = block2_size / win32_sound_output->bytes_per_sample;
+            for (uint32 i = 0; i < block2_num_samples; i++) {
+                *(byte_to_write++) = *(src_sound_buffer++);
+                *(byte_to_write++) = *(src_sound_buffer++);
+            }
+        }
+
+        // copy the src_sound_buffer into the win32_sound_output accumulated sound buffer for debugging purposes
+        src_sound_buffer = original_src_sound_buffer;
+        int16 *accumulated_sound_buffer_dest =
+            &win32_sound_output->accumulated_sound_buffer[win32_sound_output->current_sample_index * 2];
+        for (uint32 i = 0; i < num_samples; i++) {
+            *(accumulated_sound_buffer_dest++) = *(src_sound_buffer++);
+            *(accumulated_sound_buffer_dest++) = *(src_sound_buffer++);
+        }
+
+        int32 win32_buffer_sample_count = win32_sound_output->buffer_size / win32_sound_output->bytes_per_sample;
+        win32_sound_output->current_sample_index = ((win32_sound_output->current_sample_index + num_samples) %
+                                                    win32_buffer_sample_count);
+
+        dest_sound_buffer->Unlock(&block1, block1_size, &block2, block2_size);
     } else {
         debug_print("Could not lock sound buffer region\n");
     }
@@ -471,11 +534,14 @@ int WinMain(HINSTANCE hInstance,
     display_output.height = 720;
 
     Win32_Sound_Output sound_output = {};
-    sound_output.samples_per_second = 44100;
+    sound_output.samples_per_second = SAMPLE_RATE;
     sound_output.bit_depth = 16;
     sound_output.bytes_per_sample = (sound_output.bit_depth / 8) * 2;
-    sound_output.buffer_size = sound_output.bytes_per_sample * sound_output.samples_per_second;
+    // NOTE: store a 10th of a second (100ms)
+    sound_output.buffer_size = sound_output.bytes_per_sample * SOUND_BUFFER_SAMPLE_COUNT;
     sound_output.is_playing = false;
+    int16 accumulated_sound_buffer[SOUND_BUFFER_SAMPLE_COUNT * 2];
+    sound_output.accumulated_sound_buffer = accumulated_sound_buffer;
     
     char* window_class_name = "WindowClassName";
     WNDCLASSEX window_class = {};
@@ -545,6 +611,13 @@ int WinMain(HINSTANCE hInstance,
                 GL_State gl_state = {};
                 gl_init(&memory, &gl_state, display_output);
 
+                Sound_Output game_sound_output = {};
+                int16 sound_buffer[SOUND_BUFFER_SAMPLE_COUNT * 2];
+                game_sound_output.sound_buffer = sound_buffer;
+                game_sound_output.buffer_size = sizeof(sound_buffer);
+                game_sound_output.max_samples = game_sound_output.buffer_size / sound_output.bytes_per_sample;
+                game_sound_output.samples_per_second = 44100;
+
                 while (is_running) {
                     if (PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) {
                         if (message.message == WM_QUIT) {
@@ -592,23 +665,31 @@ int WinMain(HINSTANCE hInstance,
                         }
                     }
 
-                    fill_sound_buffer(&sound_output);
+                    // TODO: debug view for audio
+                    // TODO: implement
+                    uint32 num_samples = (uint32) ((1.0f / TARGET_FRAMERATE) * sound_output.samples_per_second);
+                    update(&game_sound_output, num_samples);
+
+                    fill_sound_buffer(&sound_output, game_sound_output.sound_buffer, num_samples);
                     if (!sound_output.is_playing) {
                         sound_output.sound_buffer->Play(0, 0, DSBPLAY_LOOPING);
                         sound_output.is_playing = true;
                     }
 
-                    // TODO: debug view for audio
-                    // TODO: implement
-                    update();
-                    gl_render(&gl_state, display_output);
+                    DWORD current_play_cursor, current_write_cursor;
+                    if (sound_output.sound_buffer->GetCurrentPosition(&current_play_cursor,
+                                                                      &current_write_cursor) == DS_OK) {
+                        sound_output.current_play_cursor = current_play_cursor;
+                        sound_output.current_write_cursor = current_write_cursor;
+                    }
+                    gl_render(&gl_state, display_output, &sound_output);
                     
                     verify(&memory.global_stack);
 
                     real64 work_time = win32_get_elapsed_time(last_perf_counter);
                     debug_print("work time before sleep: %f\n", work_time);
 
-                    real32 target_frame_time = 1.0f / 60.0f;
+                    real32 target_frame_time = 1.0f / TARGET_FRAMERATE;
                     if (work_time < target_frame_time) {
                         if (sleep_is_granular) {
                             DWORD sleep_ms = (DWORD) ((target_frame_time - work_time) * 1000);

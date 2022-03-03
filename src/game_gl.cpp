@@ -208,10 +208,10 @@ void gl_init(Memory *memory, GL_State *gl_state, Win32_Display_Output display_ou
 // NOTE: This draws a triangle that has its bottom left corner at position.
 //       Position is based on percentages, so 50% x and 50%y would put the bottom left corner of the triangle
 //       in the middle of the screen.
-void gl_draw_triangle(GL_State *gl_state,
-                      Win32_Display_Output display_output, Vec2 position,
-                      real32 width_pixels, real32 height_pixels,
-                      Vec3 color) {
+void gl_draw_triangle_p(GL_State *gl_state,
+                        Win32_Display_Output display_output, Vec2 position,
+                        real32 width_pixels, real32 height_pixels,
+                        Vec3 color) {
     uint32 basic_shader_id;
     uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("basic"), &basic_shader_id);
     assert(shader_exists);
@@ -238,7 +238,18 @@ void gl_draw_triangle(GL_State *gl_state,
     glDrawArrays(GL_TRIANGLES, 0, 3);
 }
 
-void gl_draw_line(GL_State *gl_state,
+void gl_draw_triangle(GL_State *gl_state,
+                      Win32_Display_Output display_output,
+                      real32 x_pos_pixels, real32 y_pos_pixels,
+                      real32 width_pixels, real32 height_pixels,
+                      Vec3 color) {
+    gl_draw_triangle_p(gl_state, display_output,
+                       make_vec2(x_pos_pixels / display_output.width, y_pos_pixels / display_output.height),
+                       width_pixels, height_pixels,
+                       color);
+}
+
+void gl_draw_line_p(GL_State *gl_state,
                   Win32_Display_Output display_output,
                   Vec2 start, Vec2 end,
                   Vec3 color) {
@@ -268,10 +279,42 @@ void gl_draw_line(GL_State *gl_state,
     glDrawArrays(GL_LINES, 0, 3);
 }
 
-void gl_draw_quad(GL_State *gl_state,
-                  Win32_Display_Output display_output, Vec2 position,
-                  real32 width_pixels, real32 height_pixels,
+void gl_draw_line(GL_State *gl_state,
+                  Win32_Display_Output display_output,
+                  Vec2 start_pixels, Vec2 end_pixels,
                   Vec3 color) {
+    uint32 basic_shader_id;
+    uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("basic"), &basic_shader_id);
+    assert(shader_exists);
+    glUseProgram(basic_shader_id);
+
+    uint32 line_vao;
+    uint32 vao_exists = hash_table_find(gl_state->debug_vaos_table, make_string("line"), &line_vao);
+    assert(vao_exists);
+    glBindVertexArray(line_vao);
+
+    Vec2 clip_space_start = make_vec2(start_pixels.x / display_output.width * 2.0f - 1.0f,
+                                      start_pixels.y / display_output.height * 2.0f - 1.0f);
+    Vec2 clip_space_end = make_vec2(end_pixels.x / display_output.width * 2.0f - 1.0f,
+                                    end_pixels.y / display_output.height * 2.0f - 1.0f);
+    Vec2 clip_space_length = clip_space_end - clip_space_start;
+
+    Mat4 model_matrix = (make_translate_matrix(make_vec3(clip_space_start, 0.0f)) *
+                         make_scale_matrix(y_axis, clip_space_length.y) *
+                         make_scale_matrix(x_axis, clip_space_length.x));
+    gl_set_uniform_mat4(basic_shader_id, "model", &model_matrix);
+
+    gl_set_uniform_vec3(basic_shader_id, "color", &color);
+
+    glDrawArrays(GL_LINES, 0, 3);
+}
+
+// NOTE: percentage based position
+void gl_draw_quad_p(GL_State *gl_state,
+                    Win32_Display_Output display_output,
+                    real32 x, real32 y,
+                    real32 width_pixels, real32 height_pixels,
+                    Vec3 color) {
     uint32 basic_shader_id;
     uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("basic"), &basic_shader_id);
     assert(shader_exists);
@@ -282,8 +325,8 @@ void gl_draw_quad(GL_State *gl_state,
     assert(vao_exists);
     glBindVertexArray(square_vao);
 
-    Vec2 clip_space_position = make_vec2(position.x * 2.0f - 1.0f,
-                                         position.y * 2.0f - 1.0f);
+    Vec2 clip_space_position = make_vec2(x * 2.0f - 1.0f,
+                                         y * 2.0f - 1.0f);
     
     real32 clip_space_width  = width_pixels / (display_output.width / 2.0f);
     real32 clip_space_height = height_pixels / (display_output.height / 2.0f);
@@ -298,7 +341,105 @@ void gl_draw_quad(GL_State *gl_state,
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 }
 
-void gl_render(GL_State *gl_state, Win32_Display_Output display_output) {
+// NOTE: pixel based position, with (0,0) being at bottom left and (width, height) being at top right
+void gl_draw_quad(GL_State *gl_state,
+                  Win32_Display_Output display_output,
+                  real32 x_pos_pixels, real32 y_pos_pixels,
+                  real32 width_pixels, real32 height_pixels,
+                  Vec3 color) {
+    uint32 basic_shader_id;
+    uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("basic"), &basic_shader_id);
+    assert(shader_exists);
+    glUseProgram(basic_shader_id);
+
+    uint32 square_vao;
+    uint32 vao_exists = hash_table_find(gl_state->debug_vaos_table, make_string("square"), &square_vao);
+    assert(vao_exists);
+    glBindVertexArray(square_vao);
+
+    Vec2 clip_space_position = make_vec2(x_pos_pixels / display_output.width * 2.0f - 1.0f,
+                                         y_pos_pixels / display_output.height * 2.0f - 1.0f);
+    
+    real32 clip_space_width  = width_pixels / (display_output.width / 2.0f);
+    real32 clip_space_height = height_pixels / (display_output.height / 2.0f);
+
+    Mat4 model_matrix = (make_translate_matrix(make_vec3(clip_space_position, 0.0f)) *
+                         make_scale_matrix(y_axis, clip_space_height) *
+                         make_scale_matrix(x_axis, clip_space_width));
+    gl_set_uniform_mat4(basic_shader_id, "model", &model_matrix);
+
+    gl_set_uniform_vec3(basic_shader_id, "color", &color);
+
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+}
+
+void draw_sound_buffer(GL_State *gl_state,
+                       Win32_Display_Output display_output, Win32_Sound_Output *win32_sound_output) {
+    int32 max_samples = win32_sound_output->buffer_size / win32_sound_output->bytes_per_sample;
+
+    real32 channel_height = 100.0;
+    real32 height_offset = channel_height;
+    gl_draw_quad(gl_state, display_output,
+                 0.0f, display_output.height - height_offset,
+                 (real32) display_output.width, channel_height,
+                 make_vec3(0.1f, 0.1f, 0.1f));
+    gl_draw_line(gl_state, display_output,
+                 make_vec2(0.0f, display_output.height - height_offset - 1),
+                 make_vec2((real32) display_output.width, display_output.height - height_offset - 1),
+                 make_vec3(1.0f, 1.0f, 1.0f));
+
+    height_offset += channel_height + 1;
+    gl_draw_quad(gl_state, display_output,
+                 0.0f, display_output.height - height_offset,
+                 (real32) display_output.width, channel_height,
+                 make_vec3(0.1f, 0.1f, 0.1f));
+    gl_draw_line(gl_state, display_output,
+                 make_vec2(0.0f, display_output.height - height_offset - 1),
+                 make_vec2((real32) display_output.width, display_output.height - height_offset - 1),
+                 make_vec3(1.0f, 1.0f, 1.0f));
+
+    for (int32 i = 0; i < max_samples; i++) {
+        real32 sample_x = (real32) i / max_samples * display_output.width;
+
+        int16 left_sample = win32_sound_output->accumulated_sound_buffer[2*i];
+        int16 right_sample = win32_sound_output->accumulated_sound_buffer[2*i + 1];
+
+        real32 sample_height = (real32) left_sample / 32768 * channel_height;
+        real32 midline_offset = display_output.height - channel_height / 2.0f;
+
+        gl_draw_line(gl_state, display_output,
+                     make_vec2(sample_x, midline_offset),
+                     make_vec2(sample_x, midline_offset - sample_height),
+                     make_vec3(0.0f, 1.0f, 0.0f));
+
+        
+        sample_height = (real32) right_sample / 32768 * channel_height;
+        midline_offset -= channel_height + 1;
+
+        gl_draw_line(gl_state, display_output,
+                     make_vec2(sample_x, midline_offset),
+                     make_vec2(sample_x, midline_offset - sample_height),
+                     make_vec3(0.0f, 1.0f, 0.0f));
+
+    }
+
+    real32 cursor_width = 10.0f;
+    real32 cursor_position = (real32) win32_sound_output->current_play_cursor / win32_sound_output->buffer_size;
+    real32 cursor_x = ((cursor_position *
+                        display_output.width) - cursor_width / 2.0f);
+    real32 cursor_height = 20.0f;
+    gl_draw_triangle(gl_state, display_output,
+                     cursor_x, display_output.height - height_offset - cursor_height,
+                     cursor_width, cursor_height,
+                     make_vec3(1.0f, 1.0f, 1.0f));
+
+    gl_draw_line(gl_state, display_output,
+                 make_vec2(cursor_position * display_output.width, display_output.height - height_offset),
+                 make_vec2(cursor_position * display_output.width, (real32) display_output.height),
+                 make_vec3(1.0f, 1.0f, 1.0f));
+}
+
+void gl_render(GL_State *gl_state, Win32_Display_Output display_output, Win32_Sound_Output *win32_sound_output) {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
     glLineWidth(1.0f);
@@ -308,29 +449,31 @@ void gl_render(GL_State *gl_state, Win32_Display_Output display_output) {
     real32 quad_x_offset = sinf(t) * (50.0f / display_output.width);
     t += 0.01f;
 
-    gl_draw_quad(gl_state, display_output,
-                 make_vec2(0.5f + quad_x_offset, 0.5f),
-                 100.0f, 100.0f,
-                 make_vec3(0.0f, 1.0f, 0.0f));
+    gl_draw_quad_p(gl_state, display_output,
+                   0.5f + quad_x_offset, 0.5f,
+                   100.0f, 100.0f,
+                   make_vec3(0.0f, 1.0f, 0.0f));
 
-    gl_draw_triangle(gl_state, display_output,
+    gl_draw_triangle_p(gl_state, display_output,
                      make_vec2(0.5f, 0.5f),
                      100.0f, 100.0f,
                      make_vec3(1.0f, 0.0f, 0.0f));
 
     real32 square_width_percentage = (100.0f / display_output.width);
     real32 square_height_percentage = (100.0f / display_output.height);
-    gl_draw_line(gl_state, display_output,
-                 make_vec2(0.75f, 0.25f), make_vec2(0.5f + quad_x_offset, 0.5f),
-                 make_vec3(1.0f, 1.0f, 1.0f));
-    gl_draw_line(gl_state, display_output,
-                 make_vec2(0.75f, 0.25f), make_vec2(0.5f + quad_x_offset + square_width_percentage, 0.5f),
-                 make_vec3(1.0f, 1.0f, 1.0f));
-    gl_draw_line(gl_state, display_output,
-                 make_vec2(0.75f, 0.25f), make_vec2(0.5f + quad_x_offset, 0.5f + square_height_percentage),
-                 make_vec3(1.0f, 1.0f, 1.0f));
-    gl_draw_line(gl_state, display_output,
-                 make_vec2(0.75f, 0.25f),
-                 make_vec2(0.5f + quad_x_offset + square_width_percentage, 0.5f + square_height_percentage),
-                 make_vec3(1.0f, 1.0f, 1.0f));
+    gl_draw_line_p(gl_state, display_output,
+                   make_vec2(0.75f, 0.25f), make_vec2(0.5f + quad_x_offset, 0.5f),
+                   make_vec3(1.0f, 1.0f, 1.0f));
+    gl_draw_line_p(gl_state, display_output,
+                   make_vec2(0.75f, 0.25f), make_vec2(0.5f + quad_x_offset + square_width_percentage, 0.5f),
+                   make_vec3(1.0f, 1.0f, 1.0f));
+    gl_draw_line_p(gl_state, display_output,
+                   make_vec2(0.75f, 0.25f), make_vec2(0.5f + quad_x_offset, 0.5f + square_height_percentage),
+                   make_vec3(1.0f, 1.0f, 1.0f));
+    gl_draw_line_p(gl_state, display_output,
+                   make_vec2(0.75f, 0.25f),
+                   make_vec2(0.5f + quad_x_offset + square_width_percentage, 0.5f + square_height_percentage),
+                   make_vec3(1.0f, 1.0f, 1.0f));
+
+    draw_sound_buffer(gl_state, display_output, win32_sound_output);
 }

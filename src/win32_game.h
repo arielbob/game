@@ -13,6 +13,10 @@ struct Win32_Sound_Output {
     LPDIRECTSOUNDBUFFER sound_buffer;
     int32 buffer_size;
     bool32 is_playing;
+    uint32 current_sample_index;
+    int16 *accumulated_sound_buffer;
+    DWORD current_play_cursor;
+    DWORD current_write_cursor;
 };
 
 #endif
