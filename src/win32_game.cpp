@@ -477,6 +477,8 @@ void fill_sound_buffer(Win32_Sound_Output *win32_sound_output,
 
         // copy the src_sound_buffer into the win32_sound_output accumulated sound buffer for debugging purposes
         src_sound_buffer = original_src_sound_buffer;
+        // FIXME: this is incorrect - we should be writing at where we locked, not at current_sample_index.
+        //        i'm not sure we even need current_sample_index.
         int16 *accumulated_sound_buffer_dest =
             &win32_sound_output->accumulated_sound_buffer[win32_sound_output->current_sample_index * 2];
         for (uint32 i = 0; i < num_samples; i++) {
