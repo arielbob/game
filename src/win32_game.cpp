@@ -22,7 +22,7 @@
 #include "memory.cpp"
 #include "game.cpp"
 
-#define TARGET_FRAMERATE 30
+#define TARGET_FRAMERATE 60
 #define SAMPLE_RATE 44100
 // NOTE: sound buffer holds a 10th of a second of audio
 #define SOUND_BUFFER_SAMPLE_COUNT SAMPLE_RATE / 10
@@ -370,6 +370,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd,
 
 global_variable int32 samples_written = 0;
 
+#if 0
 void fill_sound_buffer(Win32_Sound_Output *sound_output) {
     LPDIRECTSOUNDBUFFER sound_buffer = sound_output->sound_buffer;
     // assuming 60fps, we want 1/60th of a second worth of samples
@@ -417,13 +418,14 @@ void fill_sound_buffer(Win32_Sound_Output *sound_output) {
             }
         }
 
-        sound_buffer->Unlock(&block1, block1_size, &block2, block2_size);
+        sound_buffer->Unlock(block1, block1_size, block2, block2_size);
     } else {
         debug_print("Could not lock sound buffer region\n");
     }
 
     debug_print("samples written: %d\n", samples_written);
 }
+#endif
 
 void fill_sound_buffer(Win32_Sound_Output *win32_sound_output,
                        int16 *src_sound_buffer, uint32 num_samples) {
@@ -440,6 +442,7 @@ void fill_sound_buffer(Win32_Sound_Output *win32_sound_output,
     if (win32_sound_output->sound_buffer->GetCurrentPosition(&current_play_cursor,
                                                              &current_write_cursor) != DS_OK) {
         debug_print("Could not get current sound buffer position\n");
+        assert(false);
     }
 
 #if 0
@@ -454,44 +457,42 @@ void fill_sound_buffer(Win32_Sound_Output *win32_sound_output,
                                              &block2, &block2_size,
                                              0);
 
-    // FIXME: sound_buffer->Lock is returning invalid params error intermittently
-    // FIXME: if the audio latency is less than the frame time and we're writing at the write cursor, we will be overwriting
-    //        audio that we've already written
+    // FIXME: if the audio latency is less than the frame time and we're writing at the write cursor, we will be overwriting audio that we've already written
     int16 *original_src_sound_buffer = src_sound_buffer;
     if (lock_result == DS_OK) {
-        DWORD block1_num_samples = block1_size / win32_sound_output->bytes_per_sample;
-        int16 *byte_to_write = (int16 *) block1;
-        for (uint32 i = 0; i < block1_num_samples; i++) {
-            *(byte_to_write++) = *(src_sound_buffer++);
-            *(byte_to_write++) = *(src_sound_buffer++);
+        int16 *buffer_pos_1 = (int16 *) block1;
+        for (DWORD i = 0; i < block1_size / win32_sound_output->bytes_per_sample; i++) {
+            *(buffer_pos_1++) = *(src_sound_buffer++);
+            *(buffer_pos_1++) = *(src_sound_buffer++);
         }
 
-        if (block1_size < bytes_to_write) {
-            byte_to_write = (int16 *) block2;
-            DWORD block2_num_samples = block2_size / win32_sound_output->bytes_per_sample;
-            for (uint32 i = 0; i < block2_num_samples; i++) {
-                *(byte_to_write++) = *(src_sound_buffer++);
-                *(byte_to_write++) = *(src_sound_buffer++);
-            }
+        int16 *buffer_pos_2 = (int16 *) block2;
+        for (DWORD i = 0; i < block2_size / win32_sound_output->bytes_per_sample; i++) {
+            *(buffer_pos_2++) = *(src_sound_buffer++);
+            *(buffer_pos_2++) = *(src_sound_buffer++);
         }
 
         // copy the src_sound_buffer into the win32_sound_output accumulated sound buffer for debugging purposes
         src_sound_buffer = original_src_sound_buffer;
-        // FIXME: this is incorrect - we should be writing at where we locked, not at current_sample_index.
-        //        i'm not sure we even need current_sample_index.
-        int16 *accumulated_sound_buffer_dest =
-            &win32_sound_output->accumulated_sound_buffer[win32_sound_output->current_sample_index * 2];
-        for (uint32 i = 0; i < num_samples; i++) {
-            *(accumulated_sound_buffer_dest++) = *(src_sound_buffer++);
-            *(accumulated_sound_buffer_dest++) = *(src_sound_buffer++);
+        int16 *accumulated_sound_buffer_dest = win32_sound_output->accumulated_sound_buffer;
+        int32 max_samples = win32_sound_output->buffer_size / win32_sound_output->bytes_per_sample;
+        uint32 samples_saved = 0;
+        DWORD current_sample = byte_to_lock / win32_sound_output->bytes_per_sample;
+        while (samples_saved < num_samples) {
+            accumulated_sound_buffer_dest[2*current_sample]     = *(src_sound_buffer++);
+            accumulated_sound_buffer_dest[2*current_sample + 1] = *(src_sound_buffer++);
+
+            current_sample++;
+            current_sample %= max_samples;
+            samples_saved++;
         }
 
-        int32 win32_buffer_sample_count = win32_sound_output->buffer_size / win32_sound_output->bytes_per_sample;
-        win32_sound_output->current_sample_index = ((win32_sound_output->current_sample_index + num_samples) %
-                                                    win32_buffer_sample_count);
+        // win32_sound_output->current_sample_index = ((win32_sound_output->current_sample_index + num_samples) %
+        //                                         max_samples);
 
-        dest_sound_buffer->Unlock(&block1, block1_size, &block2, block2_size);
+        dest_sound_buffer->Unlock(block1, block1_size, block2, block2_size);
     } else {
+        assert(false);
         debug_print("Could not lock sound buffer region\n");
     }
 
