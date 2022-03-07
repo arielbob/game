@@ -6,6 +6,13 @@ struct Win32_Display_Output {
     int32 height;
 };
 
+struct Debug_Audio_Marker {
+    DWORD play_cursor;
+    uint32 write_cursor;
+    uint32 flip_play_cursor;
+    uint32 flip_write_cursor;
+};
+
 struct Win32_Sound_Output {
     int32 samples_per_second;
     int32 bit_depth;
@@ -18,6 +25,8 @@ struct Win32_Sound_Output {
     DWORD current_play_cursor;
     DWORD current_write_cursor;
     DWORD last_write_cursor;
+    //uint32 marker_index;
+    //Debug_Audio_Marker markers[TARGET_FRAMERATE];
 };
 
 #endif

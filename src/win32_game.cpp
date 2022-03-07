@@ -13,6 +13,11 @@
 #undef near
 #undef far
 
+#define TARGET_FRAMERATE 60
+#define SAMPLE_RATE 44100
+// NOTE: sound buffer holds a 10th of a second of audio
+#define SOUND_BUFFER_SAMPLE_COUNT SAMPLE_RATE / 10
+
 #include "common.h"
 #include "math.h"
 #include "memory.h"
@@ -21,11 +26,6 @@
 
 #include "memory.cpp"
 #include "game.cpp"
-
-#define TARGET_FRAMERATE 30
-#define SAMPLE_RATE 44100
-// NOTE: sound buffer holds a 10th of a second of audio
-#define SOUND_BUFFER_SAMPLE_COUNT SAMPLE_RATE / 2
 
 global_variable int64 perf_counter_frequency;
 global_variable bool32 is_running = true;
@@ -370,65 +370,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd,
 
 global_variable int32 samples_written = 0;
 
-#if 0
-void fill_sound_buffer(Win32_Sound_Output *sound_output) {
-    LPDIRECTSOUNDBUFFER sound_buffer = sound_output->sound_buffer;
-    // assuming 60fps, we want 1/60th of a second worth of samples
-    DWORD num_samples = (DWORD) ((1.0f / TARGET_FRAMERATE) * sound_output->samples_per_second);
-    DWORD bytes_to_write = num_samples * sound_output->bytes_per_sample;
-
-    LPVOID block1;
-    DWORD block1_size;
-    LPVOID block2;
-    DWORD block2_size;
-
-    real32 frequency = 262.0f;
-
-    // FIXME: sound_buffer->Lock is returning invalid params error intermittently
-    // TODO: this assumes that we're running at a stable 60fps
-    //       if we drop down to 30, then we would want to lock more bytes
-    //       well, not really - it's more like we want to have some room for variation around our target FPS
-    HRESULT lock_result = sound_buffer->Lock(samples_written * sound_output->bytes_per_sample,
-                                             bytes_to_write,
-                                             &block1, &block1_size,
-                                             &block2, &block2_size,
-                                             0);
-    if (lock_result == DS_OK) {
-        DWORD num_all_channel_samples_to_write = block1_size / sound_output->bytes_per_sample;
-        int16 *byte_to_write = (int16 *) block1;
-        for (uint32 i = 0; i < num_all_channel_samples_to_write; i++) {
-            real32 x = (real32) samples_written / sound_output->samples_per_second;
-            int16 sample = (int16) (100.0f * sinf(frequency * 2.0f * PI * x));
-
-            *(byte_to_write++) = sample;
-            *(byte_to_write++) = sample;
-            samples_written++;
-        }
-
-        if (block1_size < bytes_to_write) {
-            byte_to_write = (int16 *) block2;
-            num_all_channel_samples_to_write = block2_size / sound_output->bytes_per_sample;
-            for (uint32 i = 0; i < num_all_channel_samples_to_write; i++) {
-                real32 x = (real32) samples_written / sound_output->samples_per_second;
-                int16 sample = (int16) (100.0f * sinf(frequency * 2.0f * PI * x));
-
-                *(byte_to_write++) = sample;
-                *(byte_to_write++) = sample;
-                samples_written++;
-            }
-        }
-
-        sound_buffer->Unlock(block1, block1_size, block2, block2_size);
-    } else {
-        debug_print("Could not lock sound buffer region\n");
-    }
-
-    debug_print("samples written: %d\n", samples_written);
-}
-#endif
-
 void fill_sound_buffer(Win32_Sound_Output *win32_sound_output,
                        int16 *src_sound_buffer, uint32 num_samples) {
+    if (num_samples == 0) return;
     LPDIRECTSOUNDBUFFER dest_sound_buffer = win32_sound_output->sound_buffer;
 
     DWORD bytes_to_write = num_samples * win32_sound_output->bytes_per_sample;
@@ -438,18 +382,28 @@ void fill_sound_buffer(Win32_Sound_Output *win32_sound_output,
     LPVOID block2;
     DWORD block2_size;
 
+#if 0
+    sound_output.last_write_cursor = sound_output.current_write_cursor;
+    DWORD current_play_cursor, current_write_cursor;
+    if (sound_output.sound_buffer->GetCurrentPosition(&current_play_cursor,
+                                                      &current_write_cursor) == DS_OK) {
+        sound_output.current_play_cursor = current_play_cursor;
+        sound_output.current_write_cursor = current_write_cursor;
+        real32 audio_latency_samples = ((real32) (current_write_cursor - current_play_cursor) /
+                                        sound_output.bytes_per_sample);
+        real32 audio_latency_ms = audio_latency_samples / sound_output.samples_per_second * 1000.0f;
+        debug_print("audio latency; samples: %f, ms: %f\n", audio_latency_samples, audio_latency_ms);
+    }
+#else
     DWORD current_play_cursor, current_write_cursor;
     if (win32_sound_output->sound_buffer->GetCurrentPosition(&current_play_cursor,
                                                              &current_write_cursor) != DS_OK) {
         debug_print("Could not get current sound buffer position\n");
         assert(false);
     }
-
-#if 0
-    DWORD byte_to_lock = (win32_sound_output->current_sample_index * win32_sound_output->bytes_per_sample);
-#else
-    DWORD byte_to_lock = current_write_cursor;
 #endif
+
+    DWORD byte_to_lock = (win32_sound_output->current_sample_index * win32_sound_output->bytes_per_sample);
     
     HRESULT lock_result = dest_sound_buffer->Lock(byte_to_lock,
                                              bytes_to_write,
@@ -457,9 +411,6 @@ void fill_sound_buffer(Win32_Sound_Output *win32_sound_output,
                                              &block2, &block2_size,
                                              0);
 
-    // FIXME: if the audio latency is less than the frame time and we're writing at the write cursor, we will be overwriting audio that we've already written.
-    //        and i think if we're not hitting our target framerate, we won't be writing enough and so there will be a gap between the last write cursor and
-    //        the play cursor at write time where there is no audio.
     int16 *original_src_sound_buffer = src_sound_buffer;
     if (lock_result == DS_OK) {
         int16 *buffer_pos_1 = (int16 *) block1;
@@ -489,8 +440,8 @@ void fill_sound_buffer(Win32_Sound_Output *win32_sound_output,
             samples_saved++;
         }
 
-        // win32_sound_output->current_sample_index = ((win32_sound_output->current_sample_index + num_samples) %
-        //                                         max_samples);
+        win32_sound_output->current_sample_index = ((win32_sound_output->current_sample_index + num_samples) %
+                                                    max_samples);
 
         dest_sound_buffer->Unlock(block1, block1_size, block2, block2_size);
     } else {
@@ -689,7 +640,40 @@ int WinMain(HINSTANCE hInstance,
                     }
 
                     if (!is_paused) {
-                        uint32 num_samples = (uint32) ((1.0f / TARGET_FRAMERATE) * sound_output.samples_per_second);
+                        sound_output.last_write_cursor = sound_output.current_write_cursor;
+                        DWORD current_play_cursor, current_write_cursor;
+                        if (sound_output.sound_buffer->GetCurrentPosition(&current_play_cursor,
+                                                                          &current_write_cursor) == DS_OK) {
+                            sound_output.current_play_cursor = current_play_cursor;
+                            sound_output.current_write_cursor = current_write_cursor;
+#if 0
+                            sound_output.markers[sound_output.marker_index].play_cursor = current_play_cursor;
+                            sound_output.markers[sound_output.marker_index].write_cursor = current_write_cursor;
+#endif
+                            real32 audio_latency_samples = ((real32) (current_write_cursor - current_play_cursor) /
+                                                            sound_output.bytes_per_sample);
+                            real32 audio_latency_ms = audio_latency_samples / sound_output.samples_per_second * 1000.0f;
+                            debug_print("audio latency; samples: %f, ms: %f\n", audio_latency_samples, audio_latency_ms);
+                        }
+
+                        // TODO: we may want to base num_samples instead on how much time is remaining for
+                        //       the frame. basically just take the delta between the start of the frame and when
+                        //       we fill the audio buffer and subtract that from the expected frame time. use the
+                        //       difference to calculate how many samples you need.
+                        uint32 bytes_delta;
+                        if (sound_output.last_write_cursor <= sound_output.current_write_cursor) {
+                            bytes_delta = sound_output.current_write_cursor - sound_output.last_write_cursor;
+                            uint32 num_samples = bytes_delta / sound_output.bytes_per_sample;
+                            debug_print("num_samples: %d\n", num_samples);    
+                        } else {
+                            bytes_delta = (sound_output.current_write_cursor +
+                                           (sound_output.buffer_size - sound_output.last_write_cursor));
+                            //uint32 num_samples = bytes_delta / sound_output.bytes_per_sample;
+                            //debug_print("num_samples: %d\n", num_samples);    
+                        }
+                        
+                        uint32 num_samples = bytes_delta / sound_output.bytes_per_sample;
+
                         update(&game_sound_output, num_samples);
 
                         fill_sound_buffer(&sound_output, game_sound_output.sound_buffer, num_samples);
@@ -697,19 +681,7 @@ int WinMain(HINSTANCE hInstance,
                             sound_output.sound_buffer->Play(0, 0, DSBPLAY_LOOPING);
                             sound_output.is_playing = true;
                         }
-                    
-                        sound_output.last_write_cursor = sound_output.current_write_cursor;
-                        DWORD current_play_cursor, current_write_cursor;
-                        if (sound_output.sound_buffer->GetCurrentPosition(&current_play_cursor,
-                                                                          &current_write_cursor) == DS_OK) {
-                            sound_output.current_play_cursor = current_play_cursor;
-                            sound_output.current_write_cursor = current_write_cursor;
-                            real32 audio_latency_samples = ((real32) (current_write_cursor - current_play_cursor) /
-                                                            sound_output.bytes_per_sample);
-                            real32 audio_latency_ms = audio_latency_samples / sound_output.samples_per_second * 1000.0f;
-                            debug_print("audio latency; samples: %f, ms: %f\n", audio_latency_samples, audio_latency_ms);
-                        }
-                    }
+
 
                     gl_render(&gl_state, display_output, &sound_output);
                     
@@ -728,15 +700,26 @@ int WinMain(HINSTANCE hInstance,
                             work_time = win32_get_elapsed_time(last_perf_counter);
                         }
                     } else {
+                        debug_print("MISSED FRAME\n");
                         // TODO: logging, missed frame
                     }
                     
                     debug_print("frame time: %f\n", work_time);
                     debug_print("\n");
 
+#if 0
+                    sound_output.marker_index++;
+                    sound_output.marker_index %= TARGET_FRAMERATE;
+
+                    sound_output.sound_buffer->GetCurrentPosition(&sound_output.markers[sound_output.marker_index].flip_play_cursor,
+                            &sound_output.markers[sound_output.marker_index].flip_write_cursor);
+#endif
+                    
+                    
                     SwapBuffers(hdc);
 
                     last_perf_counter = win32_get_perf_counter();
+                    }
                 }
             } else {
                 // TODO: logging

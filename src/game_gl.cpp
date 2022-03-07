@@ -442,16 +442,9 @@ void draw_sound_buffer(GL_State *gl_state,
     }
 
     real32 play_cursor_position = (real32) win32_sound_output->current_play_cursor / win32_sound_output->buffer_size;
-    draw_sound_cursor(gl_state, display_output, win32_sound_output,
-                      play_cursor_position, make_vec3(1.0f, 1.0f, 1.0f));
-
+    draw_sound_cursor(gl_state, display_output, win32_sound_output, play_cursor_position, make_vec3(1.0f, 1.0f, 1.0f));
     real32 write_cursor_position = (real32) win32_sound_output->current_write_cursor / win32_sound_output->buffer_size;
-    draw_sound_cursor(gl_state, display_output, win32_sound_output,
-                      write_cursor_position, make_vec3(1.0f, 0.0f, 0.0f));
-
-    real32 last_write_cursor_position = (real32) win32_sound_output->last_write_cursor / win32_sound_output->buffer_size;
-    draw_sound_cursor(gl_state, display_output, win32_sound_output,
-                      last_write_cursor_position, make_vec3(0.0f, 0.0f, 1.0f));
+    draw_sound_cursor(gl_state, display_output, win32_sound_output, write_cursor_position, make_vec3(1.0f, 0.0f, 0.0f));
 }
 
 void gl_render(GL_State *gl_state, Win32_Display_Output display_output, Win32_Sound_Output *win32_sound_output) {
