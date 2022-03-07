@@ -4,7 +4,7 @@
 #include "game_gl.h"
 
 // TODO (done): draw other 2D primitives: boxes, lines, etc
-// TODO: 2D drawing functions using pixel position instead of percentages
+// TODO (done): 2D drawing functions using pixel position instead of percentages
 // TODO: draw text
 
 /*

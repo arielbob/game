@@ -29,4 +29,26 @@ struct Win32_Sound_Output {
     //Debug_Audio_Marker markers[TARGET_FRAMERATE];
 };
 
+#pragma pack(push, 1)
+struct Wav_Data {
+    char chunk_id[4];
+    uint32 chunk_size;
+    char format[4];
+    
+    char subchunk_1_id[4];
+    uint32 subchunk_1_size;
+    uint16 audio_format;
+    uint16 num_channels;
+    uint32 sample_rate;
+    uint32 byte_rate;
+    uint16 block_align;
+    uint16 bits_per_sample;
+    
+    char subchunk_2_id[4];
+    uint32 subchunk_2_size;
+    
+    void *data;
+};
+#pragma pack(pop)
+
 #endif

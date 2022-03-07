@@ -455,18 +455,24 @@ void fill_sound_buffer(Win32_Sound_Output *win32_sound_output,
 bool32 win32_init_memory(Memory *memory) {
     uint32 global_stack_size = MEGABYTES(8);
     uint32 hash_table_stack_size = MEGABYTES(8);
+    uint32 game_data_arena_size = GIGABYTES(1);
 
-    uint32 total_memory_size = global_stack_size + hash_table_stack_size;
+    uint32 total_memory_size = global_stack_size + hash_table_stack_size + game_data_arena_size;
     void *memory_base = VirtualAlloc(0, total_memory_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
     if (memory_base) {
         void *base = (uint8 *) memory_base;
         Stack_Allocator global_stack = make_stack_allocator(base, global_stack_size);
         memory->global_stack = global_stack;
-
         base = (uint8 *) base + global_stack_size;
+
         Stack_Allocator hash_table_stack = make_stack_allocator(base, hash_table_stack_size);
         memory->hash_table_stack = hash_table_stack;
+        base = (uint8 *) base + hash_table_stack_size;
+
+        Arena_Allocator game_data_arena = make_arena_allocator(base, game_data_arena_size);
+        memory->game_data = game_data_arena;
+        base = (uint8 *) base + game_data_arena_size;
 
         memory->is_initted = true;
 
@@ -587,6 +593,10 @@ int WinMain(HINSTANCE hInstance,
                 game_sound_output.max_samples = game_sound_output.buffer_size / sound_output.bytes_per_sample;
                 game_sound_output.samples_per_second = 44100;
 
+                // TODO: we may want to store this in memory
+                Game_State game_state = {};
+                game_state.is_initted = false;
+
                 bool32 is_paused = true;
                 while (is_running) {
                     if (PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) {
@@ -674,7 +684,7 @@ int WinMain(HINSTANCE hInstance,
                         
                         uint32 num_samples = bytes_delta / sound_output.bytes_per_sample;
 
-                        update(&game_sound_output, num_samples);
+                        update(&memory, &game_state, &game_sound_output, num_samples);
 
                         fill_sound_buffer(&sound_output, game_sound_output.sound_buffer, num_samples);
                         if (!sound_output.is_playing) {

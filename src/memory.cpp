@@ -3,6 +3,7 @@
 Arena_Allocator make_arena_allocator(void *base, uint32 size) {
     Arena_Allocator arena;
     arena.type = ARENA_ALLOCATOR;
+    arena.base = base;
     arena.size = size;
     arena.used = 0;
     return arena;

@@ -1,3 +1,5 @@
+#include "platform.h"
+#include "memory.h"
 #include "game.h"
 
 global_variable int32 samples_written_2;
@@ -26,6 +28,77 @@ void fill_sound_buffer_with_sine_wave(Sound_Output *sound_output, uint32 num_sam
     }
 }
 
-void update(Sound_Output *sound_output, uint32 num_samples) {
-    fill_sound_buffer_with_sine_wave(sound_output, num_samples);
+void fill_sound_buffer_with_audio(Sound_Output *sound_output, Audio_Source *audio,
+                                  int32 num_samples) {
+    assert((uint32) num_samples < sound_output->max_samples); 
+
+    int16 *music_buffer_at = audio->samples;
+    music_buffer_at += audio->current_sample * 2;
+    int16 *sound_buffer = sound_output->sound_buffer;
+    int32 i = 0;
+    for (; i < num_samples; i++) {
+        if (audio->current_sample >= audio->total_samples) {
+            if (audio->should_loop) {
+                audio->current_sample = 0;
+                music_buffer_at = audio->samples;
+            } else {
+                break;
+            }
+        }
+
+        *(sound_buffer++) = (int16) (*(music_buffer_at++) * audio->volume);
+        *(sound_buffer++) = (int16) (*(music_buffer_at++) * audio->volume);
+        audio->current_sample++;
+    }
+
+    for (; i < num_samples; i++) {
+        *(sound_buffer++) = 0;
+        *(sound_buffer++) = 0;
+    }
+}
+
+File_Data open_and_read_file(Allocator *allocator, char *filename) {
+    Platform_File platform_file;
+    bool32 file_exists = platform_open_file(filename, &platform_file);
+    assert(file_exists);
+
+    File_Data file_data = {};
+    file_data.contents = (char *) allocate(allocator, platform_file.file_size, false);
+
+    bool32 result = platform_read_file(platform_file, &file_data);
+    assert(result);
+
+    platform_close_file(platform_file);
+
+    return file_data;
+}
+
+Audio_Source make_audio_source(uint32 total_samples, uint32 current_sample,
+                               real32 volume, bool32 should_loop,
+                               int16 *samples) {
+    Audio_Source audio_source;
+    audio_source.total_samples = total_samples;
+    audio_source.current_sample = current_sample;
+    audio_source.volume = volume;
+    audio_source.should_loop = should_loop;
+    audio_source.samples = samples;
+
+    return audio_source;
+}
+
+void update(Memory *memory, Game_State *game_state, Sound_Output *sound_output, uint32 num_samples) {
+    if (!game_state->is_initted) {
+        Arena_Allocator *game_data_arena = &memory->game_data;
+        File_Data music_file_data = open_and_read_file((Allocator *) game_data_arena, "../drive my car.wav");
+        Wav_Data *wav_data = (Wav_Data *) music_file_data.contents;
+
+        Audio_Source *music = &game_state->music;
+        *music = make_audio_source(wav_data->subchunk_2_size / (wav_data->bits_per_sample / 8 * 2),
+                                   0, 1.0f, true, (int16 *) &wav_data->data);
+
+        game_state->is_initted = true;
+        return;
+    }
+
+    fill_sound_buffer_with_audio(sound_output, &game_state->music, num_samples);
 }
