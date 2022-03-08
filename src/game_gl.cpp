@@ -416,7 +416,8 @@ void draw_sound_buffer(GL_State *gl_state,
                  make_vec2((real32) display_output.width, display_output.height - height_offset - 1),
                  make_vec3(1.0f, 1.0f, 1.0f));
 
-    for (int32 i = 0; i < max_samples; i++) {
+    int32 increment = max_samples / display_output.width;
+    for (int32 i = 0; i < max_samples; i += increment) {
         real32 sample_x = (real32) i / max_samples * display_output.width;
 
         int16 left_sample = win32_sound_output->accumulated_sound_buffer[2*i];

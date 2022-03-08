@@ -1,6 +1,6 @@
 // TODO (done): open window
 // TODO (done): basic directsound
-// TODO: play sounds with directsound
+// TODO (done): play sounds with directsound
 
 #include <windows.h>
 #include <stdint.h>
