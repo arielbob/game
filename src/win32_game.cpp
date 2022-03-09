@@ -19,6 +19,10 @@
 #define SOUND_BUFFER_SAMPLE_COUNT SAMPLE_RATE / 10
 
 #include "common.h"
+
+#define STB_TRUETYPE_IMPLEMENTATION
+#include "lib/stb_truetype.h"
+
 #include "math.h"
 #include "memory.h"
 #include "platform.h"
@@ -32,12 +36,15 @@ global_variable bool32 is_running = true;
 
 typedef char GLchar;
 typedef signed long long int khronos_ssize_t;
+typedef int * khronos_intptr_t;
 typedef khronos_ssize_t GLsizeiptr;
+typedef khronos_intptr_t GLintptr;
 
 typedef void GL_GEN_VERTEX_ARRAYS(GLsizei n, GLuint *arrays);
 typedef void GL_GEN_BUFFERS (GLsizei n, GLuint *buffers);
 typedef void GL_BIND_BUFFER (GLenum target, GLuint buffer);
 typedef void GL_BUFFER_DATA (GLenum target, GLsizeiptr size, const void *data, GLenum usage);
+typedef void GL_BUFFER_SUB_DATA (GLenum target, GLintptr offset, GLsizeiptr size, const void *data);
 typedef void GL_VERTEX_ATTRIB_POINTER (GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const void *pointer);
 typedef void GL_ENABLE_VERTEX_ATTRIB_ARRAY (GLuint index);
 typedef void GL_BIND_VERTEX_ARRAY (GLuint array);
@@ -62,6 +69,7 @@ GL_GEN_VERTEX_ARRAYS *glGenVertexArrays;
 GL_GEN_BUFFERS *glGenBuffers;
 GL_BIND_BUFFER *glBindBuffer;
 GL_BUFFER_DATA *glBufferData;
+GL_BUFFER_SUB_DATA *glBufferSubData;
 GL_VERTEX_ATTRIB_POINTER *glVertexAttribPointer;
 GL_ENABLE_VERTEX_ATTRIB_ARRAY *glEnableVertexAttribArray;
 GL_BIND_VERTEX_ARRAY *glBindVertexArray;
@@ -211,6 +219,23 @@ bool32 platform_get_file_size(char *filename, uint32 *file_size_32_result) {
 }
 #endif
 
+File_Data platform_open_and_read_file(Allocator *allocator, char *filename) {
+    Platform_File platform_file;
+    bool32 file_exists = platform_open_file(filename, &platform_file);
+    assert(file_exists);
+
+    File_Data file_data = {};
+    file_data.contents = (char *) allocate(allocator, platform_file.file_size, false);
+
+    bool32 result = platform_read_file(platform_file, &file_data);
+    assert(result);
+
+    platform_close_file(platform_file);
+
+    return file_data;
+}
+
+
 internal bool32 win32_init_opengl(HDC hdc) {
     PIXELFORMATDESCRIPTOR desired_pixel_format = {};
     desired_pixel_format.nSize      = sizeof(PIXELFORMATDESCRIPTOR);
@@ -240,6 +265,7 @@ internal bool32 win32_init_opengl(HDC hdc) {
                     glGenBuffers = (GL_GEN_BUFFERS *) wglGetProcAddress("glGenBuffers");
                     glBindBuffer = (GL_BIND_BUFFER *) wglGetProcAddress("glBindBuffer");
                     glBufferData = (GL_BUFFER_DATA *) wglGetProcAddress("glBufferData");
+                    glBufferSubData = (GL_BUFFER_SUB_DATA *) wglGetProcAddress("glBufferSubData");
                     glVertexAttribPointer = (GL_VERTEX_ATTRIB_POINTER *) wglGetProcAddress("glVertexAttribPointer");
                     glEnableVertexAttribArray = (GL_ENABLE_VERTEX_ATTRIB_ARRAY *) wglGetProcAddress("glEnableVertexAttribArray");
                     glBindVertexArray = (GL_BIND_VERTEX_ARRAY *) wglGetProcAddress("glBindVertexArray");
@@ -456,8 +482,12 @@ bool32 win32_init_memory(Memory *memory) {
     uint32 global_stack_size = MEGABYTES(8);
     uint32 hash_table_stack_size = MEGABYTES(8);
     uint32 game_data_arena_size = GIGABYTES(1);
+    uint32 font_arena_size = MEGABYTES(64);
 
-    uint32 total_memory_size = global_stack_size + hash_table_stack_size + game_data_arena_size;
+    uint32 total_memory_size = (global_stack_size +
+                                hash_table_stack_size +
+                                game_data_arena_size +
+                                font_arena_size);
     void *memory_base = VirtualAlloc(0, total_memory_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
     if (memory_base) {
@@ -473,6 +503,10 @@ bool32 win32_init_memory(Memory *memory) {
         Arena_Allocator game_data_arena = make_arena_allocator(base, game_data_arena_size);
         memory->game_data = game_data_arena;
         base = (uint8 *) base + game_data_arena_size;
+
+        Arena_Allocator font_arena = make_arena_allocator(base, font_arena_size);
+        memory->font_arena = font_arena;
+        base = (uint8 *) base + font_arena_size;
 
         memory->is_initted = true;
 

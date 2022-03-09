@@ -1,15 +1,19 @@
 #ifndef COMMON_H
 
+#include <assert.h>
+
 #define global_variable static
 #define local_persist static
 #define internal static
 
 #define PI 3.14159265358979323846f
 
+#if 0
 #if GAME_SLOW
-#define assert(expression) if (!(expression)) { *(int *)0 = 0; }
+#define assert(expression) { if (!(expression)) *(int *)0 = 0; }
 #else
 #define assert(expression)
+#endif
 #endif
 
 #define array_length(array) sizeof(array) / sizeof((array)[0])

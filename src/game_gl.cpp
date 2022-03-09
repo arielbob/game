@@ -13,11 +13,10 @@ Use your left hand to figure out the direction of the cross product of two vecto
 In 2D, (0, 0) is at the bottom left, positive x is right, positive y is up.
  */
 
-real32 vertices[] = {
-    -0.5f, -0.5f, 0.0f,
-    0.5f, -0.5f, 0.0f,
-    0.0f, 0.5f, 0.0f,
-};
+GL_Mesh make_gl_mesh(uint32 vao, uint32 vbo) {
+    GL_Mesh gl_mesh = { vao, vbo };
+    return gl_mesh;
+}
 
 uint32 gl_create_shader(char *shader_source, uint32 shader_source_size, Shader_Type shader_type) {
     GLenum type = 0;
@@ -123,7 +122,109 @@ uint32 gl_load_shader(Memory *memory, char *vertex_shader_filename, char *fragme
     return shader_id;
 }
 
+// TODO: move these somewhere better - we added font_arena, but haven't used it yet; we could use it for this.
+//       add a struct to hold font data.
+stbtt_bakedchar cdata[96];
+uint32 font_texture_id;
+// TODO: better API for adding and using fonts
+void gl_init_font(Memory *memory) {
+    Marker m = begin_region(memory);
+    uint8 temp_bitmap[512*512];
+
+    File_Data font_file_data = platform_open_and_read_file((Allocator *) &memory->global_stack,
+                                                           "c:/windows/fonts/times.ttf");
+
+    real32 font_height_pixels = 32.0f;
+    // NOTE: no guarantee that the bitmap will fit the font, so choose temp_bitmap dimensions carefully
+    // TODO: we may want to maybe render this out to an image so that we can verify that the font fits
+    stbtt_BakeFontBitmap((uint8 *) font_file_data.contents, 0,
+                         font_height_pixels, temp_bitmap, 512, 512,
+                         32, 96,
+                         cdata);
+
+    end_region(memory, m);
+
+    glGenTextures(1, &font_texture_id);
+    glBindTexture(GL_TEXTURE_2D, font_texture_id);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, 512, 512, 0, GL_ALPHA, GL_UNSIGNED_BYTE, temp_bitmap);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+}
+
+void copy_aligned_quad_to_arrays(stbtt_aligned_quad q, real32 *vertices, real32 *uvs) {
+    vertices[0] = q.x0;
+    vertices[1] = q.y0;
+    vertices[2] = q.x1;
+    vertices[3] = q.y0;
+    vertices[4] = q.x1;
+    vertices[5] = q.y1;
+    vertices[6] = q.x0;
+    vertices[7] = q.y1;
+
+    uvs[0] = q.s0;
+    uvs[1] = q.t0;
+    uvs[2] = q.s1;
+    uvs[3] = q.t0;
+    uvs[4] = q.s1;
+    uvs[5] = q.t1;
+    uvs[6] = q.s0;
+    uvs[7] = q.t1;
+}
+
+void gl_draw_text(GL_State *gl_state,
+                  Win32_Display_Output display_output,
+                  real32 x_pos_pixels, real32 y_pos_pixels,
+                  char *text) {
+    uint32 text_shader_id;
+    uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("text"), &text_shader_id);
+    assert(shader_exists);
+    glUseProgram(text_shader_id);
+
+    GL_Mesh glyph_mesh;
+    uint32 mesh_exists = hash_table_find(gl_state->debug_mesh_table, make_string("glyph_quad"), &glyph_mesh);
+    assert(mesh_exists);
+    glBindVertexArray(glyph_mesh.vao);
+
+    // TODO: we don't actually need to use a Mat4 here; we can just use a Mat2 and set z = 0
+    Mat4 ortho_clip_matrix = make_ortho_clip_matrix((real32) display_output.width,
+                                                    (real32) display_output.height,
+                                                    0.0f, 100.0f);
+    gl_set_uniform_mat4(text_shader_id, "cpv_matrix", &ortho_clip_matrix);
+    Vec3 color = make_vec3(1.0f, 1.0f, 1.0f);
+    gl_set_uniform_vec3(text_shader_id, "color", &color);
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, font_texture_id);
+    glBindBuffer(GL_ARRAY_BUFFER, glyph_mesh.vbo);
+
+    real32 quad_vertices[8];
+    real32 quad_uvs[8];
+    while (*text) {
+        if (*text >= 32 && *text < 128 || *text == '-') {
+            stbtt_aligned_quad q;
+            stbtt_GetBakedQuad(cdata, 512, 512, *text - 32, &x_pos_pixels, &y_pos_pixels, &q, 1);
+            // stb_truetype assumes that +y is down, so we invert it to fit our coordinate space
+            q.y0 = 2.0f*y_pos_pixels - q.y0;
+            q.y1 = 2.0f*y_pos_pixels - q.y1;
+
+            copy_aligned_quad_to_arrays(q, quad_vertices, quad_uvs);
+
+            Vec4 test = ortho_clip_matrix * make_vec4(quad_vertices[0], quad_vertices[1], 0.0f, 1.0f);
+
+            glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(quad_vertices), quad_vertices);
+            glBufferSubData(GL_ARRAY_BUFFER, (int *) sizeof(quad_vertices), sizeof(quad_uvs), quad_uvs);
+
+        }
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        ++text;
+    }
+}
+
 void gl_init(Memory *memory, GL_State *gl_state, Win32_Display_Output display_output) {
+    gl_state->shader_ids_table = make_hash_table<uint32>((Allocator *) &memory->hash_table_stack);
+    gl_state->debug_mesh_table = make_hash_table<GL_Mesh>((Allocator *) &memory->hash_table_stack);
+
     uint32 vbo, vao, ebo;
 
     // NOTE: triangle mesh
@@ -132,9 +233,6 @@ void gl_init(Memory *memory, GL_State *gl_state, Win32_Display_Output display_ou
         0.5f, 1.0f, 0.0f,
         1.0f, 0.0f, 0.0f,
     };
-
-    gl_state->shader_ids_table = make_hash_table<uint32>((Allocator *) &memory->hash_table_stack);
-    gl_state->debug_vaos_table = make_hash_table<uint32>((Allocator *) &memory->hash_table_stack);
 
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
@@ -148,7 +246,7 @@ void gl_init(Memory *memory, GL_State *gl_state, Win32_Display_Output display_ou
     glEnableVertexAttribArray(0);
     
     glBindVertexArray(0);
-    hash_table_add(&gl_state->debug_vaos_table, make_string("triangle"), vao);
+    hash_table_add(&gl_state->debug_mesh_table, make_string("triangle"), make_gl_mesh(vao, vbo));
 
     // NOTE: square mesh
     real32 square_vertices[] = {
@@ -178,7 +276,50 @@ void gl_init(Memory *memory, GL_State *gl_state, Win32_Display_Output display_ou
     glEnableVertexAttribArray(0);
     
     glBindVertexArray(0);
-    hash_table_add(&gl_state->debug_vaos_table, make_string("square"), vao);
+    hash_table_add(&gl_state->debug_mesh_table, make_string("square"), make_gl_mesh(vao, vbo));
+
+    // NOTE: glyph quad
+#if 1
+    real32 quad_vertices[] = {
+        0.0f, 0.0f,
+        0.0f, 1.0f,
+        1.0f, 1.0f,
+        1.0f, 0.0f
+    };
+    real32 quad_uvs[] = {
+        0.0f, 0.0f,
+        0.0f, 1.0f,
+        1.0f, 1.0f,
+        1.0f, 0.0f
+    };
+#endif
+    uint32 quad_indices[] = {
+        0, 1, 2,
+        0, 2, 3
+    };
+
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
+    glGenBuffers(1, &ebo);
+
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vertices) + sizeof(quad_uvs), 0, GL_DYNAMIC_DRAW);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(quad_vertices), quad_vertices);
+    glBufferSubData(GL_ARRAY_BUFFER, (int *) sizeof(quad_vertices), sizeof(quad_uvs), quad_uvs);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(quad_indices), quad_indices, GL_STATIC_DRAW); 
+
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE,
+                          2 * sizeof(real32), (void *) 0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE,
+                          2 * sizeof(real32), (void *) sizeof(quad_vertices));
+    glEnableVertexAttribArray(1);
+    
+    glBindVertexArray(0);
+    hash_table_add(&gl_state->debug_mesh_table, make_string("glyph_quad"), make_gl_mesh(vao, vbo));
 
     // NOTE: line mesh
     real32 line_vertices[] = {
@@ -198,11 +339,17 @@ void gl_init(Memory *memory, GL_State *gl_state, Win32_Display_Output display_ou
     glEnableVertexAttribArray(0);
     
     glBindVertexArray(0);
-    hash_table_add(&gl_state->debug_vaos_table, make_string("line"), vao);
+    hash_table_add(&gl_state->debug_mesh_table, make_string("line"), make_gl_mesh(vao, vbo));
 
     // NOTE: shaders
     uint32 basic_shader_id = gl_load_shader(memory, "src/shaders/basic.vs", "src/shaders/basic.fs");
     hash_table_add(&gl_state->shader_ids_table, make_string("basic"), basic_shader_id);
+
+    uint32 text_shader_id = gl_load_shader(memory, "src/shaders/text.vs", "src/shaders/text.fs");
+    hash_table_add(&gl_state->shader_ids_table, make_string("text"), text_shader_id);
+
+    // NOTE: fonts
+    gl_init_font(memory);
 }
 
 // NOTE: This draws a triangle that has its bottom left corner at position.
@@ -217,10 +364,10 @@ void gl_draw_triangle_p(GL_State *gl_state,
     assert(shader_exists);
     glUseProgram(basic_shader_id);
 
-    uint32 triangle_vao;
-    uint32 vao_exists = hash_table_find(gl_state->debug_vaos_table, make_string("triangle"), &triangle_vao);
-    assert(vao_exists);
-    glBindVertexArray(triangle_vao);
+    GL_Mesh triangle_mesh;
+    bool32 mesh_exists = hash_table_find(gl_state->debug_mesh_table, make_string("triangle"), &triangle_mesh);
+    assert(mesh_exists);
+    glBindVertexArray(triangle_mesh.vao);
 
     Vec2 clip_space_position = make_vec2(position.x * 2.0f - 1.0f,
                                          position.y * 2.0f - 1.0f);
@@ -236,6 +383,8 @@ void gl_draw_triangle_p(GL_State *gl_state,
     gl_set_uniform_vec3(basic_shader_id, "color", &color);
 
     glDrawArrays(GL_TRIANGLES, 0, 3);
+    glUseProgram(0);
+    glBindVertexArray(0);
 }
 
 void gl_draw_triangle(GL_State *gl_state,
@@ -258,10 +407,10 @@ void gl_draw_line_p(GL_State *gl_state,
     assert(shader_exists);
     glUseProgram(basic_shader_id);
 
-    uint32 line_vao;
-    uint32 vao_exists = hash_table_find(gl_state->debug_vaos_table, make_string("line"), &line_vao);
-    assert(vao_exists);
-    glBindVertexArray(line_vao);
+    GL_Mesh line_mesh;
+    uint32 mesh_exists = hash_table_find(gl_state->debug_mesh_table, make_string("line"), &line_mesh);
+    assert(mesh_exists);
+    glBindVertexArray(line_mesh.vao);
 
     Vec2 clip_space_start = make_vec2(start.x * 2.0f - 1.0f,
                                       start.y * 2.0f - 1.0f);
@@ -277,6 +426,8 @@ void gl_draw_line_p(GL_State *gl_state,
     gl_set_uniform_vec3(basic_shader_id, "color", &color);
 
     glDrawArrays(GL_LINES, 0, 3);
+    glUseProgram(0);
+    glBindVertexArray(0);
 }
 
 void gl_draw_line(GL_State *gl_state,
@@ -288,10 +439,10 @@ void gl_draw_line(GL_State *gl_state,
     assert(shader_exists);
     glUseProgram(basic_shader_id);
 
-    uint32 line_vao;
-    uint32 vao_exists = hash_table_find(gl_state->debug_vaos_table, make_string("line"), &line_vao);
+    GL_Mesh line_mesh;
+    uint32 vao_exists = hash_table_find(gl_state->debug_mesh_table, make_string("line"), &line_mesh);
     assert(vao_exists);
-    glBindVertexArray(line_vao);
+    glBindVertexArray(line_mesh.vao);
 
     Vec2 clip_space_start = make_vec2(start_pixels.x / display_output.width * 2.0f - 1.0f,
                                       start_pixels.y / display_output.height * 2.0f - 1.0f);
@@ -307,6 +458,8 @@ void gl_draw_line(GL_State *gl_state,
     gl_set_uniform_vec3(basic_shader_id, "color", &color);
 
     glDrawArrays(GL_LINES, 0, 3);
+    glUseProgram(0);
+    glBindVertexArray(0);
 }
 
 // NOTE: percentage based position
@@ -320,10 +473,10 @@ void gl_draw_quad_p(GL_State *gl_state,
     assert(shader_exists);
     glUseProgram(basic_shader_id);
 
-    uint32 square_vao;
-    uint32 vao_exists = hash_table_find(gl_state->debug_vaos_table, make_string("square"), &square_vao);
-    assert(vao_exists);
-    glBindVertexArray(square_vao);
+    GL_Mesh square_mesh;
+    uint32 mesh_exists = hash_table_find(gl_state->debug_mesh_table, make_string("square"), &square_mesh);
+    assert(mesh_exists);
+    glBindVertexArray(square_mesh.vao);
 
     Vec2 clip_space_position = make_vec2(x * 2.0f - 1.0f,
                                          y * 2.0f - 1.0f);
@@ -339,6 +492,8 @@ void gl_draw_quad_p(GL_State *gl_state,
     gl_set_uniform_vec3(basic_shader_id, "color", &color);
 
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    glUseProgram(0);
+    glBindVertexArray(0);
 }
 
 // NOTE: pixel based position, with (0,0) being at bottom left and (width, height) being at top right
@@ -352,10 +507,10 @@ void gl_draw_quad(GL_State *gl_state,
     assert(shader_exists);
     glUseProgram(basic_shader_id);
 
-    uint32 square_vao;
-    uint32 vao_exists = hash_table_find(gl_state->debug_vaos_table, make_string("square"), &square_vao);
-    assert(vao_exists);
-    glBindVertexArray(square_vao);
+    GL_Mesh square_mesh;
+    uint32 mesh_exists = hash_table_find(gl_state->debug_mesh_table, make_string("square"), &square_mesh);
+    assert(mesh_exists);
+    glBindVertexArray(square_mesh.vao);
 
     Vec2 clip_space_position = make_vec2(x_pos_pixels / display_output.width * 2.0f - 1.0f,
                                          y_pos_pixels / display_output.height * 2.0f - 1.0f);
@@ -371,6 +526,8 @@ void gl_draw_quad(GL_State *gl_state,
     gl_set_uniform_vec3(basic_shader_id, "color", &color);
 
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    glUseProgram(0);
+    glBindVertexArray(0);
 }
 
 void draw_sound_cursor(GL_State *gl_state,
@@ -483,6 +640,29 @@ void gl_render(GL_State *gl_state, Win32_Display_Output display_output, Win32_So
                    make_vec2(0.75f, 0.25f),
                    make_vec2(0.5f + quad_x_offset + square_width_percentage, 0.5f + square_height_percentage),
                    make_vec3(1.0f, 1.0f, 1.0f));
+
+    // TODO: handle carriage returns
+    gl_draw_text(gl_state, display_output,
+        200.0f, display_output.height / 3.0f,
+        "In the midst of winter, I found there was, within me, an invincible summer.");
+
+    gl_draw_text(gl_state, display_output,
+        200.0f, display_output.height / 3.0f - 60.0f,
+        "And that makes me happy. For it says that no matter how hard the world pushes against me,");
+
+    gl_draw_text(gl_state, display_output,
+        200.0f, display_output.height / 3.0f - 90.0f,
+        "within me, there’s something stronger - something better, pushing right back.");
+
+    // TODO: create a nicer function for this
+    char buf[128];
+    int32 num_chars_outputted = snprintf(buf, sizeof(buf),
+        "current_sample_index: %d", win32_sound_output->current_sample_index);
+    assert(num_chars_outputted > 0 && num_chars_outputted < sizeof(buf));
+    gl_draw_text(gl_state, display_output,
+        0.0f, 15.0f,
+        buf);
+
 
     draw_sound_buffer(gl_state, display_output, win32_sound_output);
 }

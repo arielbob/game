@@ -57,22 +57,6 @@ void fill_sound_buffer_with_audio(Sound_Output *sound_output, Audio_Source *audi
     }
 }
 
-File_Data open_and_read_file(Allocator *allocator, char *filename) {
-    Platform_File platform_file;
-    bool32 file_exists = platform_open_file(filename, &platform_file);
-    assert(file_exists);
-
-    File_Data file_data = {};
-    file_data.contents = (char *) allocate(allocator, platform_file.file_size, false);
-
-    bool32 result = platform_read_file(platform_file, &file_data);
-    assert(result);
-
-    platform_close_file(platform_file);
-
-    return file_data;
-}
-
 Audio_Source make_audio_source(uint32 total_samples, uint32 current_sample,
                                real32 volume, bool32 should_loop,
                                int16 *samples) {
@@ -89,7 +73,8 @@ Audio_Source make_audio_source(uint32 total_samples, uint32 current_sample,
 void update(Memory *memory, Game_State *game_state, Sound_Output *sound_output, uint32 num_samples) {
     if (!game_state->is_initted) {
         Arena_Allocator *game_data_arena = &memory->game_data;
-        File_Data music_file_data = open_and_read_file((Allocator *) game_data_arena, "../drive my car.wav");
+        File_Data music_file_data = platform_open_and_read_file((Allocator *) game_data_arena,
+                                                                "../drive my car.wav");
         Wav_Data *wav_data = (Wav_Data *) music_file_data.contents;
 
         Audio_Source *music = &game_state->music;
