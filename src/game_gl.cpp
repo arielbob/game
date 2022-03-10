@@ -685,9 +685,7 @@ void gl_render(GL_State *gl_state, Win32_Display_Output display_output, Win32_So
 
     // TODO: create a nicer function for this
     char buf[128];
-    int32 num_chars_outputted = snprintf(buf, sizeof(buf),
-                                         "current_sample_index: %d", win32_sound_output->current_sample_index);
-    assert(num_chars_outputted > 0 && num_chars_outputted < sizeof(buf));
+    string_format(buf, sizeof(buf), "current_sample_index: %d", win32_sound_output->current_sample_index);
     gl_draw_text(gl_state, display_output, "times24",
                  0.0f, 15.0f,
                  buf,
