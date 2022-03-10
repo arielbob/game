@@ -5,7 +5,7 @@
 
 // TODO (done): draw other 2D primitives: boxes, lines, etc
 // TODO (done): 2D drawing functions using pixel position instead of percentages
-// TODO: draw text
+// TODO (done): draw text
 
 /*
 This uses a left-handed coordinate system: positive x is right, positive y is up, positive z is into the screen.
@@ -122,32 +122,52 @@ uint32 gl_load_shader(Memory *memory, char *vertex_shader_filename, char *fragme
     return shader_id;
 }
 
-// TODO: move these somewhere better - we added font_arena, but haven't used it yet; we could use it for this.
-//       add a struct to hold font data.
-stbtt_bakedchar cdata[96];
-uint32 font_texture_id;
-// TODO: better API for adding and using fonts
-void gl_init_font(Memory *memory) {
+// TODO: use the better stb_truetype packing procedures
+void gl_init_font(Memory *memory, GL_State *gl_state,
+                  char *font_filename, char *font_name,
+                  real32 font_height_pixels,
+                  int32 font_texture_width, int32 font_texture_height) {
+    GL_Font gl_font;
+    stbtt_fontinfo font_info;
+
     Marker m = begin_region(memory);
-    uint8 temp_bitmap[512*512];
-
     File_Data font_file_data = platform_open_and_read_file((Allocator *) &memory->global_stack,
-                                                           "c:/windows/fonts/times.ttf");
+                                                           font_filename);
 
-    real32 font_height_pixels = 32.0f;
+    // get font info
+    // NOTE: this assumes that the TTF file only has a single font and is at index 0, or else
+    //       stbtt_GetFontOffsetForIndex will return a negative value.
+    stbtt_InitFont(&font_info, (uint8 *) font_file_data.contents,
+                   stbtt_GetFontOffsetForIndex((uint8 *) font_file_data.contents, 0));
+    gl_font.scale_for_pixel_height = stbtt_ScaleForPixelHeight(&font_info, font_height_pixels);
+    stbtt_GetFontVMetrics(&font_info, &gl_font.ascent, &gl_font.descent, &gl_font.line_gap);
+
+    uint32 baked_texture_id;
+    int32 first_char = 32;
+    int32 num_chars = 96;
+    gl_font.cdata = (stbtt_bakedchar *) arena_push(&memory->font_arena, 96 * sizeof(stbtt_bakedchar), false);
+
+    uint8 *temp_bitmap = (uint8 *) region_push(&memory->global_stack, font_texture_width*font_texture_height);
     // NOTE: no guarantee that the bitmap will fit the font, so choose temp_bitmap dimensions carefully
     // TODO: we may want to maybe render this out to an image so that we can verify that the font fits
-    stbtt_BakeFontBitmap((uint8 *) font_file_data.contents, 0,
-                         font_height_pixels, temp_bitmap, 512, 512,
-                         32, 96,
-                         cdata);
+    int32 result = stbtt_BakeFontBitmap((uint8 *) font_file_data.contents, 0,
+                                        font_height_pixels, temp_bitmap, font_texture_width, font_texture_height,
+                                        first_char, num_chars,
+                                        gl_font.cdata);
+    assert(result > 0);
+
+    glGenTextures(1, &baked_texture_id);
+    glBindTexture(GL_TEXTURE_2D, baked_texture_id);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA,
+                 font_texture_width, font_texture_height,
+                 0, GL_ALPHA, GL_UNSIGNED_BYTE, temp_bitmap);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
     end_region(memory, m);
 
-    glGenTextures(1, &font_texture_id);
-    glBindTexture(GL_TEXTURE_2D, font_texture_id);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, 512, 512, 0, GL_ALPHA, GL_UNSIGNED_BYTE, temp_bitmap);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    gl_font.baked_texture_id = baked_texture_id;
+    gl_font.font_height_pixels = font_height_pixels;
+    hash_table_add(&gl_state->font_table, make_string(font_name), gl_font);
 }
 
 void copy_aligned_quad_to_arrays(stbtt_aligned_quad q, real32 *vertices, real32 *uvs) {
@@ -172,8 +192,9 @@ void copy_aligned_quad_to_arrays(stbtt_aligned_quad q, real32 *vertices, real32 
 
 void gl_draw_text(GL_State *gl_state,
                   Win32_Display_Output display_output,
+                  char *font_name,
                   real32 x_pos_pixels, real32 y_pos_pixels,
-                  char *text) {
+                  char *text, Vec3 color) {
     uint32 text_shader_id;
     uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("text"), &text_shader_id);
     assert(shader_exists);
@@ -184,26 +205,32 @@ void gl_draw_text(GL_State *gl_state,
     assert(mesh_exists);
     glBindVertexArray(glyph_mesh.vao);
 
+    GL_Font font;
+    uint32 font_exists = hash_table_find(gl_state->font_table, make_string(font_name), &font);
+    assert(font_exists);
+
     // TODO: we don't actually need to use a Mat4 here; we can just use a Mat2 and set z = 0
     Mat4 ortho_clip_matrix = make_ortho_clip_matrix((real32) display_output.width,
                                                     (real32) display_output.height,
                                                     0.0f, 100.0f);
     gl_set_uniform_mat4(text_shader_id, "cpv_matrix", &ortho_clip_matrix);
-    Vec3 color = make_vec3(1.0f, 1.0f, 1.0f);
     gl_set_uniform_vec3(text_shader_id, "color", &color);
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_TEXTURE_2D);
-    glBindTexture(GL_TEXTURE_2D, font_texture_id);
+    glBindTexture(GL_TEXTURE_2D, font.baked_texture_id);
     glBindBuffer(GL_ARRAY_BUFFER, glyph_mesh.vbo);
 
     real32 quad_vertices[8];
     real32 quad_uvs[8];
+    real32 line_advance = font.scale_for_pixel_height * (font.ascent - font.descent + font.line_gap);
+    real32 start_x_pos_pixels = x_pos_pixels;
     while (*text) {
         if (*text >= 32 && *text < 128 || *text == '-') {
             stbtt_aligned_quad q;
-            stbtt_GetBakedQuad(cdata, 512, 512, *text - 32, &x_pos_pixels, &y_pos_pixels, &q, 1);
+            stbtt_GetBakedQuad(font.cdata, 512, 512, *text - 32, &x_pos_pixels, &y_pos_pixels, &q, 1);
+            // TODO: we can just modify stb_truetype to use our coordinate space
             // stb_truetype assumes that +y is down, so we invert it to fit our coordinate space
             q.y0 = 2.0f*y_pos_pixels - q.y0;
             q.y1 = 2.0f*y_pos_pixels - q.y1;
@@ -215,15 +242,23 @@ void gl_draw_text(GL_State *gl_state,
             glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(quad_vertices), quad_vertices);
             glBufferSubData(GL_ARRAY_BUFFER, (int *) sizeof(quad_vertices), sizeof(quad_uvs), quad_uvs);
 
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        } else if (*text == '\n') {
+            x_pos_pixels = start_x_pos_pixels;
+            y_pos_pixels -= line_advance;
         }
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        
         ++text;
     }
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 void gl_init(Memory *memory, GL_State *gl_state, Win32_Display_Output display_output) {
     gl_state->shader_ids_table = make_hash_table<uint32>((Allocator *) &memory->hash_table_stack);
     gl_state->debug_mesh_table = make_hash_table<GL_Mesh>((Allocator *) &memory->hash_table_stack);
+    gl_state->font_table = make_hash_table<GL_Font>((Allocator *) &memory->hash_table_stack);
 
     uint32 vbo, vao, ebo;
 
@@ -349,7 +384,8 @@ void gl_init(Memory *memory, GL_State *gl_state, Win32_Display_Output display_ou
     hash_table_add(&gl_state->shader_ids_table, make_string("text"), text_shader_id);
 
     // NOTE: fonts
-    gl_init_font(memory);
+    gl_init_font(memory, gl_state, "c:/windows/fonts/times.ttf", "times32", 32.0f, 512, 512);
+    gl_init_font(memory, gl_state, "c:/windows/fonts/times.ttf", "times24", 24.0f, 512, 512);
 }
 
 // NOTE: This draws a triangle that has its bottom left corner at position.
@@ -641,29 +677,21 @@ void gl_render(GL_State *gl_state, Win32_Display_Output display_output, Win32_So
                    make_vec2(0.5f + quad_x_offset + square_width_percentage, 0.5f + square_height_percentage),
                    make_vec3(1.0f, 1.0f, 1.0f));
 
-    // TODO: handle carriage returns
-    gl_draw_text(gl_state, display_output,
-        200.0f, display_output.height / 3.0f,
-        "In the midst of winter, I found there was, within me, an invincible summer.");
+    Vec3 text_color = make_vec3(1.0f, 1.0f, 1.0f);
+    gl_draw_text(gl_state, display_output, "times32",
+                 200.0f, display_output.height / 3.0f,
+                 "In the midst of winter, I found there was, within me, an invincible summer.\n\nAnd that makes me happy. For it says that no matter how hard the world pushes against me,\nwithin me, there's something stronger - something better, pushing right back.", 
+                 text_color);
 
-    gl_draw_text(gl_state, display_output,
-        200.0f, display_output.height / 3.0f - 60.0f,
-        "And that makes me happy. For it says that no matter how hard the world pushes against me,");
-
-    gl_draw_text(gl_state, display_output,
-        200.0f, display_output.height / 3.0f - 90.0f,
-        "within me, there's something stronger - something better, pushing right back.");
-
-    
     // TODO: create a nicer function for this
     char buf[128];
     int32 num_chars_outputted = snprintf(buf, sizeof(buf),
-        "current_sample_index: %d", win32_sound_output->current_sample_index);
+                                         "current_sample_index: %d", win32_sound_output->current_sample_index);
     assert(num_chars_outputted > 0 && num_chars_outputted < sizeof(buf));
-    gl_draw_text(gl_state, display_output,
-        0.0f, 15.0f,
-        buf);
-
+    gl_draw_text(gl_state, display_output, "times24",
+                 0.0f, 15.0f,
+                 buf,
+                 text_color);
 
     draw_sound_buffer(gl_state, display_output, win32_sound_output);
 }

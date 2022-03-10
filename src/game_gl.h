@@ -74,9 +74,21 @@ struct GL_Mesh {
     uint32 vbo;
 };
 
+struct GL_Font {
+    //stbtt_fontinfo font_info;
+    stbtt_bakedchar *cdata;
+    uint32 baked_texture_id;
+    real32 font_height_pixels;
+    real32 scale_for_pixel_height;
+    int32 ascent;
+    int32 descent;
+    int32 line_gap;
+};
+
 struct GL_State {
     Hash_Table<uint32> shader_ids_table;
     Hash_Table<GL_Mesh> debug_mesh_table;
+    Hash_Table<GL_Font> font_table;
 };
 
 #endif
