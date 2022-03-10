@@ -652,8 +652,9 @@ void gl_render(GL_State *gl_state, Win32_Display_Output display_output, Win32_So
 
     gl_draw_text(gl_state, display_output,
         200.0f, display_output.height / 3.0f - 90.0f,
-        "within me, there’s something stronger - something better, pushing right back.");
+        "within me, there's something stronger - something better, pushing right back.");
 
+    
     // TODO: create a nicer function for this
     char buf[128];
     int32 num_chars_outputted = snprintf(buf, sizeof(buf),
