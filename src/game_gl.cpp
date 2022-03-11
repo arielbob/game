@@ -2,10 +2,14 @@
 #include "math.h"
 #include "hash_table.h"
 #include "game_gl.h"
+#include "mesh.h"
 
 // TODO (done): draw other 2D primitives: boxes, lines, etc
 // TODO (done): 2D drawing functions using pixel position instead of percentages
 // TODO (done): draw text
+// TODO (done): mesh loading
+// TODO (done): mesh rendering
+// TODO: quaternions
 
 /*
 This uses a left-handed coordinate system: positive x is right, positive y is up, positive z is into the screen.
@@ -170,6 +174,64 @@ void gl_init_font(Memory *memory, GL_State *gl_state,
     hash_table_add(&gl_state->font_table, make_string(font_name), gl_font);
 }
 
+GL_Mesh gl_load_mesh(GL_State *gl_state, Mesh mesh) {
+    uint32 vao, vbo, ebo;
+    
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
+    glGenBuffers(1, &ebo);
+        
+    glBindVertexArray(vao);
+    
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, mesh.data_size, mesh.data, GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh.indices_size, mesh.indices, GL_STATIC_DRAW);
+
+    // vertices
+    glVertexAttribPointer(0, mesh.n_vertex, GL_FLOAT, GL_FALSE,
+                          mesh.vertex_stride * sizeof(real32), (void *) 0);
+    glEnableVertexAttribArray(0);
+    
+    // normals
+    glVertexAttribPointer(1, mesh.n_normal, GL_FLOAT, GL_FALSE,
+                          mesh.vertex_stride * sizeof(real32),
+                          (void *) (mesh.n_vertex * sizeof(real32)));
+    glEnableVertexAttribArray(1);
+
+    // UVs
+    glVertexAttribPointer(2, mesh.n_uv, GL_FLOAT, GL_FALSE,
+                          mesh.vertex_stride * sizeof(real32),
+                          (void *) ((mesh.n_vertex + mesh.n_normal) * sizeof(real32)));
+    glEnableVertexAttribArray(2);
+
+    glBindVertexArray(0);
+
+    GL_Mesh gl_mesh = { vao, vbo, mesh.num_triangles };
+    return gl_mesh;
+}
+
+void gl_draw_mesh(GL_State *gl_state, Render_State *render_state,
+                  char *mesh_name, char *shader_name, Transform transform) {
+    uint32 shader_id;
+    uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string(shader_name), &shader_id);
+    assert(shader_exists);
+    glUseProgram(shader_id);
+
+    GL_Mesh gl_mesh;
+    uint32 mesh_exists = hash_table_find(gl_state->mesh_table, make_string(mesh_name), &gl_mesh);
+    assert(mesh_exists);
+    glBindVertexArray(gl_mesh.vao);
+
+    Mat4 model_matrix = get_model_matrix(transform);
+    gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
+    gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->cpv_matrix);
+    Vec3 color = make_vec3(0.0, 0.0f, 1.0f);
+    gl_set_uniform_vec3(shader_id, "color", &color);
+
+    glDrawElements(GL_TRIANGLES, gl_mesh.num_triangles * 3, GL_UNSIGNED_INT, 0);
+}
+
 void copy_aligned_quad_to_arrays(stbtt_aligned_quad q, real32 *vertices, real32 *uvs) {
     vertices[0] = q.x0;
     vertices[1] = q.y0;
@@ -191,7 +253,7 @@ void copy_aligned_quad_to_arrays(stbtt_aligned_quad q, real32 *vertices, real32 
 }
 
 void gl_draw_text(GL_State *gl_state,
-                  Win32_Display_Output display_output,
+                  Display_Output display_output,
                   char *font_name,
                   real32 x_pos_pixels, real32 y_pos_pixels,
                   char *text, Vec3 color) {
@@ -252,13 +314,14 @@ void gl_draw_text(GL_State *gl_state,
     }
 
     glBindTexture(GL_TEXTURE_2D, 0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
 }
 
-void gl_init(Memory *memory, GL_State *gl_state, Win32_Display_Output display_output) {
+void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) {
     gl_state->shader_ids_table = make_hash_table<uint32>((Allocator *) &memory->hash_table_stack);
     gl_state->debug_mesh_table = make_hash_table<GL_Mesh>((Allocator *) &memory->hash_table_stack);
     gl_state->font_table = make_hash_table<GL_Font>((Allocator *) &memory->hash_table_stack);
+    gl_state->mesh_table = make_hash_table<GL_Mesh>((Allocator *) &memory->hash_table_stack);
 
     uint32 vbo, vao, ebo;
 
@@ -383,16 +446,24 @@ void gl_init(Memory *memory, GL_State *gl_state, Win32_Display_Output display_ou
     uint32 text_shader_id = gl_load_shader(memory, "src/shaders/text.vs", "src/shaders/text.fs");
     hash_table_add(&gl_state->shader_ids_table, make_string("text"), text_shader_id);
 
+    uint32 basic_3d_shader_id = gl_load_shader(memory, "src/shaders/basic_3d.vs", "src/shaders/basic_3d.fs");
+    hash_table_add(&gl_state->shader_ids_table, make_string("basic_3d"), basic_3d_shader_id);
+
     // NOTE: fonts
     gl_init_font(memory, gl_state, "c:/windows/fonts/times.ttf", "times32", 32.0f, 512, 512);
     gl_init_font(memory, gl_state, "c:/windows/fonts/times.ttf", "times24", 24.0f, 512, 512);
+
+    // NOTE: meshes
+    Mesh cube_mesh = read_and_load_mesh(memory, (Allocator *) &memory->mesh_arena, "src/meshes/cube.mesh", "cube");
+    GL_Mesh gl_cube_mesh = gl_load_mesh(gl_state, cube_mesh);
+    hash_table_add(&gl_state->mesh_table, "cube", gl_cube_mesh);
 }
 
 // NOTE: This draws a triangle that has its bottom left corner at position.
 //       Position is based on percentages, so 50% x and 50%y would put the bottom left corner of the triangle
 //       in the middle of the screen.
 void gl_draw_triangle_p(GL_State *gl_state,
-                        Win32_Display_Output display_output, Vec2 position,
+                        Display_Output display_output, Vec2 position,
                         real32 width_pixels, real32 height_pixels,
                         Vec3 color) {
     uint32 basic_shader_id;
@@ -424,7 +495,7 @@ void gl_draw_triangle_p(GL_State *gl_state,
 }
 
 void gl_draw_triangle(GL_State *gl_state,
-                      Win32_Display_Output display_output,
+                      Display_Output display_output,
                       real32 x_pos_pixels, real32 y_pos_pixels,
                       real32 width_pixels, real32 height_pixels,
                       Vec3 color) {
@@ -435,7 +506,7 @@ void gl_draw_triangle(GL_State *gl_state,
 }
 
 void gl_draw_line_p(GL_State *gl_state,
-                  Win32_Display_Output display_output,
+                  Display_Output display_output,
                   Vec2 start, Vec2 end,
                   Vec3 color) {
     uint32 basic_shader_id;
@@ -467,7 +538,7 @@ void gl_draw_line_p(GL_State *gl_state,
 }
 
 void gl_draw_line(GL_State *gl_state,
-                  Win32_Display_Output display_output,
+                  Display_Output display_output,
                   Vec2 start_pixels, Vec2 end_pixels,
                   Vec3 color) {
     uint32 basic_shader_id;
@@ -500,7 +571,7 @@ void gl_draw_line(GL_State *gl_state,
 
 // NOTE: percentage based position
 void gl_draw_quad_p(GL_State *gl_state,
-                    Win32_Display_Output display_output,
+                    Display_Output display_output,
                     real32 x, real32 y,
                     real32 width_pixels, real32 height_pixels,
                     Vec3 color) {
@@ -534,7 +605,7 @@ void gl_draw_quad_p(GL_State *gl_state,
 
 // NOTE: pixel based position, with (0,0) being at bottom left and (width, height) being at top right
 void gl_draw_quad(GL_State *gl_state,
-                  Win32_Display_Output display_output,
+                  Display_Output display_output,
                   real32 x_pos_pixels, real32 y_pos_pixels,
                   real32 width_pixels, real32 height_pixels,
                   Vec3 color) {
@@ -567,7 +638,7 @@ void gl_draw_quad(GL_State *gl_state,
 }
 
 void draw_sound_cursor(GL_State *gl_state,
-                       Win32_Display_Output display_output, Win32_Sound_Output *win32_sound_output,
+                       Display_Output display_output, Win32_Sound_Output *win32_sound_output,
                        real32 cursor_position, Vec3 color) {
     real32 cursor_width = 10.0f;
     real32 cursor_x = ((cursor_position *
@@ -585,7 +656,7 @@ void draw_sound_cursor(GL_State *gl_state,
 }
 
 void draw_sound_buffer(GL_State *gl_state,
-                       Win32_Display_Output display_output, Win32_Sound_Output *win32_sound_output) {
+                       Display_Output display_output, Win32_Sound_Output *win32_sound_output) {
     int32 max_samples = win32_sound_output->buffer_size / win32_sound_output->bytes_per_sample;
 
     real32 channel_height = 100.0;
@@ -641,7 +712,33 @@ void draw_sound_buffer(GL_State *gl_state,
     draw_sound_cursor(gl_state, display_output, win32_sound_output, write_cursor_position, make_vec3(1.0f, 0.0f, 0.0f));
 }
 
-void gl_render(GL_State *gl_state, Win32_Display_Output display_output, Win32_Sound_Output *win32_sound_output) {
+// TODO: we may just want to combine this function with make_view_matrix in math.h
+Mat4 get_view_matrix(Camera camera) {
+    Mat4 model_matrix = make_rotate_matrix(camera.roll, camera.pitch, camera.heading);
+    Vec3 transformed_forward = truncate_v4_to_v3(model_matrix * make_vec4(camera.forward, 1.0f));
+    Vec3 transformed_right = truncate_v4_to_v3(model_matrix * make_vec4(camera.right, 1.0f));
+    Vec3 transformed_up = cross(transformed_forward, transformed_right);
+    // we calculate a new right vector to correct for any error to ensure that our vectors form an
+    // orthonormal basis
+    Vec3 corrected_right = cross(transformed_up, transformed_forward);
+
+    Vec3 forward = normalize(transformed_forward);
+    Vec3 right = normalize(corrected_right);
+    Vec3 up = normalize(transformed_up);
+
+    return make_view_matrix(camera.position, forward, right, up);
+}
+
+void gl_render(GL_State *gl_state, Game_State *game_state,
+               Display_Output display_output, Win32_Sound_Output *win32_sound_output) {
+    Render_State *render_state = &game_state->render_state;
+
+    Camera camera = render_state->camera;
+    Mat4 view_matrix = get_view_matrix(camera);
+    Mat4 perspective_clip_matrix = make_perspective_clip_matrix(camera.fov_x_degrees, camera.aspect_ratio,
+                                                                camera.near, camera.far);
+    render_state->cpv_matrix = perspective_clip_matrix * view_matrix;
+
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
     glLineWidth(1.0f);
@@ -692,4 +789,9 @@ void gl_render(GL_State *gl_state, Win32_Display_Output display_output, Win32_So
                  text_color);
 
     draw_sound_buffer(gl_state, display_output, win32_sound_output);
+
+    Transform transform = { make_vec3(-.25f, -.25f, -0.25f),
+                            t*50.0f, t*50.0f, 0.0f,
+                            make_vec3(0.5f, 0.5f, 0.5f) };
+    gl_draw_mesh(gl_state, render_state, "cube", "basic_3d", transform);
 }

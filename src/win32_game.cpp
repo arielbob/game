@@ -29,6 +29,7 @@
 #include "win32_game.h"
 
 #include "memory.cpp"
+#include "mesh.cpp"
 #include "game.cpp"
 
 global_variable int64 perf_counter_frequency;
@@ -491,11 +492,13 @@ bool32 win32_init_memory(Memory *memory) {
     uint32 hash_table_stack_size = MEGABYTES(8);
     uint32 game_data_arena_size = GIGABYTES(1);
     uint32 font_arena_size = MEGABYTES(64);
+    uint32 mesh_arena_size = MEGABYTES(64);
 
     uint32 total_memory_size = (global_stack_size +
                                 hash_table_stack_size +
                                 game_data_arena_size +
-                                font_arena_size);
+                                font_arena_size +
+                                mesh_arena_size);
     void *memory_base = VirtualAlloc(0, total_memory_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
     if (memory_base) {
@@ -515,6 +518,10 @@ bool32 win32_init_memory(Memory *memory) {
         Arena_Allocator font_arena = make_arena_allocator(base, font_arena_size);
         memory->font_arena = font_arena;
         base = (uint8 *) base + font_arena_size;
+
+        Arena_Allocator mesh_arena = make_arena_allocator(base, mesh_arena_size);
+        memory->mesh_arena = mesh_arena;
+        base = (uint8 *) base + mesh_arena_size;
 
         memory->is_initted = true;
 
@@ -622,11 +629,12 @@ int WinMain(HINSTANCE hInstance,
             cursor_pos.x = cursor_pos.x - (display_output.width / 2);
             cursor_pos.y = -cursor_pos.y + (display_output.height / 2);
             
-            ShowCursor(0);
+            //ShowCursor(0);
             
             if (memory_is_valid && opengl_is_valid && directsound_is_valid) {
                 GL_State gl_state = {};
-                gl_init(&memory, &gl_state, display_output);
+                Display_Output initial_display_output = { display_output.width, display_output.height };
+                gl_init(&memory, &gl_state, initial_display_output);
 
                 Sound_Output game_sound_output = {};
                 int16 sound_buffer[SOUND_BUFFER_SAMPLE_COUNT * 2];
@@ -726,7 +734,8 @@ int WinMain(HINSTANCE hInstance,
                         
                         uint32 num_samples = bytes_delta / sound_output.bytes_per_sample;
 
-                        update(&memory, &game_state, &game_sound_output, num_samples);
+                        Display_Output game_display_output = { display_output.width, display_output.height };
+                        update(&memory, &game_state, &game_display_output, &game_sound_output, num_samples);
 
                         fill_sound_buffer(&sound_output, game_sound_output.sound_buffer, num_samples);
                         if (!sound_output.is_playing) {
@@ -735,7 +744,7 @@ int WinMain(HINSTANCE hInstance,
                         }
 
 
-                    gl_render(&gl_state, display_output, &sound_output);
+                        gl_render(&gl_state, &game_state, game_display_output, &sound_output);
                     
                     verify(&memory.global_stack);
 

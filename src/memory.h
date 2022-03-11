@@ -32,6 +32,7 @@ struct Memory {
     bool32 is_initted;
     Arena_Allocator game_data;
     Arena_Allocator font_arena;
+    Arena_Allocator mesh_arena;
     Stack_Allocator global_stack;
     Stack_Allocator hash_table_stack;
 };

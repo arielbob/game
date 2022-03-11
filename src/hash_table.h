@@ -104,4 +104,9 @@ internal void hash_table_add(Hash_Table<Value_Type> *hash_table, String key, Val
     }
 }
 
+template <class Value_Type>
+internal void hash_table_add(Hash_Table<Value_Type> *hash_table, char *key, Value_Type value) {
+    hash_table_add(hash_table, make_string(key), value);
+}
+
 #endif

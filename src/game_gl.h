@@ -72,6 +72,7 @@ enum Shader_Type {
 struct GL_Mesh {
     uint32 vao;
     uint32 vbo;
+    uint32 num_triangles;
 };
 
 struct GL_Font {
@@ -89,6 +90,7 @@ struct GL_State {
     Hash_Table<uint32> shader_ids_table;
     Hash_Table<GL_Mesh> debug_mesh_table;
     Hash_Table<GL_Font> font_table;
+    Hash_Table<GL_Mesh> mesh_table;
 };
 
 #endif

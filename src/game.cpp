@@ -70,18 +70,40 @@ Audio_Source make_audio_source(uint32 total_samples, uint32 current_sample,
     return audio_source;
 }
 
-void update(Memory *memory, Game_State *game_state, Sound_Output *sound_output, uint32 num_samples) {
+void init_camera(Camera *camera, Display_Output *display_output) {
+    camera->position = make_vec3(0.0f, 0.0f, -5.0f);
+    camera->pitch = 0.0f;
+    camera->fov_x_degrees = 90.0f;
+    camera->aspect_ratio = (real32) display_output->width / display_output->height;
+    camera->near = 0.1f;
+    camera->far = 1000.0f;
+    camera->forward = z_axis;
+    camera->right = x_axis;
+}
+
+void init_game(Memory *memory, Game_State *game_state,
+               Display_Output *display_output,
+               Sound_Output *sound_output, uint32 num_samples) {
+    Arena_Allocator *game_data_arena = &memory->game_data;
+    File_Data music_file_data = platform_open_and_read_file((Allocator *) game_data_arena,
+                                                            "../drive my car.wav");
+    Wav_Data *wav_data = (Wav_Data *) music_file_data.contents;
+
+    Audio_Source *music = &game_state->music;
+    *music = make_audio_source(wav_data->subchunk_2_size / (wav_data->bits_per_sample / 8 * 2),
+                               0, 1.0f, true, (int16 *) &wav_data->data);
+
+    Camera *camera = &game_state->render_state.camera;
+    init_camera(camera, display_output);
+
+    game_state->is_initted = true;
+}
+
+void update(Memory *memory, Game_State *game_state,
+            Display_Output *display_output,
+            Sound_Output *sound_output, uint32 num_samples) {
     if (!game_state->is_initted) {
-        Arena_Allocator *game_data_arena = &memory->game_data;
-        File_Data music_file_data = platform_open_and_read_file((Allocator *) game_data_arena,
-                                                                "../drive my car.wav");
-        Wav_Data *wav_data = (Wav_Data *) music_file_data.contents;
-
-        Audio_Source *music = &game_state->music;
-        *music = make_audio_source(wav_data->subchunk_2_size / (wav_data->bits_per_sample / 8 * 2),
-                                   0, 1.0f, true, (int16 *) &wav_data->data);
-
-        game_state->is_initted = true;
+        init_game(memory, game_state, display_output, sound_output, num_samples);
         return;
     }
 

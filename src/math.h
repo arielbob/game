@@ -110,6 +110,15 @@ struct Cylinder {
     real32 height;
 };
 
+struct Transform {
+    Vec3 position;
+    //Quaternion rotation;
+    real32 heading;
+    real32 pitch;
+    real32 roll;
+    Vec3 scale;
+};
+
 inline Vec2 make_vec2(real32 x, real32 y) {
     Vec2 vec2;
     vec2.x = x;
@@ -817,10 +826,8 @@ Mat4 make_translate_matrix(Vec3 offset) {
     return result;
 }
 
-Mat4 make_view_matrix(Vec3 eye_pos, Vec3 direction, Vec3 right) {
-    // NOTE: we assume that direction and right are both orthogonal and unit vectors
-    //       (so that we can form an orthonormal basis)
-    Vec3 up = cross(direction, right);
+Mat4 make_view_matrix(Vec3 eye_pos, Vec3 forward, Vec3 right, Vec3 up) {
+    // NOTE: we assume that forward, right, and up form an orthonormal basis
     Mat4 result = {};
 
     result.col1.x = right.x;
@@ -833,10 +840,10 @@ Mat4 make_view_matrix(Vec3 eye_pos, Vec3 direction, Vec3 right) {
     result.col3.y = up.z;
     result.col4.y = -up.x*eye_pos.x - up.y*eye_pos.y - up.z*eye_pos.z;
     
-    result.col1.z = direction.x;                                                   
-    result.col2.z = direction.y;                                                   
-    result.col3.z = direction.z;                                                   
-    result.col4.z = -direction.x*eye_pos.x - direction.y*eye_pos.y - direction.z*eye_pos.z;
+    result.col1.z = forward.x;                                                   
+    result.col2.z = forward.y;                                                   
+    result.col3.z = forward.z;                                                   
+    result.col4.z = -forward.x*eye_pos.x - forward.y*eye_pos.y - forward.z*eye_pos.z;
 
     result.col4.w = 1.0f;
     
@@ -1326,6 +1333,12 @@ Mat4 get_model_matrix(Vec3 scale, real32 roll, real32 pitch, real32 heading, Vec
 
     // TODO: maybe don't do a copy here, and just use an output parameter
     return model_matrix;
+}
+
+Mat4 get_model_matrix(Transform transform) {
+    return get_model_matrix(transform.scale,
+                            transform.roll, transform.pitch, transform.heading,
+                            transform.position);
 }
 
 inline real32 cosine_law_degrees(real32 a, real32 b, real32 c) {
