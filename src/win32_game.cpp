@@ -24,16 +24,20 @@
 #include "lib/stb_truetype.h"
 
 #include "math.h"
+#include "game.h"
 #include "memory.h"
 #include "platform.h"
 #include "win32_game.h"
 
 #include "memory.cpp"
 #include "mesh.cpp"
+#include "ui.cpp"
 #include "game.cpp"
 
 global_variable int64 perf_counter_frequency;
 global_variable bool32 is_running = true;
+global_variable bool32 is_paused = true;
+global_variable HWND window;
 
 typedef char GLchar;
 typedef signed long long int khronos_ssize_t;
@@ -177,7 +181,6 @@ bool32 platform_open_file(char *filename, Platform_File *file_result) {
     return false;
 }
 
-#if 1
 bool32 platform_read_file(Platform_File platform_file, File_Data *file_data) {
     assert(platform_file.file_handle);
     uint32 file_size_32 = platform_file.file_size;
@@ -203,30 +206,11 @@ bool32 platform_read_file(Platform_File platform_file, File_Data *file_data) {
         return false;
     }
 }
-#endif
 
 void platform_close_file(Platform_File platform_file) {
     assert(platform_file.file_handle);
     CloseHandle(platform_file.file_handle);
 }
-
-#if 0
-bool32 platform_get_file_size(char *filename, uint32 *file_size_32_result) {
-    HANDLE file_handle = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
-    if (file_handle) {
-        LARGE_INTEGER file_size;
-        if (GetFileSizeEx(file_handle, &file_size)) {
-            // TODO: we only support up to 4.2 GB files right now (32 bits)
-            // will have to stream it in if we want more
-            assert(file_size.QuadPart <= 0xffffffff);
-            *file_size_32_result = file_size.u.LowPart;
-            return true;
-        }
-    }
-
-    return false;
-}
-#endif
 
 File_Data platform_open_and_read_file(Allocator *allocator, char *filename) {
     Platform_File platform_file;
@@ -317,7 +301,7 @@ internal bool32 win32_init_opengl(HDC hdc) {
 #define DIRECT_SOUND_CREATE(name) HRESULT WINAPI name(LPGUID lpGuid, LPDIRECTSOUND* ppDS, LPUNKNOWN pUnkOuter)
 typedef DIRECT_SOUND_CREATE(DirectSoundCreateProc);
 
-internal bool32 win32_init_directsound(HWND window, Win32_Sound_Output *win32_sound_output) { 
+internal bool32 win32_init_directsound(Win32_Sound_Output *win32_sound_output) { 
     HMODULE directsound_library = LoadLibrary("dsound.dll");
     if (directsound_library) {
         DirectSoundCreateProc *direct_sound_create = (DirectSoundCreateProc *) GetProcAddress(directsound_library, "DirectSoundCreate");
@@ -374,6 +358,76 @@ internal bool32 win32_init_directsound(HWND window, Win32_Sound_Output *win32_so
     } else {
         OutputDebugStringA("Could not load DirectSound library");
         return false;
+    }
+}
+
+internal void win32_process_keyboard_input(bool was_down, bool is_down, uint32 vk_code,
+                                           Controller_State *controller_state) {
+    // TODO: rebinding?
+    // TODO: also store the was down variable to detect clicks
+    if (was_down != is_down) {
+        switch (vk_code) {
+            case 'W': {
+                controller_state->key_w.is_down = is_down;
+                controller_state->key_w.was_down = was_down;
+                return;
+            }
+            case 'A': {
+                controller_state->key_a.is_down = is_down;
+                controller_state->key_a.was_down = was_down;
+                return;
+            }
+            case 'S': {
+                controller_state->key_s.is_down = is_down;
+                controller_state->key_s.was_down = was_down;
+                return;
+            }
+            case 'D': {
+                controller_state->key_d.is_down = is_down;
+                controller_state->key_d.was_down = was_down;
+                return;
+            }
+            case 'E': {
+                controller_state->key_e.is_down = is_down;
+                controller_state->key_e.was_down = was_down;
+                return;
+            }
+            case VK_UP: {
+                controller_state->key_up.is_down = is_down;
+                controller_state->key_up.was_down = was_down;
+                return;
+            }
+            case VK_DOWN: {
+                controller_state->key_down.is_down = is_down;
+                controller_state->key_down.was_down = was_down;
+                return;
+            }
+            case VK_RIGHT: {
+                controller_state->key_right.is_down = is_down;
+                controller_state->key_right.was_down = was_down;
+                return;
+            }
+            case VK_LEFT: {
+                controller_state->key_left.is_down = is_down;
+                controller_state->key_left.was_down = was_down;
+                return;
+            }
+            case VK_SHIFT: {
+                controller_state->key_shift.is_down = is_down;
+                controller_state->key_shift.was_down = was_down;
+                return;
+            }
+            case VK_CONTROL: {
+                controller_state->key_ctrl.is_down = is_down;
+                controller_state->key_ctrl.was_down = was_down;
+                return;
+            }
+            case VK_MENU: {
+                controller_state->key_alt.is_down = is_down;
+                controller_state->key_alt.was_down = was_down;
+                return;
+            }
+        }
     }
 }
 
@@ -531,8 +585,23 @@ bool32 win32_init_memory(Memory *memory) {
     return false;
 }
 
+void platform_toggle_pause() {
+    is_paused = !is_paused;
+}
+
 void platform_zero_memory(void *base, uint32 size) {
     ZeroMemory(base, size);
+}
+
+Vec2 platform_get_cursor_pos(Display_Output display_output) {
+    POINT cursor_pos;
+    GetCursorPos(&cursor_pos);
+    ScreenToClient(window, &cursor_pos);
+
+    int64 cursor_y = display_output.height - cursor_pos.y;
+    int64 cursor_x = cursor_pos.x;
+
+    return make_vec2((real32) cursor_x, (real32) cursor_y);
 }
 
 int WinMain(HINSTANCE hInstance,
@@ -597,7 +666,7 @@ int WinMain(HINSTANCE hInstance,
         AdjustWindowRect(&window_rect, WS_OVERLAPPEDWINDOW, 0);
         
         char* window_name = "Window Name";
-        HWND window = CreateWindowEx(0,
+        window = CreateWindowEx(0,
                                      window_class_name,
                                      window_name,
                                      WS_OVERLAPPEDWINDOW,
@@ -612,7 +681,7 @@ int WinMain(HINSTANCE hInstance,
             
             HDC hdc = GetDC(window);
             bool32 opengl_is_valid = win32_init_opengl(hdc);
-            bool32 directsound_is_valid = win32_init_directsound(window, &sound_output);
+            bool32 directsound_is_valid = win32_init_directsound(&sound_output);
 
             Memory memory;
             bool32 memory_is_valid = win32_init_memory(&memory);
@@ -626,8 +695,8 @@ int WinMain(HINSTANCE hInstance,
             POINT cursor_pos;
             GetCursorPos(&cursor_pos);
             ScreenToClient(window, &cursor_pos);
-            cursor_pos.x = cursor_pos.x - (display_output.width / 2);
-            cursor_pos.y = -cursor_pos.y + (display_output.height / 2);
+            //cursor_pos.x = cursor_pos.x - (display_output.width / 2);
+            //cursor_pos.y = -cursor_pos.y + (display_output.height / 2);
             
             //ShowCursor(0);
             
@@ -647,8 +716,19 @@ int WinMain(HINSTANCE hInstance,
                 Game_State game_state = {};
                 game_state.is_initted = false;
 
-                bool32 is_paused = true;
+                Controller_State controller_state = {};
+                
+                controller_state.current_mouse = platform_get_cursor_pos(initial_display_output);
+                
                 while (is_running) {
+                    for (uint32 i = 0; i < array_length(controller_state.key_states); i++) {
+                        controller_state.key_states[i].was_down = controller_state.key_states[i].is_down;
+                    }
+
+                    Display_Output game_display_output = { display_output.width, display_output.height };
+                    controller_state.last_mouse = controller_state.current_mouse;
+                    controller_state.current_mouse = platform_get_cursor_pos(game_display_output);
+
                     if (PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) {
                         if (message.message == WM_QUIT) {
                             is_running = false;
@@ -665,31 +745,36 @@ int WinMain(HINSTANCE hInstance,
                                 uint32 vk_code = (uint32) message.wParam;
                                 if (vk_code == VK_ESCAPE) {
                                     is_running = false;
-                                } else if (vk_code == VK_RIGHT) {
-                                    if (is_down && !was_down) {
-                                        is_paused = !is_paused;
-                                    }
                                 } else {
-                                    // win32_process_keyboard_input(was_down, is_down, vk_code, &controller_state);
+                                    win32_process_keyboard_input(was_down, is_down, vk_code, &controller_state);
                                 }
                             } break;
                             case WM_LBUTTONDOWN:
                             {
+                                controller_state.left_mouse.is_down = true;
                             } break;
                             case WM_LBUTTONUP:
                             {
+                                controller_state.left_mouse.is_down = false;
+                                controller_state.left_mouse.was_down = true;
                             } break;
                             case WM_RBUTTONDOWN:
                             {
+                                controller_state.right_mouse.is_down = true;
                             } break;
                             case WM_RBUTTONUP:
                             {
+                                controller_state.right_mouse.is_down = false;
+                                controller_state.right_mouse.was_down = true;
                             } break;
                             case WM_MBUTTONDOWN:
                             {
+                                controller_state.middle_mouse.is_down = true;
                             } break;
                             case WM_MBUTTONUP:
                             {
+                                controller_state.middle_mouse.is_down = false;
+                                controller_state.middle_mouse.was_down = true;
                             } break;
                             default:
                             {
@@ -699,52 +784,56 @@ int WinMain(HINSTANCE hInstance,
                         }
                     }
 
-                    if (!is_paused) {
-                        sound_output.last_write_cursor = sound_output.current_write_cursor;
-                        DWORD current_play_cursor, current_write_cursor;
-                        if (sound_output.sound_buffer->GetCurrentPosition(&current_play_cursor,
-                                                                          &current_write_cursor) == DS_OK) {
-                            sound_output.current_play_cursor = current_play_cursor;
-                            sound_output.current_write_cursor = current_write_cursor;
+                    sound_output.last_write_cursor = sound_output.current_write_cursor;
+                    DWORD current_play_cursor, current_write_cursor;
+                    if (sound_output.sound_buffer->GetCurrentPosition(&current_play_cursor,
+                                                                      &current_write_cursor) == DS_OK) {
+                        sound_output.current_play_cursor = current_play_cursor;
+                        sound_output.current_write_cursor = current_write_cursor;
 #if 0
-                            sound_output.markers[sound_output.marker_index].play_cursor = current_play_cursor;
-                            sound_output.markers[sound_output.marker_index].write_cursor = current_write_cursor;
+                        sound_output.markers[sound_output.marker_index].play_cursor = current_play_cursor;
+                        sound_output.markers[sound_output.marker_index].write_cursor = current_write_cursor;
 #endif
-                            real32 audio_latency_samples = ((real32) (current_write_cursor - current_play_cursor) /
-                                                            sound_output.bytes_per_sample);
-                            real32 audio_latency_ms = audio_latency_samples / sound_output.samples_per_second * 1000.0f;
-                            debug_print("audio latency; samples: %f, ms: %f\n", audio_latency_samples, audio_latency_ms);
-                        }
+                        real32 audio_latency_samples = ((real32) (current_write_cursor - current_play_cursor) /
+                                                        sound_output.bytes_per_sample);
+                        real32 audio_latency_ms = audio_latency_samples / sound_output.samples_per_second * 1000.0f;
+                        debug_print("audio latency; samples: %f, ms: %f\n", audio_latency_samples, audio_latency_ms);
+                    }
 
-                        // TODO: we may want to base num_samples instead on how much time is remaining for
-                        //       the frame. basically just take the delta between the start of the frame and when
-                        //       we fill the audio buffer and subtract that from the expected frame time. use the
-                        //       difference to calculate how many samples you need.
-                        uint32 bytes_delta;
-                        if (sound_output.last_write_cursor <= sound_output.current_write_cursor) {
-                            bytes_delta = sound_output.current_write_cursor - sound_output.last_write_cursor;
-                            uint32 num_samples = bytes_delta / sound_output.bytes_per_sample;
-                            debug_print("num_samples: %d\n", num_samples);    
-                        } else {
-                            bytes_delta = (sound_output.current_write_cursor +
-                                           (sound_output.buffer_size - sound_output.last_write_cursor));
-                            //uint32 num_samples = bytes_delta / sound_output.bytes_per_sample;
-                            //debug_print("num_samples: %d\n", num_samples);    
-                        }
-                        
+                    // TODO: we may want to base num_samples instead on how much time is remaining for
+                    //       the frame. basically just take the delta between the start of the frame and when
+                    //       we fill the audio buffer and subtract that from the expected frame time. use the
+                    //       difference to calculate how many samples you need.
+                    uint32 bytes_delta;
+                    if (sound_output.last_write_cursor <= sound_output.current_write_cursor) {
+                        bytes_delta = sound_output.current_write_cursor - sound_output.last_write_cursor;
                         uint32 num_samples = bytes_delta / sound_output.bytes_per_sample;
+                        debug_print("num_samples: %d\n", num_samples);    
+                    } else {
+                        bytes_delta = (sound_output.current_write_cursor +
+                                       (sound_output.buffer_size - sound_output.last_write_cursor));
+                        //uint32 num_samples = bytes_delta / sound_output.bytes_per_sample;
+                        //debug_print("num_samples: %d\n", num_samples);    
+                    }
+                        
+                    uint32 num_samples = bytes_delta / sound_output.bytes_per_sample;
 
-                        Display_Output game_display_output = { display_output.width, display_output.height };
-                        update(&memory, &game_state, &game_display_output, &game_sound_output, num_samples);
+                    update(&memory, &game_state,
+                           &controller_state,
+                           &game_display_output, &game_sound_output, num_samples);
 
-                        fill_sound_buffer(&sound_output, game_sound_output.sound_buffer, num_samples);
-                        if (!sound_output.is_playing) {
-                            sound_output.sound_buffer->Play(0, 0, DSBPLAY_LOOPING);
-                            sound_output.is_playing = true;
-                        }
+                    fill_sound_buffer(&sound_output, game_sound_output.sound_buffer, num_samples);
+                    if (!sound_output.is_playing) {
+                        sound_output.sound_buffer->Play(0, 0, DSBPLAY_LOOPING);
+                        sound_output.is_playing = true;
+                    }
 
 
-                        gl_render(&gl_state, &game_state, game_display_output, &sound_output);
+                    gl_render(&gl_state, &game_state, game_display_output, &sound_output);
+
+                    // TODO: we need to reset this every loop. if this is a common thing, we may want to figure
+                    //       out a better way of doing this.
+                    game_state.ui_manager.num_buttons = 0;
                     
                     verify(&memory.global_stack);
 
@@ -773,14 +862,13 @@ int WinMain(HINSTANCE hInstance,
                     sound_output.marker_index %= TARGET_FRAMERATE;
 
                     sound_output.sound_buffer->GetCurrentPosition(&sound_output.markers[sound_output.marker_index].flip_play_cursor,
-                            &sound_output.markers[sound_output.marker_index].flip_write_cursor);
+                                                                  &sound_output.markers[sound_output.marker_index].flip_write_cursor);
 #endif
                     
                     
                     SwapBuffers(hdc);
 
                     last_perf_counter = win32_get_perf_counter();
-                    }
                 }
             } else {
                 // TODO: logging

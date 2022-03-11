@@ -99,13 +99,29 @@ void init_game(Memory *memory, Game_State *game_state,
     game_state->is_initted = true;
 }
 
+internal bool32 was_clicked(Controller_Button_State button_state) {
+    return (button_state.is_down && !button_state.was_down);
+}
+
 void update(Memory *memory, Game_State *game_state,
+            Controller_State *controller_state,
             Display_Output *display_output,
             Sound_Output *sound_output, uint32 num_samples) {
     if (!game_state->is_initted) {
         init_game(memory, game_state, display_output, sound_output, num_samples);
         return;
     }
+
+    game_state->cursor_pos = controller_state->current_mouse;
+    UI_Manager *ui_manager = &game_state->ui_manager;
+
+    //game_state->left_mouse_is_down = controller_state->left_mouse.is_down;
+    UI_Button_State state = do_button(ui_manager, controller_state,
+                                      20.0f, 50.0f, 100.0f, 30.0f,
+                                      "test", "times24");
+    state = do_button(ui_manager, controller_state,
+                      50.0f, 360.0f, 200.0f, 30.0f,
+                      "click me", "times24");
 
     fill_sound_buffer_with_audio(sound_output, &game_state->music, num_samples);
 }

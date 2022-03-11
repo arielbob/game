@@ -9,6 +9,8 @@
 // TODO (done): draw text
 // TODO (done): mesh loading
 // TODO (done): mesh rendering
+// TODO: ui
+// TODO: first person camera movement
 // TODO: quaternions
 
 /*
@@ -729,6 +731,37 @@ Mat4 get_view_matrix(Camera camera) {
     return make_view_matrix(camera.position, forward, right, up);
 }
 
+// TODO: we could, along with gl_draw_quad, replace the model_matrix stuff with just updating the VBO.
+//       the issue with this is that it could make it harder for us to do more interesting transformations like
+//       rotation.
+void gl_draw_ui_buttons(GL_State *gl_state, UI_Manager *ui_manager, Display_Output display_output) {
+    for (int32 i = 0; i < ui_manager->num_buttons; i++) {
+        UI_Button button = ui_manager->buttons[i];
+
+        Vec3 color = make_vec3(1.0f, 1.0f, 1.0f);
+        switch (button.state) {
+            case NORMAL: {
+                color = make_vec3(1.0f, 0.0f, 0.0f);
+            } break;
+            case HOVER: {
+                color = make_vec3(0.0f, 1.0f, 0.0f);
+            }  break;
+            case PRESSED: {
+                color = make_vec3(0.0f, 0.0f, 1.0f);
+            }
+        }
+
+        gl_draw_quad(gl_state, display_output, button.x, button.y,
+                     button.width, button.height, color);
+
+        // TODO: center this.. will have to use font metrics
+        gl_draw_text(gl_state, display_output, button.font,
+                     button.x, button.y,
+                     button.text, make_vec3(1.0f, 1.0f, 1.0f));
+
+    }
+}
+
 void gl_render(GL_State *gl_state, Game_State *game_state,
                Display_Output display_output, Win32_Sound_Output *win32_sound_output) {
     Render_State *render_state = &game_state->render_state;
@@ -782,7 +815,8 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
 
     // TODO: create a nicer function for this
     char buf[128];
-    string_format(buf, sizeof(buf), "current_sample_index: %d", win32_sound_output->current_sample_index);
+    string_format(buf, sizeof(buf), "cursor pos: (%d, %d)",
+                  (int32) game_state->cursor_pos.x, (int32) game_state->cursor_pos.y);
     gl_draw_text(gl_state, display_output, "times24",
                  0.0f, 15.0f,
                  buf,
@@ -794,4 +828,6 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
                             t*50.0f, t*50.0f, 0.0f,
                             make_vec3(0.5f, 0.5f, 0.5f) };
     gl_draw_mesh(gl_state, render_state, "cube", "basic_3d", transform);
+
+    gl_draw_ui_buttons(gl_state, &game_state->ui_manager, display_output);
 }

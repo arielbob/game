@@ -1,6 +1,8 @@
 #ifndef GAME_H
 #define GAME_H
 
+#include "ui.h"
+
 struct Display_Output {
     int32 width;
     int32 height;
@@ -20,6 +22,61 @@ struct Audio_Source {
     real32 volume;
     bool32 should_loop;
     int16 *samples;
+};
+
+struct Controller_Button_State {
+    bool32 was_down;
+    bool32 is_down;
+};
+
+struct Controller_State {
+    // keyboard controls
+    // NOTE: not really suited for rebinding currently
+    // TODO: look into supporting other keyboard layouts
+    union {
+        Controller_Button_State key_states[15];
+        struct {
+            Controller_Button_State key_shift;
+            Controller_Button_State key_ctrl;
+            Controller_Button_State key_alt;
+            Controller_Button_State key_w;
+            Controller_Button_State key_a;
+            Controller_Button_State key_s;
+            Controller_Button_State key_d;
+            Controller_Button_State key_e;
+            Controller_Button_State key_up;
+            Controller_Button_State key_down;
+            Controller_Button_State key_right;
+            Controller_Button_State key_left;
+            Controller_Button_State left_mouse;
+            Controller_Button_State right_mouse;
+            Controller_Button_State middle_mouse;
+        };
+    };
+    
+    // gamepad controls
+    Controller_Button_State up;
+    Controller_Button_State down;
+    Controller_Button_State right;
+    Controller_Button_State left;
+    Controller_Button_State start;
+    Controller_Button_State back;
+    Controller_Button_State left_thumb;
+    Controller_Button_State right_thumb;
+    Controller_Button_State left_shoulder;
+    Controller_Button_State right_shoulder;
+    Controller_Button_State a;
+    Controller_Button_State b;
+    Controller_Button_State x;
+    Controller_Button_State y;
+
+    real32 left_thumb_x;
+    real32 left_thumb_y;
+    real32 right_thumb_x;
+    real32 right_thumb_y;
+
+    Vec2 last_mouse;
+    Vec2 current_mouse;
 };
 
 struct Camera {
@@ -47,6 +104,8 @@ struct Game_State {
     bool32 is_initted;
     Render_State render_state;
     Audio_Source music;
+    UI_Manager ui_manager;
+    Vec2 cursor_pos; // debugging
 };
 
 #endif

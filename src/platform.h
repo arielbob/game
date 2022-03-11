@@ -11,6 +11,8 @@ struct File_Data {
     uint32 size;
 };
 
+#define array_length(array) sizeof(array) / sizeof((array)[0])
+
 void debug_print(char *format, ...);
 void string_format(char *buf, int32 n, char *format, ...);
 bool32 platform_open_file(char *filename, Platform_File *file_result);
