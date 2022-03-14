@@ -104,6 +104,7 @@ struct Game_State {
     bool32 is_initted;
     Render_State render_state;
     Audio_Source music;
+    bool32 is_playing_music;
     UI_Manager ui_manager;
     Vec2 cursor_pos; // debugging
 };

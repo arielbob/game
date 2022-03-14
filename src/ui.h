@@ -3,12 +3,23 @@
 
 #define UI_MAX_BUTTONS 64
 
+#if 0
 enum UI_Button_State {
     NORMAL, HOVER, PRESSED
 };
+#endif
 
+struct UI_id {
+    // NOTE: we use a pointer to some unique data, such as a constant string specific to a button, to
+    //       identify UI elements
+    void *string_ptr;
+};
+
+// TODO: this is a text button - will probably want to add different types of buttons
 struct UI_Button {
-    UI_Button_State state;
+    //UI_Button_State state;
+
+    UI_id id;
 
     // NOTE: these are positioned in window pixel-space, with (0,0) at the bottom left, +x is right,
     //       and +y is up
@@ -25,6 +36,9 @@ struct UI_Button {
 };
 
 struct UI_Manager {
+    UI_id hot;
+    UI_id active;
+
     int32 num_buttons;
     UI_Button buttons[UI_MAX_BUTTONS];
 };

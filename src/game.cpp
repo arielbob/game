@@ -28,27 +28,31 @@ void fill_sound_buffer_with_sine_wave(Sound_Output *sound_output, uint32 num_sam
     }
 }
 
-void fill_sound_buffer_with_audio(Sound_Output *sound_output, Audio_Source *audio,
+void fill_sound_buffer_with_audio(Sound_Output *sound_output, bool32 is_playing,
+                                  Audio_Source *audio,
                                   int32 num_samples) {
     assert((uint32) num_samples < sound_output->max_samples); 
-
-    int16 *music_buffer_at = audio->samples;
-    music_buffer_at += audio->current_sample * 2;
     int16 *sound_buffer = sound_output->sound_buffer;
     int32 i = 0;
-    for (; i < num_samples; i++) {
-        if (audio->current_sample >= audio->total_samples) {
-            if (audio->should_loop) {
-                audio->current_sample = 0;
-                music_buffer_at = audio->samples;
-            } else {
-                break;
-            }
-        }
 
-        *(sound_buffer++) = (int16) (*(music_buffer_at++) * audio->volume);
-        *(sound_buffer++) = (int16) (*(music_buffer_at++) * audio->volume);
-        audio->current_sample++;
+    if (is_playing) {
+        int16 *music_buffer_at = audio->samples;
+        music_buffer_at += audio->current_sample * 2;
+
+        for (; i < num_samples; i++) {
+            if (audio->current_sample >= audio->total_samples) {
+                if (audio->should_loop) {
+                    audio->current_sample = 0;
+                    music_buffer_at = audio->samples;
+                } else {
+                    break;
+                }
+            }
+
+            *(sound_buffer++) = (int16) (*(music_buffer_at++) * audio->volume);
+            *(sound_buffer++) = (int16) (*(music_buffer_at++) * audio->volume);
+            audio->current_sample++;
+        }
     }
 
     for (; i < num_samples; i++) {
@@ -116,12 +120,16 @@ void update(Memory *memory, Game_State *game_state,
     UI_Manager *ui_manager = &game_state->ui_manager;
 
     //game_state->left_mouse_is_down = controller_state->left_mouse.is_down;
-    UI_Button_State state = do_button(ui_manager, controller_state,
+    bool32 btn1_clicked = do_button(ui_manager, controller_state,
                                       20.0f, 50.0f, 100.0f, 30.0f,
-                                      "test", "times24");
-    state = do_button(ui_manager, controller_state,
+                                      "test", "times24", "test1");
+    bool32 btn2_clicked = do_button(ui_manager, controller_state,
                       50.0f, 360.0f, 200.0f, 30.0f,
-                      "click me", "times24");
+                      "click me", "times24", "test2");
 
-    fill_sound_buffer_with_audio(sound_output, &game_state->music, num_samples);
+    if (btn2_clicked) {
+        game_state->is_playing_music = !game_state->is_playing_music;
+    }
+
+    fill_sound_buffer_with_audio(sound_output, game_state->is_playing_music, &game_state->music, num_samples);
 }

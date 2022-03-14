@@ -16,6 +16,9 @@
 #define TARGET_FRAMERATE 60
 #define SAMPLE_RATE 44100
 // NOTE: sound buffer holds a 10th of a second of audio
+// FIXME: there is a bug where there is a delay in audio. if you set SOUND_BUFFER_SAMPLE_COUNT to hold a
+//        second's worth of sample, you'll see the delay clearly. if we just keep it to 1/10th of a second,
+//        it's not that noticeable.
 #define SOUND_BUFFER_SAMPLE_COUNT SAMPLE_RATE / 10
 
 #include "common.h"
@@ -538,7 +541,7 @@ void fill_sound_buffer(Win32_Sound_Output *win32_sound_output,
         debug_print("Could not lock sound buffer region\n");
     }
 
-    debug_print("samples written: %d\n", samples_written);
+    // debug_print("samples written: %d\n", samples_written);
 }
 
 bool32 win32_init_memory(Memory *memory) {
@@ -797,7 +800,7 @@ int WinMain(HINSTANCE hInstance,
                         real32 audio_latency_samples = ((real32) (current_write_cursor - current_play_cursor) /
                                                         sound_output.bytes_per_sample);
                         real32 audio_latency_ms = audio_latency_samples / sound_output.samples_per_second * 1000.0f;
-                        debug_print("audio latency; samples: %f, ms: %f\n", audio_latency_samples, audio_latency_ms);
+                        //debug_print("audio latency; samples: %f, ms: %f\n", audio_latency_samples, audio_latency_ms);
                     }
 
                     // TODO: we may want to base num_samples instead on how much time is remaining for
@@ -808,7 +811,7 @@ int WinMain(HINSTANCE hInstance,
                     if (sound_output.last_write_cursor <= sound_output.current_write_cursor) {
                         bytes_delta = sound_output.current_write_cursor - sound_output.last_write_cursor;
                         uint32 num_samples = bytes_delta / sound_output.bytes_per_sample;
-                        debug_print("num_samples: %d\n", num_samples);    
+                        //debug_print("num_samples: %d\n", num_samples);    
                     } else {
                         bytes_delta = (sound_output.current_write_cursor +
                                        (sound_output.buffer_size - sound_output.last_write_cursor));
@@ -838,7 +841,7 @@ int WinMain(HINSTANCE hInstance,
                     verify(&memory.global_stack);
 
                     real64 work_time = win32_get_elapsed_time(last_perf_counter);
-                    debug_print("work time before sleep: %f\n", work_time);
+                    // debug_print("work time before sleep: %f\n", work_time);
 
                     real32 target_frame_time = 1.0f / TARGET_FRAMERATE;
                     if (work_time < target_frame_time) {
@@ -850,12 +853,12 @@ int WinMain(HINSTANCE hInstance,
                             work_time = win32_get_elapsed_time(last_perf_counter);
                         }
                     } else {
-                        debug_print("MISSED FRAME\n");
+                        //debug_print("MISSED FRAME\n");
                         // TODO: logging, missed frame
                     }
                     
-                    debug_print("frame time: %f\n", work_time);
-                    debug_print("\n");
+                    //debug_print("frame time: %f\n", work_time);
+                    //debug_print("\n");
 
 #if 0
                     sound_output.marker_index++;

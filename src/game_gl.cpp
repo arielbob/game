@@ -739,6 +739,19 @@ void gl_draw_ui_buttons(GL_State *gl_state, UI_Manager *ui_manager, Display_Outp
         UI_Button button = ui_manager->buttons[i];
 
         Vec3 color = make_vec3(1.0f, 1.0f, 1.0f);
+
+        if (ui_id_equals(ui_manager->hot, button.id)) {
+            color = make_vec3(0.0f, 1.0f, 0.0f);
+            if (ui_id_equals(ui_manager->active, button.id)) {
+                color = make_vec3(0.0f, 0.0f, 1.0f);
+            }
+        } else {
+            color = make_vec3(1.0f, 0.0f, 0.0f);
+        }
+
+        
+
+#if 0
         switch (button.state) {
             case NORMAL: {
                 color = make_vec3(1.0f, 0.0f, 0.0f);
@@ -750,6 +763,7 @@ void gl_draw_ui_buttons(GL_State *gl_state, UI_Manager *ui_manager, Display_Outp
                 color = make_vec3(0.0f, 0.0f, 1.0f);
             }
         }
+#endif
 
         gl_draw_quad(gl_state, display_output, button.x, button.y,
                      button.width, button.height, color);
@@ -821,6 +835,19 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
                  0.0f, 15.0f,
                  buf,
                  text_color);
+
+    string_format(buf, sizeof(buf), "hot: %s", game_state->ui_manager.hot);
+    gl_draw_text(gl_state, display_output, "times24",
+                 0.0f, 115.0f,
+                 buf,
+                 text_color);
+
+    string_format(buf, sizeof(buf), "active: %s", game_state->ui_manager.active);
+    gl_draw_text(gl_state, display_output, "times24",
+                 0.0f, 100.0f,
+                 buf,
+                 text_color);
+
 
     draw_sound_buffer(gl_state, display_output, win32_sound_output);
 
