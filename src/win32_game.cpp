@@ -168,7 +168,7 @@ bool32 platform_open_file(char *filename, Platform_File *file_result) {
     assert(path_length_without_null > 0 && path_length_without_null < MAX_PATH);
 
     HANDLE file_handle = CreateFile(path_result, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
-    if (file_handle) {
+    if (file_handle != INVALID_HANDLE_VALUE) {
         file_result->file_handle = file_handle;
         LARGE_INTEGER file_size;
         if (GetFileSizeEx(file_handle, &file_size)) {
@@ -180,6 +180,8 @@ bool32 platform_open_file(char *filename, Platform_File *file_result) {
             return true;
         }
     }
+
+    // DWORD last_error = GetLastError();
 
     return false;
 }
@@ -607,6 +609,28 @@ Vec2 platform_get_cursor_pos(Display_Output display_output) {
     return make_vec2((real32) cursor_x, (real32) cursor_y);
 }
 
+bool32 platform_open_file_dialog(char *filepath, uint32 size) {
+    OPENFILENAME ofn = {};       // common dialog box structure
+
+    // Initialize OPENFILENAME
+    ofn.lStructSize = sizeof(ofn);
+    ofn.hwndOwner = window;
+    ofn.lpstrFile = filepath;
+    // Set lpstrFile[0] to '\0' so that GetOpenFileName does not 
+    // use the contents of szFile to initialize itself.
+    ofn.lpstrFile[0] = '\0';
+    ofn.nMaxFile = size;
+    ofn.lpstrFilter = "All\0*.*\0";
+    ofn.nFilterIndex = 1;
+    ofn.lpstrFileTitle = NULL;
+    ofn.nMaxFileTitle = 0;
+    ofn.lpstrInitialDir = NULL;
+    ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
+
+    bool32 result = GetOpenFileName(&ofn);
+    return result;
+}
+
 int WinMain(HINSTANCE hInstance,
             HINSTANCE hPrevInstance,
             LPSTR lpCmdLine,
@@ -614,6 +638,43 @@ int WinMain(HINSTANCE hInstance,
 #if 0
     char path_result[MAX_PATH];
     // DWORD path_length = GetFullPathNameA("C:/dghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijkl", MAX_PATH, path_result, NULL);
+#endif
+
+#if 0
+{
+    OPENFILENAME ofn = {};       // common dialog box structure
+    char szFile[260];            // buffer for file name
+    HANDLE hf;                   // file handle
+
+// Initialize OPENFILENAME
+    ofn.lStructSize = sizeof(ofn);
+    ofn.hwndOwner = window;
+    ofn.lpstrFile = szFile;
+// Set lpstrFile[0] to '\0' so that GetOpenFileName does not 
+// use the contents of szFile to initialize itself.
+    ofn.lpstrFile[0] = '\0';
+    ofn.nMaxFile = sizeof(szFile);
+    ofn.lpstrFilter = "All\0*.*\0Text\0*.TXT\0";
+    ofn.nFilterIndex = 1;
+    ofn.lpstrFileTitle = NULL;
+    ofn.nMaxFileTitle = 0;
+    ofn.lpstrInitialDir = NULL;
+    ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
+
+// Display the Open dialog box. 
+
+    if (GetOpenFileName(&ofn) == TRUE) {
+        hf = CreateFile(ofn.lpstrFile, 
+                        GENERIC_READ,
+                        0,
+                        (LPSECURITY_ATTRIBUTES) NULL,
+                        OPEN_EXISTING,
+                        FILE_ATTRIBUTE_NORMAL,
+                        (HANDLE) NULL);
+        Platform_File file = { hf, 0 };
+        platform_close_file(file);
+    }
+}
 #endif
 
     LARGE_INTEGER perf_counter_frequency_result;

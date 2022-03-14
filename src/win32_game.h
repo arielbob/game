@@ -1,6 +1,8 @@
 #ifndef WIN32_GAME_H
 #define WIN32_GAME_H
 
+#define PLATFORM_MAX_PATH MAX_PATH
+
 struct Win32_Display_Output {
     int32 width;
     int32 height;

@@ -9,7 +9,8 @@
 // TODO (done): draw text
 // TODO (done): mesh loading
 // TODO (done): mesh rendering
-// TODO: ui
+// TODO (done): basic ui buttons
+// TODO: interface for loading meshes with file explorer
 // TODO: first person camera movement
 // TODO: quaternions
 

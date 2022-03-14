@@ -122,10 +122,20 @@ void update(Memory *memory, Game_State *game_state,
     //game_state->left_mouse_is_down = controller_state->left_mouse.is_down;
     bool32 btn1_clicked = do_button(ui_manager, controller_state,
                                       20.0f, 50.0f, 100.0f, 30.0f,
-                                      "test", "times24", "test1");
+                                      "open file", "times24", "open_file");
     bool32 btn2_clicked = do_button(ui_manager, controller_state,
                       50.0f, 360.0f, 200.0f, 30.0f,
-                      "click me", "times24", "test2");
+                      "toggle music", "times24", "toggle_music");
+
+    // TODO: GetOpenFileName blocks, so we should do the open file dialog stuff on a separate thread
+    if (btn1_clicked) {
+        char filepath[PLATFORM_MAX_PATH];
+        if (platform_open_file_dialog(filepath, PLATFORM_MAX_PATH)) {
+            Marker m = begin_region(memory);
+            File_Data file_data = platform_open_and_read_file((Allocator *) &memory->global_stack, filepath);
+            end_region(memory, m);
+        }
+    }
 
     if (btn2_clicked) {
         game_state->is_playing_music = !game_state->is_playing_music;
