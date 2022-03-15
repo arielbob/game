@@ -127,7 +127,8 @@ void update(Memory *memory, Game_State *game_state,
                       50.0f, 360.0f, 200.0f, 30.0f,
                       "toggle music", "times24", "toggle_music");
 
-    // TODO: GetOpenFileName blocks, so we should do the open file dialog stuff on a separate thread
+    // TODO: GetOpenFileName blocks, so we should do the open file dialog stuff on a separate thread.
+    //       https://docs.microsoft.com/en-us/windows/win32/procthread/processes-and-threads
     if (btn1_clicked) {
         char filepath[PLATFORM_MAX_PATH];
         if (platform_open_file_dialog(filepath, PLATFORM_MAX_PATH)) {
@@ -142,4 +143,6 @@ void update(Memory *memory, Game_State *game_state,
     }
 
     fill_sound_buffer_with_audio(sound_output, game_state->is_playing_music, &game_state->music, num_samples);
+
+    game_state->current_char = controller_state->pressed_key;
 }

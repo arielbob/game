@@ -33,6 +33,8 @@ struct Controller_State {
     // keyboard controls
     // NOTE: not really suited for rebinding currently
     // TODO: look into supporting other keyboard layouts
+
+    char pressed_key = '\0';
     union {
         Controller_Button_State key_states[15];
         struct {
@@ -106,6 +108,7 @@ struct Game_State {
     Audio_Source music;
     bool32 is_playing_music;
     UI_Manager ui_manager;
+    char current_char; // debugging
     Vec2 cursor_pos; // debugging
 };
 

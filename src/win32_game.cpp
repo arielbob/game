@@ -366,10 +366,25 @@ internal bool32 win32_init_directsound(Win32_Sound_Output *win32_sound_output) {
     }
 }
 
-internal void win32_process_keyboard_input(bool was_down, bool is_down, uint32 vk_code,
+internal void win32_process_keyboard_input(bool was_down, bool is_down,
+                                           uint32 vk_code, uint32 scan_code,
                                            Controller_State *controller_state) {
     // TODO: rebinding?
     // TODO: also store the was down variable to detect clicks
+    if (is_down) {
+        WORD translated_chars[16];
+        char keyboard_state[256];
+        if (GetKeyboardState((PBYTE) keyboard_state)) {
+            // TODO: we can use ToAsciiEx to specify a specific keyboard layout, but i'm assuming ToAscii
+            //       might get the current keyboard layout automatically - should check this
+            int32 to_ascii_result = ToAscii(vk_code, scan_code, (PBYTE) keyboard_state, translated_chars, 0);
+            if (to_ascii_result >= 1) {
+                controller_state->pressed_key = (char) translated_chars[0];
+                //debug_print("ascii key translation: %c\n", translated_chars[0]);
+            }
+        }
+    }
+
     if (was_down != is_down) {
         switch (vk_code) {
             case 'W': {
@@ -788,6 +803,7 @@ int WinMain(HINSTANCE hInstance,
                     for (uint32 i = 0; i < array_length(controller_state.key_states); i++) {
                         controller_state.key_states[i].was_down = controller_state.key_states[i].is_down;
                     }
+                    controller_state.pressed_key = '\0';
 
                     Display_Output game_display_output = { display_output.width, display_output.height };
                     controller_state.last_mouse = controller_state.current_mouse;
@@ -806,11 +822,14 @@ int WinMain(HINSTANCE hInstance,
                             {
                                 bool was_down = (message.lParam & (1 << 30)) != 0;
                                 bool is_down = (message.lParam & (1 << 31)) == 0;
+                                
                                 uint32 vk_code = (uint32) message.wParam;
                                 if (vk_code == VK_ESCAPE) {
                                     is_running = false;
                                 } else {
-                                    win32_process_keyboard_input(was_down, is_down, vk_code, &controller_state);
+                                    win32_process_keyboard_input(was_down, is_down,
+                                                                 vk_code, (uint32) (message.lParam >> 16),
+                                                                 &controller_state);
                                 }
                             } break;
                             case WM_LBUTTONDOWN:

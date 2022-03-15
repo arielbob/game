@@ -10,6 +10,9 @@
 // TODO (done): mesh loading
 // TODO (done): mesh rendering
 // TODO (done): basic ui buttons
+// TODO: game should have different Entity structs that have platform-independent data
+//       that is then used by game_gl to render that data. for example: Text_Entity, which
+//       is just some text with a font name and the game renders that
 // TODO: interface for loading meshes with file explorer
 // TODO: first person camera movement
 // TODO: quaternions
@@ -792,9 +795,10 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
     glLineWidth(1.0f);
 
     local_persist real32 t = 0.0f;
-
-    real32 quad_x_offset = sinf(t) * (50.0f / display_output.width);
     t += 0.01f;
+
+#if 0
+    real32 quad_x_offset = sinf(t) * (50.0f / display_output.width);
 
     gl_draw_quad_p(gl_state, display_output,
                    0.5f + quad_x_offset, 0.5f,
@@ -821,6 +825,7 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
                    make_vec2(0.75f, 0.25f),
                    make_vec2(0.5f + quad_x_offset + square_width_percentage, 0.5f + square_height_percentage),
                    make_vec3(1.0f, 1.0f, 1.0f));
+#endif
 
     Vec3 text_color = make_vec3(1.0f, 1.0f, 1.0f);
     gl_draw_text(gl_state, display_output, "times32",
@@ -846,6 +851,12 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
     string_format(buf, sizeof(buf), "active: %s", game_state->ui_manager.active);
     gl_draw_text(gl_state, display_output, "times24",
                  0.0f, 100.0f,
+                 buf,
+                 text_color);
+
+    string_format(buf, sizeof(buf), "current pressed char: %c", game_state->current_char);
+    gl_draw_text(gl_state, display_output, "times24",
+                 0.0f, 200.0f,
                  buf,
                  text_color);
 
