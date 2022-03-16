@@ -111,7 +111,7 @@ internal real32 win32_get_elapsed_time(int64 start_perf_counter) {
 }
 
 // gets wall clock time in seconds
-internal real64 platform_get_wall_clock_time() {
+real64 platform_get_wall_clock_time() {
     LARGE_INTEGER perf_counter;
     QueryPerformanceCounter(&perf_counter);
     return (real64) perf_counter.QuadPart / perf_counter_frequency;
@@ -378,9 +378,13 @@ internal void win32_process_keyboard_input(bool was_down, bool is_down,
             //       might get the current keyboard layout automatically - should check this
             int32 to_ascii_result = ToAscii(vk_code, scan_code, (PBYTE) keyboard_state, translated_chars, 0);
             if (to_ascii_result >= 1) {
-                controller_state->pressed_key = (char) translated_chars[0];
-                //debug_print("ascii key translation: %c\n", translated_chars[0]);
+                if (controller_state->num_pressed_chars < MAX_PRESSED_CHARS) {
+                    controller_state->pressed_chars[controller_state->num_pressed_chars++] =
+                        (char) translated_chars[0];
+                }
             }
+            
+            //debug_print("ascii key translation: %c\n", translated_chars[0]);
         }
     }
 
@@ -808,13 +812,13 @@ int WinMain(HINSTANCE hInstance,
                     for (uint32 i = 0; i < array_length(controller_state.key_states); i++) {
                         controller_state.key_states[i].was_down = controller_state.key_states[i].is_down;
                     }
-                    controller_state.pressed_key = '\0';
+                    controller_state.num_pressed_chars = 0;
 
                     Display_Output game_display_output = { display_output.width, display_output.height };
                     controller_state.last_mouse = controller_state.current_mouse;
                     controller_state.current_mouse = platform_get_cursor_pos(game_display_output);
 
-                    if (PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) {
+                    while (PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) {
                         if (message.message == WM_QUIT) {
                             is_running = false;
                             return 0;

@@ -1,4 +1,5 @@
 #include "ui.h"
+#include "string.h"
 
 #if 0
 void push_element(UI_Push_Buffer *buffer, UI_Element element) {
@@ -127,20 +128,14 @@ void do_text_box(UI_Manager *manager, Controller_State *controller_state,
                                              font,
                                              id_string);
 
-    bool32 was_clicked = false;
-
-    // TODO: add typing into this text box
     Vec2 current_mouse = controller_state->current_mouse;
     if (in_bounds(current_mouse, x, x + width, y, y + height)) {
         manager->hot = text_box.id;
 
-        if (controller_state->left_mouse.is_down) {
-            if (!controller_state->left_mouse.was_down) {
-                manager->focus = text_box.id;
-                manager->focus_timer = platform_get_wall_clock_time();
-            } else {
-                manager->active = text_box.id;
-            }
+        if (!ui_id_equals(manager->active, text_box.id) && controller_state->left_mouse.is_down) {
+            manager->active = text_box.id;
+            manager->focus_timer = platform_get_wall_clock_time();
+            manager->focus_cursor_index = string_length(text_box.current_text);
         }
 
 #if 0
@@ -170,8 +165,36 @@ void do_text_box(UI_Manager *manager, Controller_State *controller_state,
             manager->hot = {};
         }
 
+#if 0
         if (ui_id_equals(manager->active, text_box.id) && !controller_state->left_mouse.is_down) {
             manager->active = {};
+            manager->focus_cursor_index = 0;
+        }
+#endif
+        if (ui_id_equals(manager->active, text_box.id) &&
+            controller_state->left_mouse.is_down &&
+            !controller_state->left_mouse.was_down) {
+            manager->active = {};
+            manager->focus_cursor_index = 0;
+        }
+    }
+
+    if (ui_id_equals(manager->active, text_box.id)) {
+        for (int32 i = 0; i < controller_state->num_pressed_chars; i++) {
+            char c = controller_state->pressed_chars[i];
+            if (c == '\b') {
+                manager->focus_cursor_index--;
+                if (manager->focus_cursor_index < 0) {
+                    manager->focus_cursor_index = 0;
+                }
+                current_text[manager->focus_cursor_index] = '\0';
+            } else if (manager->focus_cursor_index < (text_box.size - 1) &&
+                       c >= 32 &&
+                       c <= 126) {
+                current_text[manager->focus_cursor_index] = c;
+                current_text[manager->focus_cursor_index + 1] = '\0';
+                manager->focus_cursor_index++;
+            }
         }
     }
 

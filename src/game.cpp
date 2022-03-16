@@ -118,7 +118,7 @@ void init_game(Memory *memory, Game_State *game_state,
     game_state->is_initted = true;
 }
 
-internal bool32 was_clicked(Controller_Button_State button_state) {
+bool32 was_clicked(Controller_Button_State button_state) {
     return (button_state.is_down && !button_state.was_down);
 }
 
@@ -198,5 +198,5 @@ void update(Memory *memory, Game_State *game_state,
 
     fill_sound_buffer_with_audio(sound_output, game_state->is_playing_music, &game_state->music, num_samples);
 
-    game_state->current_char = controller_state->pressed_key;
+    //game_state->current_char = controller_state->pressed_key;
 }

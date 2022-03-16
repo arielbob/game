@@ -10,6 +10,7 @@
 // TODO (done): mesh loading
 // TODO (done): mesh rendering
 // TODO (done): basic ui buttons
+// TODO: typing in text box
 // TODO: game should have different Entity structs that have platform-independent data
 //       that is then used by game_gl to render that data. for example: Text_Entity, which
 //       is just some text with a font name and the game renders that
@@ -771,11 +772,11 @@ void gl_draw_ui(GL_State *gl_state, UI_Manager *ui_manager, Display_Output displ
 
         Vec3 color = make_vec3(1.0f, 1.0f, 1.0f);
 
-        if (ui_id_equals(ui_manager->hot, text_box.id)) {
+
+        if (ui_id_equals(ui_manager->active, text_box.id)) {
+            color = make_vec3(0.0f, 0.0f, 1.0f);
+        } else if (ui_id_equals(ui_manager->hot, text_box.id)) {
             color = make_vec3(0.0f, 1.0f, 0.0f);
-            if (ui_id_equals(ui_manager->active, text_box.id)) {
-                color = make_vec3(0.0f, 0.0f, 1.0f);
-            }
         } else {
             color = make_vec3(1.0f, 0.0f, 0.0f);
         }
@@ -786,6 +787,8 @@ void gl_draw_ui(GL_State *gl_state, UI_Manager *ui_manager, Display_Output displ
         gl_draw_text(gl_state, display_output, text_box.font,
                      text_box.x, text_box.y,
                      text_box.current_text, make_vec3(1.0f, 1.0f, 1.0f));
+
+        // TODO: draw the focus cursor (will have to use font metrics to get the width of the current text)
     }
 }
 

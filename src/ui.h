@@ -59,7 +59,7 @@ struct UI_Text_Box {
     real32 width;
     real32 height;
 
-    uint32 size;
+    int32 size;
     char *current_text;
     char *font;
 };
@@ -67,9 +67,10 @@ struct UI_Text_Box {
 struct UI_Manager {
     UI_id hot;
     UI_id active;
-    UI_id focus;
+    //UI_id focus;
 
     real64 focus_timer;
+    int32 focus_cursor_index;
 
     //int32 num_elements;
     //UI_Element elements[UI_MAX_ELEMENTS];

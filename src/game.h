@@ -4,6 +4,8 @@
 #include "ui.h"
 #include "mesh.h"
 
+#define MAX_PRESSED_CHARS 256
+
 struct Display_Output {
     int32 width;
     int32 height;
@@ -35,7 +37,9 @@ struct Controller_State {
     // NOTE: not really suited for rebinding currently
     // TODO: look into supporting other keyboard layouts
 
-    char pressed_key = '\0';
+    int32 num_pressed_chars = 0;
+    char pressed_chars[MAX_PRESSED_CHARS];
+
     union {
         Controller_Button_State key_states[15];
         struct {
@@ -128,5 +132,7 @@ struct Game_State {
     int32 num_entities;
     Entity entities[MAX_ENTITIES];
 };
+
+bool32 was_clicked(Controller_Button_State button_state);
 
 #endif
