@@ -16,6 +16,10 @@
 // TODO: interface for loading meshes with file explorer
 // TODO: first person camera movement
 // TODO: quaternions
+// TODO: nicer button rendering (center the text)
+// TODO: level loading
+// TODO: undoing
+// TODO: translation/rotation gizmo for meshes
 
 /*
 This uses a left-handed coordinate system: positive x is right, positive y is up, positive z is into the screen.
@@ -783,6 +787,23 @@ void gl_draw_ui_buttons(GL_State *gl_state, UI_Manager *ui_manager, Display_Outp
 void gl_render(GL_State *gl_state, Game_State *game_state,
                Display_Output display_output, Win32_Sound_Output *win32_sound_output) {
     Render_State *render_state = &game_state->render_state;
+
+    for (int32 i = 0; i < game_state->num_meshes; i++) {
+        Mesh *mesh = &game_state->meshes[i];
+        if (!mesh->is_loaded) {
+            if (!hash_table_exists(gl_state->mesh_table, make_string(mesh->name))) {
+                GL_Mesh gl_mesh = gl_load_mesh(gl_state, *mesh);
+                hash_table_add(&gl_state->mesh_table, mesh->name, gl_mesh);
+            } else {
+                debug_print("%s already loaded.\n", mesh->name);
+            }
+
+            mesh->is_loaded = true;
+        }
+    }
+
+    // TODO: add entities that have a mesh name.
+    //       we add entities in game.cpp and using their mesh name, we render them in game_gl.cpp.
 
     Camera camera = render_state->camera;
     Mat4 view_matrix = get_view_matrix(camera);

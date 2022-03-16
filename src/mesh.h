@@ -7,6 +7,7 @@
 //       doesn't need UVs. and something like a rock mesh won't need joint data. we will also need to modify
 //       our mesh loading filetype and loading to acommodate these different types.
 struct Mesh {
+    // TODO: may just want to be a static array, since we want to be able to change it
     char *name;
     real32 *data;
     uint32 num_vertices;
@@ -26,6 +27,8 @@ struct Mesh {
     uint32 indices_size;
 
     AABB aabb;
+
+    bool32 is_loaded;
 };
 
 #define MAX_TOKEN_TEXT_SIZE 1024

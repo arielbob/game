@@ -2,6 +2,7 @@
 #define GAME_H
 
 #include "ui.h"
+#include "mesh.h"
 
 struct Display_Output {
     int32 width;
@@ -102,6 +103,8 @@ struct Render_State {
     Mat4 cpv_matrix;
 };
 
+#define MAX_MESHES 64
+
 struct Game_State {
     bool32 is_initted;
     Render_State render_state;
@@ -110,6 +113,9 @@ struct Game_State {
     UI_Manager ui_manager;
     char current_char; // debugging
     Vec2 cursor_pos; // debugging
+
+    int32 num_meshes;
+    Mesh meshes[MAX_MESHES];
 };
 
 #endif

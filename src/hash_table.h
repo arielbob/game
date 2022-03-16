@@ -63,6 +63,22 @@ bool32 hash_table_find(Hash_Table<Value_Type> hash_table, String key, Value_Type
 }
 
 template <class Value_Type>
+bool32 hash_table_exists(Hash_Table<Value_Type> hash_table, String key) {
+    uint32 hash = get_hash(key, HASH_TABLE_BUCKETS);
+    Hash_Table_Linked_List<Value_Type> bucket = hash_table.buckets[hash];
+    Hash_Table_Bucket_Node<Value_Type> *current = bucket.start;
+
+    while (current) {
+        if (string_equals(current->key, key)) {
+            return true;
+        }
+        current = current->next;
+    }
+
+    return false;
+}
+
+template <class Value_Type>
 internal void hash_table_add(Hash_Table<Value_Type> *hash_table, String key, Value_Type value) {
     uint32 hash = get_hash(key, HASH_TABLE_BUCKETS);
     Hash_Table_Linked_List<Value_Type> *bucket = &hash_table->buckets[hash];

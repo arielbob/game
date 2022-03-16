@@ -74,6 +74,11 @@ Audio_Source make_audio_source(uint32 total_samples, uint32 current_sample,
     return audio_source;
 }
 
+void add_mesh(Game_State *game_state, Mesh mesh) {
+    assert(game_state->num_meshes < MAX_MESHES);
+    game_state->meshes[game_state->num_meshes++] = mesh;
+}
+
 void init_camera(Camera *camera, Display_Output *display_output) {
     camera->position = make_vec3(0.0f, 0.0f, -5.0f);
     camera->pitch = 0.0f;
@@ -122,7 +127,7 @@ void update(Memory *memory, Game_State *game_state,
     //game_state->left_mouse_is_down = controller_state->left_mouse.is_down;
     bool32 btn1_clicked = do_button(ui_manager, controller_state,
                                       20.0f, 50.0f, 100.0f, 30.0f,
-                                      "open file", "times24", "open_file");
+                                      "load mesh", "times24", "load_mesh");
     bool32 btn2_clicked = do_button(ui_manager, controller_state,
                       50.0f, 360.0f, 200.0f, 30.0f,
                       "toggle music", "times24", "toggle_music");
@@ -130,11 +135,15 @@ void update(Memory *memory, Game_State *game_state,
     // TODO: GetOpenFileName blocks, so we should do the open file dialog stuff on a separate thread.
     //       https://docs.microsoft.com/en-us/windows/win32/procthread/processes-and-threads
     if (btn1_clicked) {
-        char filepath[PLATFORM_MAX_PATH];
+        char *filepath = (char *) arena_push(&memory->string_arena, PLATFORM_MAX_PATH);
         if (platform_open_file_dialog(filepath, PLATFORM_MAX_PATH)) {
-            Marker m = begin_region(memory);
-            File_Data file_data = platform_open_and_read_file((Allocator *) &memory->global_stack, filepath);
-            end_region(memory, m);
+            //Marker m = begin_region(memory);
+            //File_Data file_data = platform_open_and_read_file((Allocator *) &memory->global_stack, filepath);
+            //end_region(memory, m);
+
+            // TODO: prompt user to enter name for mesh; just using filepath name for now
+            Mesh mesh = read_and_load_mesh(memory, (Allocator *) &memory->mesh_arena, filepath, filepath);
+            add_mesh(game_state, mesh);
         }
     }
 
