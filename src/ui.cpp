@@ -130,9 +130,13 @@ void do_text_box(UI_Manager *manager, Controller_State *controller_state,
 
     Vec2 current_mouse = controller_state->current_mouse;
     if (in_bounds(current_mouse, x, x + width, y, y + height)) {
-        manager->hot = text_box.id;
+        if (!controller_state->left_mouse.is_down) {
+            manager->hot = text_box.id;
+        }
+        
 
-        if (!ui_id_equals(manager->active, text_box.id) && controller_state->left_mouse.is_down) {
+        if (ui_id_equals(manager->hot, text_box.id) &&
+            controller_state->left_mouse.is_down) {
             manager->active = text_box.id;
             manager->focus_timer = platform_get_wall_clock_time();
             manager->focus_cursor_index = string_length(text_box.current_text);
