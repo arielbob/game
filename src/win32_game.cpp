@@ -110,13 +110,12 @@ internal real32 win32_get_elapsed_time(int64 start_perf_counter) {
     return (real32) (win32_get_perf_counter() - start_perf_counter) / perf_counter_frequency;
 }
 
-#if 0
-internal real64 win32_get_wall_clock_time() {
+// gets wall clock time in seconds
+internal real64 platform_get_wall_clock_time() {
     LARGE_INTEGER perf_counter;
     QueryPerformanceCounter(&perf_counter);
     return (real64) perf_counter.QuadPart / perf_counter_frequency;
 }
-#endif
 
 void debug_print(char *format, ...) {
     char buf[2048];
@@ -923,6 +922,7 @@ int WinMain(HINSTANCE hInstance,
                     // TODO: we need to reset this every loop. if this is a common thing, we may want to figure
                     //       out a better way of doing this.
                     game_state.ui_manager.num_buttons = 0;
+                    game_state.ui_manager.num_text_boxes = 0;
                     
                     verify(&memory.global_stack);
 

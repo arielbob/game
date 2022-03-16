@@ -1,5 +1,22 @@
 #include "ui.h"
 
+#if 0
+void push_element(UI_Push_Buffer *buffer, UI_Element element) {
+    switch (element.header.type) {
+        case TEXT_BUTTON: {
+            assert((buffer->used + sizeof(UI_Button)) <= buffer->size);
+            *(base + buffer->used) = (UI_Button) element;
+            buffer->used += sizeof(UI_Button);
+        } break;
+        case TEXT_BOX: {
+            assert((buffer->used + sizeof(UI_Text_Box)) <= buffer->size);
+            *(base + buffer->used) = (UI_Text_Box) element;
+            buffer->used += sizeof(UI_Text_Box);
+        } break;
+    }
+}
+#endif
+
 UI_Button make_ui_button(real32 x, real32 y, real32 width, real32 height, char *text, char *font, char *id) {
     UI_Button button = {};
     button.x = x;
@@ -15,10 +32,36 @@ UI_Button make_ui_button(real32 x, real32 y, real32 width, real32 height, char *
     return button;
 }
 
+UI_Text_Box make_ui_text_box(real32 x, real32 y,
+                             real32 width, real32 height,
+                             char *current_text, uint32 size,
+                             char *font,
+                             char *id) {
+    UI_Text_Box text_box = {};
+
+    text_box.x = x;
+    text_box.y = y;
+    text_box.width = width;
+    text_box.height = height;
+    text_box.size = size;
+    text_box.current_text = current_text;
+    text_box.font = font;
+
+    UI_id text_box_id = { id };
+    text_box.id = text_box_id;
+
+    return text_box;
+}
+
 void ui_add_button(UI_Manager *manager, UI_Button button) {
     assert(manager->num_buttons < UI_MAX_BUTTONS);
     manager->buttons[manager->num_buttons] = button;
     manager->num_buttons++;
+}
+
+void ui_add_text_box(UI_Manager *manager, UI_Text_Box text_box) {
+    assert(manager->num_text_boxes < UI_MAX_TEXT_BOXES);
+    manager->text_boxes[manager->num_text_boxes++] = text_box;
 }
 
 inline bool32 ui_id_equals(UI_id id1, UI_id id2) {
@@ -30,8 +73,8 @@ bool32 in_bounds(Vec2 p, real32 x_min, real32 x_max, real32 y_min, real32 y_max)
 }
 
 bool32 do_button(UI_Manager *manager, Controller_State *controller_state,
-                          real32 x_px, real32 y_px, real32 width_px, real32 height_px,
-                          char *text, char *font, char *id_string) {
+                 real32 x_px, real32 y_px, real32 width_px, real32 height_px,
+                 char *text, char *font, char *id_string) {
     UI_Button button = make_ui_button(x_px, y_px,
                                       width_px, height_px,
                                       text, font, id_string);
@@ -71,3 +114,69 @@ bool32 do_button(UI_Manager *manager, Controller_State *controller_state,
 
     return was_clicked;
 }
+
+// TODO: this should return a bool32, since we want to be able to submit fields by pressing the enter key
+void do_text_box(UI_Manager *manager, Controller_State *controller_state,
+                 real32 x, real32 y, real32 width, real32 height,
+                 char *current_text, int32 text_buffer_size,
+                 char *font,
+                 char *id_string) {
+    UI_Text_Box text_box =  make_ui_text_box(x, y,
+                                             width, height,
+                                             current_text, text_buffer_size,
+                                             font,
+                                             id_string);
+
+    bool32 was_clicked = false;
+
+    // TODO: add typing into this text box
+    Vec2 current_mouse = controller_state->current_mouse;
+    if (in_bounds(current_mouse, x, x + width, y, y + height)) {
+        manager->hot = text_box.id;
+
+        if (controller_state->left_mouse.is_down) {
+            if (!controller_state->left_mouse.was_down) {
+                manager->focus = text_box.id;
+                manager->focus_timer = platform_get_wall_clock_time();
+            } else {
+                manager->active = text_box.id;
+            }
+        }
+
+#if 0
+        if (controller_state->left_mouse.is_down) {
+            // hovering with mouse down
+            if (ui_id_equals(manager->hot, text_box.id) || !controller_state->left_mouse.was_down) {
+                manager->active = text_box.id;
+            } else if (ui_id_equals(manager->active, text_box.id)) {
+                manager->hot = text_box.id;
+                manager->focus_timer = platform_get_wall_clock_time();
+            }
+        } else if (controller_state->left_mouse.was_down) {
+            // hovering and just clicked (left mouse is not down, but was down last frame)
+            if (ui_id_equals(manager->active, text_box.id)) {
+                manager->focus_timer = platform_get_wall_clock_time();
+            }
+        } else {
+            // hovering
+            manager->hot = text_box.id;
+            if (ui_id_equals(manager->active, text_box.id)) {
+                manager->active = {};
+            }
+        }
+#endif
+    } else {
+        if (ui_id_equals(manager->hot, text_box.id)) {
+            manager->hot = {};
+        }
+
+        if (ui_id_equals(manager->active, text_box.id) && !controller_state->left_mouse.is_down) {
+            manager->active = {};
+        }
+    }
+
+    ui_add_text_box(manager, text_box);
+
+    //return was_clicked;
+}
+

@@ -3,12 +3,15 @@
 
 #include "math.h"
 
+#define MESH_NAME_MAX_SIZE 256
+
 // TODO: we need more types of Mesh objects. since not all meshes require all the data. for example, a nav mesh
 //       doesn't need UVs. and something like a rock mesh won't need joint data. we will also need to modify
 //       our mesh loading filetype and loading to acommodate these different types.
 struct Mesh {
-    // TODO: may just want to be a static array, since we want to be able to change it
+    uint32 name_size;
     char *name;
+
     real32 *data;
     uint32 num_vertices;
     // size of data in bytes

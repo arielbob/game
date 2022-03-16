@@ -103,19 +103,30 @@ struct Render_State {
     Mat4 cpv_matrix;
 };
 
+struct Entity {
+    char *mesh_name;
+    Transform transform;
+};
+
 #define MAX_MESHES 64
+#define MAX_ENTITIES 64
 
 struct Game_State {
     bool32 is_initted;
     Render_State render_state;
     Audio_Source music;
-    bool32 is_playing_music;
+    bool32 is_playing_music; // debugging
     UI_Manager ui_manager;
     char current_char; // debugging
     Vec2 cursor_pos; // debugging
 
+    bool32 is_naming_mesh;
+    Mesh mesh_to_add;
     int32 num_meshes;
     Mesh meshes[MAX_MESHES];
+
+    int32 num_entities;
+    Entity entities[MAX_ENTITIES];
 };
 
 #endif

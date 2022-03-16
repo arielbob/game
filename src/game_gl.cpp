@@ -464,9 +464,9 @@ void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) 
     gl_init_font(memory, gl_state, "c:/windows/fonts/times.ttf", "times24", 24.0f, 512, 512);
 
     // NOTE: meshes
-    Mesh cube_mesh = read_and_load_mesh(memory, (Allocator *) &memory->mesh_arena, "src/meshes/cube.mesh", "cube");
-    GL_Mesh gl_cube_mesh = gl_load_mesh(gl_state, cube_mesh);
-    hash_table_add(&gl_state->mesh_table, "cube", gl_cube_mesh);
+    //Mesh cube_mesh = read_and_load_mesh(memory, (Allocator *) &memory->mesh_arena, "src/meshes/cube.mesh", "cube");
+    //GL_Mesh gl_cube_mesh = gl_load_mesh(gl_state, cube_mesh);
+    //hash_table_add(&gl_state->mesh_table, "cube", gl_cube_mesh);
 }
 
 // NOTE: This draws a triangle that has its bottom left corner at position.
@@ -742,7 +742,7 @@ Mat4 get_view_matrix(Camera camera) {
 // TODO: we could, along with gl_draw_quad, replace the model_matrix stuff with just updating the VBO.
 //       the issue with this is that it could make it harder for us to do more interesting transformations like
 //       rotation.
-void gl_draw_ui_buttons(GL_State *gl_state, UI_Manager *ui_manager, Display_Output display_output) {
+void gl_draw_ui(GL_State *gl_state, UI_Manager *ui_manager, Display_Output display_output) {
     for (int32 i = 0; i < ui_manager->num_buttons; i++) {
         UI_Button button = ui_manager->buttons[i];
 
@@ -757,22 +757,6 @@ void gl_draw_ui_buttons(GL_State *gl_state, UI_Manager *ui_manager, Display_Outp
             color = make_vec3(1.0f, 0.0f, 0.0f);
         }
 
-        
-
-#if 0
-        switch (button.state) {
-            case NORMAL: {
-                color = make_vec3(1.0f, 0.0f, 0.0f);
-            } break;
-            case HOVER: {
-                color = make_vec3(0.0f, 1.0f, 0.0f);
-            }  break;
-            case PRESSED: {
-                color = make_vec3(0.0f, 0.0f, 1.0f);
-            }
-        }
-#endif
-
         gl_draw_quad(gl_state, display_output, button.x, button.y,
                      button.width, button.height, color);
 
@@ -780,7 +764,28 @@ void gl_draw_ui_buttons(GL_State *gl_state, UI_Manager *ui_manager, Display_Outp
         gl_draw_text(gl_state, display_output, button.font,
                      button.x, button.y,
                      button.text, make_vec3(1.0f, 1.0f, 1.0f));
+    }
 
+    for (int32 i = 0; i < ui_manager->num_text_boxes; i++) {
+        UI_Text_Box text_box = ui_manager->text_boxes[i];
+
+        Vec3 color = make_vec3(1.0f, 1.0f, 1.0f);
+
+        if (ui_id_equals(ui_manager->hot, text_box.id)) {
+            color = make_vec3(0.0f, 1.0f, 0.0f);
+            if (ui_id_equals(ui_manager->active, text_box.id)) {
+                color = make_vec3(0.0f, 0.0f, 1.0f);
+            }
+        } else {
+            color = make_vec3(1.0f, 0.0f, 0.0f);
+        }
+
+        gl_draw_quad(gl_state, display_output, text_box.x, text_box.y,
+                     text_box.width, text_box.height, color);
+
+        gl_draw_text(gl_state, display_output, text_box.font,
+                     text_box.x, text_box.y,
+                     text_box.current_text, make_vec3(1.0f, 1.0f, 1.0f));
     }
 }
 
@@ -817,6 +822,12 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
 
     local_persist real32 t = 0.0f;
     t += 0.01f;
+
+    for (int32 i = 0; i < game_state->num_entities; i++) {
+        Entity *entity = &game_state->entities[i];
+        gl_draw_mesh(gl_state, render_state,
+                     entity->mesh_name, "basic_3d", entity->transform);
+    }
 
 #if 0
     real32 quad_x_offset = sinf(t) * (50.0f / display_output.width);
@@ -875,7 +886,7 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
                  buf,
                  text_color);
 
-    string_format(buf, sizeof(buf), "current pressed char: %c", game_state->current_char);
+    string_format(buf, sizeof(buf), "current pressed char: %d", game_state->current_char);
     gl_draw_text(gl_state, display_output, "times24",
                  0.0f, 200.0f,
                  buf,
@@ -887,7 +898,7 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
     Transform transform = { make_vec3(-.25f, -.25f, -0.25f),
                             t*50.0f, t*50.0f, 0.0f,
                             make_vec3(0.5f, 0.5f, 0.5f) };
-    gl_draw_mesh(gl_state, render_state, "cube", "basic_3d", transform);
+    // gl_draw_mesh(gl_state, render_state, "cube", "basic_3d", transform);
 
-    gl_draw_ui_buttons(gl_state, &game_state->ui_manager, display_output);
+    gl_draw_ui(gl_state, &game_state->ui_manager, display_output);
 }
