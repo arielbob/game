@@ -177,10 +177,16 @@ void update(Memory *memory, Game_State *game_state,
     }
 
     if (game_state->is_naming_mesh) {
+        UI_Text_Box_Style style = {
+            "times24",
+            500.0f, 30.0f,
+            5.0f, 5.0f,
+        };
+
         do_text_box(ui_manager, controller_state,
-                    251.0f, 360.0f, 500.0f, 30.0f,
+                    251.0f, 360.0f,
                     game_state->mesh_to_add.name, game_state->mesh_to_add.name_size,
-                    "times24", "mesh_name_text_box");
+                    style, "mesh_name_text_box");
         bool32 submit_clicked = do_button(ui_manager, controller_state,
                                           752.0f, 360.0f, 200.0f, 30.0f,
                                           "submit", "times24", "mesh_name_text_box_submit");

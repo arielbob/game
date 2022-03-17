@@ -51,17 +51,25 @@ struct UI_Button {
     char *font;
 };
 
+struct UI_Text_Box_Style {
+    char *font;
+    real32 width;
+    real32 height;
+    real32 padding_x;
+    real32 padding_y;
+    //real32 cursor_width;
+};
+
 struct UI_Text_Box {
     UI_id id;
     
     real32 x;
     real32 y;
-    real32 width;
-    real32 height;
 
     int32 size;
     char *current_text;
-    char *font;
+
+    UI_Text_Box_Style style;
 };
 
 struct UI_Manager {

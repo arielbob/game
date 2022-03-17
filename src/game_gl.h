@@ -76,7 +76,7 @@ struct GL_Mesh {
 };
 
 struct GL_Font {
-    //stbtt_fontinfo font_info;
+    stbtt_fontinfo font_info;
     stbtt_bakedchar *cdata;
     uint32 baked_texture_id;
     real32 font_height_pixels;

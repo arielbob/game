@@ -379,8 +379,11 @@ internal void win32_process_keyboard_input(bool was_down, bool is_down,
             int32 to_ascii_result = ToAscii(vk_code, scan_code, (PBYTE) keyboard_state, translated_chars, 0);
             if (to_ascii_result >= 1) {
                 if (controller_state->num_pressed_chars < MAX_PRESSED_CHARS) {
-                    controller_state->pressed_chars[controller_state->num_pressed_chars++] =
-                        (char) translated_chars[0];
+                    char c = (char) translated_chars[0];
+                    // if we get the delete character which can be created by pressing ctrl+backspace,
+                    // just say that it's backspace for now.
+                    if (c == 127) c = '\b';
+                    controller_state->pressed_chars[controller_state->num_pressed_chars++] = c;
                 }
             }
             
@@ -921,7 +924,8 @@ int WinMain(HINSTANCE hInstance,
                     }
 
 
-                    gl_render(&gl_state, &game_state, game_display_output, &sound_output);
+                    gl_render(&gl_state, &controller_state, &game_state,
+                              game_display_output, &sound_output);
 
                     // TODO: we need to reset this every loop. if this is a common thing, we may want to figure
                     //       out a better way of doing this.

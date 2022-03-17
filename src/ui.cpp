@@ -34,19 +34,16 @@ UI_Button make_ui_button(real32 x, real32 y, real32 width, real32 height, char *
 }
 
 UI_Text_Box make_ui_text_box(real32 x, real32 y,
-                             real32 width, real32 height,
                              char *current_text, uint32 size,
-                             char *font,
+                             UI_Text_Box_Style style,
                              char *id) {
     UI_Text_Box text_box = {};
 
     text_box.x = x;
     text_box.y = y;
-    text_box.width = width;
-    text_box.height = height;
     text_box.size = size;
     text_box.current_text = current_text;
-    text_box.font = font;
+    text_box.style = style;
 
     UI_id text_box_id = { id };
     text_box.id = text_box_id;
@@ -118,15 +115,17 @@ bool32 do_button(UI_Manager *manager, Controller_State *controller_state,
 
 // TODO: this should return a bool32, since we want to be able to submit fields by pressing the enter key
 void do_text_box(UI_Manager *manager, Controller_State *controller_state,
-                 real32 x, real32 y, real32 width, real32 height,
+                 real32 x, real32 y,
                  char *current_text, int32 text_buffer_size,
-                 char *font,
+                 UI_Text_Box_Style style,
                  char *id_string) {
     UI_Text_Box text_box =  make_ui_text_box(x, y,
-                                             width, height,
                                              current_text, text_buffer_size,
-                                             font,
+                                             style,
                                              id_string);
+
+    real32 width = style.width + style.padding_x * 2;
+    real32 height = style.height + style.padding_y * 2;
 
     Vec2 current_mouse = controller_state->current_mouse;
     if (in_bounds(current_mouse, x, x + width, y, y + height)) {
@@ -141,40 +140,15 @@ void do_text_box(UI_Manager *manager, Controller_State *controller_state,
             manager->focus_timer = platform_get_wall_clock_time();
             manager->focus_cursor_index = string_length(text_box.current_text);
         }
-
-#if 0
-        if (controller_state->left_mouse.is_down) {
-            // hovering with mouse down
-            if (ui_id_equals(manager->hot, text_box.id) || !controller_state->left_mouse.was_down) {
-                manager->active = text_box.id;
-            } else if (ui_id_equals(manager->active, text_box.id)) {
-                manager->hot = text_box.id;
-                manager->focus_timer = platform_get_wall_clock_time();
-            }
-        } else if (controller_state->left_mouse.was_down) {
-            // hovering and just clicked (left mouse is not down, but was down last frame)
-            if (ui_id_equals(manager->active, text_box.id)) {
-                manager->focus_timer = platform_get_wall_clock_time();
-            }
-        } else {
-            // hovering
-            manager->hot = text_box.id;
-            if (ui_id_equals(manager->active, text_box.id)) {
-                manager->active = {};
-            }
-        }
-#endif
     } else {
+        // FIXME: this isn't really a bug (other programs seem to behave this way), but i'm not sure
+        //        why it's happening: if you hold down a key in the textbox and you click outside of the textbox,
+        //        the textbox should lose focus and text should no longer be inputted. but, for some reason it
+        //        keeps focus after clicking outside of the textbox and characters keep getting inputted.
         if (ui_id_equals(manager->hot, text_box.id)) {
             manager->hot = {};
         }
 
-#if 0
-        if (ui_id_equals(manager->active, text_box.id) && !controller_state->left_mouse.is_down) {
-            manager->active = {};
-            manager->focus_cursor_index = 0;
-        }
-#endif
         if (ui_id_equals(manager->active, text_box.id) &&
             controller_state->left_mouse.is_down &&
             !controller_state->left_mouse.was_down) {

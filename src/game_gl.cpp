@@ -156,6 +156,7 @@ void gl_init_font(Memory *memory, GL_State *gl_state,
                    stbtt_GetFontOffsetForIndex((uint8 *) font_file_data.contents, 0));
     gl_font.scale_for_pixel_height = stbtt_ScaleForPixelHeight(&font_info, font_height_pixels);
     stbtt_GetFontVMetrics(&font_info, &gl_font.ascent, &gl_font.descent, &gl_font.line_gap);
+    gl_font.font_info = font_info;
 
     uint32 baked_texture_id;
     int32 first_char = 32;
@@ -723,6 +724,29 @@ void draw_sound_buffer(GL_State *gl_state,
     draw_sound_cursor(gl_state, display_output, win32_sound_output, write_cursor_position, make_vec3(1.0f, 0.0f, 0.0f));
 }
 
+real32 get_width(GL_State *gl_state, char *font_name, char *text) {
+    GL_Font font;
+    bool32 font_exists = hash_table_find(gl_state->font_table, make_string(font_name), &font);
+    assert(font_exists);
+
+    real32 width = 0;
+
+    while (*text) {
+        int32 advance, left_side_bearing;
+        stbtt_GetCodepointHMetrics(&font.font_info, *text, &advance, &left_side_bearing);
+        width += (advance) * font.scale_for_pixel_height;
+        
+        if (*(text + 1)) {
+            width += font.scale_for_pixel_height * stbtt_GetCodepointKernAdvance(&font.font_info,
+                                                                                 *text, *(text + 1));
+        }
+
+        text++;
+    }
+    
+    return width;
+}
+
 // TODO: we may just want to combine this function with make_view_matrix in math.h
 Mat4 get_view_matrix(Camera camera) {
     Mat4 model_matrix = make_rotate_matrix(camera.roll, camera.pitch, camera.heading);
@@ -781,18 +805,36 @@ void gl_draw_ui(GL_State *gl_state, UI_Manager *ui_manager, Display_Output displ
             color = make_vec3(1.0f, 0.0f, 0.0f);
         }
 
+        UI_Text_Box_Style style = text_box.style;
         gl_draw_quad(gl_state, display_output, text_box.x, text_box.y,
-                     text_box.width, text_box.height, color);
+                     style.width + style.padding_x * 2, style.height + style.padding_y * 2,
+                     color);
 
-        gl_draw_text(gl_state, display_output, text_box.font,
-                     text_box.x, text_box.y,
+        glEnable(GL_SCISSOR_TEST);
+        // TODO: should move where the text renders depending on if the cursor moves outside of the
+        //       text box's bounds.
+        glScissor((int32) (text_box.x + style.padding_x), (int32) (text_box.y + style.padding_y),
+                  (int32) style.width, (int32) style.height);
+        gl_draw_text(gl_state, display_output, style.font,
+                     text_box.x + style.padding_x, text_box.y + style.padding_y,
                      text_box.current_text, make_vec3(1.0f, 1.0f, 1.0f));
+        glDisable(GL_SCISSOR_TEST);
 
-        // TODO: draw the focus cursor (will have to use font metrics to get the width of the current text)
+        if (ui_id_equals(ui_manager->active, text_box.id)) {
+            // TODO: this cursor should actually be calculated using focus_cursor_index. we need to
+            //       split the text string on that index and draw the cursor at the width of the left
+            //       split. when we draw it, it has to be offset if it is outside the bounds of the text
+            //       box.
+            // in focus
+            real32 text_width = get_width(gl_state, style.font, text_box.current_text);
+            gl_draw_quad(gl_state, display_output,
+                         text_box.x + text_width + style.padding_x, text_box.y + style.padding_y,
+                         12.0f, style.height, make_vec3(0.0f, 1.0f, 0.0f));
+        }
     }
 }
 
-void gl_render(GL_State *gl_state, Game_State *game_state,
+void gl_render(GL_State *gl_state, Controller_State *controller_state, Game_State *game_state,
                Display_Output display_output, Win32_Sound_Output *win32_sound_output) {
     Render_State *render_state = &game_state->render_state;
 
@@ -889,12 +931,24 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
                  buf,
                  text_color);
 
-    string_format(buf, sizeof(buf), "current pressed char: %d", game_state->current_char);
+#if 0
+    String pressed_chars_string = make_string(buf, 0);
+    append_string(&pressed_chars_string, make_string("current pressed chars: "), make_string(""), sizeof(buf));
+    for (int32 i = 0; i < controller_state->num_pressed_chars; i++) {
+        char c = controller_state->pressed_chars[i];
+        char temp_buf[256];
+        string_format(temp_buf, sizeof(temp_buf), "%d ", c);
+
+        append_string(&pressed_chars_string, pressed_chars_string, make_string(temp_buf), sizeof(buf));
+    }
+
+    char output_buf[256];
+    to_char_array(pressed_chars_string, output_buf, sizeof(output_buf));
     gl_draw_text(gl_state, display_output, "times24",
                  0.0f, 200.0f,
-                 buf,
+                 output_buf,
                  text_color);
-
+#endif
 
     draw_sound_buffer(gl_state, display_output, win32_sound_output);
 
