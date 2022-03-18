@@ -6,6 +6,8 @@
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #define max(a, b) ((a) > (b) ? (a) : (b))
 
+#define EPSILON 1e-7
+
 struct Vec2 {
     union {
         real32 values[2];
@@ -888,6 +890,84 @@ inline Vec3 truncate_v4_to_v3(Vec4 vec4) {
     return result;
 }
 
+void compute_barycentric_coords(Vec3 p1, Vec3 p2, Vec3 p3,
+                                Vec3 triangle_normal, Vec3 point,
+                                Vec3 *result) {
+
+    real32 p_x, p_y, x_1, x_2, x_3, y_1, y_2, y_3;
+    if (fabs(triangle_normal.x) > fabs(triangle_normal.y) &&
+        fabs(triangle_normal.x) > fabs(triangle_normal.z)) {
+        // drop out x coord
+        p_x = point.y;
+        p_y = point.z;
+        x_1 = p1.y;
+        x_2 = p2.y;
+        x_3 = p3.y;
+        y_1 = p1.z;
+        y_2 = p2.z;
+        y_3 = p3.z;
+    } else if (fabs(triangle_normal.y) > fabs(triangle_normal.x)) {
+        // drop out y coord
+        p_x = point.x;
+        p_y = point.z;
+        x_1 = p1.x;
+        x_2 = p2.x;
+        x_3 = p3.x;
+        y_1 = p1.z;
+        y_2 = p2.z;
+        y_3 = p3.z;
+    } else {
+        // drop out z coord
+        p_x = point.x;
+        p_y = point.y;
+        x_1 = p1.x;
+        x_2 = p2.x;
+        x_3 = p3.x;
+        y_1 = p1.y;
+        y_2 = p2.y;
+        y_3 = p3.y;
+    }
+    
+    real32 denom = (y_1-y_3)*(x_2-x_3) + (y_2-y_3)*(x_3-x_1);
+    // check for triangle of zero area
+    assert(denom >= EPSILON);
+
+    real32 one_over_denom = 1.0f / denom;
+
+    real32 b1, b2, b3;
+    b1 = ((p_y-y_3)*(x_2-x_3) + (y_2-y_3)*(x_3-p_x)) * one_over_denom;
+    b2 = ((p_y-y_1)*(x_3-x_1) + (y_3-y_1)*(x_1-p_x)) * one_over_denom;
+    b3 = 1 - b1 - b2;
+
+    result->x = b1;
+    result->y = b2;
+    result->z = b3;
+}
+
+#if 0
+bool32 bary_coords_inside_triangle(Vec3 bary_coords) {
+    if (bary_coords.x >= 0 && bary_coords.x <= 1 &&
+        bary_coords.y >= 0 && bary_coords.y <= 1 &&
+        bary_coords.z >= 0 && bary_coords.z <= 1) {
+        // inside
+        return true;
+    } else {
+        return false;
+    }
+}
+#else
+bool32 bary_coords_inside_triangle(Vec3 bary_coords) {
+    if (bary_coords.x >= -0.0001f && bary_coords.x <= 1.0001f &&
+        bary_coords.y >= -0.0001f && bary_coords.y <= 1.0001f &&
+        bary_coords.z >= -0.0001f && bary_coords.z <= 1.0001f) {
+        // inside
+        return true;
+    } else {
+        return false;
+    }
+}
+#endif
+
 Vec3 x_axis = { 1.0f, 0.0f, 0.0f };
 Vec3 y_axis = { 0.0f, 1.0f, 0.0f };
 Vec3 z_axis = { 0.0f, 0.0f, 1.0f };
@@ -1040,6 +1120,44 @@ bool32 ray_intersects_plane(Ray ray, Vec3 plane_normal, real32 plane_d, real32 *
     
     *t_result = (plane_d - dot(ray.origin, plane_normal)) / denom;
     return true;
+}
+
+// TODO: replace this with the faster ray vs triangle test
+//       (ctrl-f triangle here: https://www.iquilezles.org/www/articles/intersectors/intersectors.htm)
+// TODO: may also be able to do a ray vs many triangles SIMD version of this procedure
+bool32 ray_intersects_triangle(Ray ray, Vec3 v[3], real32 *t_result) {
+    Vec3 v0_v1 = v[1] - v[0];
+    Vec3 v0_v2 = v[2] - v[0];
+
+    Vec3 n = cross(v0_v1, v0_v2);
+    real32 d = dot(n, v[0]); // this can be negative
+
+    real32 denom = dot(ray.direction, n);
+    // weird check to bail on NaN
+    if (!(denom < 0.0f)) {
+        // ray is hitting backside of triangle
+        return false;
+    }
+    if (fabs(denom) < EPSILON) {
+        // ray is parallel to triangle
+        return false;
+    }
+
+    real32 t = (d - dot(ray.origin, n)) / denom;
+
+    Vec3 intersection_point = ray.origin + t*ray.direction;
+    Vec3 bary_coords;
+    compute_barycentric_coords(v[0], v[1], v[2],
+                               n, intersection_point,
+                               &bary_coords);
+
+    bool32 inside_triangle = bary_coords_inside_triangle(bary_coords);
+    if (inside_triangle) {
+        *t_result = t;
+        return true;
+    }
+
+    return false;
 }
 
 // NOTE: we note that it's coplanar because this doesn't check for skew lines
@@ -1348,84 +1466,6 @@ inline real32 cosine_law_degrees(real32 a, real32 b, real32 c) {
     real32 radians = acosf((c*c - a*a - b*b) / (-2.0f * a * b));
     return rads_to_degs(radians);
 }
-
-void compute_barycentric_coords(Vec3 p1, Vec3 p2, Vec3 p3,
-                                Vec3 triangle_normal, Vec3 point,
-                                Vec3 *result) {
-
-    real32 p_x, p_y, x_1, x_2, x_3, y_1, y_2, y_3;
-    if (fabs(triangle_normal.x) > fabs(triangle_normal.y) &&
-        fabs(triangle_normal.x) > fabs(triangle_normal.z)) {
-        // drop out x coord
-        p_x = point.y;
-        p_y = point.z;
-        x_1 = p1.y;
-        x_2 = p2.y;
-        x_3 = p3.y;
-        y_1 = p1.z;
-        y_2 = p2.z;
-        y_3 = p3.z;
-    } else if (fabs(triangle_normal.y) > fabs(triangle_normal.x)) {
-        // drop out y coord
-        p_x = point.x;
-        p_y = point.z;
-        x_1 = p1.x;
-        x_2 = p2.x;
-        x_3 = p3.x;
-        y_1 = p1.z;
-        y_2 = p2.z;
-        y_3 = p3.z;
-    } else {
-        // drop out z coord
-        p_x = point.x;
-        p_y = point.y;
-        x_1 = p1.x;
-        x_2 = p2.x;
-        x_3 = p3.x;
-        y_1 = p1.y;
-        y_2 = p2.y;
-        y_3 = p3.y;
-    }
-    
-    real32 denom = (y_1-y_3)*(x_2-x_3) + (y_2-y_3)*(x_3-x_1);
-    // check for triangle of zero area
-    assert(denom >= 0.00001f);
-
-    real32 one_over_denom = 1.0f / denom;
-
-    real32 b1, b2, b3;
-    b1 = ((p_y-y_3)*(x_2-x_3) + (y_2-y_3)*(x_3-p_x)) * one_over_denom;
-    b2 = ((p_y-y_1)*(x_3-x_1) + (y_3-y_1)*(x_1-p_x)) * one_over_denom;
-    b3 = 1 - b1 - b2;
-
-    result->x = b1;
-    result->y = b2;
-    result->z = b3;
-}
-
-#if 0
-bool32 bary_coords_inside_triangle(Vec3 bary_coords) {
-    if (bary_coords.x >= 0 && bary_coords.x <= 1 &&
-        bary_coords.y >= 0 && bary_coords.y <= 1 &&
-        bary_coords.z >= 0 && bary_coords.z <= 1) {
-        // inside
-        return true;
-    } else {
-        return false;
-    }
-}
-#else
-bool32 bary_coords_inside_triangle(Vec3 bary_coords) {
-    if (bary_coords.x >= -0.0001f && bary_coords.x <= 1.0001f &&
-        bary_coords.y >= -0.0001f && bary_coords.y <= 1.0001f &&
-        bary_coords.z >= -0.0001f && bary_coords.z <= 1.0001f) {
-        // inside
-        return true;
-    } else {
-        return false;
-    }
-}
-#endif
 
 Vec3 compute_centroid(Ray side1_ray, Ray side2_ray, Ray side3_ray) {
     real32 denom = 1.0f / 3.0f;

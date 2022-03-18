@@ -115,6 +115,18 @@ void init_game(Memory *memory, Game_State *game_state,
     Camera *camera = &game_state->render_state.camera;
     init_camera(camera, display_output);
 
+
+    // load cube mesh
+    Mesh mesh = read_and_load_mesh(memory, (Allocator *) &memory->mesh_arena, "src/meshes/cube.mesh",
+                                   "cube", MESH_NAME_MAX_SIZE);
+    add_mesh(game_state, mesh);
+
+    // add cube entity
+    Transform transform = {};
+    transform.scale = make_vec3(1.0f, 1.0f, 1.0f);
+    Entity entity = make_entity(mesh.name, transform);
+    add_entity(game_state, entity);
+
     game_state->is_initted = true;
 }
 
@@ -131,9 +143,11 @@ void update(Memory *memory, Game_State *game_state,
         return;
     }
 
-    game_state->cursor_pos = controller_state->current_mouse;
     UI_Manager *ui_manager = &game_state->ui_manager;
+    Editor_State *editor_state = &game_state->editor_state;
 
+    //pick_entity()
+#if 0
     //game_state->left_mouse_is_down = controller_state->left_mouse.is_down;
     bool32 btn1_clicked = do_button(ui_manager, controller_state,
                                       20.0f, 50.0f, 100.0f, 30.0f,
@@ -141,12 +155,6 @@ void update(Memory *memory, Game_State *game_state,
     bool32 btn2_clicked = do_button(ui_manager, controller_state,
                                     50.0f, 360.0f, 200.0f, 30.0f,
                                     "toggle music", "times24", "toggle_music");
-
-#if 0    
-    do_text_box(ui_manager, controller_state,
-                250.0f, 360.0f, 200.0f, 30.0f,
-                "toggle music", "times24", "toggle_music");
-#endif
 
     // TODO: GetOpenFileName blocks, so we should do the open file dialog stuff on a separate thread.
     //       https://docs.microsoft.com/en-us/windows/win32/procthread/processes-and-threads
@@ -188,7 +196,7 @@ void update(Memory *memory, Game_State *game_state,
                     game_state->mesh_to_add.name, game_state->mesh_to_add.name_size,
                     style, "mesh_name_text_box");
         bool32 submit_clicked = do_button(ui_manager, controller_state,
-                                          752.0f, 360.0f, 200.0f, 30.0f,
+                                          765.0f, 360.0f, 200.0f, 30.0f,
                                           "submit", "times24", "mesh_name_text_box_submit");
         if (submit_clicked) {
             game_state->is_naming_mesh = false;
@@ -201,6 +209,8 @@ void update(Memory *memory, Game_State *game_state,
     if (btn2_clicked) {
         game_state->is_playing_music = !game_state->is_playing_music;
     }
+#endif
+
 
     fill_sound_buffer_with_audio(sound_output, game_state->is_playing_music, &game_state->music, num_samples);
 

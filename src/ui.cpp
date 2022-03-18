@@ -1,6 +1,11 @@
 #include "ui.h"
 #include "string.h"
 
+// TODO: store UI element state in a hash table, so we can do things like fading transitions.
+//       this requires some thought since we would like to remove elements from the hash table if
+//       the element is no longer being displayed. we want this while retaining the nice
+//       immediate mode API.
+
 #if 0
 void push_element(UI_Push_Buffer *buffer, UI_Element element) {
     switch (element.header.type) {
@@ -145,6 +150,7 @@ void do_text_box(UI_Manager *manager, Controller_State *controller_state,
         //        why it's happening: if you hold down a key in the textbox and you click outside of the textbox,
         //        the textbox should lose focus and text should no longer be inputted. but, for some reason it
         //        keeps focus after clicking outside of the textbox and characters keep getting inputted.
+        //        actually, i think it's because we're doing while(PeekMessage...).
         if (ui_id_equals(manager->hot, text_box.id)) {
             manager->hot = {};
         }

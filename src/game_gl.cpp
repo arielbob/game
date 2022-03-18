@@ -22,6 +22,19 @@
 // TODO: undoing
 // TODO: translation/rotation gizmo for meshes
 
+// TODO: create an entity list
+// TODO: create a mesh list
+// TODO: mesh picking (ray vs triangle, convert cursor to ray)
+
+/*
+you select an entity
+some information of the entity is displayed
+- position
+- rotation
+- entity name
+- mesh name
+ */
+
 /*
 This uses a left-handed coordinate system: positive x is right, positive y is up, positive z is into the screen.
 Use your left hand to figure out the direction of the cross product of two vectors.
@@ -904,13 +917,16 @@ void gl_render(GL_State *gl_state, Controller_State *controller_state, Game_Stat
                    make_vec3(1.0f, 1.0f, 1.0f));
 #endif
 
+#if 0
     Vec3 text_color = make_vec3(1.0f, 1.0f, 1.0f);
     gl_draw_text(gl_state, display_output, "times32",
                  200.0f, display_output.height / 3.0f,
                  "In the midst of winter, I found there was, within me, an invincible summer.\n\nAnd that makes me happy. For it says that no matter how hard the world pushes against me,\nwithin me, there's something stronger - something better, pushing right back.", 
                  text_color);
+#endif
 
     // TODO: create a nicer function for this
+#if 0
     char buf[128];
     string_format(buf, sizeof(buf), "cursor pos: (%d, %d)",
                   (int32) game_state->cursor_pos.x, (int32) game_state->cursor_pos.y);
@@ -930,6 +946,7 @@ void gl_render(GL_State *gl_state, Controller_State *controller_state, Game_Stat
                  0.0f, 100.0f,
                  buf,
                  text_color);
+#endif
 
 #if 0
     String pressed_chars_string = make_string(buf, 0);
@@ -950,11 +967,13 @@ void gl_render(GL_State *gl_state, Controller_State *controller_state, Game_Stat
                  text_color);
 #endif
 
-    draw_sound_buffer(gl_state, display_output, win32_sound_output);
+    // draw_sound_buffer(gl_state, display_output, win32_sound_output);
 
+/*
     Transform transform = { make_vec3(-.25f, -.25f, -0.25f),
                             t*50.0f, t*50.0f, 0.0f,
                             make_vec3(0.5f, 0.5f, 0.5f) };
+*/
     // gl_draw_mesh(gl_state, render_state, "cube", "basic_3d", transform);
 
     gl_draw_ui(gl_state, &game_state->ui_manager, display_output);

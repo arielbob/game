@@ -3,6 +3,7 @@
 
 #include "ui.h"
 #include "mesh.h"
+#include "editor.h"
 
 #define MAX_PRESSED_CHARS 256
 
@@ -108,6 +109,7 @@ struct Render_State {
 };
 
 struct Entity {
+
     char *mesh_name;
     Transform transform;
 };
@@ -122,7 +124,8 @@ struct Game_State {
     bool32 is_playing_music; // debugging
     UI_Manager ui_manager;
     char current_char; // debugging
-    Vec2 cursor_pos; // debugging
+
+    Editor_State editor_state;
 
     bool32 is_naming_mesh;
     Mesh mesh_to_add;

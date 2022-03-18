@@ -662,6 +662,26 @@ int WinMain(HINSTANCE hInstance,
             HINSTANCE hPrevInstance,
             LPSTR lpCmdLine,
             int nShowCmd) {
+    
+    Ray ray = make_ray(make_vec3(0.0f, 0.0f, -1.1f),
+                       make_vec3(1.0f, 0.0f, 0.0f));
+    Vec3 triangle_vertices[3] = {
+        make_vec3(1.0f, 0.0f, 0.0f),
+        make_vec3(1.0f, 1.0f, 0.0f),
+#if 1
+        // normal is { -1, 0, 0 }
+        make_vec3(1.0f, 0.0f, -1.0f),
+#else
+        // normal is { 1, 0, 0 }
+        make_vec3(1.0f, 0.0f, 1.0f),
+#endif
+    };
+    real32 t_result;
+    bool32 intersects = ray_intersects_triangle(ray, triangle_vertices, &t_result);
+    if (intersects) {
+        Vec3 intersect_point = ray.origin + t_result * ray.direction;
+        debug_print("test");
+    }
 #if 0
     char path_result[MAX_PATH];
     // DWORD path_length = GetFullPathNameA("C:/dghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijklasdfghijkl", MAX_PATH, path_result, NULL);
