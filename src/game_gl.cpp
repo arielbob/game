@@ -1002,13 +1002,28 @@ void gl_render(GL_State *gl_state, Controller_State *controller_state, Game_Stat
 */
     // gl_draw_mesh(gl_state, render_state, "cube", "basic_3d", transform);
 
-    char buf[128];
+    char buf[256];
     string_format(buf, sizeof(buf), "selected entity index: %d",
                   editor_state->selected_entity_index);
     gl_draw_text(gl_state, display_output, "times24",
-                 0.0f, 15.0f,
+                 0.0f, 370.0f,
                  buf,
                  text_color);
+
+    if (editor_state->selected_entity_index >= 0) {
+        Entity entity = game_state->entities[editor_state->selected_entity_index];
+        Transform transform = entity.transform;
+        char *mesh_name = game_state->meshes[entity.mesh_index].name;
+        string_format(buf, sizeof(buf), "mesh name: %s\n\nposition: (%f, %f, %f)\n\nheading: %f\npitch: %f\nroll: %f\n\nscale: (%f, %f, %f)",
+                      mesh_name,
+                      transform.position.x, transform.position.y, transform.position.z,
+                      transform.heading, transform.pitch, transform.roll,
+                      transform.scale.x, transform.scale.y, transform.scale.z);
+        gl_draw_text(gl_state, display_output, "times24",
+                     0.0f, 300.0f,
+                     buf,
+                     text_color);
+    }
 
     gl_draw_ui(gl_state, &game_state->ui_manager, display_output);
 }

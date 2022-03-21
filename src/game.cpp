@@ -151,12 +151,21 @@ void init_game(Memory *memory, Game_State *game_state,
                               "suzanne", MESH_NAME_MAX_SIZE);
     add_mesh(game_state, mesh);
 
-    // add cube entity
+    // add entities
     Transform transform = {};
     transform.scale = make_vec3(1.0f, 1.0f, 1.0f);
     transform.position = make_vec3(1.0f, 0.0f, 0.0f);
     transform.heading = 45.0f;
     Entity entity = make_entity(game_state, "suzanne", transform);
+    add_entity(game_state, entity);
+
+    transform = {};
+    transform.scale = make_vec3(0.5f, 1.0f, 1.0f);
+    transform.position = make_vec3(-2.0f, 1.0f, 0.0f);
+    transform.heading = 45.0f;
+    transform.pitch = 30.0f;
+    transform.roll = 10.0f;
+    entity = make_entity(game_state, "cube", transform);
     add_entity(game_state, entity);
 
     game_state->is_initted = true;
@@ -227,12 +236,7 @@ void update(Memory *memory, Game_State *game_state,
                        normalize(cursor_world_space - render_state->camera.position) };
     
     if (was_clicked(controller_state->left_mouse)) {
-        // TODO: finish this - add this property to Game_State and display text saying the selected entity index
         int32 picked_entity_index = pick_entity(game_state, cursor_ray);
-        if (picked_entity_index >= 0) {
-            //editor_state->selected_entity_index = picked_entity_index;
-        }
-        
         editor_state->selected_entity_index = picked_entity_index;
     }
     
@@ -247,7 +251,6 @@ void update(Memory *memory, Game_State *game_state,
     editor_state->cursor_ray.direction = normalize(truncate_v4_to_v3(cursor_world_space) - camera.position);
 #endif
 
-    //pick_entity()
 #if 0
     //game_state->left_mouse_is_down = controller_state->left_mouse.is_down;
     bool32 btn1_clicked = do_button(ui_manager, controller_state,
