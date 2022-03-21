@@ -74,8 +74,24 @@ Audio_Source make_audio_source(uint32 total_samples, uint32 current_sample,
     return audio_source;
 }
 
-Entity make_entity(char *mesh_name, Transform transform) {
-    Entity entity = { mesh_name, transform };
+int32 get_mesh_index(Game_State *game_state, char *mesh_name_to_find) {
+    int32 num_meshes = game_state->num_meshes;
+    Mesh *meshes = game_state->meshes;
+
+    String mesh_name_to_find_string = make_string(mesh_name_to_find);
+    for (int32 i = 0; i < num_meshes; i++) {
+        String mesh_name = make_string(meshes[i].name);
+        if (string_equals(mesh_name, mesh_name_to_find_string)) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+Entity make_entity(Game_State *game_state, char *mesh_name, Transform transform) {
+    int32 mesh_index = get_mesh_index(game_state, mesh_name);
+    Entity entity = { mesh_index, transform };
     return entity;
 }
 
@@ -101,7 +117,6 @@ void init_camera(Camera *camera, Display_Output *display_output) {
 }
 
 void init_game(Memory *memory, Game_State *game_state,
-               Display_Output *display_output,
                Sound_Output *sound_output, uint32 num_samples) {
     Arena_Allocator *game_data_arena = &memory->game_data;
     File_Data music_file_data = platform_open_and_read_file((Allocator *) game_data_arena,
@@ -113,18 +128,35 @@ void init_game(Memory *memory, Game_State *game_state,
                                0, 1.0f, true, (int16 *) &wav_data->data);
 
     Camera *camera = &game_state->render_state.camera;
+    Display_Output *display_output = &game_state->render_state.display_output;
+
     init_camera(camera, display_output);
 
-
-    // load cube mesh
+// NOTE: don't use these meshes for testing - they don't have actual normals...
+#if 0
     Mesh mesh = read_and_load_mesh(memory, (Allocator *) &memory->mesh_arena, "src/meshes/cube.mesh",
                                    "cube", MESH_NAME_MAX_SIZE);
+    add_mesh(game_state, mesh);
+    mesh = read_and_load_mesh(memory, (Allocator *) &memory->mesh_arena, "src/meshes/triangle.mesh",
+                              "triangle", MESH_NAME_MAX_SIZE);
+    add_mesh(game_state, mesh);
+#endif
+
+    Mesh mesh;
+    mesh = read_and_load_mesh(memory, (Allocator *) &memory->mesh_arena, "blender/cube.mesh",
+                              "cube", MESH_NAME_MAX_SIZE);
+    add_mesh(game_state, mesh);
+
+    mesh = read_and_load_mesh(memory, (Allocator *) &memory->mesh_arena, "blender/suzanne.mesh",
+                              "suzanne", MESH_NAME_MAX_SIZE);
     add_mesh(game_state, mesh);
 
     // add cube entity
     Transform transform = {};
     transform.scale = make_vec3(1.0f, 1.0f, 1.0f);
-    Entity entity = make_entity(mesh.name, transform);
+    transform.position = make_vec3(1.0f, 0.0f, 0.0f);
+    transform.heading = 45.0f;
+    Entity entity = make_entity(game_state, "suzanne", transform);
     add_entity(game_state, entity);
 
     game_state->is_initted = true;
@@ -134,17 +166,86 @@ bool32 was_clicked(Controller_Button_State button_state) {
     return (button_state.is_down && !button_state.was_down);
 }
 
+
+Mat4 get_view_matrix(Camera camera) {
+    Mat4 model_matrix = make_rotate_matrix(camera.roll, camera.pitch, camera.heading);
+    Vec3 transformed_forward = truncate_v4_to_v3(model_matrix * make_vec4(camera.forward, 1.0f));
+    Vec3 transformed_right = truncate_v4_to_v3(model_matrix * make_vec4(camera.right, 1.0f));
+    Vec3 transformed_up = cross(transformed_forward, transformed_right);
+    // we calculate a new right vector to correct for any error to ensure that our vectors form an
+    // orthonormal basis
+    Vec3 corrected_right = cross(transformed_up, transformed_forward);
+
+    Vec3 forward = normalize(transformed_forward);
+    Vec3 right = normalize(corrected_right);
+    Vec3 up = normalize(transformed_up);
+
+    return get_view_matrix(camera.position, forward, right, up);
+}
+
+Vec3 cursor_pos_to_world_space(Vec2 cursor_pos, Render_State *render_state) {
+    Display_Output display_output = render_state->display_output;
+    
+    Mat4 cpv_matrix_inverse = inverse(render_state->cpv_matrix);
+
+    Vec4 clip_space_coordinates = { 2.0f * (cursor_pos.x / display_output.width) - 1.0f,
+                                    2.0f * (cursor_pos.y / display_output.height) - 1.0f,
+                                    -1.0f, 1.0f };
+
+    Vec4 cursor_world_space_homogeneous = cpv_matrix_inverse * clip_space_coordinates;
+    Vec3 cursor_world_space = homogeneous_divide(cursor_world_space_homogeneous);
+
+    return cursor_world_space;
+}
+
+void update_render_state(Render_State *render_state) {
+    Camera camera = render_state->camera;
+    Mat4 view_matrix = get_view_matrix(camera);
+    Mat4 perspective_clip_matrix = make_perspective_clip_matrix(camera.fov_x_degrees, camera.aspect_ratio,
+                                                                camera.near, camera.far);
+    render_state->cpv_matrix = perspective_clip_matrix * view_matrix;
+}
+
 void update(Memory *memory, Game_State *game_state,
             Controller_State *controller_state,
-            Display_Output *display_output,
             Sound_Output *sound_output, uint32 num_samples) {
+    Display_Output *display_output = &game_state->render_state.display_output;
     if (!game_state->is_initted) {
-        init_game(memory, game_state, display_output, sound_output, num_samples);
+        init_game(memory, game_state, sound_output, num_samples);
         return;
     }
 
     UI_Manager *ui_manager = &game_state->ui_manager;
     Editor_State *editor_state = &game_state->editor_state;
+    Render_State *render_state = &game_state->render_state;
+
+    update_render_state(render_state);
+
+    Vec3 cursor_world_space = cursor_pos_to_world_space(controller_state->current_mouse,
+                                                        &game_state->render_state);
+    Ray cursor_ray = { cursor_world_space,
+                       normalize(cursor_world_space - render_state->camera.position) };
+    
+    if (was_clicked(controller_state->left_mouse)) {
+        // TODO: finish this - add this property to Game_State and display text saying the selected entity index
+        int32 picked_entity_index = pick_entity(game_state, cursor_ray);
+        if (picked_entity_index >= 0) {
+            //editor_state->selected_entity_index = picked_entity_index;
+        }
+        
+        editor_state->selected_entity_index = picked_entity_index;
+    }
+    
+
+#if 0
+    Vec4 cursor_world_space = cursor_pos_to_world_space(game_state->cursor_pos,
+                                                        display_output.width, display_output.height,
+                                                        &perspective_clip_matrix_inverse,
+                                                        &view_matrix_inverse);
+
+    editor_state->last_cursor_ray = editor_state->cursor_ray;
+    editor_state->cursor_ray.direction = normalize(truncate_v4_to_v3(cursor_world_space) - camera.position);
+#endif
 
     //pick_entity()
 #if 0

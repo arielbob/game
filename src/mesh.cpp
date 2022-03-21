@@ -488,7 +488,7 @@ Mesh load_mesh(File_Data file_data, Allocator *allocator) {
 }
 
 Vec3 get_vertex_from_index(Mesh *mesh, uint32 index) {
-    assert(index < mesh->indices_size);
+    assert(index < mesh->num_vertices);
 
     real32 x = mesh->data[mesh->vertex_stride * index];
     real32 y = mesh->data[mesh->vertex_stride * index + 1];

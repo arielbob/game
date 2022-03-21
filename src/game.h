@@ -104,13 +104,13 @@ struct Camera {
 };
 
 struct Render_State {
+    Display_Output display_output;
     Camera camera;
     Mat4 cpv_matrix;
 };
 
 struct Entity {
-
-    char *mesh_name;
+    int32 mesh_index;
     Transform transform;
 };
 
@@ -119,16 +119,18 @@ struct Entity {
 
 struct Game_State {
     bool32 is_initted;
+
     Render_State render_state;
+    Editor_State editor_state;
+
     Audio_Source music;
     bool32 is_playing_music; // debugging
     UI_Manager ui_manager;
     char current_char; // debugging
 
-    Editor_State editor_state;
-
     bool32 is_naming_mesh;
     Mesh mesh_to_add;
+
     int32 num_meshes;
     Mesh meshes[MAX_MESHES];
 

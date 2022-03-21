@@ -483,6 +483,13 @@ real32 determinant(real32 m11, real32 m12, real32 m13,
     return a + b + c;
 }
 
+Mat4 transpose(Mat4 m) {
+    return make_mat4(m.col1.x, m.col1.y, m.col1.z, m.col1.w,
+                     m.col2.x, m.col2.y, m.col2.z, m.col2.w,
+                     m.col3.x, m.col3.y, m.col3.z, m.col3.w,
+                     m.col4.x, m.col4.y, m.col4.z, m.col4.w);
+}
+
 Mat4 classical_adjoint(Mat4 m) {
     real32 m11 = m.col1.x;
     real32 m12 = m.col2.x;
@@ -828,7 +835,7 @@ Mat4 make_translate_matrix(Vec3 offset) {
     return result;
 }
 
-Mat4 make_view_matrix(Vec3 eye_pos, Vec3 forward, Vec3 right, Vec3 up) {
+Mat4 get_view_matrix(Vec3 eye_pos, Vec3 forward, Vec3 right, Vec3 up) {
     // NOTE: we assume that forward, right, and up form an orthonormal basis
     Mat4 result = {};
 
@@ -930,7 +937,7 @@ void compute_barycentric_coords(Vec3 p1, Vec3 p2, Vec3 p3,
     
     real32 denom = (y_1-y_3)*(x_2-x_3) + (y_2-y_3)*(x_3-x_1);
     // check for triangle of zero area
-    assert(denom >= EPSILON);
+    assert(fabs(denom) >= EPSILON);
 
     real32 one_over_denom = 1.0f / denom;
 
@@ -1124,6 +1131,7 @@ bool32 ray_intersects_plane(Ray ray, Vec3 plane_normal, real32 plane_d, real32 *
 
 // TODO: replace this with the faster ray vs triangle test
 //       (ctrl-f triangle here: https://www.iquilezles.org/www/articles/intersectors/intersectors.htm)
+//       detailed explanation of fast algorithm here: https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/moller-trumbore-ray-triangle-intersection
 // TODO: may also be able to do a ray vs many triangles SIMD version of this procedure
 bool32 ray_intersects_triangle(Ray ray, Vec3 v[3], real32 *t_result) {
     Vec3 v0_v1 = v[1] - v[0];
@@ -1372,29 +1380,6 @@ inline bool32 is_zero(Vec3 v) {
 
 inline bool32 is_zero(Vec4 v) {
     return (v.x == 0 && v.y == 0 && v.z == 0 && v.w == 0);
-}
-
-// TODO: maybe just return the Vec3..
-// NOTE: this returns the cursor position on the near plane, in world space.
-//       i.e. the near plane's position in world space is taken into account.
-//       so if you want to get the displacement vector of the cursor, then you have to subtract the
-//       0,0 near plane world space coordinates (camera.position + camera.z_near*camera.direction)
-//       from the cursor position returned from this procedure.
-Vec4 cursor_pos_to_world_space(Vec2 cursor_pos, int32 display_width, int32 display_height,
-                               Mat4 *perspective_clip_matrix_inv, Mat4 *view_matrix_inv) {
-    int32 display_half_width = display_width / 2;
-    int32 display_half_height = display_height / 2;
-    
-    Vec4 clip_space_coordinates = { cursor_pos.x / display_half_width,
-                                    cursor_pos.y / display_half_height,
-                                    -1.0f, 1.0f };
-
-    Vec4 cursor_view_space_homogeneous = *perspective_clip_matrix_inv * clip_space_coordinates;
-    Vec3 cursor_view_space = homogeneous_divide(cursor_view_space_homogeneous);
-
-    Vec4 cursor_world_space = *view_matrix_inv * make_vec4(cursor_view_space, 1.0f);
-
-    return cursor_world_space;
 }
 
 Mat4 get_rotate_matrix_from_euler_angles(real32 roll, real32 pitch, real32 heading) {

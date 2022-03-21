@@ -35,6 +35,7 @@
 #include "memory.cpp"
 #include "mesh.cpp"
 #include "ui.cpp"
+#include "editor.cpp"
 #include "game.cpp"
 
 global_variable int64 perf_counter_frequency;
@@ -826,6 +827,7 @@ int WinMain(HINSTANCE hInstance,
                 // TODO: we may want to store this in memory
                 Game_State game_state = {};
                 game_state.is_initted = false;
+                game_state.render_state.display_output = initial_display_output;
 
                 Controller_State controller_state = {};
                 
@@ -838,6 +840,7 @@ int WinMain(HINSTANCE hInstance,
                     controller_state.num_pressed_chars = 0;
 
                     Display_Output game_display_output = { display_output.width, display_output.height };
+                    game_state.render_state.display_output = game_display_output;
                     controller_state.last_mouse = controller_state.current_mouse;
                     controller_state.current_mouse = platform_get_cursor_pos(game_display_output);
 
@@ -935,7 +938,7 @@ int WinMain(HINSTANCE hInstance,
 
                     update(&memory, &game_state,
                            &controller_state,
-                           &game_display_output, &game_sound_output, num_samples);
+                           &game_sound_output, num_samples);
 
                     fill_sound_buffer(&sound_output, game_sound_output.sound_buffer, num_samples);
                     if (!sound_output.is_playing) {

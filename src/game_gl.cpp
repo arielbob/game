@@ -10,6 +10,8 @@
 // TODO (done): mesh loading
 // TODO (done): mesh rendering
 // TODO (done): basic ui buttons
+// TODO (done): mesh picking (ray vs triangle, convert cursor to ray)
+
 // TODO: typing in text box
 // TODO: game should have different Entity structs that have platform-independent data
 //       that is then used by game_gl to render that data. for example: Text_Entity, which
@@ -24,7 +26,7 @@
 
 // TODO: create an entity list
 // TODO: create a mesh list
-// TODO: mesh picking (ray vs triangle, convert cursor to ray)
+// TODO: replace entity and mesh arrays in game_state with free lists
 
 /*
 you select an entity
@@ -255,6 +257,33 @@ void gl_draw_mesh(GL_State *gl_state, Render_State *render_state,
     gl_set_uniform_vec3(shader_id, "color", &color);
 
     glDrawElements(GL_TRIANGLES, gl_mesh.num_triangles * 3, GL_UNSIGNED_INT, 0);
+
+    glUseProgram(0);
+    glBindVertexArray(0);
+}
+
+void gl_draw_wireframe(GL_State *gl_state, Render_State *render_state,
+                             char *mesh_name, Transform transform) {
+    uint32 shader_id;
+    uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("debug_wireframe"), &shader_id);
+    assert(shader_exists);
+    glUseProgram(shader_id);
+
+    GL_Mesh gl_mesh;
+    uint32 mesh_exists = hash_table_find(gl_state->mesh_table, make_string(mesh_name), &gl_mesh);
+    assert(mesh_exists);
+    glBindVertexArray(gl_mesh.vao);
+
+    Mat4 model_matrix = get_model_matrix(transform);
+    gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
+    gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->cpv_matrix);
+
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glDrawElements(GL_TRIANGLES, gl_mesh.num_triangles * 3, GL_UNSIGNED_INT, 0);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+    glUseProgram(0);
+    glBindVertexArray(0);
 }
 
 void copy_aligned_quad_to_arrays(stbtt_aligned_quad q, real32 *vertices, real32 *uvs) {
@@ -474,6 +503,11 @@ void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) 
     uint32 basic_3d_shader_id = gl_load_shader(memory, "src/shaders/basic_3d.vs", "src/shaders/basic_3d.fs");
     hash_table_add(&gl_state->shader_ids_table, make_string("basic_3d"), basic_3d_shader_id);
 
+    uint32 debug_wireframe_shader_id = gl_load_shader(memory,
+                                                      "src/shaders/debug_wireframe.vs",
+                                                      "src/shaders/debug_wireframe.fs");
+    hash_table_add(&gl_state->shader_ids_table, make_string("debug_wireframe"), debug_wireframe_shader_id);
+
     // NOTE: fonts
     gl_init_font(memory, gl_state, "c:/windows/fonts/times.ttf", "times32", 32.0f, 512, 512);
     gl_init_font(memory, gl_state, "c:/windows/fonts/times.ttf", "times24", 24.0f, 512, 512);
@@ -482,6 +516,15 @@ void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) 
     //Mesh cube_mesh = read_and_load_mesh(memory, (Allocator *) &memory->mesh_arena, "src/meshes/cube.mesh", "cube");
     //GL_Mesh gl_cube_mesh = gl_load_mesh(gl_state, cube_mesh);
     //hash_table_add(&gl_state->mesh_table, "cube", gl_cube_mesh);
+
+    // NOTE: disable culling for now, just for easier debugging...
+#if 0
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+    glFrontFace(GL_CW);
+#endif
+
+    glEnable(GL_DEPTH_TEST);  
 }
 
 // NOTE: This draws a triangle that has its bottom left corner at position.
@@ -760,23 +803,6 @@ real32 get_width(GL_State *gl_state, char *font_name, char *text) {
     return width;
 }
 
-// TODO: we may just want to combine this function with make_view_matrix in math.h
-Mat4 get_view_matrix(Camera camera) {
-    Mat4 model_matrix = make_rotate_matrix(camera.roll, camera.pitch, camera.heading);
-    Vec3 transformed_forward = truncate_v4_to_v3(model_matrix * make_vec4(camera.forward, 1.0f));
-    Vec3 transformed_right = truncate_v4_to_v3(model_matrix * make_vec4(camera.right, 1.0f));
-    Vec3 transformed_up = cross(transformed_forward, transformed_right);
-    // we calculate a new right vector to correct for any error to ensure that our vectors form an
-    // orthonormal basis
-    Vec3 corrected_right = cross(transformed_up, transformed_forward);
-
-    Vec3 forward = normalize(transformed_forward);
-    Vec3 right = normalize(corrected_right);
-    Vec3 up = normalize(transformed_up);
-
-    return make_view_matrix(camera.position, forward, right, up);
-}
-
 // TODO: we could, along with gl_draw_quad, replace the model_matrix stuff with just updating the VBO.
 //       the issue with this is that it could make it harder for us to do more interesting transformations like
 //       rotation.
@@ -865,26 +891,24 @@ void gl_render(GL_State *gl_state, Controller_State *controller_state, Game_Stat
         }
     }
 
-    // TODO: add entities that have a mesh name.
-    //       we add entities in game.cpp and using their mesh name, we render them in game_gl.cpp.
-
-    Camera camera = render_state->camera;
-    Mat4 view_matrix = get_view_matrix(camera);
-    Mat4 perspective_clip_matrix = make_perspective_clip_matrix(camera.fov_x_degrees, camera.aspect_ratio,
-                                                                camera.near, camera.far);
-    render_state->cpv_matrix = perspective_clip_matrix * view_matrix;
-
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLineWidth(1.0f);
 
     local_persist real32 t = 0.0f;
     t += 0.01f;
 
+    Editor_State *editor_state = &game_state->editor_state;
+
     for (int32 i = 0; i < game_state->num_entities; i++) {
         Entity *entity = &game_state->entities[i];
+        char *mesh_name = game_state->meshes[entity->mesh_index].name;
         gl_draw_mesh(gl_state, render_state,
-                     entity->mesh_name, "basic_3d", entity->transform);
+                   mesh_name, "basic_3d", entity->transform);
+
+        if (editor_state->selected_entity_index == i) {
+            gl_draw_wireframe(gl_state, render_state, mesh_name, entity->transform);
+        }
     }
 
 #if 0
@@ -917,8 +941,10 @@ void gl_render(GL_State *gl_state, Controller_State *controller_state, Game_Stat
                    make_vec3(1.0f, 1.0f, 1.0f));
 #endif
 
-#if 0
     Vec3 text_color = make_vec3(1.0f, 1.0f, 1.0f);
+
+#if 0
+    
     gl_draw_text(gl_state, display_output, "times32",
                  200.0f, display_output.height / 3.0f,
                  "In the midst of winter, I found there was, within me, an invincible summer.\n\nAnd that makes me happy. For it says that no matter how hard the world pushes against me,\nwithin me, there's something stronger - something better, pushing right back.", 
@@ -975,6 +1001,14 @@ void gl_render(GL_State *gl_state, Controller_State *controller_state, Game_Stat
                             make_vec3(0.5f, 0.5f, 0.5f) };
 */
     // gl_draw_mesh(gl_state, render_state, "cube", "basic_3d", transform);
+
+    char buf[128];
+    string_format(buf, sizeof(buf), "selected entity index: %d",
+                  editor_state->selected_entity_index);
+    gl_draw_text(gl_state, display_output, "times24",
+                 0.0f, 15.0f,
+                 buf,
+                 text_color);
 
     gl_draw_ui(gl_state, &game_state->ui_manager, display_output);
 }
