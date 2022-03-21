@@ -151,12 +151,19 @@ void init_game(Memory *memory, Game_State *game_state,
                               "suzanne", MESH_NAME_MAX_SIZE);
     add_mesh(game_state, mesh);
 
+    mesh = read_and_load_mesh(memory, (Allocator *) &memory->mesh_arena, "blender/gizmo_arrow.mesh",
+        "gizmo_arrow", MESH_NAME_MAX_SIZE);
+    add_mesh(game_state, mesh);
+
     // add entities
     Transform transform = {};
+    Entity entity;
+
+#if 0
     transform.scale = make_vec3(1.0f, 1.0f, 1.0f);
     transform.position = make_vec3(1.0f, 0.0f, 0.0f);
     transform.heading = 45.0f;
-    Entity entity = make_entity(game_state, "suzanne", transform);
+    entity = make_entity(game_state, "suzanne", transform);
     add_entity(game_state, entity);
 
     transform = {};
@@ -166,6 +173,14 @@ void init_game(Memory *memory, Game_State *game_state,
     transform.pitch = 30.0f;
     transform.roll = 10.0f;
     entity = make_entity(game_state, "cube", transform);
+    add_entity(game_state, entity);
+#endif
+
+    transform = {};
+    transform.heading = 90.0f;
+    transform.scale = make_vec3(1.0f, 1.0f, 1.0f);
+    transform.position = make_vec3(0.0f, 0.0f, 0.0f);
+    entity = make_entity(game_state, "gizmo_arrow", transform);
     add_entity(game_state, entity);
 
     game_state->is_initted = true;

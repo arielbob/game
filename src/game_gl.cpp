@@ -11,6 +11,18 @@
 // TODO (done): mesh rendering
 // TODO (done): basic ui buttons
 // TODO (done): mesh picking (ray vs triangle, convert cursor to ray)
+// TODO: translation/rotation gizmo for meshes
+// TODO: something about the blender export script is messed up...
+//       i think it has to do with the winding order. we need to enforce the winding order of vertices.
+//       the winding order is messing with our ray vs triangle test, since we reject hits on the backside.
+//       we could just accept those hits, but i would prefer the script issue is fixed since it may cause other
+//       issues.
+// TODO: something is messed up with how the normals are stored by the blender script as well.
+//       you can see this with the wireframe view. since the wireframe offsets vertices along their normals,
+//       when the normals are broken, the wireframe looks weird. i think the winding order might be affecting
+//       the normals in blender. but it doesn't seem like it, since when you view the normals, they look fine.
+//       it most likely has to do with the script, since when rendering the wireframe, we just use the normals
+//       directly from the mesh data. we don't calculate face normals like we do when doing ray vs triangle.
 
 // TODO: typing in text box
 // TODO: game should have different Entity structs that have platform-independent data
@@ -22,7 +34,6 @@
 // TODO: nicer button rendering (center the text)
 // TODO: level loading
 // TODO: undoing
-// TODO: translation/rotation gizmo for meshes
 
 // TODO: create an entity list
 // TODO: create a mesh list
@@ -306,6 +317,13 @@ void copy_aligned_quad_to_arrays(stbtt_aligned_quad q, real32 *vertices, real32 
     uvs[7] = q.t1;
 }
 
+// TODO: we may want to reconsider our 2D coordinate-space and maybe have y=0 start at the top and increase
+//       going downwards. this is because right now if we wanted to draw some text starting from the top
+//       and going downwards, we would have to first compute the height of the text, then draw it at
+//       window_height - text_height. although.. the same can be said if we were to use a y=0 at top
+//       coordinate-system for drawing text from the bottom. actually, that's not necessarily true. text
+//       always grows downwards, so the benefit of starting at the top is that we can always at least see
+//       the start of the text. idk.
 void gl_draw_text(GL_State *gl_state,
                   Display_Output display_output,
                   char *font_name,

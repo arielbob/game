@@ -897,7 +897,8 @@ inline Vec3 truncate_v4_to_v3(Vec4 vec4) {
     return result;
 }
 
-void compute_barycentric_coords(Vec3 p1, Vec3 p2, Vec3 p3,
+// returns false if triangle is degenerate, true otherwise
+bool32 compute_barycentric_coords(Vec3 p1, Vec3 p2, Vec3 p3,
                                 Vec3 triangle_normal, Vec3 point,
                                 Vec3 *result) {
 
@@ -936,19 +937,24 @@ void compute_barycentric_coords(Vec3 p1, Vec3 p2, Vec3 p3,
     }
     
     real32 denom = (y_1-y_3)*(x_2-x_3) + (y_2-y_3)*(x_3-x_1);
+
     // check for triangle of zero area
-    assert(fabs(denom) >= EPSILON);
+    if (fabs(denom) >= EPSILON) {
+        real32 one_over_denom = 1.0f / denom;
 
-    real32 one_over_denom = 1.0f / denom;
+        real32 b1, b2, b3;
+        b1 = ((p_y-y_3)*(x_2-x_3) + (y_2-y_3)*(x_3-p_x)) * one_over_denom;
+        b2 = ((p_y-y_1)*(x_3-x_1) + (y_3-y_1)*(x_1-p_x)) * one_over_denom;
+        b3 = 1 - b1 - b2;
 
-    real32 b1, b2, b3;
-    b1 = ((p_y-y_3)*(x_2-x_3) + (y_2-y_3)*(x_3-p_x)) * one_over_denom;
-    b2 = ((p_y-y_1)*(x_3-x_1) + (y_3-y_1)*(x_1-p_x)) * one_over_denom;
-    b3 = 1 - b1 - b2;
+        result->x = b1;
+        result->y = b2;
+        result->z = b3;
 
-    result->x = b1;
-    result->y = b2;
-    result->z = b3;
+        return true;
+    }
+
+    return false;
 }
 
 #if 0
@@ -1142,10 +1148,12 @@ bool32 ray_intersects_triangle(Ray ray, Vec3 v[3], real32 *t_result) {
 
     real32 denom = dot(ray.direction, n);
     // weird check to bail on NaN
+#if 1
     if (!(denom < 0.0f)) {
         // ray is hitting backside of triangle
         return false;
     }
+#endif
     if (fabs(denom) < EPSILON) {
         // ray is parallel to triangle
         return false;
@@ -1155,9 +1163,11 @@ bool32 ray_intersects_triangle(Ray ray, Vec3 v[3], real32 *t_result) {
 
     Vec3 intersection_point = ray.origin + t*ray.direction;
     Vec3 bary_coords;
-    compute_barycentric_coords(v[0], v[1], v[2],
-                               n, intersection_point,
-                               &bary_coords);
+    bool32 triangle_is_valid = compute_barycentric_coords(v[0], v[1], v[2],
+                                                          n, intersection_point,
+                                                          &bary_coords);
+
+    if (!triangle_is_valid) return false;
 
     bool32 inside_triangle = bary_coords_inside_triangle(bary_coords);
     if (inside_triangle) {

@@ -17,7 +17,7 @@ void main() {
     normal = normalize(vec3(transpose(inverse(model_matrix)) * vec4(vertex_normal, 0.0)));
 
     vec4 world_position = model_matrix * vec4(pos, 1.0);
-    vec4 offset_position = world_position + vec4(normal * 0.005, 0.0);
+    vec4 offset_position = world_position + vec4(normal * 0.1, 0.0);
 
     frag_pos = vec3(model_matrix * vec4(pos, 1.0));
     gl_Position = cpv_matrix * offset_position;
