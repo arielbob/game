@@ -2,6 +2,11 @@ import bpy
 import bmesh
 from bpy.types import PropertyGroup
 
+class Vertex:
+    def __init__(self, co, normal):
+        self.co = co
+        self.normal = normal
+
 def game_export(context, filename, replace_existing):
 
     temp_output_file = None
@@ -13,7 +18,8 @@ def game_export(context, filename, replace_existing):
         open_flag = 'x'
     
     try:
-        temp_output_file = open(filename, open_flag)
+        filepath = bpy.path.abspath('//' + filename)
+        temp_output_file = open(filepath, open_flag)
     except FileExistsError:
         show_message_box('File already exists', 'Error', 'ERROR')
         return
@@ -22,9 +28,9 @@ def game_export(context, filename, replace_existing):
     bpy.ops.object.mode_set(mode='OBJECT')
     mesh_copy = context.active_object.copy()
 
-    bpy.ops.object.make_single_user(object=True, obdata=True, material=True, animation=False)
+    #bpy.ops.object.make_single_user(object=True, obdata=True, material=True, animation=False)
     
-    mesh_copy_data = mesh_copy.data
+    mesh_copy_data = mesh_copy.data.copy()
     
     # Get a BMesh representation
     bm = bmesh.new()
@@ -35,8 +41,11 @@ def game_export(context, filename, replace_existing):
     bm.to_mesh(mesh_copy_data)
     bm.free()
     
-    
-    vertices_list = [v for v in mesh_copy_data.vertices]
+    # NOTE: it is very important that you copy these attributes and not just store references
+    #       to the original vertices. if you store references, blender may move the data and your
+    #       reference will become out of date, which will cause a crash due to invalid memory
+    #       access later.
+    vertices_list = [Vertex(v.co.copy(), v.normal.copy()) for v in mesh_copy_data.vertices]
     num_vertices = len(vertices_list)
     
     faces_list = [face.vertices for face in mesh_copy_data.polygons]
@@ -66,7 +75,7 @@ def game_export(context, filename, replace_existing):
                         faces_list[face_index][i % 3] = v_index
                         found_shared_index = True
             
-            if not found_shared_index:            
+            if not found_shared_index:      
                 # add a new vertex
                 vertices_list.append(mesh_copy_data.vertices[vertex_index])
                 new_index = num_vertices
@@ -115,6 +124,8 @@ def game_export(context, filename, replace_existing):
     #       helps make that convention known.
     #       the indices are stored in blender counter-clockwise when looking at a face's front, so we just
     #       reverse it to make it so the cross product's result is pointing out from the front side of the face.
+    # NOTE: actually, i don't think blender enforces an exact winding order at all.
+    #       you have to make sure that the vertices are in the correct order based on the face's normal.
     for face in faces_list:
         index_1, index_2, index_3 = face
         temp_output_file.write('{} {} {}\n'.format(index_3, index_2, index_1))
