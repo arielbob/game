@@ -33,6 +33,7 @@
 #include "win32_game.h"
 
 #include "memory.cpp"
+#include "math.cpp"
 #include "mesh.cpp"
 #include "ui.cpp"
 #include "editor.cpp"

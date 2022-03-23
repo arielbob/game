@@ -16,6 +16,7 @@
 //              update: see the comment above the vertices_list assignment in game_export_2.py for more info.
 // TODO (done): fix ray vs triangle test not working sometimes
 // TODO: translation/rotation gizmo for meshes
+// TODO: quaternions
 
 // TODO: typing in text box
 // TODO: game should have different Entity structs that have platform-independent data
@@ -23,7 +24,6 @@
 //       is just some text with a font name and the game renders that
 // TODO: interface for loading meshes with file explorer
 // TODO: first person camera movement
-// TODO: quaternions
 // TODO: nicer button rendering (center the text)
 // TODO: level loading
 // TODO: undoing
