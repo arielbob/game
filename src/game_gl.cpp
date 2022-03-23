@@ -11,18 +11,11 @@
 // TODO (done): mesh rendering
 // TODO (done): basic ui buttons
 // TODO (done): mesh picking (ray vs triangle, convert cursor to ray)
+// TODO (done): blender randomly crashes sometimes when running the export script, which is also causing issues
+//              with the exported normals.
+//              update: see the comment above the vertices_list assignment in game_export_2.py for more info.
+// TODO (done): fix ray vs triangle test not working sometimes
 // TODO: translation/rotation gizmo for meshes
-// TODO: something about the blender export script is messed up...
-//       i think it has to do with the winding order. we need to enforce the winding order of vertices.
-//       the winding order is messing with our ray vs triangle test, since we reject hits on the backside.
-//       we could just accept those hits, but i would prefer the script issue is fixed since it may cause other
-//       issues.
-// TODO: something is messed up with how the normals are stored by the blender script as well.
-//       you can see this with the wireframe view. since the wireframe offsets vertices along their normals,
-//       when the normals are broken, the wireframe looks weird. i think the winding order might be affecting
-//       the normals in blender. but it doesn't seem like it, since when you view the normals, they look fine.
-//       it most likely has to do with the script, since when rendering the wireframe, we just use the normals
-//       directly from the mesh data. we don't calculate face normals like we do when doing ray vs triangle.
 
 // TODO: typing in text box
 // TODO: game should have different Entity structs that have platform-independent data

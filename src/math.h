@@ -899,8 +899,8 @@ inline Vec3 truncate_v4_to_v3(Vec4 vec4) {
 
 // returns false if triangle is degenerate, true otherwise
 bool32 compute_barycentric_coords(Vec3 p1, Vec3 p2, Vec3 p3,
-                                Vec3 triangle_normal, Vec3 point,
-                                Vec3 *result) {
+                                  Vec3 triangle_normal, Vec3 point,
+                                  Vec3 *result) {
 
     real32 p_x, p_y, x_1, x_2, x_3, y_1, y_2, y_3;
     if (fabs(triangle_normal.x) > fabs(triangle_normal.y) &&
@@ -914,7 +914,7 @@ bool32 compute_barycentric_coords(Vec3 p1, Vec3 p2, Vec3 p3,
         y_1 = p1.z;
         y_2 = p2.z;
         y_3 = p3.z;
-    } else if (fabs(triangle_normal.y) > fabs(triangle_normal.x)) {
+    } else if (fabs(triangle_normal.y) > fabs(triangle_normal.z)) {
         // drop out y coord
         p_x = point.x;
         p_y = point.z;

@@ -159,7 +159,7 @@ void init_game(Memory *memory, Game_State *game_state,
     Transform transform = {};
     Entity entity;
 
-#if 0
+#if 1
     transform.scale = make_vec3(1.0f, 1.0f, 1.0f);
     transform.position = make_vec3(1.0f, 0.0f, 0.0f);
     transform.heading = 45.0f;
@@ -177,7 +177,7 @@ void init_game(Memory *memory, Game_State *game_state,
 #endif
 
     transform = {};
-    transform.heading = 90.0f;
+    transform.heading = 0.0f;
     transform.scale = make_vec3(1.0f, 1.0f, 1.0f);
     transform.position = make_vec3(0.0f, 0.0f, 0.0f);
     entity = make_entity(game_state, "gizmo_arrow", transform);
