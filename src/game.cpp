@@ -161,27 +161,27 @@ void init_game(Memory *memory, Game_State *game_state,
 
 #if 1
     transform.scale = make_vec3(1.0f, 1.0f, 1.0f);
-    transform.position = make_vec3(1.0f, 0.0f, 0.0f);
-    transform.heading = 45.0f;
+    transform.position = make_vec3(2.0f, 0.0f, 0.0f);
+    transform.rotation = make_quaternion(45.0f, y_axis);
     entity = make_entity(game_state, "suzanne", transform);
-    add_entity(game_state, entity);
-
-    transform = {};
-    transform.scale = make_vec3(0.5f, 1.0f, 1.0f);
-    transform.position = make_vec3(-2.0f, 1.0f, 0.0f);
-    transform.heading = 45.0f;
-    transform.pitch = 30.0f;
-    transform.roll = 10.0f;
-    entity = make_entity(game_state, "cube", transform);
     add_entity(game_state, entity);
 #endif
 
+#if 1
     transform = {};
-    transform.heading = 0.0f;
+    transform.scale = make_vec3(0.5f, 1.0f, 1.0f);
+    transform.position = make_vec3(-2.0f, 1.0f, 0.0f);
+    transform.rotation = make_quaternion();
+    entity = make_entity(game_state, "cube", transform);
+    add_entity(game_state, entity);
+
+    transform = {};
     transform.scale = make_vec3(1.0f, 1.0f, 1.0f);
     transform.position = make_vec3(0.0f, 0.0f, 0.0f);
+    transform.rotation = make_quaternion();
     entity = make_entity(game_state, "gizmo_arrow", transform);
     add_entity(game_state, entity);
+#endif
 
     game_state->is_initted = true;
 }

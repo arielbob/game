@@ -1025,11 +1025,19 @@ void gl_render(GL_State *gl_state, Controller_State *controller_state, Game_Stat
         Entity entity = game_state->entities[editor_state->selected_entity_index];
         Transform transform = entity.transform;
         char *mesh_name = game_state->meshes[entity.mesh_index].name;
+#if 0
         string_format(buf, sizeof(buf), "mesh name: %s\n\nposition: (%f, %f, %f)\n\nheading: %f\npitch: %f\nroll: %f\n\nscale: (%f, %f, %f)",
                       mesh_name,
                       transform.position.x, transform.position.y, transform.position.z,
                       transform.heading, transform.pitch, transform.roll,
                       transform.scale.x, transform.scale.y, transform.scale.z);
+#else
+        string_format(buf, sizeof(buf), "mesh name: %s\n\nposition: (%f, %f, %f)\n\nquaternion: (%f, %f, %f, %f)\n\nscale: (%f, %f, %f)",
+                      mesh_name,
+                      transform.position.x, transform.position.y, transform.position.z,
+                      transform.rotation.w, transform.rotation.v.x, transform.rotation.v.y, transform.rotation.v.z,
+                      transform.scale.x, transform.scale.y, transform.scale.z);
+#endif
         gl_draw_text(gl_state, display_output, "times24",
                      0.0f, 300.0f,
                      buf,

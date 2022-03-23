@@ -593,14 +593,77 @@ inline Vec3 cross(Vec3 v1, Vec3 v2) {
     return result;
 }
 
+// returns unit quaternion
+Quaternion make_quaternion() {
+    Quaternion result = { 1.0f, 0.0f, 0.0f, 0.0f };
+    return result;
+}
+
+// NOTE: expects axis to be a unit vector
+Quaternion make_quaternion(real32 angle_degs, Vec3 axis) {
+    Quaternion result;
+    real32 angle_rads = degs_to_rads(angle_degs);
+    result.w = cosf(angle_rads / 2.0f);
+    result.v = sinf(angle_rads / 2.0f)*axis;
+    return result;
+}
+
+real32 magnitude(Quaternion q) {
+    return sqrtf(q.w*q.w + dot(q.v, q.v));
+}
+
+inline Quaternion operator*(Quaternion q1, Quaternion q2) {
+    Quaternion result;
+    
+    result.w = q1.w*q2.w - dot(q1.v, q2.v);
+    result.v = q1.w*q2.v + q2.w*q1.v + cross(q1.v, q2.v);
+    
+    return result;
+}
+
+inline Quaternion inverse(Quaternion q) {
+    // we assume we're using a rotation quaternion (i.e. q.v is a unit vector, and thus magnitude(q) = 1)
+    assert(fabsf(magnitude(q) - 1.0f) < EPSILON);
+    Quaternion result = { q.w, -q.v };
+    return result;
+}
+
+inline real32 dot(Quaternion q1, Quaternion q2) {
+    return q1.w*q2.w * dot(q1.v, q2.v);
+}
+
+Mat4 make_rotate_matrix(Quaternion q) {
+    real32 w = q.w;
+    real32 x = q.v.x;
+    real32 y = q.v.y;
+    real32 z = q.v.z;
+
+    real32 x_squared = x*x;
+    real32 y_squared = y*y;
+    real32 z_squared = z*z;
+
+    Mat4 result = make_mat4(1.0f - 2.0f*y_squared - 2*z_squared, 2.0f*x*y - 2.0f*w*z, 2.0f*x*z + 2.0f*w*y, 0.0f,
+                            2.0f*x*y + 2.0f*w*z, 1.0f - 2.0f*x_squared - 2.0f*z_squared, 2.0f*y*z - 2.0f*w*x, 0.0f,
+                            2.0f*x*z - 2.0f*w*y, 2.0f*y*z + 2.0f*w*x, 1.0f - 2.0f*x_squared - 2.0f*y_squared, 0.0f,
+                            0.0f, 0.0f, 0.0f, 1.0f);
+
+    return result;
+}
+
+#if 0
+inline Quaternion log(Quaternion q) {
+    Quaternion result = { 0.0f, 
+}
+#endif
+    
 // TODO: we may just want to return a Mat3, and then
 //       overload the multiply function to add in a zero?
 //       idk.. that seems slower, but it makes it so we don't store
 //       as much space
 // TODO: maybe overload this to take in an origin argument?
 //       would basically just translate it first, then scale, then translate it back
-Mat4 make_scale_matrix(Vec3 axis, real32 factor) {
-    Mat4 result = {};
+    Mat4 make_scale_matrix(Vec3 axis, real32 factor) {
+        Mat4 result = {};
     
     Vec4 col1 = {
         1 + ((factor - 1)*(axis.x*axis.x)),
@@ -1324,6 +1387,17 @@ void get_euler_angles_from_rotate_matrix(Mat4 rotate_matrix, real32 *canonical_r
     *canonical_roll = roll;
 }
 
+Mat4 get_model_matrix(Vec3 scale, Quaternion rotation, Vec3 position) {
+    Mat4 model_matrix = make_mat4_identity();
+
+    model_matrix = make_scale_matrix(scale) * model_matrix;
+    model_matrix = make_rotate_matrix(rotation) * model_matrix;
+    model_matrix = make_translate_matrix(position) * model_matrix;
+
+    // TODO: maybe don't do a copy here, and just use an output parameter
+    return model_matrix;
+}
+
 Mat4 get_model_matrix(Vec3 scale, real32 roll, real32 pitch, real32 heading, Vec3 position) {
     Mat4 model_matrix = make_mat4_identity();
 
@@ -1342,6 +1416,12 @@ Mat4 get_model_matrix(Vec3 scale, real32 roll, real32 pitch, real32 heading, Vec
 }
 
 Mat4 get_model_matrix(Transform transform) {
+    return get_model_matrix(transform.scale,
+                            transform.rotation,
+                            transform.position);
+}
+
+Mat4 get_model_matrix(Euler_Transform transform) {
     return get_model_matrix(transform.scale,
                             transform.roll, transform.pitch, transform.heading,
                             transform.position);

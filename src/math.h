@@ -98,9 +98,19 @@ struct Cylinder {
     real32 height;
 };
 
+struct Quaternion {
+    real32 w;
+    Vec3 v;
+};
+
 struct Transform {
     Vec3 position;
-    //Quaternion rotation;
+    Quaternion rotation;
+    Vec3 scale;
+};
+
+struct Euler_Transform {
+    Vec3 position;
     real32 heading;
     real32 pitch;
     real32 roll;
