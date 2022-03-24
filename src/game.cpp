@@ -106,8 +106,8 @@ void add_entity(Game_State *game_state, Entity entity) {
 }
 
 void init_camera(Camera *camera, Display_Output *display_output) {
-    camera->position = make_vec3(0.0f, 0.0f, -5.0f);
-    camera->pitch = 0.0f;
+    camera->position = make_vec3(0.0f, 3.0f, -5.0f);
+    camera->pitch = 10.0f;
     camera->fov_x_degrees = 90.0f;
     camera->aspect_ratio = (real32) display_output->width / display_output->height;
     camera->near = 0.1f;
@@ -118,6 +118,8 @@ void init_camera(Camera *camera, Display_Output *display_output) {
 
 void init_game(Memory *memory, Game_State *game_state,
                Sound_Output *sound_output, uint32 num_samples) {
+    Editor_State *editor_state = &game_state->editor_state;
+
     Arena_Allocator *game_data_arena = &memory->game_data;
     File_Data music_file_data = platform_open_and_read_file((Allocator *) game_data_arena,
                                                             "../drive my car.wav");
@@ -132,16 +134,7 @@ void init_game(Memory *memory, Game_State *game_state,
 
     init_camera(camera, display_output);
 
-// NOTE: don't use these meshes for testing - they don't have actual normals...
-#if 0
-    Mesh mesh = read_and_load_mesh(memory, (Allocator *) &memory->mesh_arena, "src/meshes/cube.mesh",
-                                   "cube", MESH_NAME_MAX_SIZE);
-    add_mesh(game_state, mesh);
-    mesh = read_and_load_mesh(memory, (Allocator *) &memory->mesh_arena, "src/meshes/triangle.mesh",
-                              "triangle", MESH_NAME_MAX_SIZE);
-    add_mesh(game_state, mesh);
-#endif
-
+    // add meshes
     Mesh mesh;
     mesh = read_and_load_mesh(memory, (Allocator *) &memory->mesh_arena, "blender/cube.mesh",
                               "cube", MESH_NAME_MAX_SIZE);
@@ -154,6 +147,9 @@ void init_game(Memory *memory, Game_State *game_state,
     mesh = read_and_load_mesh(memory, (Allocator *) &memory->mesh_arena, "blender/gizmo_arrow.mesh",
         "gizmo_arrow", MESH_NAME_MAX_SIZE);
     add_mesh(game_state, mesh);
+
+    // init gizmo
+    editor_state->gizmo.arrow_mesh_name = "gizmo_arrow";
 
     // add entities
     Transform transform = {};
@@ -187,7 +183,7 @@ void init_game(Memory *memory, Game_State *game_state,
 }
 
 bool32 was_clicked(Controller_Button_State button_state) {
-    return (button_state.is_down && !button_state.was_down);
+    return (!button_state.is_down && button_state.was_down);
 }
 
 
@@ -253,6 +249,14 @@ void update(Memory *memory, Game_State *game_state,
     if (was_clicked(controller_state->left_mouse)) {
         int32 picked_entity_index = pick_entity(game_state, cursor_ray);
         editor_state->selected_entity_index = picked_entity_index;
+        Entity *entity = &game_state->entities[picked_entity_index];
+        if (picked_entity_index >= 0) {
+            editor_state->gizmo.transform = {
+                entity->transform.position,
+                entity->transform.rotation,
+                make_vec3(1.0f, 1.0f, 1.0f)
+            };
+        }
     }
     
 

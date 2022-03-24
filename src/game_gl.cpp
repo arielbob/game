@@ -15,13 +15,20 @@
 //              with the exported normals.
 //              update: see the comment above the vertices_list assignment in game_export_2.py for more info.
 // TODO (done): fix ray vs triangle test not working sometimes
+// TODO (done): basic quaternions
 // TODO: translation/rotation gizmo for meshes
-// TODO: quaternions
 
 // TODO: typing in text box
 // TODO: game should have different Entity structs that have platform-independent data
 //       that is then used by game_gl to render that data. for example: Text_Entity, which
-//       is just some text with a font name and the game renders that
+//       is just some text with a font name and the game renders that.
+//       there should be different make_x_entity procedures that accept that required data for that entity.
+//       the entity shaders are handled by game_gl.cpp. all game does is say that some types of entities exist
+//       and it is game_gl.cpp's job to render them.
+//       this may make us want to have some time of push buffer for all entity types.
+//       the alternative is to just have fixed size arrays for each entity type. the upside to that is that it's
+//       less complex and most likely faster. the downside is that if the amounts of entity types that exist at
+//       a given time differ by a large amount, you'll end up with a lot of unused memory.
 // TODO: interface for loading meshes with file explorer
 // TODO: first person camera movement
 // TODO: nicer button rendering (center the text)
@@ -242,6 +249,30 @@ GL_Mesh gl_load_mesh(GL_State *gl_state, Mesh mesh) {
     return gl_mesh;
 }
 
+void gl_draw_basic_mesh(GL_State *gl_state, Render_State *render_state,
+                        char *mesh_name, char *shader_name, Transform transform,
+                        Vec3 color) {
+    uint32 shader_id;
+    uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string(shader_name), &shader_id);
+    assert(shader_exists);
+    glUseProgram(shader_id);
+
+    GL_Mesh gl_mesh;
+    uint32 mesh_exists = hash_table_find(gl_state->mesh_table, make_string(mesh_name), &gl_mesh);
+    assert(mesh_exists);
+    glBindVertexArray(gl_mesh.vao);
+
+    Mat4 model_matrix = get_model_matrix(transform);
+    gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
+    gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->cpv_matrix);
+    gl_set_uniform_vec3(shader_id, "color", &color);
+
+    glDrawElements(GL_TRIANGLES, gl_mesh.num_triangles * 3, GL_UNSIGNED_INT, 0);
+
+    glUseProgram(0);
+    glBindVertexArray(0);
+}
+
 void gl_draw_mesh(GL_State *gl_state, Render_State *render_state,
                   char *mesh_name, char *shader_name, Transform transform) {
     uint32 shader_id;
@@ -267,7 +298,7 @@ void gl_draw_mesh(GL_State *gl_state, Render_State *render_state,
 }
 
 void gl_draw_wireframe(GL_State *gl_state, Render_State *render_state,
-                             char *mesh_name, Transform transform) {
+                       char *mesh_name, Transform transform) {
     uint32 shader_id;
     uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("debug_wireframe"), &shader_id);
     assert(shader_exists);
@@ -585,9 +616,9 @@ void gl_draw_triangle(GL_State *gl_state,
 }
 
 void gl_draw_line_p(GL_State *gl_state,
-                  Display_Output display_output,
-                  Vec2 start, Vec2 end,
-                  Vec3 color) {
+                    Display_Output display_output,
+                    Vec2 start, Vec2 end,
+                    Vec3 color) {
     uint32 basic_shader_id;
     uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("basic"), &basic_shader_id);
     assert(shader_exists);
@@ -884,6 +915,25 @@ void gl_draw_ui(GL_State *gl_state, UI_Manager *ui_manager, Display_Output displ
     }
 }
 
+void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Gizmo gizmo) {
+    uint32 shader_id;
+    uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("basic_3d"), &shader_id);
+    assert(shader_exists);
+    glUseProgram(shader_id);
+
+    // this is for a world-space gizmo
+    Transform x_transform = gizmo.transform;
+    Transform y_transform = gizmo.transform;
+    y_transform.rotation = gizmo.transform.rotation*make_quaternion(90.0f, z_axis);
+    Transform z_transform = gizmo.transform;
+    z_transform.rotation = gizmo.transform.rotation*make_quaternion(-90.0f, y_axis);
+
+    char *shader_name = "basic_3d";
+    gl_draw_basic_mesh(gl_state, render_state, gizmo.arrow_mesh_name, shader_name, x_transform, x_axis);
+    gl_draw_basic_mesh(gl_state, render_state, gizmo.arrow_mesh_name, shader_name, y_transform, y_axis);
+    gl_draw_basic_mesh(gl_state, render_state, gizmo.arrow_mesh_name, shader_name, z_transform, z_axis);
+}
+
 void gl_render(GL_State *gl_state, Controller_State *controller_state, Game_State *game_state,
                Display_Output display_output, Win32_Sound_Output *win32_sound_output) {
     Render_State *render_state = &game_state->render_state;
@@ -920,6 +970,14 @@ void gl_render(GL_State *gl_state, Controller_State *controller_state, Game_Stat
         if (editor_state->selected_entity_index == i) {
             gl_draw_wireframe(gl_state, render_state, mesh_name, entity->transform);
         }
+    }
+
+    if (editor_state->selected_entity_index >= 0) {
+        // TODO: draw the gizmo (also need to differentiate between what type of gizmo, i.e. translation, rotation,
+        //       or scale)
+        glDisable(GL_DEPTH_TEST);
+        gl_draw_gizmo(gl_state, render_state, editor_state->gizmo);
+        glEnable(GL_DEPTH_TEST);
     }
 
 #if 0
