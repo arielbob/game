@@ -139,5 +139,6 @@ struct Game_State {
 };
 
 bool32 was_clicked(Controller_Button_State button_state);
+int32 get_mesh_index(Game_State *game_state, char *mesh_name_to_find);
 
 #endif

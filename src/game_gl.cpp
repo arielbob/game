@@ -16,7 +16,10 @@
 //              update: see the comment above the vertices_list assignment in game_export_2.py for more info.
 // TODO (done): fix ray vs triangle test not working sometimes
 // TODO (done): basic quaternions
-// TODO: translation/rotation gizmo for meshes
+// TODO (done): draw translation gizmo
+// TODO: move entities using translation gizmo
+// TODO: draw rotation gizmo
+// TODO: rotate entities using rotation gizmo
 
 // TODO: typing in text box
 // TODO: game should have different Entity structs that have platform-independent data
@@ -932,6 +935,8 @@ void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Editor_State 
     Transform x_transform, y_transform, z_transform;
 
     // this is for a world-space gizmo
+    // TODO: if we have the model matrix of the mesh, we could use the columns of that to create the model
+    //       matrix of the gizmo when in local mode. but this is fine too.
     if (transform_mode == TRANSFORM_GLOBAL) {
         x_transform = gizmo.transform;
         x_transform.rotation = make_quaternion();

@@ -1,8 +1,8 @@
 #include "editor.h"
+#include "game.h"
 
-int32 ray_intersects_entity(Ray ray, Mesh *meshes, Entity entity, real32 *t_result) {
-    Mesh mesh = meshes[entity.mesh_index];
-    Mat4 object_to_world = get_model_matrix(entity.transform);
+int32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, real32 *t_result) {
+    Mat4 object_to_world = get_model_matrix(transform);
     Mat4 world_to_object = inverse(object_to_world);
 
     // instead of transforming every vertex, we just transform the world-space ray to object-space by
@@ -54,11 +54,56 @@ int32 pick_entity(Game_State *game_state, Ray cursor_ray) {
     for (int32 i = 0; i < game_state->num_entities; i++) {
         real32 t;
         Entity entity = entities[i];
-        if (ray_intersects_entity(cursor_ray, meshes, entity, &t) && (t < t_min)) {
+        Mesh mesh = meshes[entity.mesh_index];
+        if (ray_intersects_mesh(cursor_ray, mesh, entity.transform, &t) && (t < t_min)) {
             t_min = t;
             entity_index = i;
         }
     }
 
     return entity_index;
+}
+
+Gizmo_Axis pick_gizmo(Game_State *game_state, Ray cursor_ray) {
+    Editor_State *editor_state = &game_state->editor_state;
+    Gizmo gizmo = editor_state->gizmo;
+
+    Transform_Mode transform_mode = editor_state->transform_mode;
+
+    Transform x_transform, y_transform, z_transform;
+    // TODO: maybe add some scale here? for a bit of extra space to click on the gizmo.
+    if (transform_mode == TRANSFORM_GLOBAL) {
+        x_transform = gizmo.transform;
+        x_transform.rotation = make_quaternion();
+        y_transform = gizmo.transform;
+        y_transform.rotation = make_quaternion(90.0f, z_axis);
+        z_transform = gizmo.transform;
+        z_transform.rotation = make_quaternion(-90.0f, y_axis);
+    } else {
+        x_transform = gizmo.transform;
+        y_transform = gizmo.transform;
+        y_transform.rotation = gizmo.transform.rotation*make_quaternion(90.0f, z_axis);
+        z_transform = gizmo.transform;
+        z_transform.rotation = gizmo.transform.rotation*make_quaternion(-90.0f, y_axis);
+    }
+
+    Gizmo_Axis picked_axis = GIZMO_AXIS_NONE;
+    Gizmo_Axis gizmo_axes[3] = { GIZMO_TRANSLATE_X, GIZMO_TRANSLATE_Y, GIZMO_TRANSLATE_Z };
+    Transform gizmo_translate_axes_transforms[3] = { x_transform, y_transform, z_transform };
+
+    int32 gizmo_arrow_mesh_index = get_mesh_index(game_state, gizmo.arrow_mesh_name);
+    assert(gizmo_arrow_mesh_index >= 0);
+    Mesh arrow_mesh = game_state->meshes[gizmo_arrow_mesh_index];
+
+    real32 t_min = FLT_MAX;
+    for (int32 i = 0; i < 3; i++) {
+        Transform gizmo_axis_transform = gizmo_translate_axes_transforms[i];
+        real32 t;
+        if (ray_intersects_mesh(cursor_ray, arrow_mesh, x_transform, &t) && (t < t_min)) {
+            t_min = t;
+            picked_axis = gizmo_axes[i];
+        }
+    }
+
+    return picked_axis;
 }

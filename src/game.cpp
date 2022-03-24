@@ -187,7 +187,6 @@ bool32 was_clicked(Controller_Button_State button_state) {
     return (!button_state.is_down && button_state.was_down);
 }
 
-
 Mat4 get_view_matrix(Camera camera) {
     Mat4 model_matrix = make_rotate_matrix(camera.roll, camera.pitch, camera.heading);
     Vec3 transformed_forward = truncate_v4_to_v3(model_matrix * make_vec4(camera.forward, 1.0f));
@@ -334,26 +333,34 @@ void update(Memory *memory, Game_State *game_state,
         }
     }
 
-
     // mesh picking
     Vec3 cursor_world_space = cursor_pos_to_world_space(controller_state->current_mouse,
                                                         &game_state->render_state);
     Ray cursor_ray = { cursor_world_space,
                        normalize(cursor_world_space - render_state->camera.position) };
     
-    if (!ui_has_hot(ui_manager) && was_clicked(controller_state->left_mouse)) {
-        int32 picked_entity_index = pick_entity(game_state, cursor_ray);
-        editor_state->selected_entity_index = picked_entity_index;
-        Entity *entity = &game_state->entities[picked_entity_index];
-        if (picked_entity_index >= 0) {
-            editor_state->gizmo.transform = {
-                entity->transform.position,
-                entity->transform.rotation,
-                make_vec3(1.0f, 1.0f, 1.0f)
-            };
+    Gizmo_Axis picked_gizmo = GIZMO_AXIS_NONE;
+    if (!ui_has_hot(ui_manager) && controller_state->left_mouse.is_down) {
+        if (editor_state->selected_entity_index >= 0) {
+            picked_gizmo = pick_gizmo(game_state, cursor_ray);
         }
     }
-    
+
+    if (!ui_has_hot(ui_manager) && was_clicked(controller_state->left_mouse)) {
+        if (picked_gizmo == GIZMO_AXIS_NONE) {
+            int32 picked_entity_index = pick_entity(game_state, cursor_ray);
+            editor_state->selected_entity_index = picked_entity_index;
+            Entity *entity = &game_state->entities[picked_entity_index];
+            if (picked_entity_index >= 0) {
+                editor_state->gizmo.transform = {
+                    entity->transform.position,
+                    entity->transform.rotation,
+                    make_vec3(1.0f, 1.0f, 1.0f)
+                };
+            }
+        }
+    }
+        
     fill_sound_buffer_with_audio(sound_output, game_state->is_playing_music, &game_state->music, num_samples);
 
     //game_state->current_char = controller_state->pressed_key;

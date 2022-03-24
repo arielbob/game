@@ -1,6 +1,13 @@
 #ifndef EDITOR_H
 #define EDITOR_H
 
+enum Gizmo_Axis {
+    GIZMO_AXIS_NONE,
+    GIZMO_TRANSLATE_X,
+    GIZMO_TRANSLATE_Y,
+    GIZMO_TRANSLATE_Z
+};
+
 enum Transform_Mode {
     TRANSFORM_GLOBAL,
     TRANSFORM_LOCAL
