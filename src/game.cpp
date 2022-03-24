@@ -148,8 +148,9 @@ void init_game(Memory *memory, Game_State *game_state,
         "gizmo_arrow", MESH_NAME_MAX_SIZE);
     add_mesh(game_state, mesh);
 
-    // init gizmo
+    // init editor_state
     editor_state->gizmo.arrow_mesh_name = "gizmo_arrow";
+    editor_state->selected_entity_index = -1;
 
     // add entities
     Transform transform = {};
@@ -174,7 +175,7 @@ void init_game(Memory *memory, Game_State *game_state,
     transform = {};
     transform.scale = make_vec3(1.0f, 1.0f, 1.0f);
     transform.position = make_vec3(0.0f, 0.0f, 0.0f);
-    transform.rotation = make_quaternion();
+    transform.rotation = make_quaternion(45.0f, y_axis);
     entity = make_entity(game_state, "gizmo_arrow", transform);
     add_entity(game_state, entity);
 #endif
@@ -240,25 +241,6 @@ void update(Memory *memory, Game_State *game_state,
     Render_State *render_state = &game_state->render_state;
 
     update_render_state(render_state);
-
-    Vec3 cursor_world_space = cursor_pos_to_world_space(controller_state->current_mouse,
-                                                        &game_state->render_state);
-    Ray cursor_ray = { cursor_world_space,
-                       normalize(cursor_world_space - render_state->camera.position) };
-    
-    if (was_clicked(controller_state->left_mouse)) {
-        int32 picked_entity_index = pick_entity(game_state, cursor_ray);
-        editor_state->selected_entity_index = picked_entity_index;
-        Entity *entity = &game_state->entities[picked_entity_index];
-        if (picked_entity_index >= 0) {
-            editor_state->gizmo.transform = {
-                entity->transform.position,
-                entity->transform.rotation,
-                make_vec3(1.0f, 1.0f, 1.0f)
-            };
-        }
-    }
-    
 
 #if 0
     Vec4 cursor_world_space = cursor_pos_to_world_space(game_state->cursor_pos,
@@ -334,7 +316,44 @@ void update(Memory *memory, Game_State *game_state,
     }
 #endif
 
+    char *toggle_transform_mode_text;
+    if (editor_state->transform_mode == TRANSFORM_GLOBAL) {
+        toggle_transform_mode_text = "use local transform";
+    } else {
+        toggle_transform_mode_text = "use global transform";
+    }
 
+    bool32 toggle_global_clicked = do_button(ui_manager, controller_state,
+                                             765.0f, 360.0f, 200.0f, 30.0f,
+                                             toggle_transform_mode_text, "times24", "toggle_transform");
+    if (toggle_global_clicked) {
+        if (editor_state->transform_mode == TRANSFORM_GLOBAL) {
+            editor_state->transform_mode = TRANSFORM_LOCAL;
+        } else {
+            editor_state->transform_mode = TRANSFORM_GLOBAL;
+        }
+    }
+
+
+    // mesh picking
+    Vec3 cursor_world_space = cursor_pos_to_world_space(controller_state->current_mouse,
+                                                        &game_state->render_state);
+    Ray cursor_ray = { cursor_world_space,
+                       normalize(cursor_world_space - render_state->camera.position) };
+    
+    if (!ui_has_hot(ui_manager) && was_clicked(controller_state->left_mouse)) {
+        int32 picked_entity_index = pick_entity(game_state, cursor_ray);
+        editor_state->selected_entity_index = picked_entity_index;
+        Entity *entity = &game_state->entities[picked_entity_index];
+        if (picked_entity_index >= 0) {
+            editor_state->gizmo.transform = {
+                entity->transform.position,
+                entity->transform.rotation,
+                make_vec3(1.0f, 1.0f, 1.0f)
+            };
+        }
+    }
+    
     fill_sound_buffer_with_audio(sound_output, game_state->is_playing_music, &game_state->music, num_samples);
 
     //game_state->current_char = controller_state->pressed_key;

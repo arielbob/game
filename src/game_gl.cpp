@@ -374,6 +374,9 @@ void gl_draw_text(GL_State *gl_state,
     gl_set_uniform_mat4(text_shader_id, "cpv_matrix", &ortho_clip_matrix);
     gl_set_uniform_vec3(text_shader_id, "color", &color);
 
+    // NOTE: we disable depth test so that overlapping characters such as the "o" in "fo" doesn't cover the
+    //       quad of the previous character, causing a cut off look.
+    glDisable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_TEXTURE_2D);
@@ -409,6 +412,7 @@ void gl_draw_text(GL_State *gl_state,
         ++text;
     }
 
+    glEnable(GL_DEPTH_TEST);
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindVertexArray(0);
 }
@@ -915,18 +919,33 @@ void gl_draw_ui(GL_State *gl_state, UI_Manager *ui_manager, Display_Output displ
     }
 }
 
-void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Gizmo gizmo) {
+void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Editor_State *editor_state) {
+    Transform_Mode transform_mode = editor_state->transform_mode;
+    Gizmo gizmo = editor_state->gizmo;
+
     uint32 shader_id;
     uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("basic_3d"), &shader_id);
     assert(shader_exists);
     glUseProgram(shader_id);
 
+
+    Transform x_transform, y_transform, z_transform;
+
     // this is for a world-space gizmo
-    Transform x_transform = gizmo.transform;
-    Transform y_transform = gizmo.transform;
-    y_transform.rotation = gizmo.transform.rotation*make_quaternion(90.0f, z_axis);
-    Transform z_transform = gizmo.transform;
-    z_transform.rotation = gizmo.transform.rotation*make_quaternion(-90.0f, y_axis);
+    if (transform_mode == TRANSFORM_GLOBAL) {
+        x_transform = gizmo.transform;
+        x_transform.rotation = make_quaternion();
+        y_transform = gizmo.transform;
+        y_transform.rotation = make_quaternion(90.0f, z_axis);
+        z_transform = gizmo.transform;
+        z_transform.rotation = make_quaternion(-90.0f, y_axis);
+    } else {
+        x_transform = gizmo.transform;
+        y_transform = gizmo.transform;
+        y_transform.rotation = gizmo.transform.rotation*make_quaternion(90.0f, z_axis);
+        z_transform = gizmo.transform;
+        z_transform.rotation = gizmo.transform.rotation*make_quaternion(-90.0f, y_axis);
+    }
 
     char *shader_name = "basic_3d";
     gl_draw_basic_mesh(gl_state, render_state, gizmo.arrow_mesh_name, shader_name, x_transform, x_axis);
@@ -976,7 +995,7 @@ void gl_render(GL_State *gl_state, Controller_State *controller_state, Game_Stat
         // TODO: draw the gizmo (also need to differentiate between what type of gizmo, i.e. translation, rotation,
         //       or scale)
         glDisable(GL_DEPTH_TEST);
-        gl_draw_gizmo(gl_state, render_state, editor_state->gizmo);
+        gl_draw_gizmo(gl_state, render_state, editor_state);
         glEnable(GL_DEPTH_TEST);
     }
 

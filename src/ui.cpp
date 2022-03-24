@@ -75,6 +75,10 @@ bool32 in_bounds(Vec2 p, real32 x_min, real32 x_max, real32 y_min, real32 y_max)
     return (p.x >= x_min && p.x <= x_max && p.y >= y_min && p.y <= y_max);
 }
 
+inline bool32 ui_has_hot(UI_Manager *manager) {
+    return (manager->hot.string_ptr != NULL);
+}
+
 bool32 do_button(UI_Manager *manager, Controller_State *controller_state,
                  real32 x_px, real32 y_px, real32 width_px, real32 height_px,
                  char *text, char *font, char *id_string) {
