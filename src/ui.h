@@ -2,6 +2,7 @@
 #define UI_H
 
 #define UI_MAX_BUTTONS 64
+#define UI_MAX_TEXTS 64
 #define UI_MAX_TEXT_BOXES 64
 
 #if 0
@@ -51,6 +52,16 @@ struct UI_Button {
     char *font;
 };
 
+struct UI_Text {
+    UI_id id;
+
+    real32 x;
+    real32 y;
+
+    char *text;
+    char *font;
+};
+
 struct UI_Text_Box_Style {
     char *font;
     real32 width;
@@ -84,6 +95,8 @@ struct UI_Manager {
     //UI_Element elements[UI_MAX_ELEMENTS];
     int32 num_buttons;
     UI_Button buttons[UI_MAX_BUTTONS];
+    int32 num_texts;
+    UI_Text texts[UI_MAX_TEXTS];
     int32 num_text_boxes;
     UI_Text_Box text_boxes[UI_MAX_TEXT_BOXES];
 };

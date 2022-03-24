@@ -22,6 +22,15 @@ void *arena_push(Arena_Allocator *arena, uint32 size, bool32 zero_memory = true)
     return start_byte;
 }
 
+void clear_arena(Arena_Allocator *arena, bool32 zero_memory = false) {
+    arena->used = 0;
+    // NOTE: zero_memory is false by default, since if the arena has a lot of used memory, the zeroing
+    //       procedure can be slow.
+    if (zero_memory) {
+        platform_zero_memory(arena->base, arena->size);
+    }
+}
+
 Stack_Allocator make_stack_allocator(void *base, uint32 size) {
     Stack_Allocator stack;
     stack.type = STACK_ALLOCATOR;

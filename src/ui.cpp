@@ -38,6 +38,19 @@ UI_Button make_ui_button(real32 x, real32 y, real32 width, real32 height, char *
     return button;
 }
 
+UI_Text make_ui_text(real32 x, real32 y, char *text, char *font, char *id) {
+    UI_Text ui_text = {};
+    ui_text.x = x;
+    ui_text.y = y;
+    ui_text.text = text;
+    ui_text.font = font;
+
+    UI_id ui_text_id = { id };
+    ui_text.id = ui_text_id;
+
+    return ui_text;
+}
+
 UI_Text_Box make_ui_text_box(real32 x, real32 y,
                              char *current_text, uint32 size,
                              UI_Text_Box_Style style,
@@ -62,6 +75,12 @@ void ui_add_button(UI_Manager *manager, UI_Button button) {
     manager->num_buttons++;
 }
 
+void ui_add_text(UI_Manager *manager, UI_Text text) {
+    assert(manager->num_texts < UI_MAX_TEXTS);
+    manager->texts[manager->num_texts] = text;
+    manager->num_texts++;
+}
+
 void ui_add_text_box(UI_Manager *manager, UI_Text_Box text_box) {
     assert(manager->num_text_boxes < UI_MAX_TEXT_BOXES);
     manager->text_boxes[manager->num_text_boxes++] = text_box;
@@ -77,6 +96,17 @@ bool32 in_bounds(Vec2 p, real32 x_min, real32 x_max, real32 y_min, real32 y_max)
 
 inline bool32 ui_has_hot(UI_Manager *manager) {
     return (manager->hot.string_ptr != NULL);
+}
+
+void do_text(UI_Manager *manager,
+             real32 x_px, real32 y_px,
+             char *text, char *font, char *id_string) {
+    UI_Text ui_text = make_ui_text(x_px, y_px,
+                                   text, font, id_string);
+
+    bool32 was_clicked = false;
+
+    ui_add_text(manager, ui_text);
 }
 
 bool32 do_button(UI_Manager *manager, Controller_State *controller_state,

@@ -920,6 +920,17 @@ void gl_draw_ui(GL_State *gl_state, UI_Manager *ui_manager, Display_Output displ
                          12.0f, style.height, make_vec3(0.0f, 1.0f, 0.0f));
         }
     }
+
+    for (int32 i = 0; i < ui_manager->num_texts; i++) {
+        UI_Text ui_text = ui_manager->texts[i];
+
+        Vec3 color = make_vec3(1.0f, 1.0f, 1.0f);
+
+        // TODO: center this.. will have to use font metrics
+        gl_draw_text(gl_state, display_output, ui_text.font,
+                     ui_text.x, ui_text.y,
+                     ui_text.text, color);
+    }
 }
 
 void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Editor_State *editor_state) {

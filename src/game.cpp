@@ -346,6 +346,11 @@ void update(Memory *memory, Game_State *game_state,
         }
     }
 
+    char *buf = (char *) arena_push(&memory->frame_arena, 128);
+    string_format(buf, 128, "picked gizmo: %d",
+                  picked_gizmo);
+    do_text(ui_manager, 0.0f, 600.0f, buf, "times24", "picked_gizmo_text");
+
     if (!ui_has_hot(ui_manager) && was_clicked(controller_state->left_mouse)) {
         if (picked_gizmo == GIZMO_AXIS_NONE) {
             int32 picked_entity_index = pick_entity(game_state, cursor_ray);

@@ -576,13 +576,15 @@ bool32 win32_init_memory(Memory *memory) {
     uint32 font_arena_size = MEGABYTES(64);
     uint32 mesh_arena_size = MEGABYTES(64);
     uint32 string_arena_size = MEGABYTES(64);
+    uint32 frame_arena_size = MEGABYTES(64);
 
     uint32 total_memory_size = (global_stack_size +
                                 hash_table_stack_size +
                                 game_data_arena_size +
                                 font_arena_size +
                                 mesh_arena_size +
-                                string_arena_size);
+                                string_arena_size +
+                                frame_arena_size);
     void *memory_base = VirtualAlloc(0, total_memory_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
     if (memory_base) {
@@ -610,6 +612,10 @@ bool32 win32_init_memory(Memory *memory) {
         Arena_Allocator string_arena = make_arena_allocator(base, string_arena_size);
         memory->string_arena = string_arena;
         base = (uint8 *) base + string_arena_size;
+
+        Arena_Allocator frame_arena = make_arena_allocator(base, frame_arena_size);
+        memory->frame_arena = frame_arena;
+        base = (uint8 *) base + frame_arena_size;
 
         memory->is_initted = true;
 
@@ -955,7 +961,9 @@ int WinMain(HINSTANCE hInstance,
                     //       out a better way of doing this.
                     game_state.ui_manager.num_buttons = 0;
                     game_state.ui_manager.num_text_boxes = 0;
+                    game_state.ui_manager.num_texts = 0;
                     
+                    clear_arena(&memory.frame_arena);
                     verify(&memory.global_stack);
 
                     real64 work_time = win32_get_elapsed_time(last_perf_counter);

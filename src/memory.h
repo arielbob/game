@@ -33,6 +33,7 @@ struct Memory {
     Arena_Allocator game_data;
     Arena_Allocator font_arena;
     Arena_Allocator mesh_arena;
+    Arena_Allocator frame_arena;
     // TODO: we may want to have a free-list version of this for strings that are always the same size,
     //       such as for filepaths
     Arena_Allocator string_arena; 

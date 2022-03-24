@@ -99,7 +99,7 @@ Gizmo_Axis pick_gizmo(Game_State *game_state, Ray cursor_ray) {
     for (int32 i = 0; i < 3; i++) {
         Transform gizmo_axis_transform = gizmo_translate_axes_transforms[i];
         real32 t;
-        if (ray_intersects_mesh(cursor_ray, arrow_mesh, x_transform, &t) && (t < t_min)) {
+        if (ray_intersects_mesh(cursor_ray, arrow_mesh, gizmo_axis_transform, &t) && (t < t_min)) {
             t_min = t;
             picked_axis = gizmo_axes[i];
         }
