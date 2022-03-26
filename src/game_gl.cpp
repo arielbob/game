@@ -17,9 +17,10 @@
 // TODO (done): fix ray vs triangle test not working sometimes
 // TODO (done): basic quaternions
 // TODO (done): draw translation gizmo
-// TODO: move entities using translation gizmo
+// TODO (done): move entities using translation gizmo
 // TODO: draw rotation gizmo
 // TODO: rotate entities using rotation gizmo
+// TODO: scale gizmo based on camera distance from gizmo, so that the gizmo stays big and clickable on screen
 
 // TODO: typing in text box
 // TODO: game should have different Entity structs that have platform-independent data
@@ -942,7 +943,6 @@ void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Editor_State 
     assert(shader_exists);
     glUseProgram(shader_id);
 
-
     Transform x_transform, y_transform, z_transform;
 
     // this is for a world-space gizmo
@@ -963,10 +963,29 @@ void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Editor_State 
         z_transform.rotation = gizmo.transform.rotation*make_quaternion(-90.0f, y_axis);
     }
 
+
+    Vec3 x_axis_hover = make_vec3(1.0f, 0.5f, 0.5f);
+    Vec3 y_axis_hover = make_vec3(0.5f, 1.0f, 0.5f);
+    Vec3 z_axis_hover = make_vec3(0.5f, 0.5f, 1.0f);
+
+    Gizmo_Axis hovered_axis = editor_state->hovered_gizmo_axis;
+
+    Vec3 x_axis_color = x_axis;
+    Vec3 y_axis_color = y_axis;
+    Vec3 z_axis_color = z_axis;
+
+    if (hovered_axis == GIZMO_TRANSLATE_X) {
+        x_axis_color = x_axis_hover;
+    } else if (hovered_axis == GIZMO_TRANSLATE_Y) {
+        y_axis_color = y_axis_hover;
+    } else if (hovered_axis == GIZMO_TRANSLATE_Z) {
+        z_axis_color = z_axis_hover;
+    }
+
     char *shader_name = "basic_3d";
-    gl_draw_basic_mesh(gl_state, render_state, gizmo.arrow_mesh_name, shader_name, x_transform, x_axis);
-    gl_draw_basic_mesh(gl_state, render_state, gizmo.arrow_mesh_name, shader_name, y_transform, y_axis);
-    gl_draw_basic_mesh(gl_state, render_state, gizmo.arrow_mesh_name, shader_name, z_transform, z_axis);
+    gl_draw_basic_mesh(gl_state, render_state, gizmo.arrow_mesh_name, shader_name, x_transform, x_axis_color);
+    gl_draw_basic_mesh(gl_state, render_state, gizmo.arrow_mesh_name, shader_name, y_transform, y_axis_color);
+    gl_draw_basic_mesh(gl_state, render_state, gizmo.arrow_mesh_name, shader_name, z_transform, z_axis_color);
 }
 
 void gl_render(GL_State *gl_state, Controller_State *controller_state, Game_State *game_state,

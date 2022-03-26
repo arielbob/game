@@ -1,5 +1,9 @@
 #include "math.h"
 
+Vec3 x_axis = { 1.0f, 0.0f, 0.0f };
+Vec3 y_axis = { 0.0f, 1.0f, 0.0f };
+Vec3 z_axis = { 0.0f, 0.0f, 1.0f };
+
 Ray make_ray(Vec3 origin, Vec3 direction) {
     Ray result;
     result.origin = origin;
@@ -937,9 +941,55 @@ bool32 bary_coords_inside_triangle(Vec3 bary_coords) {
 }
 #endif
 
-Vec3 x_axis = { 1.0f, 0.0f, 0.0f };
-Vec3 y_axis = { 0.0f, 1.0f, 0.0f };
-Vec3 z_axis = { 0.0f, 0.0f, 1.0f };
+void make_basis(Vec3 v, Vec3 *right, Vec3 *up) {
+    Vec3 axis_v;
+    if (v.x < v.y) {
+        if (v.x < v.z) {
+            axis_v = x_axis;
+        } else {
+            axis_v = z_axis;
+        }
+    } else {
+        axis_v = y_axis;
+    }
+
+    *right = normalize(cross(v, axis_v));
+    *up = normalize(cross(v, *right));
+}
+
+// parallel_to_this is a vector we want the plane's normal to be closest to
+Plane get_plane_containing_ray(Ray ray, Vec3 parallel_to_this) {
+    Vec3 right, up;
+    make_basis(ray.direction, &right, &up);
+
+    real32 right_similarity = fabsf(dot(right, parallel_to_this));
+    real32 up_similarity = fabsf(dot(up, parallel_to_this));
+
+    // TODO: finish this
+
+    Vec3 normal;
+    real32 d;
+
+    if (right_similarity > up_similarity) {
+        normal = right;
+    } else {
+        normal = up;
+    }
+
+    d = dot(ray.origin, normal);
+
+    Plane result = { d, normal };
+    return result;
+}
+
+Plane get_plane_containing_ray(Ray ray) {
+    Vec3 right, up;
+    make_basis(ray.direction, &right, &up);
+    real32 d = dot(ray.origin, right);
+
+    Plane result = { d, right };
+    return result;
+}
 
 // TODO: this can be further optimized, but it's fine for now (see scratchapixel for more optimizations)
 bool32 ray_intersects_aabb(Ray ray, AABB aabb, real32 *t_min_result, real32 *t_max_result) {
@@ -1089,6 +1139,10 @@ bool32 ray_intersects_plane(Ray ray, Vec3 plane_normal, real32 plane_d, real32 *
     
     *t_result = (plane_d - dot(ray.origin, plane_normal)) / denom;
     return true;
+}
+
+bool32 ray_intersects_plane(Ray ray, Plane plane, real32 *t_result) {
+    return ray_intersects_plane(ray, plane.normal, plane.d, t_result);
 }
 
 // TODO: replace this with the faster ray vs triangle test

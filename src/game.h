@@ -98,8 +98,8 @@ struct Camera {
     real32 roll;
 
     // NOTE: direction and right must be unit vectors and orthogonal
-    Vec3 forward;
-    Vec3 right;
+    Basis initial_basis;
+    Basis current_basis;
     Vec3 position;
 };
 

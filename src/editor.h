@@ -21,7 +21,13 @@ struct Gizmo {
 struct Editor_State {
     Transform_Mode transform_mode;
     int32 selected_entity_index;
+
     Gizmo gizmo;
+    Gizmo_Axis hovered_gizmo_axis;
+    Gizmo_Axis selected_gizmo_axis;
+    Vec3 gizmo_initial_hit;
+    Vec3 gizmo_transform_axis;
+    Vec3 last_gizmo_transform_point;
 };
 
 #endif

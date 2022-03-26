@@ -112,8 +112,7 @@ void init_camera(Camera *camera, Display_Output *display_output) {
     camera->aspect_ratio = (real32) display_output->width / display_output->height;
     camera->near = 0.1f;
     camera->far = 1000.0f;
-    camera->forward = z_axis;
-    camera->right = x_axis;
+    camera->initial_basis = { z_axis, x_axis, y_axis };
 }
 
 void init_game(Memory *memory, Game_State *game_state,
@@ -188,19 +187,8 @@ bool32 was_clicked(Controller_Button_State button_state) {
 }
 
 Mat4 get_view_matrix(Camera camera) {
-    Mat4 model_matrix = make_rotate_matrix(camera.roll, camera.pitch, camera.heading);
-    Vec3 transformed_forward = truncate_v4_to_v3(model_matrix * make_vec4(camera.forward, 1.0f));
-    Vec3 transformed_right = truncate_v4_to_v3(model_matrix * make_vec4(camera.right, 1.0f));
-    Vec3 transformed_up = cross(transformed_forward, transformed_right);
-    // we calculate a new right vector to correct for any error to ensure that our vectors form an
-    // orthonormal basis
-    Vec3 corrected_right = cross(transformed_up, transformed_forward);
-
-    Vec3 forward = normalize(transformed_forward);
-    Vec3 right = normalize(corrected_right);
-    Vec3 up = normalize(transformed_up);
-
-    return get_view_matrix(camera.position, forward, right, up);
+    Basis basis = camera.current_basis;
+    return get_view_matrix(camera.position, basis.forward, basis.right, basis.up);
 }
 
 Vec3 cursor_pos_to_world_space(Vec2 cursor_pos, Render_State *render_state) {
@@ -216,6 +204,24 @@ Vec3 cursor_pos_to_world_space(Vec2 cursor_pos, Render_State *render_state) {
     Vec3 cursor_world_space = homogeneous_divide(cursor_world_space_homogeneous);
 
     return cursor_world_space;
+}
+
+void update_camera(Camera *camera) {
+    Basis initial_basis = camera->initial_basis;
+    Mat4 model_matrix = make_rotate_matrix(camera->roll, camera->pitch, camera->heading);
+    Vec3 transformed_forward = truncate_v4_to_v3(model_matrix * make_vec4(initial_basis.forward, 1.0f));
+    Vec3 transformed_right = truncate_v4_to_v3(model_matrix * make_vec4(initial_basis.right, 1.0f));
+    Vec3 transformed_up = cross(transformed_forward, transformed_right);
+    // we calculate a new right vector to correct for any error to ensure that our vectors form an
+    // orthonormal basis
+    Vec3 corrected_right = cross(transformed_up, transformed_forward);
+
+    Vec3 forward = normalize(transformed_forward);
+    Vec3 right = normalize(corrected_right);
+    Vec3 up = normalize(transformed_up);
+
+    Basis current_basis = { forward, right, up };
+    camera->current_basis = current_basis;
 }
 
 void update_render_state(Render_State *render_state) {
@@ -239,6 +245,7 @@ void update(Memory *memory, Game_State *game_state,
     Editor_State *editor_state = &game_state->editor_state;
     Render_State *render_state = &game_state->render_state;
 
+    update_camera(&render_state->camera);
     update_render_state(render_state);
 
 #if 0
@@ -339,20 +346,8 @@ void update(Memory *memory, Game_State *game_state,
     Ray cursor_ray = { cursor_world_space,
                        normalize(cursor_world_space - render_state->camera.position) };
     
-    Gizmo_Axis picked_gizmo = GIZMO_AXIS_NONE;
-    if (!ui_has_hot(ui_manager) && controller_state->left_mouse.is_down) {
-        if (editor_state->selected_entity_index >= 0) {
-            picked_gizmo = pick_gizmo(game_state, cursor_ray);
-        }
-    }
-
-    char *buf = (char *) arena_push(&memory->frame_arena, 128);
-    string_format(buf, 128, "picked gizmo: %d",
-                  picked_gizmo);
-    do_text(ui_manager, 0.0f, 600.0f, buf, "times24", "picked_gizmo_text");
-
     if (!ui_has_hot(ui_manager) && was_clicked(controller_state->left_mouse)) {
-        if (picked_gizmo == GIZMO_AXIS_NONE) {
+        if (editor_state->selected_gizmo_axis == GIZMO_AXIS_NONE) {
             int32 picked_entity_index = pick_entity(game_state, cursor_ray);
             editor_state->selected_entity_index = picked_entity_index;
             Entity *entity = &game_state->entities[picked_entity_index];
@@ -365,6 +360,45 @@ void update(Memory *memory, Game_State *game_state,
             }
         }
     }
+
+    if (editor_state->selected_entity_index >= 0 &&
+        !ui_has_hot(ui_manager) &&
+        (editor_state->selected_gizmo_axis == 0)) {
+
+        Vec3 gizmo_initial_hit, gizmo_transform_axis;
+        Gizmo_Axis picked_axis = pick_gizmo(game_state, cursor_ray,
+                                            &gizmo_initial_hit, &gizmo_transform_axis);
+        if (controller_state->left_mouse.is_down) {
+            editor_state->selected_gizmo_axis = picked_axis;
+            editor_state->gizmo_initial_hit = gizmo_initial_hit;
+            editor_state->gizmo_transform_axis = gizmo_transform_axis;
+            editor_state->last_gizmo_transform_point = gizmo_initial_hit;
+        } else {
+            editor_state->hovered_gizmo_axis = picked_axis;
+        }
+    }
+
+    if (editor_state->selected_gizmo_axis) {
+        if (controller_state->left_mouse.is_down) {
+            Vec3 delta = do_gizmo_translation(&render_state->camera, editor_state, cursor_ray);
+            Entity *entity = &game_state->entities[editor_state->selected_entity_index];
+            entity->transform.position += delta;
+        } else {
+            editor_state->selected_gizmo_axis = GIZMO_AXIS_NONE;
+        }
+    }
+    
+
+    char *buf = (char *) arena_push(&memory->frame_arena, 128);
+    string_format(buf, 128, "picked gizmo: %d",
+                  editor_state->selected_gizmo_axis);
+    do_text(ui_manager, 0.0f, 600.0f, buf, "times24", "picked_gizmo_text");
+
+    buf = (char *) arena_push(&memory->frame_arena, 128);
+    string_format(buf, 128, "hovered gizmo: %d",
+                  editor_state->hovered_gizmo_axis);
+    do_text(ui_manager, 0.0f, 564.0f, buf, "times24", "picked_gizmo_text");
+
         
     fill_sound_buffer_with_audio(sound_output, game_state->is_playing_music, &game_state->music, num_samples);
 

@@ -72,6 +72,19 @@ struct Mat4 {
     };
 };
 
+struct Basis {
+    Vec3 forward;
+    Vec3 right;
+    Vec3 up;
+};
+
+struct Plane {
+    // d * normal = a point on the plane. normal is not necessarily a unit vector, but for some equations
+    // it is required for it to be a unit vector.
+    real32 d;
+    Vec3 normal;
+};
+
 struct AABB {
     Vec3 p_min;
     Vec3 p_max;
