@@ -63,6 +63,46 @@
 #define GL_FUNC_SUBTRACT                  0x800A
 #define GL_MIN                            0x8007
 #define GL_MAX                            0x8008
+#define GL_FRAMEBUFFER                    0x8D40
+#define GL_COLOR_ATTACHMENT0              0x8CE0
+#define GL_COLOR_ATTACHMENT1              0x8CE1
+#define GL_COLOR_ATTACHMENT2              0x8CE2
+#define GL_COLOR_ATTACHMENT3              0x8CE3
+#define GL_COLOR_ATTACHMENT4              0x8CE4
+#define GL_COLOR_ATTACHMENT5              0x8CE5
+#define GL_COLOR_ATTACHMENT6              0x8CE6
+#define GL_COLOR_ATTACHMENT7              0x8CE7
+#define GL_COLOR_ATTACHMENT8              0x8CE8
+#define GL_COLOR_ATTACHMENT9              0x8CE9
+#define GL_COLOR_ATTACHMENT10             0x8CEA
+#define GL_COLOR_ATTACHMENT11             0x8CEB
+#define GL_COLOR_ATTACHMENT12             0x8CEC
+#define GL_COLOR_ATTACHMENT13             0x8CED
+#define GL_COLOR_ATTACHMENT14             0x8CEE
+#define GL_COLOR_ATTACHMENT15             0x8CEF
+#define GL_COLOR_ATTACHMENT16             0x8CF0
+#define GL_COLOR_ATTACHMENT17             0x8CF1
+#define GL_COLOR_ATTACHMENT18             0x8CF2
+#define GL_COLOR_ATTACHMENT19             0x8CF3
+#define GL_COLOR_ATTACHMENT20             0x8CF4
+#define GL_COLOR_ATTACHMENT21             0x8CF5
+#define GL_COLOR_ATTACHMENT22             0x8CF6
+#define GL_COLOR_ATTACHMENT23             0x8CF7
+#define GL_COLOR_ATTACHMENT24             0x8CF8
+#define GL_COLOR_ATTACHMENT25             0x8CF9
+#define GL_COLOR_ATTACHMENT26             0x8CFA
+#define GL_COLOR_ATTACHMENT27             0x8CFB
+#define GL_COLOR_ATTACHMENT28             0x8CFC
+#define GL_COLOR_ATTACHMENT29             0x8CFD
+#define GL_COLOR_ATTACHMENT30             0x8CFE
+#define GL_COLOR_ATTACHMENT31             0x8CFF
+#define GL_RENDERBUFFER                   0x8D41
+#define GL_DEPTH_COMPONENT16              0x81A5
+#define GL_DEPTH_COMPONENT24              0x81A6
+#define GL_DEPTH_COMPONENT32              0x81A7
+#define GL_DEPTH_ATTACHMENT               0x8D00
+#define GL_STENCIL_ATTACHMENT             0x8D20
+#define GL_FRAMEBUFFER_COMPLETE           0x8CD5
 
 enum Shader_Type {
     VERTEX,
@@ -86,11 +126,23 @@ struct GL_Font {
     int32 line_gap;
 };
 
+// TODO: there are different variations of this (like depth + stencil, instead of just depth).
+//       will need to make different ones if necessary.
+struct GL_Framebuffer {
+    uint32 fbo;
+    uint32 color_buffer_texture;
+    uint32 render_buffer;
+};
+
 struct GL_State {
     Hash_Table<uint32> shader_ids_table;
+    // TODO: i'm not sure how useful it is for debug meshes and game meshes to be in separate hash tables..
     Hash_Table<GL_Mesh> debug_mesh_table;
     Hash_Table<GL_Font> font_table;
     Hash_Table<GL_Mesh> mesh_table;
+
+    // TODO: will have to delete these and remake them on window resize
+    GL_Framebuffer gizmo_framebuffer;
 };
 
 #endif

@@ -19,8 +19,16 @@
 // TODO (done): draw translation gizmo
 // TODO (done): move entities using translation gizmo
 // TODO: draw rotation gizmo
+//       i think we can use backface culling to prevent rotation gizmo handles from being seen all the time.
+//       actually, that limits us on what type of mesh we can use for the handles.
+//       a better way would be to write to the depth buffer a sphere that isn't actually rendered.
+//       you would need to create a new depth buffer.
+//       nevermind, you can just disable writes the color buffer. see this article:
+//       https://stackoverflow.com/questions/25281611/how-to-set-an-invisible-occluder-in-opengl-2
+//       basically, we just use glColorMask().
 // TODO: rotate entities using rotation gizmo
 // TODO: scale gizmo based on camera distance from gizmo, so that the gizmo stays big and clickable on screen
+// TODO: window resize handling (recreate framebuffer, modify display_output)
 
 // TODO: typing in text box
 // TODO: game should have different Entity structs that have platform-independent data
@@ -58,7 +66,7 @@ Use your left hand to figure out the direction of the cross product of two vecto
 In 2D, (0, 0) is at the bottom left, positive x is right, positive y is up.
  */
 
-GL_Mesh make_gl_mesh(uint32 vao, uint32 vbo) {
+GL_Mesh make_gl_mesh(uint32 vao, uint32 vbo, uint32 num_triangles) {
     GL_Mesh gl_mesh = { vao, vbo };
     return gl_mesh;
 }
@@ -253,6 +261,13 @@ GL_Mesh gl_load_mesh(GL_State *gl_state, Mesh mesh) {
     return gl_mesh;
 }
 
+void gl_use_shader(GL_State *gl_state, char *shader_name) {
+    uint32 shader_id;
+    uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string(shader_name), &shader_id);
+    assert(shader_exists);
+    glUseProgram(shader_id);
+}
+
 void gl_draw_basic_mesh(GL_State *gl_state, Render_State *render_state,
                         char *mesh_name, char *shader_name, Transform transform,
                         Vec3 color) {
@@ -421,6 +436,46 @@ void gl_draw_text(GL_State *gl_state,
     glBindVertexArray(0);
 }
 
+GL_Framebuffer gl_make_framebuffer(int32 width, int32 height) {
+    GL_Framebuffer framebuffer;
+
+    glGenFramebuffers(1, &framebuffer.fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.fbo);
+
+    // color buffer texture
+    glGenTextures(1, &framebuffer.color_buffer_texture);
+    glBindTexture(GL_TEXTURE_2D, framebuffer.color_buffer_texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
+                 width, height,
+                 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                           framebuffer.color_buffer_texture, 0);
+
+    // render buffer (depth only)
+    glGenRenderbuffers(1, &framebuffer.render_buffer);
+    glBindRenderbuffer(GL_RENDERBUFFER, framebuffer.render_buffer);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, width, height);
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, framebuffer.render_buffer);
+
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        debug_print("Framebuffer is not complete.\n");
+        assert(false);
+    }
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    return framebuffer;
+}
+
+void gl_delete_framebuffer(GL_Framebuffer framebuffer) {
+    // delete framebuffer, color buffer, render buffer
+    glDeleteFramebuffers(1, &framebuffer.fbo);
+    glDeleteTextures(1, &framebuffer.color_buffer_texture);
+    glDeleteRenderbuffers(1, &framebuffer.render_buffer);
+}
+
 void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) {
     gl_state->shader_ids_table = make_hash_table<uint32>((Allocator *) &memory->hash_table_stack);
     gl_state->debug_mesh_table = make_hash_table<GL_Mesh>((Allocator *) &memory->hash_table_stack);
@@ -448,7 +503,7 @@ void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) 
     glEnableVertexAttribArray(0);
     
     glBindVertexArray(0);
-    hash_table_add(&gl_state->debug_mesh_table, make_string("triangle"), make_gl_mesh(vao, vbo));
+    hash_table_add(&gl_state->debug_mesh_table, make_string("triangle"), make_gl_mesh(vao, vbo, 1));
 
     // NOTE: square mesh
     real32 square_vertices[] = {
@@ -478,9 +533,52 @@ void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) 
     glEnableVertexAttribArray(0);
     
     glBindVertexArray(0);
-    hash_table_add(&gl_state->debug_mesh_table, make_string("square"), make_gl_mesh(vao, vbo));
+    hash_table_add(&gl_state->debug_mesh_table, make_string("square"), make_gl_mesh(vao, vbo, 2));
+
+    // NOTE: framebuffer mesh
+    real32 framebuffer_mesh_data[] = {
+        -1.0f, -1.0f, 0.0f, 0.0f,
+        -1.0f,  1.0f, 0.0f, 1.0f,
+         1.0f,  1.0f, 1.0f, 1.0f,
+
+        1.0f, 1.0f, 1.0f, 1.0f,
+        1.0f, -1.0f, 1.0f, 0.0f,
+        -1.0f, -1.0f, 0.0f, 0.0f
+        
+
+        // // positions   // uvs
+        // -1.0f,  1.0f,  0.0f, 1.0f,
+        // -1.0f, -1.0f,  0.0f, 0.0f,
+        //  1.0f, -1.0f,  1.0f, 0.0f,
+
+        // -1.0f,  1.0f,  0.0f, 1.0f,
+        //  1.0f, -1.0f,  1.0f, 0.0f,
+        //  1.0f,  1.0f,  1.0f, 1.0f
+    };
+
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
+
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(framebuffer_mesh_data), framebuffer_mesh_data, GL_STATIC_DRAW);
+
+    // positions
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE,
+                          4 * sizeof(real32), (void *) 0);
+    glEnableVertexAttribArray(0);
+    // uvs
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE,
+                          4 * sizeof(real32), (void *) (2 * sizeof(real32)));
+    glEnableVertexAttribArray(1);
+    
+    glBindVertexArray(0);
+    hash_table_add(&gl_state->debug_mesh_table, make_string("framebuffer_quad"), make_gl_mesh(vao, vbo, 2));
 
     // NOTE: glyph quad
+    // we store them separately like this because we use glBufferSubData to send the vertex positions
+    // directly to the shader, and i don't think there's a way to easily modify interleaved data, unless
+    // you're modifying all of the data, but when we modify the data we only modify the positions and not the uvs.
 #if 1
     real32 quad_vertices[] = {
         0.0f, 0.0f,
@@ -521,7 +619,7 @@ void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) 
     glEnableVertexAttribArray(1);
     
     glBindVertexArray(0);
-    hash_table_add(&gl_state->debug_mesh_table, make_string("glyph_quad"), make_gl_mesh(vao, vbo));
+    hash_table_add(&gl_state->debug_mesh_table, make_string("glyph_quad"), make_gl_mesh(vao, vbo, 2));
 
     // NOTE: line mesh
     real32 line_vertices[] = {
@@ -541,7 +639,7 @@ void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) 
     glEnableVertexAttribArray(0);
     
     glBindVertexArray(0);
-    hash_table_add(&gl_state->debug_mesh_table, make_string("line"), make_gl_mesh(vao, vbo));
+    hash_table_add(&gl_state->debug_mesh_table, make_string("line"), make_gl_mesh(vao, vbo, 0));
 
     // NOTE: shaders
     uint32 basic_shader_id = gl_load_shader(memory, "src/shaders/basic.vs", "src/shaders/basic.fs");
@@ -558,14 +656,14 @@ void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) 
                                                       "src/shaders/debug_wireframe.fs");
     hash_table_add(&gl_state->shader_ids_table, make_string("debug_wireframe"), debug_wireframe_shader_id);
 
+    uint32 framebuffer_shader_id = gl_load_shader(memory, "src/shaders/framebuffer.vs", "src/shaders/framebuffer.fs");
+    hash_table_add(&gl_state->shader_ids_table, make_string("framebuffer"), framebuffer_shader_id);
+
+    gl_state->gizmo_framebuffer = gl_make_framebuffer(display_output.width, display_output.height);
+
     // NOTE: fonts
     gl_init_font(memory, gl_state, "c:/windows/fonts/times.ttf", "times32", 32.0f, 512, 512);
     gl_init_font(memory, gl_state, "c:/windows/fonts/times.ttf", "times24", 24.0f, 512, 512);
-
-    // NOTE: meshes
-    //Mesh cube_mesh = read_and_load_mesh(memory, (Allocator *) &memory->mesh_arena, "src/meshes/cube.mesh", "cube");
-    //GL_Mesh gl_cube_mesh = gl_load_mesh(gl_state, cube_mesh);
-    //hash_table_add(&gl_state->mesh_table, "cube", gl_cube_mesh);
 
     // NOTE: disable culling for now, just for easier debugging...
 #if 0
@@ -983,9 +1081,34 @@ void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Editor_State 
     }
 
     char *shader_name = "basic_3d";
+
     gl_draw_basic_mesh(gl_state, render_state, gizmo.arrow_mesh_name, shader_name, x_transform, x_axis_color);
     gl_draw_basic_mesh(gl_state, render_state, gizmo.arrow_mesh_name, shader_name, y_transform, y_axis_color);
     gl_draw_basic_mesh(gl_state, render_state, gizmo.arrow_mesh_name, shader_name, z_transform, z_axis_color);
+
+    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+    gl_draw_basic_mesh(gl_state, render_state, gizmo.sphere_mesh_name, shader_name, x_transform, x_axis);
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+
+    gl_draw_basic_mesh(gl_state, render_state, gizmo.ring_mesh_name, shader_name, x_transform, x_axis);
+    gl_draw_basic_mesh(gl_state, render_state, gizmo.ring_mesh_name, shader_name, y_transform, y_axis);
+    gl_draw_basic_mesh(gl_state, render_state, gizmo.ring_mesh_name, shader_name, z_transform, z_axis);
+}
+
+void gl_draw_framebuffer(GL_State *gl_state, GL_Framebuffer framebuffer) {
+    gl_use_shader(gl_state, "framebuffer");
+
+    glBindTexture(GL_TEXTURE_2D, framebuffer.color_buffer_texture);
+
+    GL_Mesh gl_mesh;
+    uint32 mesh_exists = hash_table_find(gl_state->debug_mesh_table, make_string("framebuffer_quad"), &gl_mesh);
+    assert(mesh_exists);
+    glBindVertexArray(gl_mesh.vao);
+
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+
+    glUseProgram(0);
+    glBindVertexArray(0);
 }
 
 void gl_render(GL_State *gl_state, Controller_State *controller_state, Game_State *game_state,
@@ -1026,13 +1149,13 @@ void gl_render(GL_State *gl_state, Controller_State *controller_state, Game_Stat
         }
     }
 
+    glBindFramebuffer(GL_FRAMEBUFFER, gl_state->gizmo_framebuffer.fbo);
+    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     if (editor_state->selected_entity_index >= 0) {
-        // TODO: draw the gizmo (also need to differentiate between what type of gizmo, i.e. translation, rotation,
-        //       or scale)
-        glDisable(GL_DEPTH_TEST);
         gl_draw_gizmo(gl_state, render_state, editor_state);
-        glEnable(GL_DEPTH_TEST);
     }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 #if 0
     real32 quad_x_offset = sinf(t) * (50.0f / display_output.width);
@@ -1155,6 +1278,12 @@ void gl_render(GL_State *gl_state, Controller_State *controller_state, Game_Stat
                      buf,
                      text_color);
     }
+    
+
+    glDisable(GL_DEPTH_TEST);
+    
+    gl_draw_framebuffer(gl_state, gl_state->gizmo_framebuffer);
 
     gl_draw_ui(gl_state, &game_state->ui_manager, display_output);
+    glEnable(GL_DEPTH_TEST);
 }

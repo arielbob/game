@@ -147,8 +147,18 @@ void init_game(Memory *memory, Game_State *game_state,
         "gizmo_arrow", MESH_NAME_MAX_SIZE);
     add_mesh(game_state, mesh);
 
+    mesh = read_and_load_mesh(memory, (Allocator *) &memory->mesh_arena, "blender/gizmo_ring.mesh",
+                              "gizmo_ring", MESH_NAME_MAX_SIZE);
+    add_mesh(game_state, mesh);
+
+    mesh = read_and_load_mesh(memory, (Allocator *) &memory->mesh_arena, "blender/gizmo_sphere.mesh",
+                              "gizmo_sphere", MESH_NAME_MAX_SIZE);
+    add_mesh(game_state, mesh);
+
     // init editor_state
     editor_state->gizmo.arrow_mesh_name = "gizmo_arrow";
+    editor_state->gizmo.ring_mesh_name = "gizmo_ring";
+    editor_state->gizmo.sphere_mesh_name = "gizmo_sphere";
     editor_state->selected_entity_index = -1;
 
     // add entities

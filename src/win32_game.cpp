@@ -52,6 +52,8 @@ typedef khronos_intptr_t GLintptr;
 
 typedef void GL_GEN_VERTEX_ARRAYS(GLsizei n, GLuint *arrays);
 typedef void GL_GEN_BUFFERS (GLsizei n, GLuint *buffers);
+typedef void GL_GEN_FRAMEBUFFERS (GLsizei n, GLuint *framebuffers);
+typedef void GL_BIND_FRAMEBUFFER (GLenum target, GLuint framebuffer);
 typedef void GL_BIND_BUFFER (GLenum target, GLuint buffer);
 typedef void GL_BUFFER_DATA (GLenum target, GLsizeiptr size, const void *data, GLenum usage);
 typedef void GL_BUFFER_SUB_DATA (GLenum target, GLintptr offset, GLsizeiptr size, const void *data);
@@ -74,9 +76,19 @@ typedef void GL_GET_PROGRAM_INFO_LOG (GLuint program, GLsizei bufSize, GLsizei *
 typedef void GL_GET_PROGRAMIV (GLuint program, GLenum pname, GLint *params);
 typedef void GL_UNIFORM_3FV(GLint location, GLsizei count, const GLfloat *value);
 typedef void GL_UNIFORM_4FV(GLint location, GLsizei count, const GLfloat *value);
+typedef void GL_FRAMEBUFFER_TEXTURE_2D (GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level);
+typedef void GL_GEN_RENDERBUFFERS (GLsizei n, GLuint *renderbuffers);
+typedef void GL_BIND_RENDERBUFFER (GLenum target, GLuint renderbuffer);
+typedef void GL_RENDERBUFFER_STORAGE (GLenum target, GLenum internalformat, GLsizei width, GLsizei height);
+typedef void GL_FRAMEBUFFER_RENDERBUFFER (GLenum target, GLenum attachment, GLenum renderbuffertarget, GLuint renderbuffer);
+typedef GLenum GL_CHECK_FRAMEBUFFER_STATUS (GLenum target);
+typedef void GL_DELETE_FRAMEBUFFERS (GLsizei n, const GLuint *framebuffers);
+typedef void GL_DELETE_RENDERBUFFERS (GLsizei n, const GLuint *renderbuffers);
 
 GL_GEN_VERTEX_ARRAYS *glGenVertexArrays;
 GL_GEN_BUFFERS *glGenBuffers;
+GL_GEN_FRAMEBUFFERS *glGenFramebuffers;
+GL_BIND_FRAMEBUFFER *glBindFramebuffer;
 GL_BIND_BUFFER *glBindBuffer;
 GL_BUFFER_DATA *glBufferData;
 GL_BUFFER_SUB_DATA *glBufferSubData;
@@ -99,6 +111,14 @@ GL_GET_PROGRAM_INFO_LOG *glGetProgramInfoLog;
 GL_GET_PROGRAMIV *glGetProgramiv;
 GL_UNIFORM_3FV *glUniform3fv;
 GL_UNIFORM_4FV *glUniform4fv;
+GL_FRAMEBUFFER_TEXTURE_2D *glFramebufferTexture2D;
+GL_GEN_RENDERBUFFERS *glGenRenderbuffers;
+GL_BIND_RENDERBUFFER *glBindRenderbuffer;
+GL_RENDERBUFFER_STORAGE *glRenderbufferStorage;
+GL_FRAMEBUFFER_RENDERBUFFER *glFramebufferRenderbuffer;
+GL_CHECK_FRAMEBUFFER_STATUS *glCheckFramebufferStatus;
+GL_DELETE_FRAMEBUFFERS *glDeleteFramebuffers;
+GL_DELETE_RENDERBUFFERS *glDeleteRenderbuffers;
 
 #include "game_gl.cpp"
 
@@ -262,6 +282,8 @@ internal bool32 win32_init_opengl(HDC hdc) {
                     
                     glGenVertexArrays = (GL_GEN_VERTEX_ARRAYS *) wglGetProcAddress("glGenVertexArrays");
                     glGenBuffers = (GL_GEN_BUFFERS *) wglGetProcAddress("glGenBuffers");
+                    glGenFramebuffers = (GL_GEN_FRAMEBUFFERS *) wglGetProcAddress("glGenFramebuffers");
+                    glBindFramebuffer = (GL_BIND_FRAMEBUFFER *) wglGetProcAddress("glBindFramebuffer");
                     glBindBuffer = (GL_BIND_BUFFER *) wglGetProcAddress("glBindBuffer");
                     glBufferData = (GL_BUFFER_DATA *) wglGetProcAddress("glBufferData");
                     glBufferSubData = (GL_BUFFER_SUB_DATA *) wglGetProcAddress("glBufferSubData");
@@ -283,8 +305,17 @@ internal bool32 win32_init_opengl(HDC hdc) {
                     glGetProgramiv = (GL_GET_PROGRAMIV *) wglGetProcAddress("glGetProgramiv");
                     glGetProgramInfoLog = (GL_GET_PROGRAM_INFO_LOG *) wglGetProcAddress("glGetProgramInfoLog");
                     glUniform3fv = (GL_UNIFORM_3FV *) wglGetProcAddress("glUniform3fv");
-                    glUniform4fv = (GL_UNIFORM_4FV *) wglGetProcAddress("glUniform4fv");
-                    
+                    glUniform4fv = (GL_UNIFORM_4FV *) wglGetProcAddress("glUniform4fv");  
+                    glFramebufferTexture2D = (GL_FRAMEBUFFER_TEXTURE_2D *) wglGetProcAddress("glFramebufferTexture2D");
+                    glGenRenderbuffers = (GL_GEN_RENDERBUFFERS *) wglGetProcAddress("glGenRenderbuffers");
+                    glBindRenderbuffer = (GL_BIND_RENDERBUFFER *) wglGetProcAddress("glBindRenderbuffer");
+                    glRenderbufferStorage = (GL_RENDERBUFFER_STORAGE *) wglGetProcAddress("glRenderbufferStorage");
+                    glFramebufferRenderbuffer = (GL_FRAMEBUFFER_RENDERBUFFER *) wglGetProcAddress("glFramebufferRenderbuffer");
+                    glCheckFramebufferStatus = (GL_CHECK_FRAMEBUFFER_STATUS *) wglGetProcAddress("glCheckFramebufferStatus");
+                    glDeleteFramebuffers = (GL_DELETE_FRAMEBUFFERS *) wglGetProcAddress("glDeleteFramebuffers");
+                    glDeleteRenderbuffers = (GL_DELETE_RENDERBUFFERS *) wglGetProcAddress("glDeleteRenderbuffers");
+
+                  
                     return true;
                 } else {
                     // TODO: logging

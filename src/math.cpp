@@ -965,8 +965,6 @@ Plane get_plane_containing_ray(Ray ray, Vec3 parallel_to_this) {
     real32 right_similarity = fabsf(dot(right, parallel_to_this));
     real32 up_similarity = fabsf(dot(up, parallel_to_this));
 
-    // TODO: finish this
-
     Vec3 normal;
     real32 d;
 

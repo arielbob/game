@@ -16,6 +16,8 @@ enum Transform_Mode {
 struct Gizmo {
     Transform transform;
     char *arrow_mesh_name;
+    char *ring_mesh_name;
+    char *sphere_mesh_name;
 };
 
 struct Editor_State {
