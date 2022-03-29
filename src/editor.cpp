@@ -77,7 +77,7 @@ bool32 is_rotation(Gizmo_Handle gizmo_axis) {
 }
 
 Gizmo_Handle pick_gizmo(Game_State *game_state, Ray cursor_ray,
-                      Vec3 *gizmo_initial_hit, Vec3 *gizmo_transform_axis) {
+                        Vec3 *gizmo_initial_hit, Vec3 *gizmo_transform_axis) {
     Editor_State *editor_state = &game_state->editor_state;
     Entity entity = game_state->entities[editor_state->selected_entity_index];
     Gizmo gizmo = editor_state->gizmo;
@@ -153,7 +153,20 @@ Gizmo_Handle pick_gizmo(Game_State *game_state, Ray cursor_ray,
     }
 
     if (picked_handle) {
-        *gizmo_initial_hit = cursor_ray.origin + t_min * cursor_ray.direction;
+        if (is_rotation(picked_handle)) {
+            real32 t;
+            Plane plane = { dot(gizmo.transform.position, selected_transform_axis),
+                            selected_transform_axis };
+            bool32 intersects_plane = ray_intersects_plane(cursor_ray, plane, &t);
+            if (intersects_plane) {
+                *gizmo_initial_hit = cursor_ray.origin + t*cursor_ray.direction;
+            } else {
+                *gizmo_initial_hit = cursor_ray.origin + t_min*cursor_ray.direction;;
+            }
+        } else {
+            *gizmo_initial_hit = cursor_ray.origin + t_min*cursor_ray.direction;
+        }
+
         *gizmo_transform_axis = selected_transform_axis;
     }
 

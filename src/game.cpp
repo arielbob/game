@@ -439,6 +439,15 @@ void update(Memory *memory, Game_State *game_state,
                   editor_state->hovered_gizmo_handle);
     do_text(ui_manager, 0.0f, 564.0f, buf, "times24", "picked_gizmo_text");
 
+    buf = (char *) arena_push(&memory->frame_arena, 128);
+    string_format(buf, 128, "left mouse is down: %d",
+                  controller_state->left_mouse.is_down);
+    do_text(ui_manager, 0.0f, 516.0f, buf, "times24", "mouse_is_down");
+    buf = (char *) arena_push(&memory->frame_arena, 128);
+    string_format(buf, 128, "left mouse was down: %d",
+                  controller_state->left_mouse.was_down);
+    do_text(ui_manager, 0.0f, 500.0f, buf, "times24", "mouse_was_down");
+
 
     fill_sound_buffer_with_audio(sound_output, game_state->is_playing_music, &game_state->music, num_samples);
 
