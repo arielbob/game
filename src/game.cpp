@@ -144,7 +144,7 @@ void init_game(Memory *memory, Game_State *game_state,
     add_mesh(game_state, mesh);
 
     mesh = read_and_load_mesh(memory, (Allocator *) &memory->mesh_arena, "blender/gizmo_arrow.mesh",
-        "gizmo_arrow", MESH_NAME_MAX_SIZE);
+                              "gizmo_arrow", MESH_NAME_MAX_SIZE);
     add_mesh(game_state, mesh);
 
     mesh = read_and_load_mesh(memory, (Allocator *) &memory->mesh_arena, "blender/gizmo_ring.mesh",
@@ -391,7 +391,7 @@ void update(Memory *memory, Game_State *game_state,
     if (ui_has_hot(ui_manager)) {
         editor_state->hovered_gizmo_axis = GIZMO_AXIS_NONE;
     }
-
+    
     if (editor_state->selected_gizmo_axis) {
         if (controller_state->left_mouse.is_down) {
             Vec3 delta = do_gizmo_translation(&render_state->camera, editor_state, cursor_ray);

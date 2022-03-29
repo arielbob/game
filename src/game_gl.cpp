@@ -270,7 +270,7 @@ void gl_use_shader(GL_State *gl_state, char *shader_name) {
 
 void gl_draw_basic_mesh(GL_State *gl_state, Render_State *render_state,
                         char *mesh_name, char *shader_name, Transform transform,
-                        Vec3 color) {
+                        Vec4 color) {
     uint32 shader_id;
     uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string(shader_name), &shader_id);
     assert(shader_exists);
@@ -284,12 +284,19 @@ void gl_draw_basic_mesh(GL_State *gl_state, Render_State *render_state,
     Mat4 model_matrix = get_model_matrix(transform);
     gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
     gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->cpv_matrix);
-    gl_set_uniform_vec3(shader_id, "color", &color);
+    gl_set_uniform_vec4(shader_id, "color", &color);
 
     glDrawElements(GL_TRIANGLES, gl_mesh.num_triangles * 3, GL_UNSIGNED_INT, 0);
 
     glUseProgram(0);
     glBindVertexArray(0);
+}
+
+void gl_draw_basic_mesh(GL_State *gl_state, Render_State *render_state,
+                        char *mesh_name, char *shader_name, Transform transform,
+                        Vec3 color) {
+    gl_draw_basic_mesh(gl_state, render_state, mesh_name, shader_name, transform,
+                       make_vec4(color, 1.0f));
 }
 
 void gl_draw_mesh(GL_State *gl_state, Render_State *render_state,
@@ -307,8 +314,8 @@ void gl_draw_mesh(GL_State *gl_state, Render_State *render_state,
     Mat4 model_matrix = get_model_matrix(transform);
     gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
     gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->cpv_matrix);
-    Vec3 color = make_vec3(0.0, 0.0f, 1.0f);
-    gl_set_uniform_vec3(shader_id, "color", &color);
+    Vec4 color = make_vec4(0.0, 0.0f, 1.0f, 1.0f);
+    gl_set_uniform_vec4(shader_id, "color", &color);
 
     glDrawElements(GL_TRIANGLES, gl_mesh.num_triangles * 3, GL_UNSIGNED_INT, 0);
 
@@ -476,6 +483,20 @@ void gl_delete_framebuffer(GL_Framebuffer framebuffer) {
     glDeleteRenderbuffers(1, &framebuffer.render_buffer);
 }
 
+void generate_circle_vertices(real32 *buffer, int32 num_vertices, real32 radius) {
+    assert(num_vertices > 0);
+    // generate circle vertices on the yz-plane, i.e. x always = 0.
+    for (int32 i = 0; i < num_vertices; i++) {
+        real32 t = (real32) i / num_vertices;
+        real32 angle = 2.0f * PI * t;
+        real32 x = cosf(angle) * radius;
+        real32 y = sinf(angle) * radius;
+        buffer[i * 3] = 0.0f;
+        buffer[i * 3 + 1] = y;
+        buffer[i * 3 + 2] = x;
+    }
+}
+
 void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) {
     gl_state->shader_ids_table = make_hash_table<uint32>((Allocator *) &memory->hash_table_stack);
     gl_state->debug_mesh_table = make_hash_table<GL_Mesh>((Allocator *) &memory->hash_table_stack);
@@ -640,6 +661,22 @@ void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) 
     
     glBindVertexArray(0);
     hash_table_add(&gl_state->debug_mesh_table, make_string("line"), make_gl_mesh(vao, vbo, 0));
+
+    real32 circle_vertices[32*3];
+    generate_circle_vertices(circle_vertices, 32, 1.0f);
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
+
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(circle_vertices), circle_vertices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,
+                          3 * sizeof(real32), (void *) 0);
+    glEnableVertexAttribArray(0);
+    
+    glBindVertexArray(0);
+    hash_table_add(&gl_state->debug_mesh_table, make_string("circle"), make_gl_mesh(vao, vbo, 0));
 
     // NOTE: shaders
     uint32 basic_shader_id = gl_load_shader(memory, "src/shaders/basic.vs", "src/shaders/basic.fs");
@@ -1032,6 +1069,28 @@ void gl_draw_ui(GL_State *gl_state, UI_Manager *ui_manager, Display_Output displ
     }
 }
 
+void gl_draw_circle(GL_State *gl_state, Render_State *render_state, Transform transform, Vec4 color) {
+    uint32 shader_id;
+    uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("basic_3d"), &shader_id);
+    assert(shader_exists);
+    glUseProgram(shader_id);
+
+    GL_Mesh circle_mesh;
+    uint32 vao_exists = hash_table_find(gl_state->debug_mesh_table, make_string("circle"), &circle_mesh);
+    assert(vao_exists);
+    glBindVertexArray(circle_mesh.vao);
+
+    Mat4 model_matrix = get_model_matrix(transform);
+    gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
+    gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->cpv_matrix);
+    gl_set_uniform_vec4(shader_id, "color", &color);
+
+    glDrawArrays(GL_LINE_LOOP, 0, 32);
+
+    glUseProgram(0);
+    glBindVertexArray(0);
+}
+
 void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Editor_State *editor_state) {
     Transform_Mode transform_mode = editor_state->transform_mode;
     Gizmo gizmo = editor_state->gizmo;
@@ -1086,10 +1145,24 @@ void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Editor_State 
     gl_draw_basic_mesh(gl_state, render_state, gizmo.arrow_mesh_name, shader_name, y_transform, y_axis_color);
     gl_draw_basic_mesh(gl_state, render_state, gizmo.arrow_mesh_name, shader_name, z_transform, z_axis_color);
 
+    Transform sphere_mask_transform = gizmo.transform;
     glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-    gl_draw_basic_mesh(gl_state, render_state, gizmo.sphere_mesh_name, shader_name, x_transform, x_axis);
+    gl_draw_basic_mesh(gl_state, render_state, gizmo.sphere_mesh_name, shader_name, sphere_mask_transform,
+                       make_vec3());
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
+    real32 offset_value = 1e-2f;
+    Vec3 offset = make_vec3(offset_value, offset_value, offset_value);
+    y_transform.scale += offset;
+    z_transform.scale += 2.0f * offset;
+
+#if 0
+    glLineWidth(1.0f);
+    gl_draw_circle(gl_state, render_state, x_transform, make_vec4(x_axis, 1.0f));
+    gl_draw_circle(gl_state, render_state, y_transform, make_vec4(y_axis, 1.0f));
+    gl_draw_circle(gl_state, render_state, z_transform, make_vec4(z_axis, 1.0f));
+    glLineWidth(1.0f);
+#endif
     gl_draw_basic_mesh(gl_state, render_state, gizmo.ring_mesh_name, shader_name, x_transform, x_axis);
     gl_draw_basic_mesh(gl_state, render_state, gizmo.ring_mesh_name, shader_name, y_transform, y_axis);
     gl_draw_basic_mesh(gl_state, render_state, gizmo.ring_mesh_name, shader_name, z_transform, z_axis);
