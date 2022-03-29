@@ -242,6 +242,19 @@ void update_render_state(Render_State *render_state) {
     render_state->cpv_matrix = perspective_clip_matrix * view_matrix;
 }
 
+void update_gizmo(Game_State *game_state) {
+    Editor_State *editor_state = &game_state->editor_state;
+    Camera *camera = &game_state->render_state.camera;
+    real32 gizmo_scale_factor = distance(editor_state->gizmo.transform.position - camera->position) /
+        5.0f;
+    editor_state->gizmo.transform.scale = make_vec3(gizmo_scale_factor, gizmo_scale_factor, gizmo_scale_factor);
+
+    Entity *entity = &game_state->entities[editor_state->selected_entity_index];
+
+    editor_state->gizmo.transform.position = entity->transform.position;
+    editor_state->gizmo.transform.rotation = entity->transform.rotation;
+}
+
 void update(Memory *memory, Game_State *game_state,
             Controller_State *controller_state,
             Sound_Output *sound_output, uint32 num_samples) {
@@ -371,6 +384,8 @@ void update(Memory *memory, Game_State *game_state,
         }
     }
 
+    update_gizmo(game_state);
+
     if (editor_state->selected_entity_index >= 0 &&
         !ui_has_hot(ui_manager) &&
         !editor_state->selected_gizmo_handle) {
@@ -410,6 +425,8 @@ void update(Memory *memory, Game_State *game_state,
             editor_state->selected_gizmo_handle = GIZMO_HANDLE_NONE;
         }
     }
+
+    update_gizmo(game_state);
     
 
     char *buf = (char *) arena_push(&memory->frame_arena, 128);
