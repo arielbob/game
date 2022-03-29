@@ -941,6 +941,11 @@ bool32 bary_coords_inside_triangle(Vec3 bary_coords) {
 }
 #endif
 
+inline bool32 are_collinear(Vec3 v1, Vec3 v2) {
+    real32 dotted = dot(v1, v2);
+    return (fabsf(1.0f - fabsf(dotted)) < EPSILON);
+}
+
 void make_basis(Vec3 v, Vec3 *right, Vec3 *up) {
     Vec3 axis_v;
     if (v.x < v.y) {
@@ -1135,8 +1140,13 @@ bool32 ray_intersects_plane(Ray ray, Vec3 plane_normal, real32 plane_d, real32 *
         return false;
     }
     
-    *t_result = (plane_d - dot(ray.origin, plane_normal)) / denom;
-    return true;
+    real32 t = (plane_d - dot(ray.origin, plane_normal)) / denom;
+    if (t >= 0.0f) {
+        *t_result = (plane_d - dot(ray.origin, plane_normal)) / denom;
+        return true;
+    }
+
+    return false;
 }
 
 bool32 ray_intersects_plane(Ray ray, Plane plane, real32 *t_result) {
@@ -1480,10 +1490,13 @@ Mat4 get_model_matrix(Euler_Transform transform) {
 }
 
 inline real32 cosine_law_degrees(real32 a, real32 b, real32 c) {
+#if 0
     if (a + c <= b) {
         return 0.0f;
     }
+#endif
     real32 radians = acosf((c*c - a*a - b*b) / (-2.0f * a * b));
+    if (isnan(radians)) return 0.0f; // not sure if this is good or not, but it works
     return rads_to_degs(radians);
 }
 

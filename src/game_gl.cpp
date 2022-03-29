@@ -18,16 +18,11 @@
 // TODO (done): basic quaternions
 // TODO (done): draw translation gizmo
 // TODO (done): move entities using translation gizmo
-// TODO: draw rotation gizmo
-//       i think we can use backface culling to prevent rotation gizmo handles from being seen all the time.
-//       actually, that limits us on what type of mesh we can use for the handles.
-//       a better way would be to write to the depth buffer a sphere that isn't actually rendered.
-//       you would need to create a new depth buffer.
-//       nevermind, you can just disable writes the color buffer. see this article:
-//       https://stackoverflow.com/questions/25281611/how-to-set-an-invisible-occluder-in-opengl-2
-//       basically, we just use glColorMask().
-// TODO: rotate entities using rotation gizmo
+// TODO (done): draw rotation gizmo
+// TODO (done): rotate entities using rotation gizmo
 // TODO: scale gizmo based on camera distance from gizmo, so that the gizmo stays big and clickable on screen
+
+// TODO: be able to draw debug lines
 // TODO: window resize handling (recreate framebuffer, modify display_output)
 
 // TODO: typing in text box
@@ -1121,29 +1116,30 @@ void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Editor_State 
     }
 
 
-    Vec3 x_axis_hover = make_vec3(1.0f, 0.5f, 0.5f);
-    Vec3 y_axis_hover = make_vec3(0.5f, 1.0f, 0.5f);
-    Vec3 z_axis_hover = make_vec3(0.5f, 0.5f, 1.0f);
+    Vec3 x_handle_hover = make_vec3(1.0f, 0.8f, 0.8f);
+    Vec3 y_handle_hover = make_vec3(0.8f, 1.0f, 0.8f);
+    Vec3 z_handle_hover = make_vec3(0.8f, 0.8f, 1.0f);
 
-    Gizmo_Axis hovered_axis = editor_state->hovered_gizmo_axis;
+    Gizmo_Handle hovered_handle = editor_state->hovered_gizmo_handle;
 
-    Vec3 x_axis_color = x_axis;
-    Vec3 y_axis_color = y_axis;
-    Vec3 z_axis_color = z_axis;
+    Vec3 x_handle_color = x_axis;
+    Vec3 y_handle_color = y_axis;
+    Vec3 z_handle_color = z_axis;
 
-    if (hovered_axis == GIZMO_TRANSLATE_X) {
-        x_axis_color = x_axis_hover;
-    } else if (hovered_axis == GIZMO_TRANSLATE_Y) {
-        y_axis_color = y_axis_hover;
-    } else if (hovered_axis == GIZMO_TRANSLATE_Z) {
-        z_axis_color = z_axis_hover;
+    // translation arrows
+    if (hovered_handle == GIZMO_TRANSLATE_X) {
+        x_handle_color = x_handle_hover;
+    } else if (hovered_handle == GIZMO_TRANSLATE_Y) {
+        y_handle_color = y_handle_hover;
+    } else if (hovered_handle == GIZMO_TRANSLATE_Z) {
+        z_handle_color = z_handle_hover;
     }
 
     char *shader_name = "basic_3d";
 
-    gl_draw_basic_mesh(gl_state, render_state, gizmo.arrow_mesh_name, shader_name, x_transform, x_axis_color);
-    gl_draw_basic_mesh(gl_state, render_state, gizmo.arrow_mesh_name, shader_name, y_transform, y_axis_color);
-    gl_draw_basic_mesh(gl_state, render_state, gizmo.arrow_mesh_name, shader_name, z_transform, z_axis_color);
+    gl_draw_basic_mesh(gl_state, render_state, gizmo.arrow_mesh_name, shader_name, x_transform, x_handle_color);
+    gl_draw_basic_mesh(gl_state, render_state, gizmo.arrow_mesh_name, shader_name, y_transform, y_handle_color);
+    gl_draw_basic_mesh(gl_state, render_state, gizmo.arrow_mesh_name, shader_name, z_transform, z_handle_color);
 
     Transform sphere_mask_transform = gizmo.transform;
     glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
@@ -1151,21 +1147,26 @@ void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Editor_State 
                        make_vec3());
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
+    // rotation rings
+    x_handle_color = x_axis;
+    y_handle_color = y_axis;
+    z_handle_color = z_axis;
+    if (hovered_handle == GIZMO_ROTATE_X) {
+        x_handle_color = x_handle_hover;
+    } else if (hovered_handle == GIZMO_ROTATE_Y) {
+        y_handle_color = y_handle_hover;
+    } else if (hovered_handle == GIZMO_ROTATE_Z) {
+        z_handle_color = z_handle_hover;
+    }
+
     real32 offset_value = 1e-2f;
     Vec3 offset = make_vec3(offset_value, offset_value, offset_value);
     y_transform.scale += offset;
     z_transform.scale += 2.0f * offset;
 
-#if 0
-    glLineWidth(1.0f);
-    gl_draw_circle(gl_state, render_state, x_transform, make_vec4(x_axis, 1.0f));
-    gl_draw_circle(gl_state, render_state, y_transform, make_vec4(y_axis, 1.0f));
-    gl_draw_circle(gl_state, render_state, z_transform, make_vec4(z_axis, 1.0f));
-    glLineWidth(1.0f);
-#endif
-    gl_draw_basic_mesh(gl_state, render_state, gizmo.ring_mesh_name, shader_name, x_transform, x_axis);
-    gl_draw_basic_mesh(gl_state, render_state, gizmo.ring_mesh_name, shader_name, y_transform, y_axis);
-    gl_draw_basic_mesh(gl_state, render_state, gizmo.ring_mesh_name, shader_name, z_transform, z_axis);
+    gl_draw_basic_mesh(gl_state, render_state, gizmo.ring_mesh_name, shader_name, x_transform, x_handle_color);
+    gl_draw_basic_mesh(gl_state, render_state, gizmo.ring_mesh_name, shader_name, y_transform, y_handle_color);
+    gl_draw_basic_mesh(gl_state, render_state, gizmo.ring_mesh_name, shader_name, z_transform, z_handle_color);
 }
 
 void gl_draw_framebuffer(GL_State *gl_state, GL_Framebuffer framebuffer) {

@@ -357,7 +357,7 @@ void update(Memory *memory, Game_State *game_state,
                        normalize(cursor_world_space - render_state->camera.position) };
     
     if (!ui_has_hot(ui_manager) && was_clicked(controller_state->left_mouse)) {
-        if (editor_state->selected_gizmo_axis == GIZMO_AXIS_NONE) {
+        if (!editor_state->selected_gizmo_handle) {
             int32 picked_entity_index = pick_entity(game_state, cursor_ray);
             editor_state->selected_entity_index = picked_entity_index;
             Entity *entity = &game_state->entities[picked_entity_index];
@@ -373,47 +373,56 @@ void update(Memory *memory, Game_State *game_state,
 
     if (editor_state->selected_entity_index >= 0 &&
         !ui_has_hot(ui_manager) &&
-        (editor_state->selected_gizmo_axis == 0)) {
+        !editor_state->selected_gizmo_handle) {
 
         Vec3 gizmo_initial_hit, gizmo_transform_axis;
-        Gizmo_Axis picked_axis = pick_gizmo(game_state, cursor_ray,
-                                            &gizmo_initial_hit, &gizmo_transform_axis);
-        if (controller_state->left_mouse.is_down) {
-            editor_state->selected_gizmo_axis = picked_axis;
+        Gizmo_Handle picked_handle = pick_gizmo(game_state, cursor_ray,
+                                                &gizmo_initial_hit, &gizmo_transform_axis);
+        if (controller_state->left_mouse.is_down && !controller_state->left_mouse.was_down) {
+            editor_state->selected_gizmo_handle = picked_handle;
             editor_state->gizmo_initial_hit = gizmo_initial_hit;
             editor_state->gizmo_transform_axis = gizmo_transform_axis;
             editor_state->last_gizmo_transform_point = gizmo_initial_hit;
         } else {
-            editor_state->hovered_gizmo_axis = picked_axis;
+            editor_state->hovered_gizmo_handle = picked_handle;
         }
     }
 
     if (ui_has_hot(ui_manager)) {
-        editor_state->hovered_gizmo_axis = GIZMO_AXIS_NONE;
+        editor_state->hovered_gizmo_handle = GIZMO_HANDLE_NONE;
     }
     
-    if (editor_state->selected_gizmo_axis) {
+    if (editor_state->selected_gizmo_handle) {
         if (controller_state->left_mouse.is_down) {
-            Vec3 delta = do_gizmo_translation(&render_state->camera, editor_state, cursor_ray);
             Entity *entity = &game_state->entities[editor_state->selected_entity_index];
-            entity->transform.position += delta;
+
+            if (is_translation(editor_state->selected_gizmo_handle)) {
+                Vec3 delta = do_gizmo_translation(&render_state->camera, editor_state, cursor_ray);
+                entity->transform.position += delta;
+            } else if (is_rotation(editor_state->selected_gizmo_handle)) {
+                Quaternion delta = do_gizmo_rotation(&render_state->camera, editor_state, cursor_ray);
+                entity->transform.rotation = delta*entity->transform.rotation;
+            }
+
+            editor_state->gizmo.transform.position = entity->transform.position;
+            editor_state->gizmo.transform.rotation = entity->transform.rotation;
         } else {
-            editor_state->selected_gizmo_axis = GIZMO_AXIS_NONE;
+            editor_state->selected_gizmo_handle = GIZMO_HANDLE_NONE;
         }
     }
     
 
     char *buf = (char *) arena_push(&memory->frame_arena, 128);
     string_format(buf, 128, "picked gizmo: %d",
-                  editor_state->selected_gizmo_axis);
+                  editor_state->selected_gizmo_handle);
     do_text(ui_manager, 0.0f, 600.0f, buf, "times24", "picked_gizmo_text");
 
     buf = (char *) arena_push(&memory->frame_arena, 128);
     string_format(buf, 128, "hovered gizmo: %d",
-                  editor_state->hovered_gizmo_axis);
+                  editor_state->hovered_gizmo_handle);
     do_text(ui_manager, 0.0f, 564.0f, buf, "times24", "picked_gizmo_text");
 
-        
+
     fill_sound_buffer_with_audio(sound_output, game_state->is_playing_music, &game_state->music, num_samples);
 
     //game_state->current_char = controller_state->pressed_key;

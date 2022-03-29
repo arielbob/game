@@ -1,11 +1,14 @@
 #ifndef EDITOR_H
 #define EDITOR_H
 
-enum Gizmo_Axis {
-    GIZMO_AXIS_NONE,
+enum Gizmo_Handle {
+    GIZMO_HANDLE_NONE,
     GIZMO_TRANSLATE_X,
     GIZMO_TRANSLATE_Y,
-    GIZMO_TRANSLATE_Z
+    GIZMO_TRANSLATE_Z,
+    GIZMO_ROTATE_X,
+    GIZMO_ROTATE_Y,
+    GIZMO_ROTATE_Z
 };
 
 enum Transform_Mode {
@@ -25,8 +28,8 @@ struct Editor_State {
     int32 selected_entity_index;
 
     Gizmo gizmo;
-    Gizmo_Axis hovered_gizmo_axis;
-    Gizmo_Axis selected_gizmo_axis;
+    Gizmo_Handle hovered_gizmo_handle;
+    Gizmo_Handle selected_gizmo_handle;
     Vec3 gizmo_initial_hit;
     Vec3 gizmo_transform_axis;
     Vec3 last_gizmo_transform_point;
