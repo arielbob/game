@@ -22,12 +22,25 @@
 // TODO (done): rotate entities using rotation gizmo
 // TODO (done): scale gizmo based on camera distance from gizmo, so that the gizmo stays big and clickable on screen
 // TODO (done): textures
+// TODO: actually send point_light_entity data to shaders (read multiple lights article on learnopengl.com)
+// TODO: add the Entity struct with the shared Entity info for easier entity access.
 // TODO: point lights
 //       we don't need to do PBR right now - we can just do basic blinn-phong shading
+// TODO: material editing
 // TODO: level saving/loading
 // TODO: better level editing (mesh libraries, textures libraries)
 // TODO: be able to edit materials
 
+// TODO: maybe use a push buffer for entities? and use an Entity_Type enum to differentiate between entities?
+//       the upside is that we don't waste space when the amount of one entity type far exceeds another entity
+//       type.
+//       but the thing is is that we often do need to do operations concerning only a single type of entity.
+//       and that could become more complicated if we use a push buffer.
+//       not using a push buffer is very annoying when trying to access entities by index. you have to constantly
+//       check entity type and then access the correct array.
+//       we could do a combination. we could create an Entity struct which contains all the shared fields.
+//       then just add a get_selected_entity procedure that just returns an Entity struct. if you need more
+//       specific details, then you can check entity.entity_type and cast it to the correct object.
 // TODO: be able to draw debug lines
 // TODO: window resize handling (recreate framebuffer, modify display_output)
 
@@ -140,6 +153,12 @@ inline void gl_set_uniform_vec4(uint32 shader_id, char* uniform_name, Vec4 *v) {
     int32 uniform_location = glGetUniformLocation(shader_id, uniform_name);
     assert(uniform_location > -1);
     glUniform4fv(uniform_location, 1, (real32 *) v);
+}
+
+inline void gl_set_uniform_int(uint32 shader_id, char* uniform_name, int32 i) {
+    int32 uniform_location = glGetUniformLocation(shader_id, uniform_name);
+    assert(uniform_location > -1);
+    glUniform1i(uniform_location, i);
 }
 
 void gl_load_shader(GL_State *gl_state, Memory *memory,
@@ -309,20 +328,30 @@ void gl_use_texture(GL_State *gl_state, char *texture_name) {
     glBindTexture(GL_TEXTURE_2D, texture.id);
 }
 
-void gl_draw_solid_color_mesh(GL_State *gl_state, Render_State *render_state,
-                              char *mesh_name, Transform transform,
-                              Vec4 color) {
-    uint32 shader_id = gl_use_shader(gl_state, "solid");
-
+GL_Mesh gl_use_mesh(GL_State *gl_state, char *mesh_name) {
     GL_Mesh gl_mesh;
     uint32 mesh_exists = hash_table_find(gl_state->mesh_table, make_string(mesh_name), &gl_mesh);
     assert(mesh_exists);
     glBindVertexArray(gl_mesh.vao);
+    return gl_mesh;
+}
+
+void gl_draw_solid_mesh(GL_State *gl_state, Render_State *render_state,
+                        char *mesh_name, char *texture_name, 
+                        Vec4 color,
+                        Transform transform,
+                        bool32 use_color_override) {
+    uint32 shader_id = gl_use_shader(gl_state, "solid");
+    GL_Mesh gl_mesh = gl_use_mesh(gl_state, mesh_name);
+
+    if (!use_color_override && !texture_name) assert(!"No texture name provided.");
+    if (!use_color_override) gl_use_texture(gl_state, texture_name);
 
     Mat4 model_matrix = get_model_matrix(transform);
     gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
     gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->cpv_matrix);
     gl_set_uniform_vec4(shader_id, "color", &color);
+    gl_set_uniform_int(shader_id, "use_color_override", use_color_override);
     
     glDrawElements(GL_TRIANGLES, gl_mesh.num_triangles * 3, GL_UNSIGNED_INT, 0);
 
@@ -331,26 +360,32 @@ void gl_draw_solid_color_mesh(GL_State *gl_state, Render_State *render_state,
 }
 
 void gl_draw_solid_color_mesh(GL_State *gl_state, Render_State *render_state,
-                              char *mesh_name, Transform transform,
-                              Vec3 color) {
-    gl_draw_solid_color_mesh(gl_state, render_state, mesh_name, transform,
-                             make_vec4(color, 1.0f));
+                              char *mesh_name,
+                              Vec4 color,
+                              Transform transform) {
+    gl_draw_solid_mesh(gl_state, render_state,
+                       mesh_name, NULL, 
+                       color,
+                       transform,
+                       true);
 }
 
 void gl_draw_mesh(GL_State *gl_state, Render_State *render_state,
-                  char *mesh_name, Transform transform) {
+                  char *mesh_name, char *texture_name, 
+                  Vec4 color,
+                  Transform transform,
+                  bool32 use_color_override) {
     uint32 shader_id = gl_use_shader(gl_state, "basic_3d");
+    GL_Mesh gl_mesh = gl_use_mesh(gl_state, mesh_name);
 
-    GL_Mesh gl_mesh;
-    uint32 mesh_exists = hash_table_find(gl_state->mesh_table, make_string(mesh_name), &gl_mesh);
-    assert(mesh_exists);
-    glBindVertexArray(gl_mesh.vao);
+    if (!use_color_override && !texture_name) assert(!"No texture name provided.");
+    if (!use_color_override) gl_use_texture(gl_state, texture_name);
 
     Mat4 model_matrix = get_model_matrix(transform);
     gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
     gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->cpv_matrix);
-
-    Vec3 material_color = make_vec3(0.0f, 0.0f, 1.0f);
+    // NOTE: we may need to think about this for transparent materials
+    Vec3 material_color = truncate_v4_to_v3(color);
     gl_set_uniform_vec3(shader_id, "material_color", &material_color);
     
     Vec3 light_color = make_vec3(1.0f, 1.0f, 1.0f);
@@ -358,6 +393,7 @@ void gl_draw_mesh(GL_State *gl_state, Render_State *render_state,
     gl_set_uniform_vec3(shader_id, "light_color", &light_color);
     gl_set_uniform_vec3(shader_id, "light_pos", &light_position);
     gl_set_uniform_vec3(shader_id, "camera_pos", &render_state->camera.position);
+    gl_set_uniform_int(shader_id, "use_color_override", use_color_override);
 
     glDrawElements(GL_TRIANGLES, gl_mesh.num_triangles * 3, GL_UNSIGNED_INT, 0);
 
@@ -1188,15 +1224,15 @@ void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Editor_State 
     }
 
 
-    Vec3 x_handle_hover = make_vec3(1.0f, 0.8f, 0.8f);
-    Vec3 y_handle_hover = make_vec3(0.8f, 1.0f, 0.8f);
-    Vec3 z_handle_hover = make_vec3(0.8f, 0.8f, 1.0f);
+    Vec4 x_handle_hover = make_vec4(1.0f, 0.8f, 0.8f, 1.0f);
+    Vec4 y_handle_hover = make_vec4(0.8f, 1.0f, 0.8f, 1.0f);
+    Vec4 z_handle_hover = make_vec4(0.8f, 0.8f, 1.0f, 1.0f);
 
     Gizmo_Handle hovered_handle = editor_state->hovered_gizmo_handle;
 
-    Vec3 x_handle_color = x_axis;
-    Vec3 y_handle_color = y_axis;
-    Vec3 z_handle_color = z_axis;
+    Vec4 x_handle_color = make_vec4(x_axis, 1.0f);
+    Vec4 y_handle_color = make_vec4(y_axis, 1.0f);
+    Vec4 z_handle_color = make_vec4(z_axis, 1.0f);
 
     // translation arrows
     if (hovered_handle == GIZMO_TRANSLATE_X) {
@@ -1207,20 +1243,20 @@ void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Editor_State 
         z_handle_color = z_handle_hover;
     }
 
-    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.arrow_mesh_name, x_transform, x_handle_color);
-    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.arrow_mesh_name, y_transform, y_handle_color);
-    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.arrow_mesh_name, z_transform, z_handle_color);
+    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.arrow_mesh_name, x_handle_color, x_transform);
+    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.arrow_mesh_name, y_handle_color, y_transform);
+    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.arrow_mesh_name, z_handle_color, z_transform);
 
     Transform sphere_mask_transform = gizmo.transform;
     glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.sphere_mesh_name, sphere_mask_transform,
-                             make_vec3());
+    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.sphere_mesh_name,
+                             make_vec4(0.0f, 0.0f, 0.0f, 1.0f), sphere_mask_transform);
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
     // rotation rings
-    x_handle_color = x_axis;
-    y_handle_color = y_axis;
-    z_handle_color = z_axis;
+    x_handle_color = make_vec4(x_axis, 1.0f);
+    y_handle_color = make_vec4(y_axis, 1.0f);
+    z_handle_color = make_vec4(z_axis, 1.0f);
     if (hovered_handle == GIZMO_ROTATE_X) {
         x_handle_color = x_handle_hover;
     } else if (hovered_handle == GIZMO_ROTATE_Y) {
@@ -1234,9 +1270,9 @@ void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Editor_State 
     y_transform.scale += offset;
     z_transform.scale += 2.0f * offset;
 
-    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.ring_mesh_name, x_transform, x_handle_color);
-    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.ring_mesh_name, y_transform, y_handle_color);
-    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.ring_mesh_name, z_transform, z_handle_color);
+    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.ring_mesh_name, x_handle_color, x_transform);
+    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.ring_mesh_name, y_handle_color, y_transform);
+    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.ring_mesh_name, z_handle_color, z_transform);
 }
 
 void gl_draw_framebuffer(GL_State *gl_state, GL_Framebuffer framebuffer) {
@@ -1282,20 +1318,38 @@ void gl_render(GL_State *gl_state, Controller_State *controller_state, Game_Stat
 
     Editor_State *editor_state = &game_state->editor_state;
 
+    // point lights
+    for (int32 i = 0; i < game_state->num_point_lights; i++) {
+        Point_Light_Entity *entity = &game_state->point_lights[i];
+        char *mesh_name = game_state->meshes[entity->mesh_index].name;
+        char *texture_name = entity->texture_name;
+
+        gl_draw_solid_mesh(gl_state, render_state, 
+                           mesh_name, texture_name,
+                           make_vec4(entity->color_override, 1.0f),
+                           entity->transform,
+                           texture_name == NULL);
+
+        if (game_state->editor_state.selected_entity_type == ENTITY_POINT_LIGHT &&
+            game_state->editor_state.selected_entity_index == i) {
+            gl_draw_wireframe(gl_state, render_state, mesh_name, entity->transform);
+        }
+    }
+
+    // entities
     for (int32 i = 0; i < game_state->num_entities; i++) {
         Entity *entity = &game_state->entities[i];
         char *mesh_name = game_state->meshes[entity->mesh_index].name;
         char *texture_name = entity->texture_name;
-        if (texture_name) {
-            gl_draw_textured_mesh(gl_state, render_state,
-                                  mesh_name, texture_name, entity->transform);
-        } else {
-            gl_draw_mesh(gl_state, render_state,
-                         mesh_name, entity->transform);
-        }
-        
 
-        if (editor_state->selected_entity_index == i) {
+        gl_draw_mesh(gl_state, render_state,
+                     mesh_name, texture_name,
+                     make_vec4(entity->color_override, 1.0f),
+                     entity->transform,
+                     true);
+
+        if (game_state->editor_state.selected_entity_type == ENTITY_NORMAL &&
+            game_state->editor_state.selected_entity_index == i) {
             gl_draw_wireframe(gl_state, render_state, mesh_name, entity->transform);
         }
     }
@@ -1397,39 +1451,7 @@ void gl_render(GL_State *gl_state, Controller_State *controller_state, Game_Stat
                             t*50.0f, t*50.0f, 0.0f,
                             make_vec3(0.5f, 0.5f, 0.5f) };
 */
-    // gl_draw_mesh(gl_state, render_state, "cube", "basic_3d", transform);
-
-    char buf[256];
-    string_format(buf, sizeof(buf), "selected entity index: %d",
-                  editor_state->selected_entity_index);
-    gl_draw_text(gl_state, display_output, "times24",
-                 0.0f, 370.0f,
-                 buf,
-                 text_color);
-
-    if (editor_state->selected_entity_index >= 0) {
-        Entity entity = game_state->entities[editor_state->selected_entity_index];
-        Transform transform = entity.transform;
-        char *mesh_name = game_state->meshes[entity.mesh_index].name;
-#if 0
-        string_format(buf, sizeof(buf), "mesh name: %s\n\nposition: (%f, %f, %f)\n\nheading: %f\npitch: %f\nroll: %f\n\nscale: (%f, %f, %f)",
-                      mesh_name,
-                      transform.position.x, transform.position.y, transform.position.z,
-                      transform.heading, transform.pitch, transform.roll,
-                      transform.scale.x, transform.scale.y, transform.scale.z);
-#else
-        string_format(buf, sizeof(buf), "mesh name: %s\n\nposition: (%f, %f, %f)\n\nquaternion: (%f, %f, %f, %f)\n\nscale: (%f, %f, %f)",
-                      mesh_name,
-                      transform.position.x, transform.position.y, transform.position.z,
-                      transform.rotation.w, transform.rotation.v.x, transform.rotation.v.y, transform.rotation.v.z,
-                      transform.scale.x, transform.scale.y, transform.scale.z);
-#endif
-        gl_draw_text(gl_state, display_output, "times24",
-                     0.0f, 300.0f,
-                     buf,
-                     text_color);
-    }
-    
+    // gl_draw_mesh(gl_state, render_state, "cube", "basic_3d", transform);    
 
     glDisable(GL_DEPTH_TEST);
     

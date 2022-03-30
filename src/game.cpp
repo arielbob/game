@@ -89,15 +89,36 @@ int32 get_mesh_index(Game_State *game_state, char *mesh_name_to_find) {
     return -1;
 }
 
-Entity make_entity(Game_State *game_state, char *mesh_name, Transform transform) {
+Entity make_entity(Game_State *game_state, char *mesh_name, Vec3 color_override, Transform transform) {
     int32 mesh_index = get_mesh_index(game_state, mesh_name);
-    Entity entity = { mesh_index, NULL, transform };
+    Entity entity = { mesh_index, NULL, color_override, transform };
     return entity;
 }
 
-Entity make_entity(Game_State *game_state, char *mesh_name, char *texture_name, Transform transform) {
+Entity make_entity(Game_State *game_state,
+                   char *mesh_name, char *texture_name,
+                   Vec3 color_override,
+                   Transform transform) {
     int32 mesh_index = get_mesh_index(game_state, mesh_name);
-    Entity entity = { mesh_index, texture_name, transform };
+    Entity entity = { mesh_index, texture_name, color_override, transform };
+    return entity;
+}
+
+Point_Light_Entity make_point_light_entity(Game_State *game_state,
+                                           char *mesh_name, char *texture_name,
+                                           Vec3 color_override, Vec3 light_color,
+                                           Transform transform) {
+    int32 mesh_index = get_mesh_index(game_state, mesh_name);
+    Point_Light_Entity entity = { mesh_index, texture_name, color_override, light_color, transform };
+    return entity;
+}
+
+Point_Light_Entity make_point_light_entity(Game_State *game_state,
+                                           char *mesh_name,
+                                           Vec3 color_override, Vec3 light_color,
+                                           Transform transform) {
+    int32 mesh_index = get_mesh_index(game_state, mesh_name);
+    Point_Light_Entity entity = { mesh_index, NULL, color_override, light_color, transform };
     return entity;
 }
 
@@ -109,6 +130,11 @@ void add_mesh(Game_State *game_state, Mesh mesh) {
 void add_entity(Game_State *game_state, Entity entity) {
     assert(game_state->num_entities < MAX_ENTITIES);
     game_state->entities[game_state->num_entities++] = entity;
+}
+
+void add_point_light_entity(Game_State *game_state, Point_Light_Entity entity) {
+    assert(game_state->num_point_lights < MAX_POINT_LIGHTS);
+    game_state->point_lights[game_state->num_point_lights++] = entity;
 }
 
 void init_camera(Camera *camera, Display_Output *display_output) {
@@ -175,7 +201,7 @@ void init_game(Memory *memory, Game_State *game_state,
     transform.scale = make_vec3(1.0f, 1.0f, 1.0f);
     transform.position = make_vec3(2.0f, 1.0f, 0.0f);
     transform.rotation = make_quaternion(45.0f, y_axis);
-    entity = make_entity(game_state, "suzanne", "debug", transform);
+    entity = make_entity(game_state, "suzanne", "debug", make_vec3(1.0f, 0.5f, 0.0f), transform);
     add_entity(game_state, entity);
 #endif
 
@@ -184,23 +210,26 @@ void init_game(Memory *memory, Game_State *game_state,
     transform.scale = make_vec3(5.0f, 0.1f, 5.0f);
     transform.position = make_vec3(0.0f, 0.0f, 0.0f);
     transform.rotation = make_quaternion();
-    entity = make_entity(game_state, "cube", transform);
+    entity = make_entity(game_state, "cube", make_vec3(0.0f, 0.0f, 1.0f), transform);
     add_entity(game_state, entity);
 
     transform = {};
     transform.scale = make_vec3(1.0f, 1.0f, 1.0f);
-    transform.position = make_vec3(0.0f, 0.0f, 0.0f);
+    transform.position = make_vec3(0.0f, 1.0f, 0.0f);
     transform.rotation = make_quaternion(45.0f, y_axis);
-    entity = make_entity(game_state, "gizmo_arrow", transform);
+    entity = make_entity(game_state, "gizmo_arrow", make_vec3(1.0f, 0.0f, 0.0f), transform);
     add_entity(game_state, entity);
 #endif
 
-#if 0
+#if 1
     transform = {};
     transform.scale = make_vec3(1.0f, 1.0f, 1.0f);
     transform.position = make_vec3(0.0f, 3.0f, 0.0f);
     transform.rotation = make_quaternion();
-    Point_Light_Entity point_light_entity = make_point_light_entity(game_state, "point_light1", transform);
+    Vec3 light_color = make_vec3(1.0f, 1.0f, 1.0f);
+    Point_Light_Entity point_light_entity = make_point_light_entity(game_state, "cube", 
+                                                                    light_color, light_color,
+                                                                    transform);
     add_point_light_entity(game_state, point_light_entity);
 #endif
 
@@ -257,6 +286,27 @@ void update_render_state(Render_State *render_state) {
     render_state->cpv_matrix = perspective_clip_matrix * view_matrix;
 }
 
+Transform *get_selected_entity_transform(Game_State *game_state) {
+    Editor_State *editor_state = &game_state->editor_state;
+
+    Transform *entity_transform = NULL;
+    int32 index = editor_state->selected_entity_index;
+    switch (editor_state->selected_entity_type) {
+        case ENTITY_NORMAL:
+        {
+            entity_transform = &game_state->entities[index].transform;
+        } break;
+        case ENTITY_POINT_LIGHT:
+        {
+            entity_transform = &game_state->point_lights[index].transform;
+        } break;
+    }
+
+    assert(entity_transform);
+
+    return entity_transform;
+}
+
 void update_gizmo(Game_State *game_state) {
     Editor_State *editor_state = &game_state->editor_state;
     Camera *camera = &game_state->render_state.camera;
@@ -264,10 +314,9 @@ void update_gizmo(Game_State *game_state) {
         5.0f;
     editor_state->gizmo.transform.scale = make_vec3(gizmo_scale_factor, gizmo_scale_factor, gizmo_scale_factor);
 
-    Entity *entity = &game_state->entities[editor_state->selected_entity_index];
-
-    editor_state->gizmo.transform.position = entity->transform.position;
-    editor_state->gizmo.transform.rotation = entity->transform.rotation;
+    Transform *entity_transform = get_selected_entity_transform(game_state);
+    editor_state->gizmo.transform.position = entity_transform->position;
+    editor_state->gizmo.transform.rotation = entity_transform->rotation;
 }
 
 void update(Memory *memory, Game_State *game_state,
@@ -386,15 +435,18 @@ void update(Memory *memory, Game_State *game_state,
     
     if (!ui_has_hot(ui_manager) && was_clicked(controller_state->left_mouse)) {
         if (!editor_state->selected_gizmo_handle) {
-            int32 picked_entity_index = pick_entity(game_state, cursor_ray);
-            editor_state->selected_entity_index = picked_entity_index;
-            Entity *entity = &game_state->entities[picked_entity_index];
-            if (picked_entity_index >= 0) {
-                editor_state->gizmo.transform = {
-                    entity->transform.position,
-                    entity->transform.rotation,
-                    make_vec3(1.0f, 1.0f, 1.0f)
-                };
+            Entity_Type entity_type;
+            int32 entity_index;
+            Transform entity_transform;
+            bool32 picked = pick_entity(game_state, cursor_ray,
+                                        &entity_type, &entity_index, &entity_transform);
+            
+            if (picked) {
+                editor_state->selected_entity_type = entity_type;
+                editor_state->selected_entity_index = entity_index;
+                editor_state->gizmo.transform = entity_transform;
+            } else {
+                editor_state->selected_entity_index = -1;
             }
         }
     }
@@ -424,18 +476,18 @@ void update(Memory *memory, Game_State *game_state,
     
     if (editor_state->selected_gizmo_handle) {
         if (controller_state->left_mouse.is_down) {
-            Entity *entity = &game_state->entities[editor_state->selected_entity_index];
+            Transform *entity_transform = get_selected_entity_transform(game_state);
 
             if (is_translation(editor_state->selected_gizmo_handle)) {
                 Vec3 delta = do_gizmo_translation(&render_state->camera, editor_state, cursor_ray);
-                entity->transform.position += delta;
+                entity_transform->position += delta;
             } else if (is_rotation(editor_state->selected_gizmo_handle)) {
                 Quaternion delta = do_gizmo_rotation(&render_state->camera, editor_state, cursor_ray);
-                entity->transform.rotation = delta*entity->transform.rotation;
+                entity_transform->rotation = delta*entity_transform->rotation;
             }
 
-            editor_state->gizmo.transform.position = entity->transform.position;
-            editor_state->gizmo.transform.rotation = entity->transform.rotation;
+            editor_state->gizmo.transform.position = entity_transform->position;
+            editor_state->gizmo.transform.rotation = entity_transform->rotation;
         } else {
             editor_state->selected_gizmo_handle = GIZMO_HANDLE_NONE;
         }
@@ -462,6 +514,35 @@ void update(Memory *memory, Game_State *game_state,
     string_format(buf, 128, "left mouse was down: %d",
                   controller_state->left_mouse.was_down);
     do_text(ui_manager, 0.0f, 500.0f, buf, "times24", "mouse_was_down");
+
+    buf = (char *) arena_push(&memory->frame_arena, 128);
+    string_format(buf, 128, "selected entity type: %d\nselected entity index: %d",
+                  editor_state->selected_entity_type, editor_state->selected_entity_index);
+    do_text(ui_manager, 0.0f, 370.0f, buf, "times24", "selected_entity_index_text");
+
+    if (editor_state->selected_entity_index >= 0) {
+        Transform transform = *get_selected_entity_transform(game_state);
+        char *mesh_name = "";
+        int32 index = editor_state->selected_entity_index;
+        switch (editor_state->selected_entity_type) {
+            case ENTITY_NORMAL:
+            {
+                mesh_name = game_state->meshes[game_state->entities[index].mesh_index].name;
+            } break;
+            case ENTITY_POINT_LIGHT:
+            {
+                mesh_name = game_state->meshes[game_state->point_lights[index].mesh_index].name;
+            } break;
+        }
+
+        buf = (char *) arena_push(&memory->frame_arena, 256);
+        string_format(buf, 256, "mesh name: %s\n\nposition: (%f, %f, %f)\n\nquaternion: (%f, %f, %f, %f)\n\nscale: (%f, %f, %f)",
+                      mesh_name,
+                      transform.position.x, transform.position.y, transform.position.z,
+                      transform.rotation.w, transform.rotation.v.x, transform.rotation.v.y, transform.rotation.v.z,
+                      transform.scale.x, transform.scale.y, transform.scale.z);
+        do_text(ui_manager, 0.0f, 300.0f, buf, "times24", "entity info");
+    }
 
 
     fill_sound_buffer_with_audio(sound_output, game_state->is_playing_music, &game_state->music, num_samples);

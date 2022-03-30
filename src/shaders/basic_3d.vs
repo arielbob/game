@@ -9,6 +9,7 @@ uniform mat4 cpv_matrix;
 
 out vec3 frag_pos;
 out vec3 normal;
+out vec2 uv;
 
 void main() {
     frag_pos = vec3(model_matrix * vec4(pos, 1.0));
@@ -16,4 +17,5 @@ void main() {
 
     // NOTE: w of vec4 is 0 to ignore the translation of the model matrix
     normal = normalize(vec3(transpose(inverse(model_matrix)) * vec4(vertex_normal, 0.0)));
+    uv = vertex_uv;
 }

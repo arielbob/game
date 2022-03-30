@@ -25,7 +25,9 @@ struct Gizmo {
 
 struct Editor_State {
     Transform_Mode transform_mode;
+    
     int32 selected_entity_index;
+    Entity_Type selected_entity_type;
 
     Gizmo gizmo;
     Gizmo_Handle hovered_gizmo_handle;

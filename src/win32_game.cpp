@@ -76,6 +76,7 @@ typedef void GL_GET_SHADER_INFO_LOG(GLuint shader, GLsizei maxLength, GLsizei *l
 typedef void GL_GET_SHADERIV(GLuint shader, GLenum pname, GLint *params);
 typedef void GL_GET_PROGRAM_INFO_LOG (GLuint program, GLsizei bufSize, GLsizei *length, GLchar *infoLog);
 typedef void GL_GET_PROGRAMIV (GLuint program, GLenum pname, GLint *params);
+typedef void GL_UNIFORM_1I(GLint location, GLint value);
 typedef void GL_UNIFORM_3FV(GLint location, GLsizei count, const GLfloat *value);
 typedef void GL_UNIFORM_4FV(GLint location, GLsizei count, const GLfloat *value);
 typedef void GL_FRAMEBUFFER_TEXTURE_2D (GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level);
@@ -111,6 +112,7 @@ GL_GET_SHADER_INFO_LOG *glGetShaderInfoLog;
 GL_GET_SHADERIV *glGetShaderiv;
 GL_GET_PROGRAM_INFO_LOG *glGetProgramInfoLog;
 GL_GET_PROGRAMIV *glGetProgramiv;
+GL_UNIFORM_1I *glUniform1i;
 GL_UNIFORM_3FV *glUniform3fv;
 GL_UNIFORM_4FV *glUniform4fv;
 GL_FRAMEBUFFER_TEXTURE_2D *glFramebufferTexture2D;
@@ -306,6 +308,7 @@ internal bool32 win32_init_opengl(HDC hdc) {
                     glGetShaderInfoLog = (GL_GET_SHADER_INFO_LOG *) wglGetProcAddress("glGetShaderInfoLog");
                     glGetProgramiv = (GL_GET_PROGRAMIV *) wglGetProcAddress("glGetProgramiv");
                     glGetProgramInfoLog = (GL_GET_PROGRAM_INFO_LOG *) wglGetProcAddress("glGetProgramInfoLog");
+                    glUniform1i = (GL_UNIFORM_1I *) wglGetProcAddress("glUniform1i");
                     glUniform3fv = (GL_UNIFORM_3FV *) wglGetProcAddress("glUniform3fv");
                     glUniform4fv = (GL_UNIFORM_4FV *) wglGetProcAddress("glUniform4fv");  
                     glFramebufferTexture2D = (GL_FRAMEBUFFER_TEXTURE_2D *) wglGetProcAddress("glFramebufferTexture2D");

@@ -42,13 +42,17 @@ int32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, real32 *t_res
 }
 
 // TODO: optimize this by checking against AABB before checking against triangles
-int32 pick_entity(Game_State *game_state, Ray cursor_ray) {
+int32 pick_entity(Game_State *game_state, Ray cursor_ray,
+                  Entity_Type *entity_type_result, int32 *entity_index_result, Transform *entity_transform_result) {
     Editor_State *editor_state = &game_state->editor_state;
 
     Mesh *meshes = game_state->meshes;
     Entity *entities = game_state->entities;
+    Point_Light_Entity *point_lights = game_state->point_lights;
 
+    Entity_Type entity_type = ENTITY_NORMAL;
     int32 entity_index = -1;
+    Transform entity_transform = {};
 
     real32 t_min = FLT_MAX;
     for (int32 i = 0; i < game_state->num_entities; i++) {
@@ -58,10 +62,31 @@ int32 pick_entity(Game_State *game_state, Ray cursor_ray) {
         if (ray_intersects_mesh(cursor_ray, mesh, entity.transform, &t) && (t < t_min)) {
             t_min = t;
             entity_index = i;
+            entity_transform = entity.transform;
+            entity_type = ENTITY_NORMAL;
         }
     }
 
-    return entity_index;
+    for (int32 i = 0; i < game_state->num_point_lights; i++) {
+        real32 t;
+        Point_Light_Entity entity = point_lights[i];
+        Mesh mesh = meshes[entity.mesh_index];
+        if (ray_intersects_mesh(cursor_ray, mesh, entity.transform, &t) && (t < t_min)) {
+            t_min = t;
+            entity_index = i;
+            entity_transform = entity.transform;
+            entity_type = ENTITY_POINT_LIGHT;
+        }
+    }
+
+    if (entity_index >= 0) {
+        *entity_type_result = entity_type;
+        *entity_index_result = entity_index;
+        *entity_transform_result = entity_transform;
+        return true;
+    }
+
+    return false;
 }
 
 bool32 is_translation(Gizmo_Handle gizmo_axis) {
@@ -79,12 +104,12 @@ bool32 is_rotation(Gizmo_Handle gizmo_axis) {
 Gizmo_Handle pick_gizmo(Game_State *game_state, Ray cursor_ray,
                         Vec3 *gizmo_initial_hit, Vec3 *gizmo_transform_axis) {
     Editor_State *editor_state = &game_state->editor_state;
-    Entity entity = game_state->entities[editor_state->selected_entity_index];
+    Transform *entity_transform = get_selected_entity_transform(game_state);
     Gizmo gizmo = editor_state->gizmo;
 
     Transform_Mode transform_mode = editor_state->transform_mode;
 
-    Mat4 entity_model_matrix = get_model_matrix(entity.transform);
+    Mat4 entity_model_matrix = get_model_matrix(*entity_transform);
 
     Transform x_transform, y_transform, z_transform;
     Vec3 transform_x_axis, transform_y_axis, transform_z_axis;

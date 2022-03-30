@@ -112,18 +112,23 @@ struct Render_State {
 struct Entity {
     int32 mesh_index;
     char *texture_name;
+    Vec3 color_override;
     Transform transform;
 };
 
 struct Point_Light_Entity {
     int32 mesh_index;
     char *texture_name;
+    Vec3 color_override;
+
+    Vec3 light_color;
+
     Transform transform;
-    // TODO: finish this
 };
 
 #define MAX_MESHES 64
 #define MAX_ENTITIES 64
+#define MAX_POINT_LIGHTS 64
 
 struct Game_State {
     bool32 is_initted;
@@ -144,9 +149,13 @@ struct Game_State {
 
     int32 num_entities;
     Entity entities[MAX_ENTITIES];
+
+    int32 num_point_lights;
+    Point_Light_Entity point_lights[MAX_POINT_LIGHTS];
 };
 
 bool32 was_clicked(Controller_Button_State button_state);
 int32 get_mesh_index(Game_State *game_state, char *mesh_name_to_find);
+Transform *get_selected_entity_transform(Game_State *game_state);
 
 #endif
