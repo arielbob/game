@@ -111,6 +111,7 @@ struct Render_State {
 
 struct Entity {
     int32 mesh_index;
+    char *texture_name;
     Transform transform;
 };
 

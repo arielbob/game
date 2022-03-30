@@ -126,6 +126,13 @@ struct GL_Font {
     int32 line_gap;
 };
 
+struct GL_Texture {
+    uint32 id;
+    int32 width;
+    int32 height;
+    int32 num_channels;
+};
+
 // TODO: there are different variations of this (like depth + stencil, instead of just depth).
 //       will need to make different ones if necessary.
 struct GL_Framebuffer {
@@ -140,6 +147,7 @@ struct GL_State {
     Hash_Table<GL_Mesh> debug_mesh_table;
     Hash_Table<GL_Font> font_table;
     Hash_Table<GL_Mesh> mesh_table;
+    Hash_Table<GL_Texture> texture_table;
 
     // TODO: will have to delete these and remake them on window resize
     GL_Framebuffer gizmo_framebuffer;

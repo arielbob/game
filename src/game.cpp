@@ -91,7 +91,13 @@ int32 get_mesh_index(Game_State *game_state, char *mesh_name_to_find) {
 
 Entity make_entity(Game_State *game_state, char *mesh_name, Transform transform) {
     int32 mesh_index = get_mesh_index(game_state, mesh_name);
-    Entity entity = { mesh_index, transform };
+    Entity entity = { mesh_index, NULL, transform };
+    return entity;
+}
+
+Entity make_entity(Game_State *game_state, char *mesh_name, char *texture_name, Transform transform) {
+    int32 mesh_index = get_mesh_index(game_state, mesh_name);
+    Entity entity = { mesh_index, texture_name, transform };
     return entity;
 }
 
@@ -169,7 +175,7 @@ void init_game(Memory *memory, Game_State *game_state,
     transform.scale = make_vec3(1.0f, 1.0f, 1.0f);
     transform.position = make_vec3(2.0f, 0.0f, 0.0f);
     transform.rotation = make_quaternion(45.0f, y_axis);
-    entity = make_entity(game_state, "suzanne", transform);
+    entity = make_entity(game_state, "suzanne", "debug", transform);
     add_entity(game_state, entity);
 #endif
 
@@ -178,7 +184,7 @@ void init_game(Memory *memory, Game_State *game_state,
     transform.scale = make_vec3(0.5f, 1.0f, 1.0f);
     transform.position = make_vec3(-2.0f, 1.0f, 0.0f);
     transform.rotation = make_quaternion();
-    entity = make_entity(game_state, "cube", transform);
+    entity = make_entity(game_state, "cube", "debug", transform);
     add_entity(game_state, entity);
 
     transform = {};

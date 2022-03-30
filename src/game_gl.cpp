@@ -21,7 +21,7 @@
 // TODO (done): draw rotation gizmo
 // TODO (done): rotate entities using rotation gizmo
 // TODO (done): scale gizmo based on camera distance from gizmo, so that the gizmo stays big and clickable on screen
-// TODO: textures
+// TODO (done): textures
 // TODO: lights
 //       we don't need to do PBR right now - we can just do basic blinn-phong shading
 // TODO: level saving/loading
@@ -142,7 +142,8 @@ inline void gl_set_uniform_vec4(uint32 shader_id, char* uniform_name, Vec4 *v) {
     glUniform4fv(uniform_location, 1, (real32 *) v);
 }
 
-uint32 gl_load_shader(Memory *memory, char *vertex_shader_filename, char *fragment_shader_filename) {
+void gl_load_shader(GL_State *gl_state, Memory *memory,
+                      char *vertex_shader_filename, char *fragment_shader_filename, char *shader_name) {
     Marker m = begin_region(memory);
 
     // NOTE: vertex shader
@@ -172,11 +173,42 @@ uint32 gl_load_shader(Memory *memory, char *vertex_shader_filename, char *fragme
                                                    fragment_shader_file_data.size);
 
     end_region(memory, m);
-    return shader_id;
+
+    hash_table_add(&gl_state->shader_ids_table, make_string(shader_name), shader_id);
+}
+
+void gl_load_texture(GL_State *gl_state, Memory *memory,
+                     char *texture_filename, char *texture_name) {
+    Marker m = begin_region(memory);
+    File_Data texture_file_data = platform_open_and_read_file((Allocator *) &memory->global_stack,
+                                                              texture_filename);
+
+    int32 width, height, num_channels;
+    stbi_set_flip_vertically_on_load(true);
+    uint8 *data = stbi_load_from_memory((uint8 *) texture_file_data.contents, texture_file_data.size,
+                                        &width, &height, &num_channels, 0);
+    assert(data);
+    
+    uint32 texture_id;
+    glGenTextures(1, &texture_id);
+
+    // TODO: we may want to be able to modify these parameters
+    glBindTexture(GL_TEXTURE_2D, texture_id);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    end_region(memory, m);
+
+    GL_Texture gl_texture = { texture_id, width, height, num_channels };
+    hash_table_add(&gl_state->texture_table, make_string(texture_name), gl_texture);
 }
 
 // TODO: use the better stb_truetype packing procedures
-void gl_init_font(Memory *memory, GL_State *gl_state,
+void gl_init_font(GL_State *gl_state, Memory *memory,
                   char *font_filename, char *font_name,
                   real32 font_height_pixels,
                   int32 font_texture_width, int32 font_texture_height) {
@@ -261,11 +293,20 @@ GL_Mesh gl_load_mesh(GL_State *gl_state, Mesh mesh) {
     return gl_mesh;
 }
 
-void gl_use_shader(GL_State *gl_state, char *shader_name) {
+uint32 gl_use_shader(GL_State *gl_state, char *shader_name) {
     uint32 shader_id;
     uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string(shader_name), &shader_id);
     assert(shader_exists);
     glUseProgram(shader_id);
+    return shader_id;
+}
+
+void gl_use_texture(GL_State *gl_state, char *texture_name) {
+    // TODO: will have to add parameter to specify which texture slot to use
+    GL_Texture texture;
+    uint32 texture_exists = hash_table_find(gl_state->texture_table, make_string(texture_name), &texture);
+    assert(texture_exists);
+    glBindTexture(GL_TEXTURE_2D, texture.id);
 }
 
 void gl_draw_basic_mesh(GL_State *gl_state, Render_State *render_state,
@@ -300,11 +341,8 @@ void gl_draw_basic_mesh(GL_State *gl_state, Render_State *render_state,
 }
 
 void gl_draw_mesh(GL_State *gl_state, Render_State *render_state,
-                  char *mesh_name, char *shader_name, Transform transform) {
-    uint32 shader_id;
-    uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string(shader_name), &shader_id);
-    assert(shader_exists);
-    glUseProgram(shader_id);
+                  char *mesh_name, Transform transform) {
+    uint32 shader_id = gl_use_shader(gl_state, "basic_3d");
 
     GL_Mesh gl_mesh;
     uint32 mesh_exists = hash_table_find(gl_state->mesh_table, make_string(mesh_name), &gl_mesh);
@@ -320,6 +358,27 @@ void gl_draw_mesh(GL_State *gl_state, Render_State *render_state,
     glDrawElements(GL_TRIANGLES, gl_mesh.num_triangles * 3, GL_UNSIGNED_INT, 0);
 
     glUseProgram(0);
+    glBindVertexArray(0);
+}
+
+void gl_draw_textured_mesh(GL_State *gl_state, Render_State *render_state,
+                           char *mesh_name, char *texture_name, Transform transform) {
+    uint32 shader_id = gl_use_shader(gl_state, "basic_3d_textured");
+    gl_use_texture(gl_state, texture_name);
+
+    GL_Mesh gl_mesh;
+    uint32 mesh_exists = hash_table_find(gl_state->mesh_table, make_string(mesh_name), &gl_mesh);
+    assert(mesh_exists);
+    glBindVertexArray(gl_mesh.vao);
+
+    Mat4 model_matrix = get_model_matrix(transform);
+    gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
+    gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->cpv_matrix);
+
+    glDrawElements(GL_TRIANGLES, gl_mesh.num_triangles * 3, GL_UNSIGNED_INT, 0);
+
+    glUseProgram(0);
+    glBindTexture(GL_TEXTURE_2D, 0);
     glBindVertexArray(0);
 }
 
@@ -502,6 +561,7 @@ void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) 
     gl_state->debug_mesh_table = make_hash_table<GL_Mesh>((Allocator *) &memory->hash_table_stack);
     gl_state->font_table = make_hash_table<GL_Font>((Allocator *) &memory->hash_table_stack);
     gl_state->mesh_table = make_hash_table<GL_Mesh>((Allocator *) &memory->hash_table_stack);
+    gl_state->texture_table = make_hash_table<GL_Texture>((Allocator *) &memory->hash_table_stack);
 
     uint32 vbo, vao, ebo;
 
@@ -679,28 +739,29 @@ void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) 
     hash_table_add(&gl_state->debug_mesh_table, make_string("circle"), make_gl_mesh(vao, vbo, 0));
 
     // NOTE: shaders
-    uint32 basic_shader_id = gl_load_shader(memory, "src/shaders/basic.vs", "src/shaders/basic.fs");
-    hash_table_add(&gl_state->shader_ids_table, make_string("basic"), basic_shader_id);
-
-    uint32 text_shader_id = gl_load_shader(memory, "src/shaders/text.vs", "src/shaders/text.fs");
-    hash_table_add(&gl_state->shader_ids_table, make_string("text"), text_shader_id);
-
-    uint32 basic_3d_shader_id = gl_load_shader(memory, "src/shaders/basic_3d.vs", "src/shaders/basic_3d.fs");
-    hash_table_add(&gl_state->shader_ids_table, make_string("basic_3d"), basic_3d_shader_id);
-
-    uint32 debug_wireframe_shader_id = gl_load_shader(memory,
-                                                      "src/shaders/debug_wireframe.vs",
-                                                      "src/shaders/debug_wireframe.fs");
-    hash_table_add(&gl_state->shader_ids_table, make_string("debug_wireframe"), debug_wireframe_shader_id);
-
-    uint32 framebuffer_shader_id = gl_load_shader(memory, "src/shaders/framebuffer.vs", "src/shaders/framebuffer.fs");
-    hash_table_add(&gl_state->shader_ids_table, make_string("framebuffer"), framebuffer_shader_id);
-
+    gl_load_shader(gl_state, memory,
+                   "src/shaders/basic.vs", "src/shaders/basic.fs", "basic");
+    gl_load_shader(gl_state, memory,
+                   "src/shaders/text.vs", "src/shaders/text.fs", "text");
+    gl_load_shader(gl_state, memory,
+                   "src/shaders/basic_3d.vs", "src/shaders/basic_3d.fs", "basic_3d");
+    gl_load_shader(gl_state, memory,
+                   "src/shaders/basic_3d_textured.vs", "src/shaders/basic_3d_textured.fs", "basic_3d_textured");
+    gl_load_shader(gl_state, memory,
+                   "src/shaders/debug_wireframe.vs",
+                   "src/shaders/debug_wireframe.fs",
+                   "debug_wireframe");
+    gl_load_shader(gl_state, memory,
+                   "src/shaders/framebuffer.vs", "src/shaders/framebuffer.fs",
+                   "framebuffer");
     gl_state->gizmo_framebuffer = gl_make_framebuffer(display_output.width, display_output.height);
 
     // NOTE: fonts
-    gl_init_font(memory, gl_state, "c:/windows/fonts/times.ttf", "times32", 32.0f, 512, 512);
-    gl_init_font(memory, gl_state, "c:/windows/fonts/times.ttf", "times24", 24.0f, 512, 512);
+    gl_init_font(gl_state, memory, "c:/windows/fonts/times.ttf", "times32", 32.0f, 512, 512);
+    gl_init_font(gl_state, memory, "c:/windows/fonts/times.ttf", "times24", 24.0f, 512, 512);
+
+    // NOTE: textures
+    gl_load_texture(gl_state, memory, "src/textures/debug_texture.bmp", "debug");
 
     // NOTE: disable culling for now, just for easier debugging...
 #if 0
@@ -1220,8 +1281,15 @@ void gl_render(GL_State *gl_state, Controller_State *controller_state, Game_Stat
     for (int32 i = 0; i < game_state->num_entities; i++) {
         Entity *entity = &game_state->entities[i];
         char *mesh_name = game_state->meshes[entity->mesh_index].name;
-        gl_draw_mesh(gl_state, render_state,
-                   mesh_name, "basic_3d", entity->transform);
+        char *texture_name = entity->texture_name;
+        if (texture_name) {
+            gl_draw_textured_mesh(gl_state, render_state,
+                                  mesh_name, texture_name, entity->transform);
+        } else {
+            gl_draw_mesh(gl_state, render_state,
+                         mesh_name, entity->transform);
+        }
+        
 
         if (editor_state->selected_entity_index == i) {
             gl_draw_wireframe(gl_state, render_state, mesh_name, entity->transform);
