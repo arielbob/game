@@ -22,7 +22,7 @@
 // TODO (done): rotate entities using rotation gizmo
 // TODO (done): scale gizmo based on camera distance from gizmo, so that the gizmo stays big and clickable on screen
 // TODO (done): textures
-// TODO: lights
+// TODO: point lights
 //       we don't need to do PBR right now - we can just do basic blinn-phong shading
 // TODO: level saving/loading
 // TODO: better level editing (mesh libraries, textures libraries)
@@ -309,13 +309,10 @@ void gl_use_texture(GL_State *gl_state, char *texture_name) {
     glBindTexture(GL_TEXTURE_2D, texture.id);
 }
 
-void gl_draw_basic_mesh(GL_State *gl_state, Render_State *render_state,
-                        char *mesh_name, char *shader_name, Transform transform,
-                        Vec4 color) {
-    uint32 shader_id;
-    uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string(shader_name), &shader_id);
-    assert(shader_exists);
-    glUseProgram(shader_id);
+void gl_draw_solid_color_mesh(GL_State *gl_state, Render_State *render_state,
+                              char *mesh_name, Transform transform,
+                              Vec4 color) {
+    uint32 shader_id = gl_use_shader(gl_state, "solid");
 
     GL_Mesh gl_mesh;
     uint32 mesh_exists = hash_table_find(gl_state->mesh_table, make_string(mesh_name), &gl_mesh);
@@ -326,18 +323,18 @@ void gl_draw_basic_mesh(GL_State *gl_state, Render_State *render_state,
     gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
     gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->cpv_matrix);
     gl_set_uniform_vec4(shader_id, "color", &color);
-
+    
     glDrawElements(GL_TRIANGLES, gl_mesh.num_triangles * 3, GL_UNSIGNED_INT, 0);
 
     glUseProgram(0);
     glBindVertexArray(0);
 }
 
-void gl_draw_basic_mesh(GL_State *gl_state, Render_State *render_state,
-                        char *mesh_name, char *shader_name, Transform transform,
-                        Vec3 color) {
-    gl_draw_basic_mesh(gl_state, render_state, mesh_name, shader_name, transform,
-                       make_vec4(color, 1.0f));
+void gl_draw_solid_color_mesh(GL_State *gl_state, Render_State *render_state,
+                              char *mesh_name, Transform transform,
+                              Vec3 color) {
+    gl_draw_solid_color_mesh(gl_state, render_state, mesh_name, transform,
+                             make_vec4(color, 1.0f));
 }
 
 void gl_draw_mesh(GL_State *gl_state, Render_State *render_state,
@@ -352,8 +349,15 @@ void gl_draw_mesh(GL_State *gl_state, Render_State *render_state,
     Mat4 model_matrix = get_model_matrix(transform);
     gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
     gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->cpv_matrix);
-    Vec4 color = make_vec4(0.0, 0.0f, 1.0f, 1.0f);
-    gl_set_uniform_vec4(shader_id, "color", &color);
+
+    Vec3 material_color = make_vec3(0.0f, 0.0f, 1.0f);
+    gl_set_uniform_vec3(shader_id, "material_color", &material_color);
+    
+    Vec3 light_color = make_vec3(1.0f, 1.0f, 1.0f);
+    Vec3 light_position = make_vec3(0.0f, 1.0f, 0.0f);
+    gl_set_uniform_vec3(shader_id, "light_color", &light_color);
+    gl_set_uniform_vec3(shader_id, "light_pos", &light_position);
+    gl_set_uniform_vec3(shader_id, "camera_pos", &render_state->camera.position);
 
     glDrawElements(GL_TRIANGLES, gl_mesh.num_triangles * 3, GL_UNSIGNED_INT, 0);
 
@@ -743,6 +747,8 @@ void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) 
                    "src/shaders/basic.vs", "src/shaders/basic.fs", "basic");
     gl_load_shader(gl_state, memory,
                    "src/shaders/text.vs", "src/shaders/text.fs", "text");
+    gl_load_shader(gl_state, memory,
+                   "src/shaders/solid.vs", "src/shaders/solid.fs", "solid");
     gl_load_shader(gl_state, memory,
                    "src/shaders/basic_3d.vs", "src/shaders/basic_3d.fs", "basic_3d");
     gl_load_shader(gl_state, memory,
@@ -1201,16 +1207,14 @@ void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Editor_State 
         z_handle_color = z_handle_hover;
     }
 
-    char *shader_name = "basic_3d";
-
-    gl_draw_basic_mesh(gl_state, render_state, gizmo.arrow_mesh_name, shader_name, x_transform, x_handle_color);
-    gl_draw_basic_mesh(gl_state, render_state, gizmo.arrow_mesh_name, shader_name, y_transform, y_handle_color);
-    gl_draw_basic_mesh(gl_state, render_state, gizmo.arrow_mesh_name, shader_name, z_transform, z_handle_color);
+    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.arrow_mesh_name, x_transform, x_handle_color);
+    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.arrow_mesh_name, y_transform, y_handle_color);
+    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.arrow_mesh_name, z_transform, z_handle_color);
 
     Transform sphere_mask_transform = gizmo.transform;
     glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-    gl_draw_basic_mesh(gl_state, render_state, gizmo.sphere_mesh_name, shader_name, sphere_mask_transform,
-                       make_vec3());
+    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.sphere_mesh_name, sphere_mask_transform,
+                             make_vec3());
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
     // rotation rings
@@ -1230,9 +1234,9 @@ void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Editor_State 
     y_transform.scale += offset;
     z_transform.scale += 2.0f * offset;
 
-    gl_draw_basic_mesh(gl_state, render_state, gizmo.ring_mesh_name, shader_name, x_transform, x_handle_color);
-    gl_draw_basic_mesh(gl_state, render_state, gizmo.ring_mesh_name, shader_name, y_transform, y_handle_color);
-    gl_draw_basic_mesh(gl_state, render_state, gizmo.ring_mesh_name, shader_name, z_transform, z_handle_color);
+    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.ring_mesh_name, x_transform, x_handle_color);
+    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.ring_mesh_name, y_transform, y_handle_color);
+    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.ring_mesh_name, z_transform, z_handle_color);
 }
 
 void gl_draw_framebuffer(GL_State *gl_state, GL_Framebuffer framebuffer) {

@@ -115,6 +115,13 @@ struct Entity {
     Transform transform;
 };
 
+struct Point_Light_Entity {
+    int32 mesh_index;
+    char *texture_name;
+    Transform transform;
+    // TODO: finish this
+};
+
 #define MAX_MESHES 64
 #define MAX_ENTITIES 64
 
