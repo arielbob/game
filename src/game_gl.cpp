@@ -20,7 +20,13 @@
 // TODO (done): move entities using translation gizmo
 // TODO (done): draw rotation gizmo
 // TODO (done): rotate entities using rotation gizmo
-// TODO: scale gizmo based on camera distance from gizmo, so that the gizmo stays big and clickable on screen
+// TODO (done): scale gizmo based on camera distance from gizmo, so that the gizmo stays big and clickable on screen
+// TODO: textures
+// TODO: lights
+//       we don't need to do PBR right now - we can just do basic blinn-phong shading
+// TODO: level saving/loading
+// TODO: better level editing (mesh libraries, textures libraries)
+// TODO: be able to edit materials
 
 // TODO: be able to draw debug lines
 // TODO: window resize handling (recreate framebuffer, modify display_output)
@@ -39,7 +45,6 @@
 // TODO: interface for loading meshes with file explorer
 // TODO: first person camera movement
 // TODO: nicer button rendering (center the text)
-// TODO: level loading
 // TODO: undoing
 
 // TODO: create an entity list
