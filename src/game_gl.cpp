@@ -22,8 +22,8 @@
 // TODO (done): rotate entities using rotation gizmo
 // TODO (done): scale gizmo based on camera distance from gizmo, so that the gizmo stays big and clickable on screen
 // TODO (done): textures
-// TODO: actually send point_light_entity data to shaders (read multiple lights article on learnopengl.com)
 // TODO: add the Entity struct with the shared Entity info for easier entity access.
+// TODO: actually send point_light_entity data to shaders (read multiple lights article on learnopengl.com)
 // TODO: point lights
 //       we don't need to do PBR right now - we can just do basic blinn-phong shading
 // TODO: material editing
@@ -1338,7 +1338,7 @@ void gl_render(GL_State *gl_state, Controller_State *controller_state, Game_Stat
 
     // entities
     for (int32 i = 0; i < game_state->num_entities; i++) {
-        Entity *entity = &game_state->entities[i];
+        Normal_Entity *entity = &game_state->entities[i];
         char *mesh_name = game_state->meshes[entity->mesh_index].name;
         char *texture_name = entity->texture_name;
 

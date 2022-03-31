@@ -109,21 +109,25 @@ struct Render_State {
     Mat4 cpv_matrix;
 };
 
+#define ENTITY_HEADER                           \
+    Entity_Type type;                           \
+    Transform transform;                        \
+    int32 mesh_index;                           \
+    char *texture_name;                         \
+    Vec3 color_override;                        \
+
 struct Entity {
-    int32 mesh_index;
-    char *texture_name;
-    Vec3 color_override;
-    Transform transform;
+    ENTITY_HEADER
+};
+
+struct Normal_Entity {
+    ENTITY_HEADER
 };
 
 struct Point_Light_Entity {
-    int32 mesh_index;
-    char *texture_name;
-    Vec3 color_override;
+    ENTITY_HEADER
 
     Vec3 light_color;
-
-    Transform transform;
 };
 
 #define MAX_MESHES 64
@@ -148,7 +152,7 @@ struct Game_State {
     Mesh meshes[MAX_MESHES];
 
     int32 num_entities;
-    Entity entities[MAX_ENTITIES];
+    Normal_Entity entities[MAX_ENTITIES];
 
     int32 num_point_lights;
     Point_Light_Entity point_lights[MAX_POINT_LIGHTS];
@@ -156,6 +160,6 @@ struct Game_State {
 
 bool32 was_clicked(Controller_Button_State button_state);
 int32 get_mesh_index(Game_State *game_state, char *mesh_name_to_find);
-Transform *get_selected_entity_transform(Game_State *game_state);
+Entity *get_selected_entity(Game_State *game_state);
 
 #endif
