@@ -27,8 +27,10 @@
 // TODO (done): point lights
 //              we don't need to do PBR right now - we can just do basic blinn-phong shading
 // TODO (done): point light attenuation
-// TODO: fix entity picking not working when entities are overlapping (try light overlapping plane - the plane gets selected when
-//       you click on the light.
+// TODO (done): fix entity picking not working when entities are overlapping
+//              (try light overlapping plane - the plane gets selected when you click on the light.)
+//              this actually had to do with scaling and us not converting t_min back to world_space in
+//              ray_intersects_mesh().
 // TODO: material editing
 // TODO: level saving/loading
 // TODO: better level editing (mesh libraries, textures libraries)

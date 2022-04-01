@@ -224,7 +224,7 @@ void init_game(Memory *memory, Game_State *game_state,
 
     transform = {};
     transform.scale = make_vec3(0.1f, 0.1f, 0.1f);
-    transform.position = make_vec3(-0.5f, 2.0f, 0.0f);
+    transform.position = make_vec3(0.0f, 0.1f, 0.0f);
     transform.rotation = make_quaternion();
     light_color = make_vec3(1.0f, 0.0f, 0.0f);
     point_light_entity = make_point_light_entity(game_state, "cube", NULL,
@@ -435,16 +435,14 @@ void update(Memory *memory, Game_State *game_state,
     
     if (!ui_has_hot(ui_manager) && was_clicked(controller_state->left_mouse)) {
         if (!editor_state->selected_gizmo_handle) {
-            Entity_Type entity_type;
+            Entity entity;
             int32 entity_index;
-            Transform entity_transform;
-            bool32 picked = pick_entity(game_state, cursor_ray,
-                                        &entity_type, &entity_index, &entity_transform);
+            bool32 picked = pick_entity(game_state, cursor_ray, &entity, &entity_index);
             
             if (picked) {
-                editor_state->selected_entity_type = entity_type;
+                editor_state->selected_entity_type = entity.type;
                 editor_state->selected_entity_index = entity_index;
-                editor_state->gizmo.transform = entity_transform;
+                editor_state->gizmo.transform = entity.transform;
             } else {
                 editor_state->selected_entity_index = -1;
             }

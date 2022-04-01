@@ -35,54 +35,53 @@ int32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, real32 *t_res
     }
 
     if (hit) {
-        *t_result = t_min;
+        // convert the t_min on the object space ray to a t_min on the world space ray
+        Vec3 object_space_hit_point = object_space_ray_origin + object_space_ray_direction * t_min;
+        Vec3 world_space_hit_point = truncate_v4_to_v3(object_to_world * make_vec4(object_space_hit_point, 1.0f));
+        real32 world_space_t_min = dot(world_space_hit_point - ray.origin, ray.direction);
+        *t_result = world_space_t_min;
     }
 
     return hit;
 }
 
 // TODO: optimize this by checking against AABB before checking against triangles
-int32 pick_entity(Game_State *game_state, Ray cursor_ray,
-                  Entity_Type *entity_type_result, int32 *entity_index_result, Transform *entity_transform_result) {
+int32 pick_entity(Game_State *game_state, Ray cursor_ray, Entity *entity_result, int32 *index_result) {
     Editor_State *editor_state = &game_state->editor_state;
 
     Mesh *meshes = game_state->meshes;
     Normal_Entity *entities = game_state->entities;
     Point_Light_Entity *point_lights = game_state->point_lights;
 
-    Entity_Type entity_type = ENTITY_NORMAL;
+    Entity *picked_entity = NULL;
     int32 entity_index = -1;
-    Transform entity_transform = {};
 
     real32 t_min = FLT_MAX;
     for (int32 i = 0; i < game_state->num_entities; i++) {
         real32 t;
-        Normal_Entity entity = entities[i];
-        Mesh mesh = meshes[entity.mesh_index];
-        if (ray_intersects_mesh(cursor_ray, mesh, entity.transform, &t) && (t < t_min)) {
+        Normal_Entity *entity = &entities[i];
+        Mesh mesh = meshes[entity->mesh_index];
+        if (ray_intersects_mesh(cursor_ray, mesh, entity->transform, &t) && (t < t_min)) {
             t_min = t;
             entity_index = i;
-            entity_transform = entity.transform;
-            entity_type = ENTITY_NORMAL;
+            picked_entity = (Entity *) entity;
         }
     }
 
     for (int32 i = 0; i < game_state->num_point_lights; i++) {
         real32 t;
-        Point_Light_Entity entity = point_lights[i];
-        Mesh mesh = meshes[entity.mesh_index];
-        if (ray_intersects_mesh(cursor_ray, mesh, entity.transform, &t) && (t < t_min)) {
+        Point_Light_Entity *entity = &point_lights[i];
+        Mesh mesh = meshes[entity->mesh_index];
+        if (ray_intersects_mesh(cursor_ray, mesh, entity->transform, &t) && (t < t_min)) {
             t_min = t;
             entity_index = i;
-            entity_transform = entity.transform;
-            entity_type = ENTITY_POINT_LIGHT;
+            picked_entity = (Entity *) entity;
         }
     }
 
     if (entity_index >= 0) {
-        *entity_type_result = entity_type;
-        *entity_index_result = entity_index;
-        *entity_transform_result = entity_transform;
+        *entity_result = *picked_entity;
+        *index_result = entity_index;
         return true;
     }
 
