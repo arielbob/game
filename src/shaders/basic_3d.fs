@@ -3,6 +3,10 @@
 struct Point_Light {
     vec4 position;
     vec4 color;
+    // this attenuation formula isn't very physically accurate, but it allows us to easily bound the light.
+    // it also allows for more intuitive artistic control.
+    float d_min;
+    float d_max;
 };
 
 layout (std140) uniform shader_globals {
@@ -28,7 +32,8 @@ in vec3 normal;
 
 out vec4 FragColor;
 
-vec3 calc_point_light(Point_Light point_light, vec3 material_diffuse, vec3 normal, vec3 h, vec3 l) {
+vec3 calc_point_light(Point_Light point_light,
+                      vec3 material_diffuse, vec3 normal, vec3 h, vec3 l, float fragment_to_light_distance) {
     vec3 mat_spec_color = vec3(point_light.color);
     
     vec3 mat_diffuse_color = material_diffuse;
@@ -43,7 +48,12 @@ vec3 calc_point_light(Point_Light point_light, vec3 material_diffuse, vec3 norma
     // diffuse
     vec3 diffuse_contrib = light_diffuse_color * mat_diffuse_color * max(dot(normal, l), 0);
 
-    return spec_contrib + diffuse_contrib;
+    float attenuation_factor = 1.0 - ((fragment_to_light_distance - point_light.d_min) /
+                                      (point_light.d_max - point_light.d_min));
+    attenuation_factor = min(attenuation_factor, 1.0);
+    attenuation_factor = max(attenuation_factor, 0.0);
+
+    return (spec_contrib + diffuse_contrib) * attenuation_factor;
 }
 
 void main() {
@@ -70,12 +80,14 @@ void main() {
     for (int i = 0; i < num_point_lights; i++) {
         // fragment to light
         #if 1
-        vec3 l = normalize(point_lights[i].position.xyz - frag_pos);
+        vec3 fragment_to_light = point_lights[i].position.xyz - frag_pos;
+        float fragment_to_light_distance = length(fragment_to_light);
+        vec3 l = fragment_to_light / fragment_to_light_distance;
         // halfway vector
         vec3 h = normalize(v + l);
 
         Point_Light point_light = point_lights[i];
-        light_contrib += calc_point_light(point_light, used_color, normal, h, l);
+        light_contrib += calc_point_light(point_light, used_color, normal, h, l, fragment_to_light_distance);
         #endif
         //light_contrib += point_lights[i].position.xyz;
     }

@@ -26,6 +26,7 @@
 // TODO (done): actually send point_light_entity data to shaders (read multiple lights article on learnopengl.com)
 // TODO (done): point lights
 //              we don't need to do PBR right now - we can just do basic blinn-phong shading
+// TODO (done): point light attenuation
 // TODO: fix entity picking not working when entities are overlapping (try light overlapping plane - the plane gets selected when
 //       you click on the light.
 // TODO: material editing
@@ -1367,12 +1368,13 @@ void gl_render(GL_State *gl_state, Controller_State *controller_state, Game_Stat
         GL_Point_Light gl_point_light = {
             make_vec4(game_state->point_lights[i].transform.position, 1.0f),
             make_vec4(game_state->point_lights[i].light_color, 1.0f),
+            game_state->point_lights[i].d_min,
+            game_state->point_lights[i].d_max,
         };
 
-        // GL_Point_Light is 32 bytes
         glBufferSubData(GL_UNIFORM_BUFFER, (int32 *) ubo_offset,
-                        32, &gl_point_light);
-        ubo_offset += 32;
+                        sizeof(GL_Point_Light), &gl_point_light);
+        ubo_offset += sizeof(GL_Point_Light) + 8; // add 8 bytes of padding so that it aligns to size of vec4
     }
 
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
