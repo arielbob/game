@@ -219,17 +219,25 @@ void init_game(Memory *memory, Game_State *game_state,
     add_entity(game_state, entity);
 #endif
 
-#if 1
     transform = {};
-    transform.scale = make_vec3(1.0f, 1.0f, 1.0f);
-    transform.position = make_vec3(0.0f, 3.0f, 0.0f);
+    transform.scale = make_vec3(0.1f, 0.1f, 0.1f);
+    transform.position = make_vec3(-1.0f, 3.0f, 0.0f);
     transform.rotation = make_quaternion();
     Vec3 light_color = make_vec3(1.0f, 1.0f, 1.0f);
     Point_Light_Entity point_light_entity = make_point_light_entity(game_state, "cube", NULL,
                                                                     light_color, light_color,
                                                                     transform);
     add_point_light_entity(game_state, point_light_entity);
-#endif
+
+    transform = {};
+    transform.scale = make_vec3(0.1f, 0.1f, 0.1f);
+    transform.position = make_vec3(0.0f, 1.0f, 0.0f);
+    transform.rotation = make_quaternion();
+    light_color = make_vec3(1.0f, 0.0f, 0.0f);
+    point_light_entity = make_point_light_entity(game_state, "cube", NULL,
+                                                 light_color, light_color,
+                                                 transform);
+    add_point_light_entity(game_state, point_light_entity);
 
     game_state->is_initted = true;
 }
@@ -346,8 +354,8 @@ void update(Memory *memory, Game_State *game_state,
 #if 0
     //game_state->left_mouse_is_down = controller_state->left_mouse.is_down;
     bool32 btn1_clicked = do_button(ui_manager, controller_state,
-                                      20.0f, 50.0f, 100.0f, 30.0f,
-                                      "load mesh", "times24", "load_mesh");
+                                    20.0f, 50.0f, 100.0f, 30.0f,
+                                    "load mesh", "times24", "load_mesh");
     bool32 btn2_clicked = do_button(ui_manager, controller_state,
                                     50.0f, 360.0f, 200.0f, 30.0f,
                                     "toggle music", "times24", "toggle_music");

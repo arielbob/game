@@ -1,4 +1,4 @@
-#version 330 core
+#version 440 core
 
 struct Point_Light {
     vec4 position;
@@ -6,8 +6,9 @@ struct Point_Light {
 };
 
 layout (std140) uniform shader_globals {
-    int num_point_lights;
-    //Point_Light point_lights[16];
+    //                                 aligned offset
+    int num_point_lights;           // 0
+    Point_Light point_lights[16];   // 16
 };
 
 uniform vec3 material_color;
@@ -27,7 +28,7 @@ in vec3 normal;
 
 out vec4 FragColor;
 
-float calc_point_light(Point_Light point_light, vec3 material_diffuse, vec3 normal, vec3 h, vec3 l) {
+vec3 calc_point_light(Point_Light point_light, vec3 material_diffuse, vec3 normal, vec3 h, vec3 l) {
     vec3 mat_spec_color = vec3(point_light.color);
     
     vec3 mat_diffuse_color = material_diffuse;
@@ -65,18 +66,22 @@ void main() {
     vec3 ambient_contrib = global_ambient * mat_ambient_color;
     light_contrib += ambient_contrib;
 
-/*
+    #if 1
     for (int i = 0; i < num_point_lights; i++) {
         // fragment to light
+        #if 1
         vec3 l = normalize(point_lights[i].position.xyz - frag_pos);
         // halfway vector
         vec3 h = normalize(v + l);
 
         Point_Light point_light = point_lights[i];
         light_contrib += calc_point_light(point_light, used_color, normal, h, l);
+        #endif
+        //light_contrib += point_lights[i].position.xyz;
     }
-*/
-  
-    //FragColor = vec4(light_contrib, 1.0);
-    FragColor = vec4(num_point_lights, 0, 0, 1.0);
+    #endif
+
+    FragColor = vec4(light_contrib, 1.0);
+    //FragColor = vec4(num_point_lights, light_contrib.x*0.01, 0.0, 1.0);
+    //FragColor = vec4(num_point_lights, 0, 0, 1.0);
 }

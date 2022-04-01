@@ -23,10 +23,11 @@
 // TODO (done): scale gizmo based on camera distance from gizmo, so that the gizmo stays big and clickable on screen
 // TODO (done): textures
 // TODO (done): add the Entity struct with the shared Entity info for easier entity access.
-// TODO: fix point lights not being sent in uniform buffer object; we can't even get num_point_lights from the ubo.
-// TODO: actually send point_light_entity data to shaders (read multiple lights article on learnopengl.com)
-// TODO: point lights
-//       we don't need to do PBR right now - we can just do basic blinn-phong shading
+// TODO (done): actually send point_light_entity data to shaders (read multiple lights article on learnopengl.com)
+// TODO (done): point lights
+//              we don't need to do PBR right now - we can just do basic blinn-phong shading
+// TODO: fix entity picking not working when entities are overlapping (try light overlapping plane - the plane gets selected when
+//       you click on the light.
 // TODO: material editing
 // TODO: level saving/loading
 // TODO: better level editing (mesh libraries, textures libraries)
@@ -396,6 +397,7 @@ void gl_draw_mesh(GL_State *gl_state, Game_State *game_state,
     Vec3 light_position = make_vec3(0.0f, 1.0f, 0.0f);
     //gl_set_uniform_vec3(shader_id, "light_color", &light_color);
     //gl_set_uniform_vec3(shader_id, "light_pos", &light_position);
+    
     gl_set_uniform_vec3(shader_id, "camera_pos", &render_state->camera.position);
     gl_set_uniform_int(shader_id, "use_color_override", use_color_override);
 
@@ -797,10 +799,12 @@ void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) 
     glGenBuffers(1, &gl_state->global_ubo);
     glBindBuffer(GL_UNIFORM_BUFFER, gl_state->global_ubo);
     // TODO: not sure if 1024 bytes is enough
-    glBufferData(GL_UNIFORM_BUFFER, 32 + MAX_POINT_LIGHTS*sizeof(GL_Point_Light), NULL, GL_STATIC_DRAW);
+    // we add 1 to MAX_POINT_LIGHTS for the int to hold num_point_lights.
+    // maybe we could put num_point lights at the end of the uniform buffer object?
+    glBufferData(GL_UNIFORM_BUFFER, (MAX_POINT_LIGHTS + 1) * sizeof(GL_Point_Light), NULL, GL_STATIC_DRAW);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
-    glBindBufferRange(GL_UNIFORM_BUFFER, 0, gl_state->global_ubo, 0, MAX_POINT_LIGHTS * sizeof(GL_Point_Light) + 32);
-    //glBindBufferBase(GL_UNIFORM_BUFFER, 0, gl_state->global_ubo);
+    //glBindBufferRange(GL_UNIFORM_BUFFER, 0, gl_state->global_ubo, 0, 4);
+    glBindBufferBase(GL_UNIFORM_BUFFER, 0, gl_state->global_ubo);
     GLenum error = glGetError();
 
     uint32 shader_id = gl_use_shader(gl_state, "basic_3d");
@@ -1350,11 +1354,13 @@ void gl_render(GL_State *gl_state, Controller_State *controller_state, Game_Stat
     }
 
     glBindBuffer(GL_UNIFORM_BUFFER, gl_state->global_ubo);
-    int32 ubo_offset = 0;
-    glBufferSubData(GL_UNIFORM_BUFFER, &ubo_offset, sizeof(int32), &game_state->num_point_lights);
-    ubo_offset += 32; // have to offset since the gl_point_light struct is 32 bytes
-    // TODO: try just sending num_point_lights only
-/*
+    int64 ubo_offset = 0;
+    glBufferSubData(GL_UNIFORM_BUFFER, (int32 *) ubo_offset, sizeof(int32), &game_state->num_point_lights);
+    // NOTE: not sure why we use 16 here, instead of 32, which is the size of the GL_Point_Light struct.
+    //       i think we just use the aligned offset of the first member of the struct, which is a vec4, so we offset
+    //       by 16 since it's the closest multiple.
+    ubo_offset += 16;
+
     for (int32 i = 0; i < game_state->num_point_lights; i++) {
         // TODO: we may just want to replace position and light_color with vec4s in Point_Light_Entity.
         //       although this would be kind of annoying since we would have to modify the Transform struct.
@@ -1362,12 +1368,13 @@ void gl_render(GL_State *gl_state, Controller_State *controller_state, Game_Stat
             make_vec4(game_state->point_lights[i].transform.position, 1.0f),
             make_vec4(game_state->point_lights[i].light_color, 1.0f),
         };
-        
-        glBufferSubData(GL_UNIFORM_BUFFER, &ubo_offset,
-                        sizeof(GL_Point_Light), &gl_point_light);
-        ubo_offset += sizeof(GL_Point_Light);
+
+        // GL_Point_Light is 32 bytes
+        glBufferSubData(GL_UNIFORM_BUFFER, (int32 *) ubo_offset,
+                        32, &gl_point_light);
+        ubo_offset += 32;
     }
-*/
+
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
     // entities
