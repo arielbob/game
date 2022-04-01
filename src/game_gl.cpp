@@ -31,10 +31,14 @@
 //              (try light overlapping plane - the plane gets selected when you click on the light.)
 //              this actually had to do with scaling and us not converting t_min back to world_space in
 //              ray_intersects_mesh().
-// TODO: material editing
+// TODO (done): use push buffer for UI elements
+// TODO: material editing (material structs?)
 // TODO: level saving/loading
+// TODO: directional light (sun light)
 // TODO: better level editing (mesh libraries, textures libraries)
 // TODO: be able to edit materials
+// TODO: in-game console for outputting messages
+// TODO: memory alignment in allocate procedures and in ui push buffer
 
 // TODO: maybe use a push buffer for entities? and use an Entity_Type enum to differentiate between entities?
 //       the upside is that we don't waste space when the amount of one entity type far exceeds another entity
@@ -1111,10 +1115,108 @@ real32 get_width(GL_State *gl_state, char *font_name, char *text) {
     return width;
 }
 
+void gl_draw_ui_text(GL_State *gl_state, Display_Output display_output, UI_Manager *ui_manager, UI_Text ui_text) {
+    Vec3 color = make_vec3(1.0f, 1.0f, 1.0f);
+
+    gl_draw_text(gl_state, display_output, ui_text.font,
+                 ui_text.x, ui_text.y,
+                 ui_text.text, color);
+}
+
+void gl_draw_ui_text_button(GL_State *gl_state, Display_Output display_output,
+                            UI_Manager *ui_manager, UI_Text_Button ui_text_button) {
+    Vec3 color = make_vec3(1.0f, 1.0f, 1.0f);
+
+    if (ui_id_equals(ui_manager->hot, ui_text_button.id)) {
+        color = make_vec3(0.0f, 1.0f, 0.0f);
+        if (ui_id_equals(ui_manager->active, ui_text_button.id)) {
+            color = make_vec3(0.0f, 0.0f, 1.0f);
+        }
+    } else {
+        color = make_vec3(1.0f, 0.0f, 0.0f);
+    }
+
+    gl_draw_quad(gl_state, display_output, ui_text_button.x, ui_text_button.y,
+                 ui_text_button.width, ui_text_button.height, color);
+
+    // TODO: center this.. will have to use font metrics
+    gl_draw_text(gl_state, display_output, ui_text_button.font,
+                 ui_text_button.x, ui_text_button.y,
+                 ui_text_button.text, make_vec3(1.0f, 1.0f, 1.0f));
+}
+
+void gl_draw_ui_text_box(GL_State *gl_state, Display_Output display_output,
+                         UI_Manager *ui_manager, UI_Text_Box text_box) {
+        Vec3 color = make_vec3(1.0f, 1.0f, 1.0f);
+
+        if (ui_id_equals(ui_manager->active, text_box.id)) {
+            color = make_vec3(0.0f, 0.0f, 1.0f);
+        } else if (ui_id_equals(ui_manager->hot, text_box.id)) {
+            color = make_vec3(0.0f, 1.0f, 0.0f);
+        } else {
+            color = make_vec3(1.0f, 0.0f, 0.0f);
+        }
+
+        UI_Text_Box_Style style = text_box.style;
+        gl_draw_quad(gl_state, display_output, text_box.x, text_box.y,
+                     style.width + style.padding_x * 2, style.height + style.padding_y * 2,
+                     color);
+
+        glEnable(GL_SCISSOR_TEST);
+        // TODO: should move where the text renders depending on if the cursor moves outside of the
+        //       text box's bounds.
+        glScissor((int32) (text_box.x + style.padding_x), (int32) (text_box.y + style.padding_y),
+                  (int32) style.width, (int32) style.height);
+        gl_draw_text(gl_state, display_output, style.font,
+                     text_box.x + style.padding_x, text_box.y + style.padding_y,
+                     text_box.current_text, make_vec3(1.0f, 1.0f, 1.0f));
+        glDisable(GL_SCISSOR_TEST);
+
+        if (ui_id_equals(ui_manager->active, text_box.id)) {
+            // TODO: this cursor should actually be calculated using focus_cursor_index. we need to
+            //       split the text string on that index and draw the cursor at the width of the left
+            //       split. when we draw it, it has to be offset if it is outside the bounds of the text
+            //       box.
+            // in focus
+            real32 text_width = get_width(gl_state, style.font, text_box.current_text);
+            gl_draw_quad(gl_state, display_output,
+                         text_box.x + text_width + style.padding_x, text_box.y + style.padding_y,
+                         12.0f, style.height, make_vec3(0.0f, 1.0f, 0.0f));
+        }
+}
+
 // TODO: we could, along with gl_draw_quad, replace the model_matrix stuff with just updating the VBO.
 //       the issue with this is that it could make it harder for us to do more interesting transformations like
 //       rotation.
 void gl_draw_ui(GL_State *gl_state, UI_Manager *ui_manager, Display_Output display_output) {
+    UI_Push_Buffer *push_buffer = &ui_manager->push_buffer;
+    uint8 *address = (uint8 *) push_buffer->base;
+
+    while (address < ((uint8 *) push_buffer->base + push_buffer->used)) {
+        UI_Element *element = (UI_Element *) address;
+        switch (element->type) {
+            case TEXT: {
+                UI_Text *ui_text = (UI_Text *) element;
+                gl_draw_ui_text(gl_state, display_output, ui_manager, *ui_text);
+                address += sizeof(UI_Text);
+            } break;
+            case TEXT_BUTTON: {
+                UI_Text_Button *ui_text_button = (UI_Text_Button *) element;
+                gl_draw_ui_text_button(gl_state, display_output, ui_manager, *ui_text_button);
+                address += sizeof(UI_Text_Button);
+            } break;
+            case TEXT_BOX: {
+                UI_Text_Box *ui_text_box = (UI_Text_Box *) element;
+                gl_draw_ui_text_box(gl_state, display_output, ui_manager, *ui_text_box);
+                address += sizeof(UI_Text_Box);
+            } break;
+            default: {
+                assert(!"Unhandled UI element type.");
+            }
+        }
+    }
+
+#if 0
     for (int32 i = 0; i < ui_manager->num_buttons; i++) {
         UI_Button button = ui_manager->buttons[i];
 
@@ -1190,6 +1292,7 @@ void gl_draw_ui(GL_State *gl_state, UI_Manager *ui_manager, Display_Output displ
                      ui_text.x, ui_text.y,
                      ui_text.text, color);
     }
+#endif
 }
 
 void gl_draw_circle(GL_State *gl_state, Render_State *render_state, Transform transform, Vec4 color) {
@@ -1391,7 +1494,7 @@ void gl_render(GL_State *gl_state, Controller_State *controller_state, Game_Stat
                      mesh_name, texture_name,
                      make_vec4(entity->color_override, 1.0f),
                      entity->transform,
-                     true);
+                     texture_name == NULL);
 
         if (game_state->editor_state.selected_entity_type == ENTITY_NORMAL &&
             game_state->editor_state.selected_entity_index == i) {

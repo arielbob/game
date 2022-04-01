@@ -159,7 +159,7 @@ void init_game(Memory *memory, Game_State *game_state,
                               "cube", MESH_NAME_MAX_SIZE);
     add_mesh(game_state, mesh);
 
-    mesh = read_and_load_mesh(memory, (Allocator *) &memory->mesh_arena, "blender/suzanne.mesh",
+    mesh = read_and_load_mesh(memory, (Allocator *) &memory->mesh_arena, "blender/suzanne2.mesh",
                               "suzanne", MESH_NAME_MAX_SIZE);
     add_mesh(game_state, mesh);
 
@@ -181,6 +181,14 @@ void init_game(Memory *memory, Game_State *game_state,
     editor_state->gizmo.sphere_mesh_name = "gizmo_sphere";
     editor_state->selected_entity_index = -1;
 
+    // init ui state
+    UI_Manager *ui_manager = &game_state->ui_manager;
+    UI_Push_Buffer ui_push_buffer = {};
+    ui_push_buffer.size = KILOBYTES(8);
+    ui_push_buffer.base = allocate((Allocator *) game_data_arena, ui_push_buffer.size);
+    ui_push_buffer.used = 0;
+    ui_manager->push_buffer = ui_push_buffer;
+
     // add entities
     Transform transform = {};
     Normal_Entity entity;
@@ -189,7 +197,7 @@ void init_game(Memory *memory, Game_State *game_state,
     transform.scale = make_vec3(1.0f, 1.0f, 1.0f);
     transform.position = make_vec3(2.0f, 1.0f, 0.0f);
     transform.rotation = make_quaternion(45.0f, y_axis);
-    entity = make_entity(game_state, "suzanne", "debug", make_vec3(1.0f, 0.5f, 0.0f), transform);
+    entity = make_entity(game_state, "suzanne", NULL, make_vec3(0.6f, 0.6f, 0.6f), transform);
     add_entity(game_state, entity);
 #endif
 
@@ -211,6 +219,7 @@ void init_game(Memory *memory, Game_State *game_state,
 
     Vec3 light_color;
     Point_Light_Entity point_light_entity;
+
     transform = {};
     transform.scale = make_vec3(0.1f, 0.1f, 0.1f);
     transform.position = make_vec3(-1.0f, 3.0f, 0.0f);
@@ -218,15 +227,15 @@ void init_game(Memory *memory, Game_State *game_state,
     light_color = make_vec3(1.0f, 1.0f, 1.0f);
     point_light_entity = make_point_light_entity(game_state, "cube", NULL,
                                                                     light_color, light_color,
-                                                                    0.0f, 5.0f,
+                                                                    0.0f, 50.0f,
                                                                     transform);
     add_point_light_entity(game_state, point_light_entity);
 
     transform = {};
     transform.scale = make_vec3(0.1f, 0.1f, 0.1f);
-    transform.position = make_vec3(0.0f, 0.1f, 0.0f);
+    transform.position = make_vec3(-1.0f, 1.5f, 0.0f);
     transform.rotation = make_quaternion();
-    light_color = make_vec3(1.0f, 0.0f, 0.0f);
+    light_color = make_vec3(0.0f, 0.0f, 1.0f);
     point_light_entity = make_point_light_entity(game_state, "cube", NULL,
                                                  light_color, light_color,
                                                  0.0f, 5.0f,
@@ -347,12 +356,12 @@ void update(Memory *memory, Game_State *game_state,
 
 #if 0
     //game_state->left_mouse_is_down = controller_state->left_mouse.is_down;
-    bool32 btn1_clicked = do_button(ui_manager, controller_state,
-                                    20.0f, 50.0f, 100.0f, 30.0f,
-                                    "load mesh", "times24", "load_mesh");
-    bool32 btn2_clicked = do_button(ui_manager, controller_state,
-                                    50.0f, 360.0f, 200.0f, 30.0f,
-                                    "toggle music", "times24", "toggle_music");
+    bool32 btn1_clicked = do_text_button(ui_manager, controller_state,
+                                         20.0f, 50.0f, 100.0f, 30.0f,
+                                         "load mesh", "times24", "load_mesh");
+    bool32 btn2_clicked = do_text_button(ui_manager, controller_state,
+                                         50.0f, 360.0f, 200.0f, 30.0f,
+                                         "toggle music", "times24", "toggle_music");
 
     // TODO: GetOpenFileName blocks, so we should do the open file dialog stuff on a separate thread.
     //       https://docs.microsoft.com/en-us/windows/win32/procthread/processes-and-threads
@@ -393,9 +402,9 @@ void update(Memory *memory, Game_State *game_state,
                     251.0f, 360.0f,
                     game_state->mesh_to_add.name, game_state->mesh_to_add.name_size,
                     style, "mesh_name_text_box");
-        bool32 submit_clicked = do_button(ui_manager, controller_state,
-                                          765.0f, 360.0f, 200.0f, 30.0f,
-                                          "submit", "times24", "mesh_name_text_box_submit");
+        bool32 submit_clicked = do_text_button(ui_manager, controller_state,
+                                               765.0f, 360.0f, 200.0f, 30.0f,
+                                               "submit", "times24", "mesh_name_text_box_submit");
         if (submit_clicked) {
             game_state->is_naming_mesh = false;
             add_mesh(game_state, game_state->mesh_to_add);
@@ -416,9 +425,9 @@ void update(Memory *memory, Game_State *game_state,
         toggle_transform_mode_text = "use global transform";
     }
 
-    bool32 toggle_global_clicked = do_button(ui_manager, controller_state,
-                                             765.0f, 360.0f, 200.0f, 30.0f,
-                                             toggle_transform_mode_text, "times24", "toggle_transform");
+    bool32 toggle_global_clicked = do_text_button(ui_manager, controller_state,
+                                                  765.0f, 360.0f, 200.0f, 30.0f,
+                                                  toggle_transform_mode_text, "times24", "toggle_transform");
     if (toggle_global_clicked) {
         if (editor_state->transform_mode == TRANSFORM_GLOBAL) {
             editor_state->transform_mode = TRANSFORM_LOCAL;
@@ -493,7 +502,6 @@ void update(Memory *memory, Game_State *game_state,
 
     update_gizmo(game_state);
     
-
     char *buf = (char *) arena_push(&memory->frame_arena, 128);
     string_format(buf, 128, "picked gizmo: %d",
                   editor_state->selected_gizmo_handle);

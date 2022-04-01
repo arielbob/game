@@ -6,25 +6,37 @@
 //       the element is no longer being displayed. we want this while retaining the nice
 //       immediate mode API.
 
+// TODO: memory alignment
+#define _push_element(push_buffer, type, element)                       \
+    assert(((push_buffer)->used + sizeof(type)) <= (push_buffer)->size);    \
+    *((type *) ((uint8 *) (push_buffer)->base + (push_buffer)->used)) = element; \
+    (push_buffer)->used += sizeof(type)
+    
+
 #if 0
-void push_element(UI_Push_Buffer *buffer, UI_Element element) {
-    switch (element.header.type) {
-        case TEXT_BUTTON: {
-            assert((buffer->used + sizeof(UI_Button)) <= buffer->size);
-            *(base + buffer->used) = (UI_Button) element;
-            buffer->used += sizeof(UI_Button);
-        } break;
-        case TEXT_BOX: {
-            assert((buffer->used + sizeof(UI_Text_Box)) <= buffer->size);
-            *(base + buffer->used) = (UI_Text_Box) element;
-            buffer->used += sizeof(UI_Text_Box);
-        } break;
-    }
+void push_element(UI_Push_Buffer *buffer, UI_Text element) {
+    _push_element(buffer, UI_Text, element);
+}
+
+void push_element(UI_Push_Buffer *buffer, UI_Text_Button element) {
+    _push_element(buffer, UI_Text_Button, element);
+}
+
+void push_element(UI_Push_Buffer *buffer, UI_Text_Box element) {
+    _push_element(buffer, UI_Text_Box, element);
 }
 #endif
 
-UI_Button make_ui_button(real32 x, real32 y, real32 width, real32 height, char *text, char *font, char *id) {
-    UI_Button button = {};
+void clear_push_buffer(UI_Push_Buffer *buffer) {
+    buffer->used = 0;
+}
+
+UI_Text_Button make_ui_text_button(real32 x, real32 y,
+                                   real32 width, real32 height,
+                                   char *text, char *font, char *id) {
+    UI_Text_Button button = {};
+
+    button.type = TEXT_BUTTON;
     button.x = x;
     button.y = y;
     button.width = width;
@@ -40,6 +52,8 @@ UI_Button make_ui_button(real32 x, real32 y, real32 width, real32 height, char *
 
 UI_Text make_ui_text(real32 x, real32 y, char *text, char *font, char *id) {
     UI_Text ui_text = {};
+
+    ui_text.type = TEXT;
     ui_text.x = x;
     ui_text.y = y;
     ui_text.text = text;
@@ -57,6 +71,7 @@ UI_Text_Box make_ui_text_box(real32 x, real32 y,
                              char *id) {
     UI_Text_Box text_box = {};
 
+    text_box.type = TEXT_BOX;
     text_box.x = x;
     text_box.y = y;
     text_box.size = size;
@@ -69,21 +84,16 @@ UI_Text_Box make_ui_text_box(real32 x, real32 y,
     return text_box;
 }
 
-void ui_add_button(UI_Manager *manager, UI_Button button) {
-    assert(manager->num_buttons < UI_MAX_BUTTONS);
-    manager->buttons[manager->num_buttons] = button;
-    manager->num_buttons++;
+void ui_add_text_button(UI_Manager *manager, UI_Text_Button button) {
+    _push_element(&manager->push_buffer, UI_Text_Button, button);
 }
 
 void ui_add_text(UI_Manager *manager, UI_Text text) {
-    assert(manager->num_texts < UI_MAX_TEXTS);
-    manager->texts[manager->num_texts] = text;
-    manager->num_texts++;
+    _push_element(&manager->push_buffer, UI_Text, text);
 }
 
 void ui_add_text_box(UI_Manager *manager, UI_Text_Box text_box) {
-    assert(manager->num_text_boxes < UI_MAX_TEXT_BOXES);
-    manager->text_boxes[manager->num_text_boxes++] = text_box;
+    _push_element(&manager->push_buffer, UI_Text_Box, text_box);
 }
 
 inline bool32 ui_id_equals(UI_id id1, UI_id id2) {
@@ -109,12 +119,12 @@ void do_text(UI_Manager *manager,
     ui_add_text(manager, ui_text);
 }
 
-bool32 do_button(UI_Manager *manager, Controller_State *controller_state,
-                 real32 x_px, real32 y_px, real32 width_px, real32 height_px,
-                 char *text, char *font, char *id_string) {
-    UI_Button button = make_ui_button(x_px, y_px,
-                                      width_px, height_px,
-                                      text, font, id_string);
+bool32 do_text_button(UI_Manager *manager, Controller_State *controller_state,
+                      real32 x_px, real32 y_px, real32 width_px, real32 height_px,
+                      char *text, char *font, char *id_string) {
+    UI_Text_Button button = make_ui_text_button(x_px, y_px,
+                                                width_px, height_px,
+                                                text, font, id_string);
 
     bool32 was_clicked = false;
 
@@ -147,7 +157,7 @@ bool32 do_button(UI_Manager *manager, Controller_State *controller_state,
         }
     }
 
-    ui_add_button(manager, button);
+    ui_add_text_button(manager, button);
 
     return was_clicked;
 }

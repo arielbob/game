@@ -1,6 +1,10 @@
 #include "editor.h"
 #include "game.h"
 
+void draw_entity_box(Entity *entity) {
+    
+}
+
 int32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, real32 *t_result) {
     Mat4 object_to_world = get_model_matrix(transform);
     Mat4 world_to_object = inverse(object_to_world);

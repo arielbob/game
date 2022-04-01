@@ -1007,12 +1007,7 @@ int WinMain(HINSTANCE hInstance,
                     gl_render(&gl_state, &controller_state, &game_state,
                               game_display_output, &sound_output);
 
-                    // TODO: we need to reset this every loop. if this is a common thing, we may want to figure
-                    //       out a better way of doing this.
-                    game_state.ui_manager.num_buttons = 0;
-                    game_state.ui_manager.num_text_boxes = 0;
-                    game_state.ui_manager.num_texts = 0;
-                    
+                    clear_push_buffer(&game_state.ui_manager.push_buffer);
                     clear_arena(&memory.frame_arena);
                     verify(&memory.global_stack);
 
