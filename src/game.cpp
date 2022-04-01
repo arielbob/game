@@ -260,7 +260,7 @@ Vec3 cursor_pos_to_world_space(Vec2 cursor_pos, Render_State *render_state) {
     Mat4 cpv_matrix_inverse = inverse(render_state->cpv_matrix);
 
     Vec4 clip_space_coordinates = { 2.0f * (cursor_pos.x / display_output.width) - 1.0f,
-                                    2.0f * (cursor_pos.y / display_output.height) - 1.0f,
+                                    -2.0f * (cursor_pos.y / display_output.height) + 1.0f,
                                     -1.0f, 1.0f };
 
     Vec4 cursor_world_space_homogeneous = cpv_matrix_inverse * clip_space_coordinates;
@@ -525,6 +525,11 @@ void update(Memory *memory, Game_State *game_state,
     string_format(buf, 128, "selected entity type: %d\nselected entity index: %d",
                   editor_state->selected_entity_type, editor_state->selected_entity_index);
     do_text(ui_manager, 0.0f, 370.0f, buf, "times24", "selected_entity_index_text");
+
+    buf = (char *) arena_push(&memory->frame_arena, 128);
+    string_format(buf, 128, "current_mouse: (%f, %f)",
+                  controller_state->current_mouse.x, controller_state->current_mouse.y);
+    do_text(ui_manager, 0.0f, 32.0f, buf, "times24", "current_mouse_text");
 
     if (editor_state->selected_entity_index >= 0) {
         Entity *entity = get_selected_entity(game_state);

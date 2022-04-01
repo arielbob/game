@@ -688,7 +688,7 @@ Vec2 platform_get_cursor_pos(Display_Output display_output) {
     GetCursorPos(&cursor_pos);
     ScreenToClient(window, &cursor_pos);
 
-    int64 cursor_y = display_output.height - cursor_pos.y;
+    int64 cursor_y = cursor_pos.y;
     int64 cursor_x = cursor_pos.x;
 
     return make_vec2((real32) cursor_x, (real32) cursor_y);

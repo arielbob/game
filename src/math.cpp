@@ -841,11 +841,11 @@ Mat4 make_perspective_clip_matrix(real32 fov_x_degrees, real32 aspect_ratio, rea
 }
 
 Mat4 make_ortho_clip_matrix(real32 width, real32 height, real32 near, real32 far) {
-    Mat4 m = make_mat4_identity();;
+    Mat4 m = make_mat4_identity();
     m.col1.x = 2.0f / width;
     m.col4.x = -1.0f;
-    m.col2.y = 2.0f / height;
-    m.col4.y = -1.0f;
+    m.col2.y = -2.0f / height;
+    m.col4.y = 1.0f;
     m.col3.z = 2.0f / (far - near);
     m.col4.z = ((-2.0f * near) / (far - near)) - 1.0f;
 

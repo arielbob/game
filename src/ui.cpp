@@ -84,6 +84,27 @@ UI_Text_Box make_ui_text_box(real32 x, real32 y,
     return text_box;
 }
 
+#if 0
+UI_Box make_ui_box(real32 x, real32 y,
+                   char *current_text, uint32 size,
+                   UI_Text_Box_Style style,
+                   char *id) {
+    UI_Text_Box text_box = {};
+
+    text_box.type = TEXT_BOX;
+    text_box.x = x;
+    text_box.y = y;
+    text_box.size = size;
+    text_box.current_text = current_text;
+    text_box.style = style;
+
+    UI_id text_box_id = { id };
+    text_box.id = text_box_id;
+
+    return text_box;
+}
+#endif
+
 void ui_add_text_button(UI_Manager *manager, UI_Text_Button button) {
     _push_element(&manager->push_buffer, UI_Text_Button, button);
 }

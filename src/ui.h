@@ -2,7 +2,7 @@
 #define UI_H
 
 enum UI_Type {
-    TEXT, TEXT_BUTTON, TEXT_BOX
+    TEXT, TEXT_BUTTON, TEXT_BOX, BOX
 };
 
 #define UI_HEADER                               \

@@ -32,6 +32,8 @@
 //              this actually had to do with scaling and us not converting t_min back to world_space in
 //              ray_intersects_mesh().
 // TODO (done): use push buffer for UI elements
+// TODO (done): switch to 0,0 in top left coordinate system for screen-space drawing
+// TODO: nicer UI (start with window to display selected entity properties)
 // TODO: material editing (material structs?)
 // TODO: level saving/loading
 // TODO: directional light (sun light)
@@ -529,14 +531,8 @@ void gl_draw_text(GL_State *gl_state,
         if (*text >= 32 && *text < 128 || *text == '-') {
             stbtt_aligned_quad q;
             stbtt_GetBakedQuad(font.cdata, 512, 512, *text - 32, &x_pos_pixels, &y_pos_pixels, &q, 1);
-            // TODO: we can just modify stb_truetype to use our coordinate space
-            // stb_truetype assumes that +y is down, so we invert it to fit our coordinate space
-            q.y0 = 2.0f*y_pos_pixels - q.y0;
-            q.y1 = 2.0f*y_pos_pixels - q.y1;
 
             copy_aligned_quad_to_arrays(q, quad_vertices, quad_uvs);
-
-            Vec4 test = ortho_clip_matrix * make_vec4(quad_vertices[0], quad_vertices[1], 0.0f, 1.0f);
 
             glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(quad_vertices), quad_vertices);
             glBufferSubData(GL_ARRAY_BUFFER, (int *) sizeof(quad_vertices), sizeof(quad_uvs), quad_uvs);
@@ -544,7 +540,7 @@ void gl_draw_text(GL_State *gl_state,
             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         } else if (*text == '\n') {
             x_pos_pixels = start_x_pos_pixels;
-            y_pos_pixels -= line_advance;
+            y_pos_pixels += line_advance;
         }
         
         ++text;
@@ -642,13 +638,13 @@ void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) 
     // NOTE: square mesh
     real32 square_vertices[] = {
         0.0f, 0.0f, 0.0f,
-        0.0f, 1.0f, 0.0f,
-        1.0f, 1.0f, 0.0f,
         1.0f, 0.0f, 0.0f,
+        0.0f, -1.0f, 0.0f,
+        1.0f, -1.0f, 0.0f,
     };
     uint32 square_indices[] = {
         0, 1, 2,
-        0, 2, 3
+        1, 3, 2
     };
 
     glGenVertexArrays(1, &vao);
@@ -705,6 +701,8 @@ void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) 
     // directly to the shader, and i don't think there's a way to easily modify interleaved data, unless
     // you're modifying all of the data, but when we modify the data we only modify the positions and not the uvs.
 #if 1
+    // the values in these arrays don't matter; we're just filling these arrays up with enough values such that
+    // sizeof() gives the correct values
     real32 quad_vertices[] = {
         0.0f, 0.0f,
         0.0f, 1.0f,
@@ -857,7 +855,7 @@ void gl_draw_triangle_p(GL_State *gl_state,
     glBindVertexArray(triangle_mesh.vao);
 
     Vec2 clip_space_position = make_vec2(position.x * 2.0f - 1.0f,
-                                         position.y * 2.0f - 1.0f);
+                                         position.y * -2.0f + 1.0f);
     
     real32 clip_space_width  = width_pixels / (display_output.width / 2.0f);
     real32 clip_space_height = height_pixels / (display_output.height / 2.0f);
@@ -900,9 +898,9 @@ void gl_draw_line_p(GL_State *gl_state,
     glBindVertexArray(line_mesh.vao);
 
     Vec2 clip_space_start = make_vec2(start.x * 2.0f - 1.0f,
-                                      start.y * 2.0f - 1.0f);
+                                      start.y * -2.0f + 1.0f);
     Vec2 clip_space_end = make_vec2(end.x * 2.0f - 1.0f,
-                                    end.y * 2.0f - 1.0f);
+                                    end.y * -2.0f + 1.0f);
     Vec2 clip_space_length = clip_space_end - clip_space_start;
 
     Mat4 model_matrix = (make_translate_matrix(make_vec3(clip_space_start, 0.0f)) *
@@ -932,9 +930,9 @@ void gl_draw_line(GL_State *gl_state,
     glBindVertexArray(line_mesh.vao);
 
     Vec2 clip_space_start = make_vec2(start_pixels.x / display_output.width * 2.0f - 1.0f,
-                                      start_pixels.y / display_output.height * 2.0f - 1.0f);
+                                      start_pixels.y / display_output.height * -2.0f + 1.0f);
     Vec2 clip_space_end = make_vec2(end_pixels.x / display_output.width * 2.0f - 1.0f,
-                                    end_pixels.y / display_output.height * 2.0f - 1.0f);
+                                    end_pixels.y / display_output.height * -2.0f + 1.0f);
     Vec2 clip_space_length = clip_space_end - clip_space_start;
 
     Mat4 model_matrix = (make_translate_matrix(make_vec3(clip_space_start, 0.0f)) *
@@ -966,7 +964,7 @@ void gl_draw_quad_p(GL_State *gl_state,
     glBindVertexArray(square_mesh.vao);
 
     Vec2 clip_space_position = make_vec2(x * 2.0f - 1.0f,
-                                         y * 2.0f - 1.0f);
+                                         y * -2.0f + 1.0f);
     
     real32 clip_space_width  = width_pixels / (display_output.width / 2.0f);
     real32 clip_space_height = height_pixels / (display_output.height / 2.0f);
@@ -983,7 +981,7 @@ void gl_draw_quad_p(GL_State *gl_state,
     glBindVertexArray(0);
 }
 
-// NOTE: pixel based position, with (0,0) being at bottom left and (width, height) being at top right
+// NOTE: pixel based position, with (0,0) being at bottom left and (width, height) being at top left
 void gl_draw_quad(GL_State *gl_state,
                   Display_Output display_output,
                   real32 x_pos_pixels, real32 y_pos_pixels,
@@ -999,8 +997,8 @@ void gl_draw_quad(GL_State *gl_state,
     assert(mesh_exists);
     glBindVertexArray(square_mesh.vao);
 
-    Vec2 clip_space_position = make_vec2(x_pos_pixels / display_output.width * 2.0f - 1.0f,
-                                         y_pos_pixels / display_output.height * 2.0f - 1.0f);
+    Vec2 clip_space_position = make_vec2((x_pos_pixels / display_output.width) * 2.0f - 1.0f,
+                                         (y_pos_pixels / display_output.height) * -2.0f + 1.0f);
     
     real32 clip_space_width  = width_pixels / (display_output.width / 2.0f);
     real32 clip_space_height = height_pixels / (display_output.height / 2.0f);
@@ -1141,7 +1139,7 @@ void gl_draw_ui_text_button(GL_State *gl_state, Display_Output display_output,
 
     // TODO: center this.. will have to use font metrics
     gl_draw_text(gl_state, display_output, ui_text_button.font,
-                 ui_text_button.x, ui_text_button.y,
+                 ui_text_button.x, ui_text_button.y + ui_text_button.height,
                  ui_text_button.text, make_vec3(1.0f, 1.0f, 1.0f));
 }
 
@@ -1436,6 +1434,13 @@ void gl_render(GL_State *gl_state, Controller_State *controller_state, Game_Stat
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLineWidth(1.0f);
 
+    //gl_draw_quad(gl_state, display_output, 0.0f, 0.0f, 50.0f, 50.0f, make_vec3(1.0f, 0.0f, 0.0f));
+    //gl_draw_quad_p(gl_state, display_output, 0.5f, 0.5f, 50.0f, 50.0f, make_vec3(1.0f, 0.0f, 0.0f));
+    /*gl_draw_text(gl_state, display_output,
+                 "times24",
+                 0.0f, 32.0f,
+                 "Hello, world!", make_vec3(1.0f, 1.0f, 1.0f));*/
+
     local_persist real32 t = 0.0f;
     t += 0.01f;
 
@@ -1592,6 +1597,8 @@ void gl_render(GL_State *gl_state, Controller_State *controller_state, Game_Stat
                  text_color);
 #endif
 
+    // NOTE: this looks really broken, since we switched the screen-space coordinate system to have 0,0 at the
+    //       top left
     // draw_sound_buffer(gl_state, display_output, win32_sound_output);
 
 /*
