@@ -22,7 +22,8 @@
 // TODO (done): rotate entities using rotation gizmo
 // TODO (done): scale gizmo based on camera distance from gizmo, so that the gizmo stays big and clickable on screen
 // TODO (done): textures
-// TODO: add the Entity struct with the shared Entity info for easier entity access.
+// TODO (done): add the Entity struct with the shared Entity info for easier entity access.
+// TODO: fix point lights not being sent in uniform buffer object; we can't even get num_point_lights from the ubo.
 // TODO: actually send point_light_entity data to shaders (read multiple lights article on learnopengl.com)
 // TODO: point lights
 //       we don't need to do PBR right now - we can just do basic blinn-phong shading
@@ -370,12 +371,15 @@ void gl_draw_solid_color_mesh(GL_State *gl_state, Render_State *render_state,
                        true);
 }
 
-void gl_draw_mesh(GL_State *gl_state, Render_State *render_state,
-                  char *mesh_name, char *texture_name, 
+void gl_draw_mesh(GL_State *gl_state, Game_State *game_state,
+                  char *mesh_name, char *texture_name,
                   Vec4 color,
                   Transform transform,
                   bool32 use_color_override) {
+    Render_State *render_state = &game_state->render_state;
+
     uint32 shader_id = gl_use_shader(gl_state, "basic_3d");
+
     GL_Mesh gl_mesh = gl_use_mesh(gl_state, mesh_name);
 
     if (!use_color_override && !texture_name) assert(!"No texture name provided.");
@@ -390,8 +394,8 @@ void gl_draw_mesh(GL_State *gl_state, Render_State *render_state,
     
     Vec3 light_color = make_vec3(1.0f, 1.0f, 1.0f);
     Vec3 light_position = make_vec3(0.0f, 1.0f, 0.0f);
-    gl_set_uniform_vec3(shader_id, "light_color", &light_color);
-    gl_set_uniform_vec3(shader_id, "light_pos", &light_position);
+    //gl_set_uniform_vec3(shader_id, "light_color", &light_color);
+    //gl_set_uniform_vec3(shader_id, "light_pos", &light_position);
     gl_set_uniform_vec3(shader_id, "camera_pos", &render_state->camera.position);
     gl_set_uniform_int(shader_id, "use_color_override", use_color_override);
 
@@ -658,23 +662,14 @@ void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) 
 
     // NOTE: framebuffer mesh
     real32 framebuffer_mesh_data[] = {
+        // positions  uvs
         -1.0f, -1.0f, 0.0f, 0.0f,
         -1.0f,  1.0f, 0.0f, 1.0f,
          1.0f,  1.0f, 1.0f, 1.0f,
 
-        1.0f, 1.0f, 1.0f, 1.0f,
-        1.0f, -1.0f, 1.0f, 0.0f,
+         1.0f, 1.0f,  1.0f, 1.0f,
+         1.0f, -1.0f, 1.0f, 0.0f,
         -1.0f, -1.0f, 0.0f, 0.0f
-        
-
-        // // positions   // uvs
-        // -1.0f,  1.0f,  0.0f, 1.0f,
-        // -1.0f, -1.0f,  0.0f, 0.0f,
-        //  1.0f, -1.0f,  1.0f, 0.0f,
-
-        // -1.0f,  1.0f,  0.0f, 1.0f,
-        //  1.0f, -1.0f,  1.0f, 0.0f,
-        //  1.0f,  1.0f,  1.0f, 1.0f
     };
 
     glGenVertexArrays(1, &vao);
@@ -787,6 +782,7 @@ void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) 
                    "src/shaders/solid.vs", "src/shaders/solid.fs", "solid");
     gl_load_shader(gl_state, memory,
                    "src/shaders/basic_3d.vs", "src/shaders/basic_3d.fs", "basic_3d");
+
     gl_load_shader(gl_state, memory,
                    "src/shaders/basic_3d_textured.vs", "src/shaders/basic_3d_textured.fs", "basic_3d_textured");
     gl_load_shader(gl_state, memory,
@@ -797,6 +793,23 @@ void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) 
                    "src/shaders/framebuffer.vs", "src/shaders/framebuffer.fs",
                    "framebuffer");
     gl_state->gizmo_framebuffer = gl_make_framebuffer(display_output.width, display_output.height);
+
+    glGenBuffers(1, &gl_state->global_ubo);
+    glBindBuffer(GL_UNIFORM_BUFFER, gl_state->global_ubo);
+    // TODO: not sure if 1024 bytes is enough
+    glBufferData(GL_UNIFORM_BUFFER, 32 + MAX_POINT_LIGHTS*sizeof(GL_Point_Light), NULL, GL_STATIC_DRAW);
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+    glBindBufferRange(GL_UNIFORM_BUFFER, 0, gl_state->global_ubo, 0, MAX_POINT_LIGHTS * sizeof(GL_Point_Light) + 32);
+    //glBindBufferBase(GL_UNIFORM_BUFFER, 0, gl_state->global_ubo);
+    GLenum error = glGetError();
+
+    uint32 shader_id = gl_use_shader(gl_state, "basic_3d");
+    error = glGetError();
+    uint32 uniform_block_index = glGetUniformBlockIndex(shader_id, "shader_globals");
+    error = glGetError();
+    glUniformBlockBinding(shader_id, uniform_block_index, 0);
+    glUseProgram(0);
+    error = glGetError();
 
     // NOTE: fonts
     gl_init_font(gl_state, memory, "c:/windows/fonts/times.ttf", "times32", 32.0f, 512, 512);
@@ -1336,13 +1349,34 @@ void gl_render(GL_State *gl_state, Controller_State *controller_state, Game_Stat
         }
     }
 
+    glBindBuffer(GL_UNIFORM_BUFFER, gl_state->global_ubo);
+    int32 ubo_offset = 0;
+    glBufferSubData(GL_UNIFORM_BUFFER, &ubo_offset, sizeof(int32), &game_state->num_point_lights);
+    ubo_offset += 32; // have to offset since the gl_point_light struct is 32 bytes
+    // TODO: try just sending num_point_lights only
+/*
+    for (int32 i = 0; i < game_state->num_point_lights; i++) {
+        // TODO: we may just want to replace position and light_color with vec4s in Point_Light_Entity.
+        //       although this would be kind of annoying since we would have to modify the Transform struct.
+        GL_Point_Light gl_point_light = {
+            make_vec4(game_state->point_lights[i].transform.position, 1.0f),
+            make_vec4(game_state->point_lights[i].light_color, 1.0f),
+        };
+        
+        glBufferSubData(GL_UNIFORM_BUFFER, &ubo_offset,
+                        sizeof(GL_Point_Light), &gl_point_light);
+        ubo_offset += sizeof(GL_Point_Light);
+    }
+*/
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
     // entities
     for (int32 i = 0; i < game_state->num_entities; i++) {
         Normal_Entity *entity = &game_state->entities[i];
         char *mesh_name = game_state->meshes[entity->mesh_index].name;
         char *texture_name = entity->texture_name;
 
-        gl_draw_mesh(gl_state, render_state,
+        gl_draw_mesh(gl_state, game_state,
                      mesh_name, texture_name,
                      make_vec4(entity->color_override, 1.0f),
                      entity->transform,

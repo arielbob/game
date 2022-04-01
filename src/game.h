@@ -7,6 +7,10 @@
 
 #define MAX_PRESSED_CHARS 256
 
+#define MAX_MESHES 64
+#define MAX_ENTITIES 64
+#define MAX_POINT_LIGHTS 16
+
 struct Display_Output {
     int32 width;
     int32 height;
@@ -129,10 +133,6 @@ struct Point_Light_Entity {
 
     Vec3 light_color;
 };
-
-#define MAX_MESHES 64
-#define MAX_ENTITIES 64
-#define MAX_POINT_LIGHTS 64
 
 struct Game_State {
     bool32 is_initted;

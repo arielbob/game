@@ -87,6 +87,11 @@ typedef void GL_FRAMEBUFFER_RENDERBUFFER (GLenum target, GLenum attachment, GLen
 typedef GLenum GL_CHECK_FRAMEBUFFER_STATUS (GLenum target);
 typedef void GL_DELETE_FRAMEBUFFERS (GLsizei n, const GLuint *framebuffers);
 typedef void GL_DELETE_RENDERBUFFERS (GLsizei n, const GLuint *renderbuffers);
+typedef void GL_BIND_BUFFER_BASE (GLenum target, GLuint index, GLuint buffer);
+typedef GLuint GL_GET_UNIFORM_BLOCK_INDEX (GLuint program, const GLchar *uniformBlockName);
+typedef void GL_UNIFORM_BLOCK_BINDING (GLuint program, GLuint uniformBlockIndex, GLuint uniformBlockBinding);
+typedef void GL_BIND_BUFFER_RANGE (GLenum target, GLuint index, GLuint buffer, GLintptr offset, GLsizeiptr size);
+
 
 GL_GEN_VERTEX_ARRAYS *glGenVertexArrays;
 GL_GEN_BUFFERS *glGenBuffers;
@@ -123,6 +128,11 @@ GL_FRAMEBUFFER_RENDERBUFFER *glFramebufferRenderbuffer;
 GL_CHECK_FRAMEBUFFER_STATUS *glCheckFramebufferStatus;
 GL_DELETE_FRAMEBUFFERS *glDeleteFramebuffers;
 GL_DELETE_RENDERBUFFERS *glDeleteRenderbuffers;
+GL_BIND_BUFFER_BASE *glBindBufferBase;
+GL_GET_UNIFORM_BLOCK_INDEX *glGetUniformBlockIndex;
+GL_UNIFORM_BLOCK_BINDING *glUniformBlockBinding;
+GL_BIND_BUFFER_RANGE *glBindBufferRange;
+
 
 #include "game_gl.cpp"
 
@@ -319,6 +329,10 @@ internal bool32 win32_init_opengl(HDC hdc) {
                     glCheckFramebufferStatus = (GL_CHECK_FRAMEBUFFER_STATUS *) wglGetProcAddress("glCheckFramebufferStatus");
                     glDeleteFramebuffers = (GL_DELETE_FRAMEBUFFERS *) wglGetProcAddress("glDeleteFramebuffers");
                     glDeleteRenderbuffers = (GL_DELETE_RENDERBUFFERS *) wglGetProcAddress("glDeleteRenderbuffers");
+                    glBindBufferBase = (GL_BIND_BUFFER_BASE *) wglGetProcAddress("glBindBufferBase");
+                    glGetUniformBlockIndex = (GL_GET_UNIFORM_BLOCK_INDEX *) wglGetProcAddress("glGetUniformBlockIndex");
+                    glUniformBlockBinding = (GL_UNIFORM_BLOCK_BINDING *) wglGetProcAddress("glUniformBlockBinding");
+                    glBindBufferRange = (GL_BIND_BUFFER_RANGE *) wglGetProcAddress("glBindBufferRange");
 
                   
                     return true;

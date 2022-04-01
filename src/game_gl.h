@@ -103,6 +103,7 @@
 #define GL_DEPTH_ATTACHMENT               0x8D00
 #define GL_STENCIL_ATTACHMENT             0x8D20
 #define GL_FRAMEBUFFER_COMPLETE           0x8CD5
+#define GL_UNIFORM_BUFFER                 0x8A11
 
 enum Shader_Type {
     VERTEX,
@@ -141,6 +142,11 @@ struct GL_Framebuffer {
     uint32 render_buffer;
 };
 
+struct GL_Point_Light {
+    Vec4 position;
+    Vec4 color;
+};
+
 struct GL_State {
     Hash_Table<uint32> shader_ids_table;
     // TODO: i'm not sure how useful it is for debug meshes and game meshes to be in separate hash tables..
@@ -151,6 +157,7 @@ struct GL_State {
 
     // TODO: will have to delete these and remake them on window resize
     GL_Framebuffer gizmo_framebuffer;
+    uint32 global_ubo;
 };
 
 #endif
