@@ -247,13 +247,17 @@ void gl_init_font(GL_State *gl_state, Memory *memory,
     GL_Font gl_font;
     stbtt_fontinfo font_info;
 
-    Marker m = begin_region(memory);
-    File_Data font_file_data = platform_open_and_read_file((Allocator *) &memory->global_stack,
+    File_Data font_file_data = platform_open_and_read_file((Allocator *) &memory->font_arena,
                                                            font_filename);
 
     // get font info
     // NOTE: this assumes that the TTF file only has a single font and is at index 0, or else
     //       stbtt_GetFontOffsetForIndex will return a negative value.
+    // NOTE: font_info uses the raw data from the file contents, so the file data allocation should NOT
+    //       be temporary.
+    // TODO: since we load into memory without deallocating the ttf files and since these files are
+    //       often used across baked fonts, such as "times24" and "times32" both using times.ttf, we
+    //       should cache the files into a table.
     stbtt_InitFont(&font_info, (uint8 *) font_file_data.contents,
                    stbtt_GetFontOffsetForIndex((uint8 *) font_file_data.contents, 0));
     gl_font.scale_for_pixel_height = stbtt_ScaleForPixelHeight(&font_info, font_height_pixels);
@@ -265,6 +269,7 @@ void gl_init_font(GL_State *gl_state, Memory *memory,
     int32 num_chars = 96;
     gl_font.cdata = (stbtt_bakedchar *) arena_push(&memory->font_arena, 96 * sizeof(stbtt_bakedchar), false);
 
+    Marker m = begin_region(memory);
     uint8 *temp_bitmap = (uint8 *) region_push(&memory->global_stack, font_texture_width*font_texture_height);
     // NOTE: no guarantee that the bitmap will fit the font, so choose temp_bitmap dimensions carefully
     // TODO: we may want to maybe render this out to an image so that we can verify that the font fits
@@ -1165,10 +1170,12 @@ void gl_draw_ui_text_box(GL_State *gl_state, Display_Output display_output,
         glEnable(GL_SCISSOR_TEST);
         // TODO: should move where the text renders depending on if the cursor moves outside of the
         //       text box's bounds.
-        glScissor((int32) (text_box.x + style.padding_x), (int32) (text_box.y + style.padding_y),
+        // glScissor((int32) (text_box.x + style.padding_x), (int32) (display_output.height - (text_box.y + style.padding_y)),
+        //           (int32) style.width, (int32) style.height);
+        glScissor((int32) (text_box.x + style.padding_x), (int32) (display_output.height - text_box.y - style.height - style.padding_y),
                   (int32) style.width, (int32) style.height);
         gl_draw_text(gl_state, display_output, style.font,
-                     text_box.x + style.padding_x, text_box.y + style.padding_y,
+                     text_box.x + style.padding_x, text_box.y + style.height - style.padding_y,
                      text_box.current_text, make_vec3(1.0f, 1.0f, 1.0f));
         glDisable(GL_SCISSOR_TEST);
 
@@ -1195,17 +1202,17 @@ void gl_draw_ui(GL_State *gl_state, UI_Manager *ui_manager, Display_Output displ
     while (address < ((uint8 *) push_buffer->base + push_buffer->used)) {
         UI_Element *element = (UI_Element *) address;
         switch (element->type) {
-            case TEXT: {
+            case UI_TEXT: {
                 UI_Text *ui_text = (UI_Text *) element;
                 gl_draw_ui_text(gl_state, display_output, ui_manager, *ui_text);
                 address += sizeof(UI_Text);
             } break;
-            case TEXT_BUTTON: {
+            case UI_TEXT_BUTTON: {
                 UI_Text_Button *ui_text_button = (UI_Text_Button *) element;
                 gl_draw_ui_text_button(gl_state, display_output, ui_manager, *ui_text_button);
                 address += sizeof(UI_Text_Button);
             } break;
-            case TEXT_BOX: {
+            case UI_TEXT_BOX: {
                 UI_Text_Box *ui_text_box = (UI_Text_Box *) element;
                 gl_draw_ui_text_box(gl_state, display_output, ui_manager, *ui_text_box);
                 address += sizeof(UI_Text_Box);

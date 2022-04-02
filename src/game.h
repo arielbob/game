@@ -160,6 +160,8 @@ struct Game_State {
 
     int32 num_point_lights;
     Point_Light_Entity point_lights[MAX_POINT_LIGHTS];
+
+    char text_buffer[256] = {};
 };
 
 bool32 was_clicked(Controller_Button_State button_state);

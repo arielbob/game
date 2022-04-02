@@ -2,7 +2,11 @@
 #define UI_H
 
 enum UI_Type {
-    TEXT, TEXT_BUTTON, TEXT_BOX, BOX
+    UI_NONE,
+    UI_TEXT,
+    UI_TEXT_BUTTON,
+    UI_TEXT_BOX,
+    UI_BOX
 };
 
 #define UI_HEADER                               \
@@ -10,6 +14,7 @@ enum UI_Type {
     UI_Type type;
 
 struct UI_id {
+    UI_Type type;
     // NOTE: we use a pointer to some unique data, such as a constant string specific to a button, to
     //       identify UI elements
     void *string_ptr;
@@ -80,6 +85,8 @@ struct UI_Manager {
 
     UI_Push_Buffer push_buffer;
 
+    bool32 is_disabled;
+    
     real64 focus_timer;
     int32 focus_cursor_index;
 };

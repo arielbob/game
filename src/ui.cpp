@@ -36,7 +36,7 @@ UI_Text_Button make_ui_text_button(real32 x, real32 y,
                                    char *text, char *font, char *id) {
     UI_Text_Button button = {};
 
-    button.type = TEXT_BUTTON;
+    button.type = UI_TEXT_BUTTON;
     button.x = x;
     button.y = y;
     button.width = width;
@@ -44,7 +44,7 @@ UI_Text_Button make_ui_text_button(real32 x, real32 y,
     button.text = text;
     button.font = font;
 
-    UI_id button_id = { id };
+    UI_id button_id = { UI_TEXT_BUTTON, id };
     button.id = button_id;
 
     return button;
@@ -53,13 +53,13 @@ UI_Text_Button make_ui_text_button(real32 x, real32 y,
 UI_Text make_ui_text(real32 x, real32 y, char *text, char *font, char *id) {
     UI_Text ui_text = {};
 
-    ui_text.type = TEXT;
+    ui_text.type = UI_TEXT;
     ui_text.x = x;
     ui_text.y = y;
     ui_text.text = text;
     ui_text.font = font;
 
-    UI_id ui_text_id = { id };
+    UI_id ui_text_id = { UI_TEXT, id };
     ui_text.id = ui_text_id;
 
     return ui_text;
@@ -71,14 +71,14 @@ UI_Text_Box make_ui_text_box(real32 x, real32 y,
                              char *id) {
     UI_Text_Box text_box = {};
 
-    text_box.type = TEXT_BOX;
+    text_box.type = UI_TEXT_BOX;
     text_box.x = x;
     text_box.y = y;
     text_box.size = size;
     text_box.current_text = current_text;
     text_box.style = style;
 
-    UI_id text_box_id = { id };
+    UI_id text_box_id = { UI_TEXT_BOX, id };
     text_box.id = text_box_id;
 
     return text_box;
@@ -129,6 +129,20 @@ inline bool32 ui_has_hot(UI_Manager *manager) {
     return (manager->hot.string_ptr != NULL);
 }
 
+void disable_input(UI_Manager *manager) {
+    manager->hot = { NULL };
+    manager->active = { NULL };
+    manager->is_disabled = true;
+}
+
+void enable_input(UI_Manager *manager) {
+    manager->is_disabled = false;
+}
+
+bool32 has_focus(UI_Manager *manager) {
+    return (manager->active.type == UI_TEXT_BOX);
+}
+
 void do_text(UI_Manager *manager,
              real32 x_px, real32 y_px,
              char *text, char *font, char *id_string) {
@@ -150,7 +164,7 @@ bool32 do_text_button(UI_Manager *manager, Controller_State *controller_state,
     bool32 was_clicked = false;
 
     Vec2 current_mouse = controller_state->current_mouse;
-    if (in_bounds(current_mouse, x_px, x_px + width_px, y_px, y_px + height_px)) {
+    if (!manager->is_disabled && in_bounds(current_mouse, x_px, x_px + width_px, y_px, y_px + height_px)) {
         if (controller_state->left_mouse.is_down) {
             if (ui_id_equals(manager->hot, button.id) || !controller_state->left_mouse.was_down) {
                 manager->active = button.id;
@@ -198,7 +212,7 @@ void do_text_box(UI_Manager *manager, Controller_State *controller_state,
     real32 height = style.height + style.padding_y * 2;
 
     Vec2 current_mouse = controller_state->current_mouse;
-    if (in_bounds(current_mouse, x, x + width, y, y + height)) {
+    if (!manager->is_disabled && in_bounds(current_mouse, x, x + width, y, y + height)) {
         if (!controller_state->left_mouse.is_down) {
             manager->hot = text_box.id;
         }

@@ -278,7 +278,7 @@ Vec3 cursor_pos_to_world_space(Vec2 cursor_pos, Render_State *render_state) {
 }
 
 void update_camera(Camera *camera, Display_Output display_output, Controller_State *controller_state,
-                   bool32 use_freecam, bool32 has_focus) {
+                   bool32 use_freecam, bool32 has_focus, bool32 should_move) {
     Basis initial_basis = camera->initial_basis;
 
     if (use_freecam && has_focus) {
@@ -307,23 +307,25 @@ void update_camera(Camera *camera, Display_Output display_output, Controller_Sta
     Vec3 right = normalize(corrected_right);
     Vec3 up = normalize(transformed_up);
 
-    Vec3 movement_delta = make_vec3();
-    if (controller_state->key_w.is_down) {
-        movement_delta += forward;
+    if (should_move) {
+        Vec3 movement_delta = make_vec3();
+        if (controller_state->key_w.is_down) {
+            movement_delta += forward;
+        }
+        if (controller_state->key_s.is_down) {
+            movement_delta -= forward;
+        }
+        if (controller_state->key_d.is_down) {
+            movement_delta += right;
+        }
+        if (controller_state->key_a.is_down) {
+            movement_delta -= right;
+        }
+        // TODO: use delta time
+        real32 player_speed = 0.3f;
+        movement_delta = normalize(movement_delta) * player_speed;
+        camera->position += movement_delta;
     }
-    if (controller_state->key_s.is_down) {
-        movement_delta -= forward;
-    }
-    if (controller_state->key_d.is_down) {
-        movement_delta += right;
-    }
-    if (controller_state->key_a.is_down) {
-        movement_delta -= right;
-    }
-    // TODO: use delta time
-    real32 player_speed = 0.3f;
-    movement_delta = normalize(movement_delta) * player_speed;
-    camera->position += movement_delta;
     
     Basis current_basis = { forward, right, up };
     camera->current_basis = current_basis;
@@ -383,12 +385,14 @@ void update(Memory *memory, Game_State *game_state,
     Editor_State *editor_state = &game_state->editor_state;
     Render_State *render_state = &game_state->render_state;
 
-    if (just_pressed(controller_state->key_tab)) {
+    if (just_pressed(controller_state->key_tab) && !has_focus(ui_manager)) {
         editor_state->use_freecam = !editor_state->use_freecam;
         platform_set_cursor_visible(!editor_state->use_freecam);
     }
 
-    update_camera(&render_state->camera, *display_output, controller_state, editor_state->use_freecam, platform_window_has_focus());
+    bool32 camera_should_move = editor_state->use_freecam && !has_focus(ui_manager);
+    update_camera(&render_state->camera, *display_output, controller_state, editor_state->use_freecam,
+                  platform_window_has_focus(), camera_should_move);
     update_render_state(render_state);
 
     if (editor_state->use_freecam && platform_window_has_focus()) {
@@ -396,6 +400,13 @@ void update(Memory *memory, Game_State *game_state,
         platform_set_cursor_pos(center);
         controller_state->current_mouse = center;
     }
+
+    if (editor_state->use_freecam) {
+        disable_input(ui_manager);
+    } else {
+        enable_input(ui_manager);
+    }
+    
     
 #if 0
     Vec4 cursor_world_space = cursor_pos_to_world_space(game_state->cursor_pos,
@@ -470,7 +481,7 @@ void update(Memory *memory, Game_State *game_state,
         game_state->is_playing_music = !game_state->is_playing_music;
     }
 #endif
-
+    
     char *toggle_transform_mode_text;
     if (editor_state->transform_mode == TRANSFORM_GLOBAL) {
         toggle_transform_mode_text = "use local transform";
