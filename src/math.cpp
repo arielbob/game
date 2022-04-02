@@ -1166,7 +1166,7 @@ bool32 ray_intersects_triangle(Ray ray, Vec3 v[3], real32 *t_result) {
 
     real32 denom = dot(ray.direction, n);
     // weird check to bail on NaN
-#if 1
+#if 0
     if (!(denom < 0.0f)) {
         // ray is hitting backside of triangle
         return false;
@@ -1178,6 +1178,8 @@ bool32 ray_intersects_triangle(Ray ray, Vec3 v[3], real32 *t_result) {
     }
 
     real32 t = (d - dot(ray.origin, n)) / denom;
+
+    if (t < 0.0f) return false;
 
     Vec3 intersection_point = ray.origin + t*ray.direction;
     Vec3 bary_coords;
