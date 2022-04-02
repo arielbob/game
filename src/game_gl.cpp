@@ -33,6 +33,8 @@
 //              ray_intersects_mesh().
 // TODO (done): use push buffer for UI elements
 // TODO (done): switch to 0,0 in top left coordinate system for screen-space drawing
+// TODO (done): first person camera movement
+
 // TODO: nicer UI (start with window to display selected entity properties)
 // TODO: material editing (material structs?)
 // TODO: level saving/loading
@@ -41,6 +43,7 @@
 // TODO: be able to edit materials
 // TODO: in-game console for outputting messages
 // TODO: memory alignment in allocate procedures and in ui push buffer
+// TODO: disable hovering buttons when in freecam mode
 
 // TODO: maybe use a push buffer for entities? and use an Entity_Type enum to differentiate between entities?
 //       the upside is that we don't waste space when the amount of one entity type far exceeds another entity
@@ -67,7 +70,6 @@
 //       less complex and most likely faster. the downside is that if the amounts of entity types that exist at
 //       a given time differ by a large amount, you'll end up with a lot of unused memory.
 // TODO: interface for loading meshes with file explorer
-// TODO: first person camera movement
 // TODO: nicer button rendering (center the text)
 // TODO: undoing
 

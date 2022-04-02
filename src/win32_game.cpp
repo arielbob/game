@@ -505,6 +505,11 @@ internal void win32_process_keyboard_input(bool was_down, bool is_down,
                 controller_state->key_alt.was_down = was_down;
                 return;
             }
+            case VK_TAB: {
+                controller_state->key_tab.is_down = is_down;
+                controller_state->key_tab.was_down = was_down;
+                return;
+            }
         }
     }
 }
@@ -683,7 +688,7 @@ void platform_zero_memory(void *base, uint32 size) {
     ZeroMemory(base, size);
 }
 
-Vec2 platform_get_cursor_pos(Display_Output display_output) {
+Vec2 platform_get_cursor_pos() {
     POINT cursor_pos;
     GetCursorPos(&cursor_pos);
     ScreenToClient(window, &cursor_pos);
@@ -692,6 +697,20 @@ Vec2 platform_get_cursor_pos(Display_Output display_output) {
     int64 cursor_x = cursor_pos.x;
 
     return make_vec2((real32) cursor_x, (real32) cursor_y);
+}
+
+void platform_set_cursor_pos(Vec2 cursor_pos) {
+    POINT new_cursor_pos = { (long) cursor_pos.x, (long) cursor_pos.y };
+    ClientToScreen(window, &new_cursor_pos);
+    SetCursorPos(new_cursor_pos.x, new_cursor_pos.y);
+}
+
+// NOTE: since cursor visibility on windows is actually dependent on a counter that is incremented and decremented
+//       by ShowCursor(), you should NOT call this procedure every loop. we only want the counter to
+//       either be at 0 or 1 so that we don't have the counter extremely large or small and so that we
+//       don't have to loop to increment/decrement it to have a nice API.
+void platform_set_cursor_visible(bool32 is_visible) {
+    ShowCursor(is_visible);
 }
 
 bool32 platform_open_file_dialog(char *filepath, uint32 size) {
@@ -888,7 +907,7 @@ int WinMain(HINSTANCE hInstance,
 
                 Controller_State controller_state = {};
                 
-                controller_state.current_mouse = platform_get_cursor_pos(initial_display_output);
+                controller_state.current_mouse = platform_get_cursor_pos();
                 
                 while (is_running) {
                     for (uint32 i = 0; i < array_length(controller_state.key_states); i++) {
@@ -899,7 +918,7 @@ int WinMain(HINSTANCE hInstance,
                     Display_Output game_display_output = { display_output.width, display_output.height };
                     game_state.render_state.display_output = game_display_output;
                     controller_state.last_mouse = controller_state.current_mouse;
-                    controller_state.current_mouse = platform_get_cursor_pos(game_display_output);
+                    controller_state.current_mouse = platform_get_cursor_pos();
 
                     while (PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) {
                         if (message.message == WM_QUIT) {

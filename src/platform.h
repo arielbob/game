@@ -22,5 +22,8 @@ void platform_zero_memory(void *base, uint32 size);
 File_Data platform_open_and_read_file(Allocator *allocator, char *filename);
 bool32 platform_open_file_dialog(char *filepath, uint32 size);
 real64 platform_get_wall_clock_time();
+void platform_set_cursor_visible(bool32 is_visible);
+Vec2 platform_get_cursor_pos();
+void platform_set_cursor_pos(Vec2 cursor_pos);
 
 #endif

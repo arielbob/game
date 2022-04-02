@@ -25,6 +25,8 @@ struct Gizmo {
 
 struct Editor_State {
     Transform_Mode transform_mode;
+
+    bool32 use_freecam;
     
     int32 selected_entity_index;
     Entity_Type selected_entity_type;

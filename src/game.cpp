@@ -206,7 +206,7 @@ void init_game(Memory *memory, Game_State *game_state,
     transform.scale = make_vec3(5.0f, 0.1f, 5.0f);
     transform.position = make_vec3(0.0f, 0.0f, 0.0f);
     transform.rotation = make_quaternion();
-    entity = make_entity(game_state, "cube", NULL, make_vec3(0.0f, 0.0f, 1.0f), transform);
+    entity = make_entity(game_state, "cube", NULL, make_vec3(0.9f, 0.9f, 0.9f), transform);
     add_entity(game_state, entity);
 
     transform = {};
@@ -245,7 +245,15 @@ void init_game(Memory *memory, Game_State *game_state,
     game_state->is_initted = true;
 }
 
-bool32 was_clicked(Controller_Button_State button_state) {
+inline bool32 was_clicked(Controller_Button_State button_state) {
+    return (!button_state.is_down && button_state.was_down);
+}
+
+inline bool32 just_pressed(Controller_Button_State button_state) {
+    return (button_state.is_down && !button_state.was_down);
+}
+
+inline bool32 just_lifted(Controller_Button_State button_state) {
     return (!button_state.is_down && button_state.was_down);
 }
 
@@ -269,8 +277,23 @@ Vec3 cursor_pos_to_world_space(Vec2 cursor_pos, Render_State *render_state) {
     return cursor_world_space;
 }
 
-void update_camera(Camera *camera) {
+void update_camera(Camera *camera, Display_Output display_output, Controller_State *controller_state, bool32 use_freecam) {
     Basis initial_basis = camera->initial_basis;
+
+    if (use_freecam) {
+        real32 delta_x = controller_state->current_mouse.x - controller_state->last_mouse.x;
+        real32 delta_y = controller_state->current_mouse.y - controller_state->last_mouse.y;
+
+        real32 heading_delta = 0.2f * delta_x;
+        real32 pitch_delta = 0.2f * delta_y;
+
+        int32 heading_rotations = (int32) floorf((camera->heading + heading_delta) / 360.0f);
+        int32 pitch_rotations = (int32) floorf((camera->pitch + pitch_delta) / 360.0f);
+        camera->heading = (camera->heading + heading_delta) - heading_rotations*360.0f;
+        camera->pitch = (camera->pitch + pitch_delta) - pitch_rotations*360.0f;
+    }
+    
+    
     Mat4 model_matrix = make_rotate_matrix(camera->roll, camera->pitch, camera->heading);
     Vec3 transformed_forward = truncate_v4_to_v3(model_matrix * make_vec4(initial_basis.forward, 1.0f));
     Vec3 transformed_right = truncate_v4_to_v3(model_matrix * make_vec4(initial_basis.right, 1.0f));
@@ -283,6 +306,24 @@ void update_camera(Camera *camera) {
     Vec3 right = normalize(corrected_right);
     Vec3 up = normalize(transformed_up);
 
+    Vec3 movement_delta = make_vec3();
+    if (controller_state->key_w.is_down) {
+        movement_delta += forward;
+    }
+    if (controller_state->key_s.is_down) {
+        movement_delta -= forward;
+    }
+    if (controller_state->key_d.is_down) {
+        movement_delta += right;
+    }
+    if (controller_state->key_a.is_down) {
+        movement_delta -= right;
+    }
+    // TODO: use delta time
+    real32 player_speed = 0.3f;
+    movement_delta = normalize(movement_delta) * player_speed;
+    camera->position += movement_delta;
+    
     Basis current_basis = { forward, right, up };
     camera->current_basis = current_basis;
 }
@@ -341,9 +382,20 @@ void update(Memory *memory, Game_State *game_state,
     Editor_State *editor_state = &game_state->editor_state;
     Render_State *render_state = &game_state->render_state;
 
-    update_camera(&render_state->camera);
+    if (just_pressed(controller_state->key_tab)) {
+        editor_state->use_freecam = !editor_state->use_freecam;
+        platform_set_cursor_visible(!editor_state->use_freecam);
+    }
+
+    update_camera(&render_state->camera, *display_output, controller_state, editor_state->use_freecam);
     update_render_state(render_state);
 
+    if (editor_state->use_freecam) {
+        Vec2 center = make_vec2(display_output->width / 2.0f, display_output->height / 2.0f);
+        platform_set_cursor_pos(center);
+        controller_state->current_mouse = center;
+    }
+    
 #if 0
     Vec4 cursor_world_space = cursor_pos_to_world_space(game_state->cursor_pos,
                                                         display_output.width, display_output.height,
@@ -442,7 +494,7 @@ void update(Memory *memory, Game_State *game_state,
     Ray cursor_ray = { cursor_world_space,
                        normalize(cursor_world_space - render_state->camera.position) };
     
-    if (!ui_has_hot(ui_manager) && was_clicked(controller_state->left_mouse)) {
+    if (!ui_has_hot(ui_manager) && !editor_state->use_freecam && was_clicked(controller_state->left_mouse)) {
         if (!editor_state->selected_gizmo_handle) {
             Entity entity;
             int32 entity_index;
@@ -477,8 +529,9 @@ void update(Memory *memory, Game_State *game_state,
         }
     }
 
-    if (ui_has_hot(ui_manager)) {
+    if (ui_has_hot(ui_manager) || editor_state->use_freecam) {
         editor_state->hovered_gizmo_handle = GIZMO_HANDLE_NONE;
+        editor_state->selected_gizmo_handle = GIZMO_HANDLE_NONE;
     }
     
     if (editor_state->selected_gizmo_handle) {
@@ -530,6 +583,19 @@ void update(Memory *memory, Game_State *game_state,
     string_format(buf, 128, "current_mouse: (%f, %f)",
                   controller_state->current_mouse.x, controller_state->current_mouse.y);
     do_text(ui_manager, 0.0f, 32.0f, buf, "times24", "current_mouse_text");
+
+    buf = (char *) arena_push(&memory->frame_arena, 128);
+    string_format(buf, 128, "middle_mouse.is_down: %d\nmiddle_mouse just pressed: %d\nmiddle_mouse just lifted: %d",
+                  controller_state->middle_mouse.is_down,
+                  just_pressed(controller_state->middle_mouse),
+                  just_lifted(controller_state->middle_mouse));
+    do_text(ui_manager, 0.0f, 64.0f, buf, "times24", "middle_mouse_text");
+
+    buf = (char *) arena_push(&memory->frame_arena, 128);
+    string_format(buf, 128, "camera heading: %f\ncamera pitch: %f",
+                  render_state->camera.heading,
+                  render_state->camera.pitch);
+    do_text(ui_manager, 500.0f, 32.0f, buf, "times24", "camera_info");
 
     if (editor_state->selected_entity_index >= 0) {
         Entity *entity = get_selected_entity(game_state);

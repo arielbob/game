@@ -46,11 +46,12 @@ struct Controller_State {
     char pressed_chars[MAX_PRESSED_CHARS];
 
     union {
-        Controller_Button_State key_states[15];
+        Controller_Button_State key_states[16];
         struct {
             Controller_Button_State key_shift;
             Controller_Button_State key_ctrl;
             Controller_Button_State key_alt;
+            Controller_Button_State key_tab;
             Controller_Button_State key_w;
             Controller_Button_State key_a;
             Controller_Button_State key_s;
@@ -87,6 +88,7 @@ struct Controller_State {
     real32 right_thumb_x;
     real32 right_thumb_y;
 
+    // these are in screen-space coordinates in pixels (0,0 at top left)
     Vec2 last_mouse;
     Vec2 current_mouse;
 };
