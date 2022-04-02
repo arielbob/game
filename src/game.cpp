@@ -277,10 +277,11 @@ Vec3 cursor_pos_to_world_space(Vec2 cursor_pos, Render_State *render_state) {
     return cursor_world_space;
 }
 
-void update_camera(Camera *camera, Display_Output display_output, Controller_State *controller_state, bool32 use_freecam) {
+void update_camera(Camera *camera, Display_Output display_output, Controller_State *controller_state,
+                   bool32 use_freecam, bool32 has_focus) {
     Basis initial_basis = camera->initial_basis;
 
-    if (use_freecam) {
+    if (use_freecam && has_focus) {
         real32 delta_x = controller_state->current_mouse.x - controller_state->last_mouse.x;
         real32 delta_y = controller_state->current_mouse.y - controller_state->last_mouse.y;
 
@@ -387,10 +388,10 @@ void update(Memory *memory, Game_State *game_state,
         platform_set_cursor_visible(!editor_state->use_freecam);
     }
 
-    update_camera(&render_state->camera, *display_output, controller_state, editor_state->use_freecam);
+    update_camera(&render_state->camera, *display_output, controller_state, editor_state->use_freecam, platform_window_has_focus());
     update_render_state(render_state);
 
-    if (editor_state->use_freecam) {
+    if (editor_state->use_freecam && platform_window_has_focus()) {
         Vec2 center = make_vec2(display_output->width / 2.0f, display_output->height / 2.0f);
         platform_set_cursor_pos(center);
         controller_state->current_mouse = center;
@@ -582,7 +583,7 @@ void update(Memory *memory, Game_State *game_state,
     buf = (char *) arena_push(&memory->frame_arena, 128);
     string_format(buf, 128, "current_mouse: (%f, %f)",
                   controller_state->current_mouse.x, controller_state->current_mouse.y);
-    do_text(ui_manager, 0.0f, 32.0f, buf, "times24", "current_mouse_text");
+    do_text(ui_manager, 0.0f, 24.0f, buf, "times24", "current_mouse_text");
 
     buf = (char *) arena_push(&memory->frame_arena, 128);
     string_format(buf, 128, "middle_mouse.is_down: %d\nmiddle_mouse just pressed: %d\nmiddle_mouse just lifted: %d",
@@ -595,7 +596,7 @@ void update(Memory *memory, Game_State *game_state,
     string_format(buf, 128, "camera heading: %f\ncamera pitch: %f",
                   render_state->camera.heading,
                   render_state->camera.pitch);
-    do_text(ui_manager, 500.0f, 32.0f, buf, "times24", "camera_info");
+    do_text(ui_manager, 500.0f, 24.0f, buf, "times24", "camera_info");
 
     if (editor_state->selected_entity_index >= 0) {
         Entity *entity = get_selected_entity(game_state);

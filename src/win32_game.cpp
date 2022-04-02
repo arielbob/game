@@ -713,6 +713,10 @@ void platform_set_cursor_visible(bool32 is_visible) {
     ShowCursor(is_visible);
 }
 
+inline bool32 platform_window_has_focus() {
+    return (GetFocus() == window);
+}
+
 bool32 platform_open_file_dialog(char *filepath, uint32 size) {
     OPENFILENAME ofn = {};       // common dialog box structure
 

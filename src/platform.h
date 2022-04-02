@@ -25,5 +25,6 @@ real64 platform_get_wall_clock_time();
 void platform_set_cursor_visible(bool32 is_visible);
 Vec2 platform_get_cursor_pos();
 void platform_set_cursor_pos(Vec2 cursor_pos);
+bool32 platform_window_has_focus();
 
 #endif
