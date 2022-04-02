@@ -156,7 +156,8 @@ struct GL_State {
     Hash_Table<GL_Font> font_table;
     Hash_Table<GL_Mesh> mesh_table;
     Hash_Table<GL_Texture> texture_table;
-
+    Hash_Table<File_Data> font_file_table;
+    
     // TODO: will have to delete these and remake them on window resize
     GL_Framebuffer gizmo_framebuffer;
     uint32 global_ubo;

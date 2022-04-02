@@ -481,6 +481,19 @@ void update(Memory *memory, Game_State *game_state,
         game_state->is_playing_music = !game_state->is_playing_music;
     }
 #endif
+
+#if 0
+    UI_Text_Box_Style style = {
+        "times24",
+        500.0f, 30.0f,
+        5.0f, 5.0f,
+    };
+
+    do_text_box(ui_manager, controller_state,
+                251.0f, 360.0f,
+                game_state->text_buffer, 256,
+                style, "mesh_name_text_box");
+#endif
     
     char *toggle_transform_mode_text;
     if (editor_state->transform_mode == TRANSFORM_GLOBAL) {

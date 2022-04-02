@@ -34,7 +34,7 @@ struct Hash_Table_Linked_List {
 template <class Value_Type>
 struct Hash_Table {
     Hash_Table_Linked_List<Value_Type> buckets[HASH_TABLE_BUCKETS];
-    Allocator *allocator;
+    Allocator *allocator; // all the keys, values, linked lists are stored using this allocator
 };
 
 // TODO: we may want to be able to specify how many buckets we want

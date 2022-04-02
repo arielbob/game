@@ -34,6 +34,7 @@
 // TODO (done): use push buffer for UI elements
 // TODO (done): switch to 0,0 in top left coordinate system for screen-space drawing
 // TODO (done): first person camera movement
+// TODO (done): disable hovering buttons when in freecam mode
 
 // TODO: nicer UI (start with window to display selected entity properties)
 // TODO: material editing (material structs?)
@@ -43,7 +44,14 @@
 // TODO: be able to edit materials
 // TODO: in-game console for outputting messages
 // TODO: memory alignment in allocate procedures and in ui push buffer
-// TODO: disable hovering buttons when in freecam mode
+// TODO: add remove key procedure for hash tables.
+//       we should use open addressing, which is just storing all the values in an array instead of using linked lists.
+//       this is more cache-friendly. this also makes it easier to remove elements without fragmenting memory.
+//       we may need to think about ways to have the tables dynamically resize. this would require the allocator
+//       to be able to free arbitrary chunks of memory, so we could use something like a free list. or we can just
+//       always store enough.
+// TODO: make it so you can specify the size of the hash table. (do this after replacing the hash table linked lists with arrays)
+
 
 // TODO: maybe use a push buffer for entities? and use an Entity_Type enum to differentiate between entities?
 //       the upside is that we don't waste space when the amount of one entity type far exceeds another entity
@@ -247,17 +255,19 @@ void gl_init_font(GL_State *gl_state, Memory *memory,
     GL_Font gl_font;
     stbtt_fontinfo font_info;
 
-    File_Data font_file_data = platform_open_and_read_file((Allocator *) &memory->font_arena,
-                                                           font_filename);
+    File_Data font_file_data;
+    String font_filename_string = make_string(font_filename);
+    if (!hash_table_find(gl_state->font_file_table, font_filename_string, &font_file_data)) {
+        font_file_data = platform_open_and_read_file((Allocator *) &memory->font_arena,
+                                                     font_filename);
+        hash_table_add(&gl_state->font_file_table, font_filename_string, font_file_data);
+    }
 
     // get font info
     // NOTE: this assumes that the TTF file only has a single font and is at index 0, or else
     //       stbtt_GetFontOffsetForIndex will return a negative value.
     // NOTE: font_info uses the raw data from the file contents, so the file data allocation should NOT
     //       be temporary.
-    // TODO: since we load into memory without deallocating the ttf files and since these files are
-    //       often used across baked fonts, such as "times24" and "times32" both using times.ttf, we
-    //       should cache the files into a table.
     stbtt_InitFont(&font_info, (uint8 *) font_file_data.contents,
                    stbtt_GetFontOffsetForIndex((uint8 *) font_file_data.contents, 0));
     gl_font.scale_for_pixel_height = stbtt_ScaleForPixelHeight(&font_info, font_height_pixels);
@@ -618,6 +628,7 @@ void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) 
     gl_state->font_table = make_hash_table<GL_Font>((Allocator *) &memory->hash_table_stack);
     gl_state->mesh_table = make_hash_table<GL_Mesh>((Allocator *) &memory->hash_table_stack);
     gl_state->texture_table = make_hash_table<GL_Texture>((Allocator *) &memory->hash_table_stack);
+    gl_state->font_file_table = make_hash_table<File_Data>((Allocator *) &memory->hash_table_stack);
 
     uint32 vbo, vao, ebo;
 
