@@ -1,8 +1,131 @@
 #include "editor.h"
 #include "game.h"
 
-void draw_entity_box(Entity *entity) {
-    
+void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *controller_state, Entity *entity) {
+    UI_Manager *ui_manager = &game_state->ui_manager;
+
+    real32 box_x = 5.0f;
+    real32 box_y = 50.0f;
+
+    real32 box_padding_x = 5.0f;
+    real32 box_padding_y = 5.0f;
+
+    UI_Box_Style box_style = { 350.0f, 265.0f, make_vec4(0.1f, 0.1f, 0.1f, 0.9f) };
+    do_box(ui_manager, controller_state, box_x, box_y, box_style, "entity_properties_box");
+
+    char *mesh_name = game_state->meshes[entity->mesh_index].name;
+    Transform transform = entity->transform;
+
+    UI_Text_Style text_style = {
+        make_vec3(1.0f, 1.0f, 1.0f),
+        true,
+        make_vec3(0.0f, 0.0f, 0.0f)
+    };
+
+    UI_Line_Style line_style = {
+        make_vec4(1.0f, 1.0f, 1.0f, 1.0f),
+        1.0f,
+    };
+
+    real32 offset_x = box_x + box_padding_x;
+    real32 offset_y = box_y + box_padding_y;
+  
+    real32 column_offset = 200.0f;
+    real32 mini_column_offset = 20.0f;
+
+    real32 font_height = 18.0f;
+    real32 row_offset = font_height + 5.0f;
+
+    char *font_name = "courier18";
+    char *font_name_bold = "courier18b";
+
+    do_text(ui_manager, offset_x, offset_y + font_height, "Mesh Name", font_name_bold, text_style, "entity_name_title");
+    do_text(ui_manager, offset_x + column_offset, offset_y + font_height, mesh_name, font_name, text_style, "entity_name");
+    offset_y += row_offset;
+
+    do_text(ui_manager, offset_x, offset_y + font_height, "Position", font_name_bold, text_style, "position_title");
+    char *buf = (char *) arena_push(&memory->frame_arena, 16);
+    string_format(buf, 256, "%f", transform.position.x);
+    do_text(ui_manager, offset_x + column_offset, offset_y + font_height,
+            "x", font_name_bold, text_style, "position.x");
+    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y + font_height,
+            buf, font_name, text_style, "position.x");
+    offset_y += font_height;
+
+    buf = (char *) arena_push(&memory->frame_arena, 16);
+    string_format(buf, 256, "%f", transform.position.y);
+    do_text(ui_manager, offset_x + column_offset, offset_y + font_height,
+            "y", font_name_bold, text_style, "position.x");
+    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y + font_height,
+            buf, font_name, text_style, "position.y");
+    offset_y += font_height;
+
+    buf = (char *) arena_push(&memory->frame_arena, 16);
+    string_format(buf, 256, "%f", transform.position.z);
+    do_text(ui_manager, offset_x + column_offset, offset_y + font_height,
+            "z", font_name_bold, text_style, "position.x");
+    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y + font_height,
+            buf, font_name, text_style, "position.z");
+    offset_y += row_offset;
+
+    do_text(ui_manager, offset_x, offset_y + font_height, "Rotation", font_name_bold, text_style, "rotation_title");
+    buf = (char *) arena_push(&memory->frame_arena, 16);
+    string_format(buf, 256, "%f", transform.rotation.w);
+    do_text(ui_manager, offset_x + column_offset, offset_y + font_height,
+            "w", font_name_bold, text_style, "position.x");
+    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y + font_height,
+            buf, font_name, text_style, "rotation.w");
+    offset_y += font_height;
+
+    buf = (char *) arena_push(&memory->frame_arena, 16);
+    string_format(buf, 256, "%f", transform.rotation.v.x);
+    do_text(ui_manager, offset_x + column_offset, offset_y + font_height,
+            "x", font_name_bold, text_style, "position.x");
+    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y + font_height,
+            buf, font_name, text_style, "rotation.v.x");
+    offset_y += font_height;
+
+    buf = (char *) arena_push(&memory->frame_arena, 16);
+    string_format(buf, 256, "%f", transform.rotation.v.y);
+    do_text(ui_manager, offset_x + column_offset, offset_y + font_height,
+            "y", font_name_bold, text_style, "position.x");
+    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y + font_height,
+            buf, font_name, text_style, "rotation.v.y");
+    offset_y += font_height;
+
+    buf = (char *) arena_push(&memory->frame_arena, 16);
+    string_format(buf, 256, "%f", transform.rotation.v.z);
+    do_text(ui_manager, offset_x + column_offset, offset_y + font_height,
+            "z", font_name_bold, text_style, "rotation.x");
+    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y + font_height,
+            buf, font_name, text_style, "rotation.v.z");
+    offset_y += row_offset;
+
+    do_text(ui_manager, offset_x, offset_y + font_height, "Scale", font_name_bold, text_style, "scale_title");
+    buf = (char *) arena_push(&memory->frame_arena, 16);
+    string_format(buf, 256, "%f", transform.scale.x);
+    do_text(ui_manager, offset_x + column_offset, offset_y + font_height,
+            "x", font_name_bold, text_style, "scale.x");
+    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y + font_height,
+            buf, font_name, text_style, "scale.x");
+    offset_y += font_height;
+
+    buf = (char *) arena_push(&memory->frame_arena, 16);
+    string_format(buf, 256, "%f", transform.scale.y);
+    do_text(ui_manager, offset_x + column_offset, offset_y + font_height,
+            "y", font_name_bold, text_style, "scale.y");
+    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y + font_height,
+            buf, font_name, text_style, "scale.y");
+    offset_y += font_height;
+
+    buf = (char *) arena_push(&memory->frame_arena, 16);
+    string_format(buf, 256, "%f", transform.scale.z);
+    do_text(ui_manager, offset_x + column_offset, offset_y + font_height,
+            "z", font_name_bold, text_style, "scale.z");
+    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y + font_height,
+            buf, font_name, text_style, "scale.z");
+    offset_y += row_offset;
+
 }
 
 int32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, real32 *t_result) {

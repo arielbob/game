@@ -6,7 +6,8 @@ enum UI_Type {
     UI_TEXT,
     UI_TEXT_BUTTON,
     UI_TEXT_BOX,
-    UI_BOX
+    UI_BOX,
+    UI_LINE
 };
 
 #define UI_HEADER                               \
@@ -42,6 +43,12 @@ struct UI_Text_Button {
     char *font;
 };
 
+struct UI_Text_Style {
+    Vec3 color;
+    bool32 use_offset_shadow;
+    Vec3 offset_shadow_color;
+};
+
 struct UI_Text {
     UI_HEADER
 
@@ -50,6 +57,8 @@ struct UI_Text {
 
     char *text;
     char *font;
+
+    UI_Text_Style style;
 };
 
 struct UI_Text_Box_Style {
@@ -71,6 +80,36 @@ struct UI_Text_Box {
     char *current_text;
 
     UI_Text_Box_Style style;
+};
+
+struct UI_Box_Style {
+    real32 width;
+    real32 height;
+
+    Vec4 background_color;
+};
+
+struct UI_Box {
+    UI_HEADER
+    
+    real32 x;
+    real32 y;
+
+    UI_Box_Style style;
+};
+
+struct UI_Line_Style {
+    Vec4 color;
+    real32 line_width;
+};
+
+struct UI_Line {
+    UI_HEADER
+    
+    Vec2 start;
+    Vec2 end;
+
+    UI_Line_Style style;
 };
 
 struct UI_Push_Buffer {

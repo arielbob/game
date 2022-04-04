@@ -37,6 +37,9 @@
 // TODO (done): disable hovering buttons when in freecam mode
 
 // TODO: nicer UI (start with window to display selected entity properties)
+// TODO: be able to get font metrics from game code (will have to init fonts in game.cpp, with game_gl.cpp
+//       just holding the texture_ids for that font)
+// TODO: make game_state, controller_state, and memory global variables
 // TODO: material editing (material structs?)
 // TODO: level saving/loading
 // TODO: directional light (sun light)
@@ -533,7 +536,8 @@ void gl_draw_text(GL_State *gl_state,
 
     // NOTE: we disable depth test so that overlapping characters such as the "o" in "fo" doesn't cover the
     //       quad of the previous character, causing a cut off look.
-    glDisable(GL_DEPTH_TEST);
+    // NOTE: we assume that GL_DEPTH_TEST is disabled
+    //glDisable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_TEXTURE_2D);
@@ -563,7 +567,7 @@ void gl_draw_text(GL_State *gl_state,
         ++text;
     }
 
-    glEnable(GL_DEPTH_TEST);
+    //glEnable(GL_DEPTH_TEST);
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindVertexArray(0);
 }
@@ -841,6 +845,9 @@ void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) 
     // NOTE: fonts
     gl_init_font(gl_state, memory, "c:/windows/fonts/times.ttf", "times32", 32.0f, 512, 512);
     gl_init_font(gl_state, memory, "c:/windows/fonts/times.ttf", "times24", 24.0f, 512, 512);
+    gl_init_font(gl_state, memory, "c:/windows/fonts/cour.ttf", "courier24", 24.0f, 512, 512);
+    gl_init_font(gl_state, memory, "c:/windows/fonts/cour.ttf", "courier18", 18.0f, 512, 512);
+    gl_init_font(gl_state, memory, "c:/windows/fonts/courbd.ttf", "courier18b", 18.0f, 512, 512);
 
     // NOTE: textures
     gl_load_texture(gl_state, memory, "src/textures/debug_texture.bmp", "debug");
@@ -861,7 +868,7 @@ void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) 
 void gl_draw_triangle_p(GL_State *gl_state,
                         Display_Output display_output, Vec2 position,
                         real32 width_pixels, real32 height_pixels,
-                        Vec3 color) {
+                        Vec4 color) {
     uint32 basic_shader_id;
     uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("basic"), &basic_shader_id);
     assert(shader_exists);
@@ -883,7 +890,7 @@ void gl_draw_triangle_p(GL_State *gl_state,
                          make_scale_matrix(x_axis, clip_space_width));
     gl_set_uniform_mat4(basic_shader_id, "model", &model_matrix);
 
-    gl_set_uniform_vec3(basic_shader_id, "color", &color);
+    gl_set_uniform_vec4(basic_shader_id, "color", &color);
 
     glDrawArrays(GL_TRIANGLES, 0, 3);
     glUseProgram(0);
@@ -894,7 +901,8 @@ void gl_draw_triangle(GL_State *gl_state,
                       Display_Output display_output,
                       real32 x_pos_pixels, real32 y_pos_pixels,
                       real32 width_pixels, real32 height_pixels,
-                      Vec3 color) {
+                      Vec4 color) {
+    // TODO: this might be wrong with the new screen-space coordinate-system (0, 0) in top left
     gl_draw_triangle_p(gl_state, display_output,
                        make_vec2(x_pos_pixels / display_output.width, y_pos_pixels / display_output.height),
                        width_pixels, height_pixels,
@@ -904,7 +912,7 @@ void gl_draw_triangle(GL_State *gl_state,
 void gl_draw_line_p(GL_State *gl_state,
                     Display_Output display_output,
                     Vec2 start, Vec2 end,
-                    Vec3 color) {
+                    Vec4 color) {
     uint32 basic_shader_id;
     uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("basic"), &basic_shader_id);
     assert(shader_exists);
@@ -926,7 +934,7 @@ void gl_draw_line_p(GL_State *gl_state,
                          make_scale_matrix(x_axis, clip_space_length.x));
     gl_set_uniform_mat4(basic_shader_id, "model", &model_matrix);
 
-    gl_set_uniform_vec3(basic_shader_id, "color", &color);
+    gl_set_uniform_vec4(basic_shader_id, "color", &color);
 
     glDrawArrays(GL_LINES, 0, 3);
     glUseProgram(0);
@@ -936,7 +944,7 @@ void gl_draw_line_p(GL_State *gl_state,
 void gl_draw_line(GL_State *gl_state,
                   Display_Output display_output,
                   Vec2 start_pixels, Vec2 end_pixels,
-                  Vec3 color) {
+                  Vec4 color) {
     uint32 basic_shader_id;
     uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("basic"), &basic_shader_id);
     assert(shader_exists);
@@ -958,11 +966,18 @@ void gl_draw_line(GL_State *gl_state,
                          make_scale_matrix(x_axis, clip_space_length.x));
     gl_set_uniform_mat4(basic_shader_id, "model", &model_matrix);
 
-    gl_set_uniform_vec3(basic_shader_id, "color", &color);
+    gl_set_uniform_vec4(basic_shader_id, "color", &color);
 
     glDrawArrays(GL_LINES, 0, 3);
     glUseProgram(0);
     glBindVertexArray(0);
+}
+
+void gl_draw_line(GL_State *gl_state,
+                  Display_Output display_output,
+                  Vec2 start_pixels, Vec2 end_pixels,
+                  Vec3 color) {
+    gl_draw_line(gl_state, display_output, start_pixels, end_pixels, make_vec4(color, 1.0f));
 }
 
 // NOTE: percentage based position
@@ -970,7 +985,7 @@ void gl_draw_quad_p(GL_State *gl_state,
                     Display_Output display_output,
                     real32 x, real32 y,
                     real32 width_pixels, real32 height_pixels,
-                    Vec3 color) {
+                    Vec4 color) {
     uint32 basic_shader_id;
     uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("basic"), &basic_shader_id);
     assert(shader_exists);
@@ -992,7 +1007,7 @@ void gl_draw_quad_p(GL_State *gl_state,
                          make_scale_matrix(x_axis, clip_space_width));
     gl_set_uniform_mat4(basic_shader_id, "model", &model_matrix);
 
-    gl_set_uniform_vec3(basic_shader_id, "color", &color);
+    gl_set_uniform_vec4(basic_shader_id, "color", &color);
 
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     glUseProgram(0);
@@ -1004,7 +1019,7 @@ void gl_draw_quad(GL_State *gl_state,
                   Display_Output display_output,
                   real32 x_pos_pixels, real32 y_pos_pixels,
                   real32 width_pixels, real32 height_pixels,
-                  Vec3 color) {
+                  Vec4 color) {
     uint32 basic_shader_id;
     uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("basic"), &basic_shader_id);
     assert(shader_exists);
@@ -1026,11 +1041,20 @@ void gl_draw_quad(GL_State *gl_state,
                          make_scale_matrix(x_axis, clip_space_width));
     gl_set_uniform_mat4(basic_shader_id, "model", &model_matrix);
 
-    gl_set_uniform_vec3(basic_shader_id, "color", &color);
+    gl_set_uniform_vec4(basic_shader_id, "color", &color);
 
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     glUseProgram(0);
     glBindVertexArray(0);
+}
+
+void gl_draw_quad(GL_State *gl_state,
+                  Display_Output display_output,
+                  real32 x_pos_pixels, real32 y_pos_pixels,
+                  real32 width_pixels, real32 height_pixels,
+                  Vec3 color) {
+    gl_draw_quad(gl_state, display_output, x_pos_pixels, y_pos_pixels, width_pixels, height_pixels,
+                 make_vec4(color, 1.0f));
 }
 
 void draw_sound_cursor(GL_State *gl_state,
@@ -1043,7 +1067,7 @@ void draw_sound_cursor(GL_State *gl_state,
     gl_draw_triangle(gl_state, display_output,
                      cursor_x, display_output.height - 202 - cursor_height,
                      cursor_width, cursor_height,
-                     color);
+                     make_vec4(color, 1.0f));
 
     gl_draw_line(gl_state, display_output,
                  make_vec2(cursor_position * display_output.width, display_output.height - 202.0f),
@@ -1132,11 +1156,17 @@ real32 get_width(GL_State *gl_state, char *font_name, char *text) {
 }
 
 void gl_draw_ui_text(GL_State *gl_state, Display_Output display_output, UI_Manager *ui_manager, UI_Text ui_text) {
-    Vec3 color = make_vec3(1.0f, 1.0f, 1.0f);
+    UI_Text_Style style = ui_text.style;
+
+    if (style.use_offset_shadow) {
+        gl_draw_text(gl_state, display_output, ui_text.font,
+                     ui_text.x, ui_text.y + 2.0f,
+                     ui_text.text, style.offset_shadow_color);
+    }
 
     gl_draw_text(gl_state, display_output, ui_text.font,
                  ui_text.x, ui_text.y,
-                 ui_text.text, color);
+                 ui_text.text, style.color);
 }
 
 void gl_draw_ui_text_button(GL_State *gl_state, Display_Output display_output,
@@ -1203,6 +1233,25 @@ void gl_draw_ui_text_box(GL_State *gl_state, Display_Output display_output,
         }
 }
 
+void gl_draw_ui_box(GL_State *gl_state, Display_Output display_output,
+                    UI_Manager *ui_manager, UI_Box box) {
+    UI_Box_Style style = box.style;
+
+    gl_draw_quad(gl_state, display_output,
+                 box.x, box.y,
+                 style.width, style.height, style.background_color);
+}
+
+void gl_draw_ui_line(GL_State *gl_state, Display_Output display_output,
+                     UI_Manager *ui_manager, UI_Line line) {
+    UI_Line_Style style = line.style;
+
+    // TODO: use style.line_width in gl_draw_line()
+    gl_draw_line(gl_state, display_output,
+                 line.start, line.end,
+                 style.color);
+}
+
 // TODO: we could, along with gl_draw_quad, replace the model_matrix stuff with just updating the VBO.
 //       the issue with this is that it could make it harder for us to do more interesting transformations like
 //       rotation.
@@ -1227,6 +1276,16 @@ void gl_draw_ui(GL_State *gl_state, UI_Manager *ui_manager, Display_Output displ
                 UI_Text_Box *ui_text_box = (UI_Text_Box *) element;
                 gl_draw_ui_text_box(gl_state, display_output, ui_manager, *ui_text_box);
                 address += sizeof(UI_Text_Box);
+            } break;
+            case UI_BOX: {
+                UI_Box *ui_box = (UI_Box *) element;
+                gl_draw_ui_box(gl_state, display_output, ui_manager, *ui_box);
+                address += sizeof(UI_Box);
+            } break;
+            case UI_LINE: {
+                UI_Line *ui_line = (UI_Line *) element;
+                gl_draw_ui_line(gl_state, display_output, ui_manager, *ui_line);
+                address += sizeof(UI_Line);
             } break;
             default: {
                 assert(!"Unhandled UI element type.");
@@ -1633,5 +1692,6 @@ void gl_render(GL_State *gl_state, Controller_State *controller_state, Game_Stat
     gl_draw_framebuffer(gl_state, gl_state->gizmo_framebuffer);
 
     gl_draw_ui(gl_state, &game_state->ui_manager, display_output);
+
     glEnable(GL_DEPTH_TEST);
 }

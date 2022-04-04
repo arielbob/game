@@ -610,30 +610,14 @@ void update(Memory *memory, Game_State *game_state,
     do_text(ui_manager, 0.0f, 24.0f, buf, "times24", "current_mouse_text");
 
     buf = (char *) arena_push(&memory->frame_arena, 128);
-    string_format(buf, 128, "middle_mouse.is_down: %d\nmiddle_mouse just pressed: %d\nmiddle_mouse just lifted: %d",
-                  controller_state->middle_mouse.is_down,
-                  just_pressed(controller_state->middle_mouse),
-                  just_lifted(controller_state->middle_mouse));
-    do_text(ui_manager, 0.0f, 64.0f, buf, "times24", "middle_mouse_text");
-
-    buf = (char *) arena_push(&memory->frame_arena, 128);
     string_format(buf, 128, "camera heading: %f\ncamera pitch: %f",
                   render_state->camera.heading,
                   render_state->camera.pitch);
     do_text(ui_manager, 500.0f, 24.0f, buf, "times24", "camera_info");
 
-    if (editor_state->selected_entity_index >= 0) {
-        Entity *entity = get_selected_entity(game_state);
-        char *mesh_name = game_state->meshes[entity->mesh_index].name;
-        Transform transform = entity->transform;
 
-        buf = (char *) arena_push(&memory->frame_arena, 256);
-        string_format(buf, 256, "mesh name: %s\n\nposition: (%f, %f, %f)\n\nquaternion: (%f, %f, %f, %f)\n\nscale: (%f, %f, %f)",
-                      mesh_name,
-                      transform.position.x, transform.position.y, transform.position.z,
-                      transform.rotation.w, transform.rotation.v.x, transform.rotation.v.y, transform.rotation.v.z,
-                      transform.scale.x, transform.scale.y, transform.scale.z);
-        do_text(ui_manager, 0.0f, 300.0f, buf, "times24", "entity info");
+    if (editor_state->selected_entity_index >= 0) {
+        draw_entity_box(memory, game_state, controller_state, get_selected_entity(game_state));
     }
 
 
