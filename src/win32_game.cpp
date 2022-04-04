@@ -187,6 +187,17 @@ void string_format(char *buf, int32 n, char *format, ...) {
     assert(num_chars_outputted > 0 && num_chars_outputted < n);
 }
 
+char *string_format(Allocator *allocator, int32 n, char *format, ...) {
+    char *buf = (char *) allocate(allocator, n);
+    va_list args;
+    va_start(args, format);
+    
+    int32 num_chars_outputted = vsnprintf(buf, n, format, args);
+    assert(num_chars_outputted > 0 && num_chars_outputted < n);
+
+    return buf;
+}
+
 // NOTE: we create a file handle so that we deny other processes from writing to it before we're done with it.
 //       this is done with the FILE_SHARE_READ flag. other processes can only read it, but not write or delete it
 //       until we close the file.
