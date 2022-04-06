@@ -13,7 +13,9 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
     UI_Box_Style box_style = { 350.0f, 265.0f, make_vec4(0.1f, 0.1f, 0.1f, 0.9f) };
     do_box(ui_manager, controller_state, box_x, box_y, box_style, "entity_properties_box");
 
-    char *mesh_name = game_state->meshes[entity->mesh_index].name;
+    Allocator *allocator = (Allocator *) &memory->frame_arena;
+
+    char *mesh_name = to_char_array(allocator, game_state->meshes[entity->mesh_index].name);
     Transform transform = entity->transform;
 
     UI_Text_Style text_style = {
@@ -39,9 +41,7 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
     char *font_name = "courier18";
     char *font_name_bold = "courier18b";
 
-    Allocator *allocator = (Allocator *) &memory->frame_arena;
     char *buf;
-    
     do_text(ui_manager, offset_x, offset_y + font_height, "Mesh Name", font_name_bold, text_style, "entity_name_title");
     do_text(ui_manager, offset_x + column_offset, offset_y + font_height, mesh_name, font_name, text_style, "entity_name");
     offset_y += row_offset;

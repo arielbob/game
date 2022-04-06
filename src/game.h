@@ -8,8 +8,11 @@
 #define MAX_PRESSED_CHARS 256
 
 #define MAX_MESHES 64
+#define MAX_MATERIALS 64
 #define MAX_ENTITIES 64
 #define MAX_POINT_LIGHTS 16
+
+#define MATERIAL_NAME_MAX_SIZE 128
 
 struct Display_Output {
     int32 width;
@@ -115,12 +118,29 @@ struct Render_State {
     Mat4 cpv_matrix;
 };
 
+struct Material {
+    String_Buffer name;
+    String_Buffer texture_name;
+    real32 gloss;
+    Vec4 color_override;
+    bool32 use_color_override;
+};
+
+/*
+struct Light_Material {
+    char *texture_name;
+    Vec3 color_override;
+    bool32 use_color_override;
+};
+*/
+
 #define ENTITY_HEADER                           \
     Entity_Type type;                           \
     Transform transform;                        \
     int32 mesh_index;                           \
-    char *texture_name;                         \
-    Vec3 color_override;                        \
+    int32 material_index;
+    //char *texture_name;                       \
+    //Vec3 color_override;                      \
 
 struct Entity {
     ENTITY_HEADER
@@ -151,9 +171,12 @@ struct Game_State {
 
     bool32 is_naming_mesh;
     Mesh mesh_to_add;
-
+    
     int32 num_meshes;
     Mesh meshes[MAX_MESHES];
+
+    int32 num_materials;
+    Material materials[MAX_MATERIALS];
 
     int32 num_entities;
     Normal_Entity entities[MAX_ENTITIES];

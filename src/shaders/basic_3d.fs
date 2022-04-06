@@ -15,15 +15,14 @@ layout (std140) uniform shader_globals {
     Point_Light point_lights[16];   // 16
 };
 
-uniform vec3 material_color;
-
 //uniform vec3 light_pos;
 //uniform vec3 light_color;
 
 uniform vec3 camera_pos;
 
+uniform vec3 material_color;
+uniform float gloss;
 uniform sampler2D image_texture;
-
 uniform bool use_color_override;
 
 in vec2 uv;
@@ -42,7 +41,6 @@ vec3 calc_point_light(Point_Light point_light,
     vec3 light_diffuse_color = vec3(point_light.color);
 
     // specular
-    float gloss = 50;
     vec3 spec_contrib = light_spec_color * mat_spec_color * pow(max(dot(normal, h), 0), gloss);
 
     // diffuse

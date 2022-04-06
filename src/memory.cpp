@@ -95,7 +95,7 @@ void *region_push(Stack_Allocator *stack, uint32 size, bool32 zero_memory = true
     return base;
 }
 
-void *allocate(Allocator *allocator, uint32 size, bool32 zero_memory = true) {
+void *allocate(Allocator *allocator, uint32 size, bool32 zero_memory) {
     switch (allocator->type) {
         case STACK_ALLOCATOR:
         {

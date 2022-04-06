@@ -1,6 +1,16 @@
 #ifndef STRING_H
 #define STRING_H
 
+#include "memory.h"
+
+// NOTE: in both String and String_Buffer, contents is NOT null-terminated.
+//       this is useful for doing string operations on arbitrary data, such as when parsing text files.
+//       for example, when parsing mesh files, we often create strings that point to the start of a
+//       token and set length to the length of the token string. using this method, we can do string
+//       operations such as comparing to other strings without either modifying the original data buffer
+//       to have a null-terminator or allocating memory and doing a copy and adding a null-terminator
+//       there.
+
 uint32 string_length(char* str) {
     if (!str) return 0;
     uint32 count = 0;
@@ -15,15 +25,83 @@ struct String {
     uint32 length;
 };
 
+struct String_Buffer {
+    char *contents;
+    uint32 current_length;
+    uint32 size;
+};
+
 struct String_Iterator {
     String string;
     uint32 index;
 };
 
+inline bool32 is_empty(String_Buffer string) {
+    return (string.current_length == 0);
+}
+
+// NOTE: max_size does NOT include null-terminator
+// NOTE: copies a null-terminated src string into a buffer, dest, of size max_size
+//       for example, if dest is 5 bytes, max_size = 5, and src is a null-terminated char array hello\0,
+//       this is fine. i.e. destination does NOT need to include space for the null-terminator.
+void copy_string(char *dest, char *src, uint32 max_size) {
+    assert(string_length(src) <= max_size);
+    while (*src) {
+        *dest = *src;
+        dest++;
+        src++;
+    }
+}
+
+/*
+// TODO: this may be outdated
+void copy_string(String *dest, String src, uint32 max_size) {
+    // uint32 final_length = a.length + b.length;
+    assert(src.length <= max_size);
+    for (uint32 i = 0; i < src.length; i++) {
+        dest->contents[i] = src.contents[i];
+    }
+    
+    dest->length = src.length;
+}
+*/
+
+String_Buffer make_string_buffer(Allocator *allocator, uint32 size) {
+    String_Buffer buffer;
+    char *contents = (char *) allocate(allocator, size);
+    buffer.contents = contents;
+    buffer.current_length = 0;
+    buffer.size = size;
+    return buffer;
+}
+
+// NOTE: size does NOT include a null-terminator, since String does not include a null-terminator in contents.
+String_Buffer make_string_buffer(Allocator *allocator, char *string, uint32 size) {
+    String_Buffer buffer;
+
+    char *contents = (char *) allocate(allocator, size);
+    uint32 length = string_length(string);
+    assert(length <= size);
+    copy_string(contents, string, size);
+
+    buffer.contents = contents;
+    buffer.current_length = length;
+    buffer.size = size;
+
+    return buffer;
+}
+
 String make_string(char *contents, uint32 length) {
     String result = {};
     result.contents = contents;
     result.length = length;
+    return result;
+}
+
+String make_string(String_Buffer string_buffer) {
+    String result;
+    result.contents = string_buffer.contents;
+    result.length = string_buffer.current_length;
     return result;
 }
 
@@ -94,16 +172,6 @@ void append_string(String *result, String a, String b, uint32 max_size) {
     result->length = final_length;
 }
 
-void copy_string(String *dest, String src, uint32 max_size) {
-    /* uint32 final_length = a.length + b.length; */
-    assert(src.length <= max_size);
-    for (uint32 i = 0; i < src.length; i++) {
-        dest->contents[i] = src.contents[i];
-    }
-    
-    dest->length = src.length;
-}
-
 void to_char_array(String string, char *buffer, uint32 buffer_size) {
     assert(buffer_size >= string.length + 1);
     for (uint32 i = 0; i < string.length; i++) {
@@ -111,6 +179,17 @@ void to_char_array(String string, char *buffer, uint32 buffer_size) {
     }
     
     buffer[string.length] = '\0';
+}
+
+char *to_char_array(Allocator *allocator, String_Buffer string) {
+    char *buf = (char *) allocate(allocator, string.current_length + 1);
+
+    for (uint32 i = 0; i < string.current_length; i++) {
+        buf[i] = string.contents[i];
+    }
+    
+    buf[string.current_length] = '\0';
+    return buf;
 }
 
 #endif

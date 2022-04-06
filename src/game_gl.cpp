@@ -35,13 +35,30 @@
 // TODO (done): switch to 0,0 in top left coordinate system for screen-space drawing
 // TODO (done): first person camera movement
 // TODO (done): disable hovering buttons when in freecam mode
+// TODO (done): add struct for storing material information
 
+// TODO: material editing in editor
+//       be able to view material library, texture library, be able to change active material, change the texture
+//       a material uses, override color, use_override_color, etc.
+// TODO: be able to add and delete materials, textures, meshes
+// TODO: make free list struct (start with using this for storing fixed length strings that could be deleted).
+//       this can be used for storing names of materials and meshes. since when we rename a string, we can just
+//       modify its string_buffer. and if the mesh or texture gets deleted, we can delete its strings.
+//       this free list struct will also be used for text fields. since we often don't want a text field to hold
+//       the direct contents of where it will eventually be stored. we will need to update our immediate mode UI
+//       code to hold state for the UI elements.
+
+// TODO: entity instances? copies of an entity, where you can modify the parent entity and all the instances
+//       will update as well.
+// TODO: in the future we may want to have per entity/per entity instance materials or maybe material parameters.
+//       it would be nice to have material parameters in general, so that multiple entities can have the same
+//       material, but look slightly different.
+// TODO: level saving/loading
+//       in level loading, we should ensure that duplicates of mesh, texture, and material names do not exist.
 // TODO: nicer UI (start with window to display selected entity properties)
 // TODO: be able to get font metrics from game code (will have to init fonts in game.cpp, with game_gl.cpp
 //       just holding the texture_ids for that font)
 // TODO: make game_state, controller_state, and memory global variables
-// TODO: material editing (material structs?)
-// TODO: level saving/loading
 // TODO: directional light (sun light)
 // TODO: better level editing (mesh libraries, textures libraries)
 // TODO: be able to edit materials
@@ -183,6 +200,12 @@ inline void gl_set_uniform_int(uint32 shader_id, char* uniform_name, int32 i) {
     int32 uniform_location = glGetUniformLocation(shader_id, uniform_name);
     assert(uniform_location > -1);
     glUniform1i(uniform_location, i);
+}
+
+inline void gl_set_uniform_float(uint32 shader_id, char* uniform_name, real32 f) {
+    int32 uniform_location = glGetUniformLocation(shader_id, uniform_name);
+    assert(uniform_location > -1);
+    glUniform1f(uniform_location, f);
 }
 
 void gl_load_shader(GL_State *gl_state, Memory *memory,
@@ -351,38 +374,45 @@ uint32 gl_use_shader(GL_State *gl_state, char *shader_name) {
     return shader_id;
 }
 
-void gl_use_texture(GL_State *gl_state, char *texture_name) {
+void gl_use_texture(GL_State *gl_state, String texture_name) {
     // TODO: will have to add parameter to specify which texture slot to use
     GL_Texture texture;
-    uint32 texture_exists = hash_table_find(gl_state->texture_table, make_string(texture_name), &texture);
+    uint32 texture_exists = hash_table_find(gl_state->texture_table, texture_name, &texture);
     assert(texture_exists);
     glBindTexture(GL_TEXTURE_2D, texture.id);
 }
 
-GL_Mesh gl_use_mesh(GL_State *gl_state, char *mesh_name) {
+inline void gl_use_texture(GL_State *gl_state, char *texture_name) {
+    return gl_use_texture(gl_state, make_string(texture_name));
+}
+
+GL_Mesh gl_use_mesh(GL_State *gl_state, String mesh_name) {
     GL_Mesh gl_mesh;
-    uint32 mesh_exists = hash_table_find(gl_state->mesh_table, make_string(mesh_name), &gl_mesh);
+    uint32 mesh_exists = hash_table_find(gl_state->mesh_table, mesh_name, &gl_mesh);
     assert(mesh_exists);
     glBindVertexArray(gl_mesh.vao);
     return gl_mesh;
 }
 
+inline GL_Mesh gl_use_mesh(GL_State *gl_state, char *mesh_name) {
+    return gl_use_mesh(gl_state, make_string(mesh_name));
+}
+
 void gl_draw_solid_mesh(GL_State *gl_state, Render_State *render_state,
-                        char *mesh_name, char *texture_name, 
-                        Vec4 color,
-                        Transform transform,
-                        bool32 use_color_override) {
+                        String mesh_name,
+                        Material material,
+                        Transform transform) {
     uint32 shader_id = gl_use_shader(gl_state, "solid");
     GL_Mesh gl_mesh = gl_use_mesh(gl_state, mesh_name);
 
-    if (!use_color_override && !texture_name) assert(!"No texture name provided.");
-    if (!use_color_override) gl_use_texture(gl_state, texture_name);
+    if (!material.use_color_override && is_empty(material.texture_name)) assert(!"No texture name provided.");
+    if (!material.use_color_override) gl_use_texture(gl_state, make_string(material.texture_name));
 
     Mat4 model_matrix = get_model_matrix(transform);
     gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
     gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->cpv_matrix);
-    gl_set_uniform_vec4(shader_id, "color", &color);
-    gl_set_uniform_int(shader_id, "use_color_override", use_color_override);
+    gl_set_uniform_vec4(shader_id, "color", &material.color_override);
+    gl_set_uniform_int(shader_id, "use_color_override", material.use_color_override);
     
     glDrawElements(GL_TRIANGLES, gl_mesh.num_triangles * 3, GL_UNSIGNED_INT, 0);
 
@@ -391,44 +421,46 @@ void gl_draw_solid_mesh(GL_State *gl_state, Render_State *render_state,
 }
 
 void gl_draw_solid_color_mesh(GL_State *gl_state, Render_State *render_state,
-                              char *mesh_name,
-                              Vec4 color,
+                              char *mesh_name, Vec4 color,
                               Transform transform) {
-    gl_draw_solid_mesh(gl_state, render_state,
-                       mesh_name, NULL, 
-                       color,
-                       transform,
-                       true);
+    uint32 shader_id = gl_use_shader(gl_state, "solid");
+    GL_Mesh gl_mesh = gl_use_mesh(gl_state, mesh_name);
+
+    Mat4 model_matrix = get_model_matrix(transform);
+    gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
+    gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->cpv_matrix);
+    gl_set_uniform_vec4(shader_id, "color", &color);
+    gl_set_uniform_int(shader_id, "use_color_override", true);
+    
+    glDrawElements(GL_TRIANGLES, gl_mesh.num_triangles * 3, GL_UNSIGNED_INT, 0);
+
+    glUseProgram(0);
+    glBindVertexArray(0);
 }
 
-void gl_draw_mesh(GL_State *gl_state, Game_State *game_state,
-                  char *mesh_name, char *texture_name,
-                  Vec4 color,
-                  Transform transform,
-                  bool32 use_color_override) {
-    Render_State *render_state = &game_state->render_state;
-
+void gl_draw_mesh(GL_State *gl_state, Render_State *render_state,
+                  String mesh_name,
+                  Material material,
+                  Transform transform) {
     uint32 shader_id = gl_use_shader(gl_state, "basic_3d");
 
     GL_Mesh gl_mesh = gl_use_mesh(gl_state, mesh_name);
 
-    if (!use_color_override && !texture_name) assert(!"No texture name provided.");
-    if (!use_color_override) gl_use_texture(gl_state, texture_name);
+    if (!material.use_color_override && is_empty(material.texture_name)) assert(!"No texture name provided.");
+    if (!material.use_color_override) gl_use_texture(gl_state, make_string(material.texture_name));
 
     Mat4 model_matrix = get_model_matrix(transform);
     gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
     gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->cpv_matrix);
     // NOTE: we may need to think about this for transparent materials
-    Vec3 material_color = truncate_v4_to_v3(color);
+    // TODO: using override color here is temporary.. ideally we will have finer control over things like
+    //       ambient/diffuse/specular color
+    Vec3 material_color = truncate_v4_to_v3(material.color_override);
     gl_set_uniform_vec3(shader_id, "material_color", &material_color);
-    
-    Vec3 light_color = make_vec3(1.0f, 1.0f, 1.0f);
-    Vec3 light_position = make_vec3(0.0f, 1.0f, 0.0f);
-    //gl_set_uniform_vec3(shader_id, "light_color", &light_color);
-    //gl_set_uniform_vec3(shader_id, "light_pos", &light_position);
+    gl_set_uniform_float(shader_id, "gloss", material.gloss);
     
     gl_set_uniform_vec3(shader_id, "camera_pos", &render_state->camera.position);
-    gl_set_uniform_int(shader_id, "use_color_override", use_color_override);
+    gl_set_uniform_int(shader_id, "use_color_override", material.use_color_override);
 
     glDrawElements(GL_TRIANGLES, gl_mesh.num_triangles * 3, GL_UNSIGNED_INT, 0);
 
@@ -458,14 +490,14 @@ void gl_draw_textured_mesh(GL_State *gl_state, Render_State *render_state,
 }
 
 void gl_draw_wireframe(GL_State *gl_state, Render_State *render_state,
-                       char *mesh_name, Transform transform) {
+                       String mesh_name, Transform transform) {
     uint32 shader_id;
     uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("debug_wireframe"), &shader_id);
     assert(shader_exists);
     glUseProgram(shader_id);
 
     GL_Mesh gl_mesh;
-    uint32 mesh_exists = hash_table_find(gl_state->mesh_table, make_string(mesh_name), &gl_mesh);
+    uint32 mesh_exists = hash_table_find(gl_state->mesh_table, mesh_name, &gl_mesh);
     assert(mesh_exists);
     glBindVertexArray(gl_mesh.vao);
 
@@ -1500,7 +1532,7 @@ void gl_render(GL_State *gl_state, Controller_State *controller_state, Game_Stat
         if (!mesh->is_loaded) {
             if (!hash_table_exists(gl_state->mesh_table, make_string(mesh->name))) {
                 GL_Mesh gl_mesh = gl_load_mesh(gl_state, *mesh);
-                hash_table_add(&gl_state->mesh_table, mesh->name, gl_mesh);
+                hash_table_add(&gl_state->mesh_table, make_string(mesh->name), gl_mesh);
             } else {
                 debug_print("%s already loaded.\n", mesh->name);
             }
@@ -1528,14 +1560,12 @@ void gl_render(GL_State *gl_state, Controller_State *controller_state, Game_Stat
     // point lights
     for (int32 i = 0; i < game_state->num_point_lights; i++) {
         Point_Light_Entity *entity = &game_state->point_lights[i];
-        char *mesh_name = game_state->meshes[entity->mesh_index].name;
-        char *texture_name = entity->texture_name;
+        String mesh_name = make_string(game_state->meshes[entity->mesh_index].name);
+        Material material = game_state->materials[entity->material_index];
 
         gl_draw_solid_mesh(gl_state, render_state, 
-                           mesh_name, texture_name,
-                           make_vec4(entity->color_override, 1.0f),
-                           entity->transform,
-                           texture_name == NULL);
+                           mesh_name, material,
+                           entity->transform);
 
         if (game_state->editor_state.selected_entity_type == ENTITY_POINT_LIGHT &&
             game_state->editor_state.selected_entity_index == i) {
@@ -1571,14 +1601,12 @@ void gl_render(GL_State *gl_state, Controller_State *controller_state, Game_Stat
     // entities
     for (int32 i = 0; i < game_state->num_entities; i++) {
         Normal_Entity *entity = &game_state->entities[i];
-        char *mesh_name = game_state->meshes[entity->mesh_index].name;
-        char *texture_name = entity->texture_name;
+        String mesh_name = make_string(game_state->meshes[entity->mesh_index].name);
+        Material material = game_state->materials[entity->material_index];
 
-        gl_draw_mesh(gl_state, game_state,
-                     mesh_name, texture_name,
-                     make_vec4(entity->color_override, 1.0f),
-                     entity->transform,
-                     texture_name == NULL);
+        gl_draw_mesh(gl_state, render_state,
+                     mesh_name, material,
+                     entity->transform);
 
         if (game_state->editor_state.selected_entity_type == ENTITY_NORMAL &&
             game_state->editor_state.selected_entity_index == i) {

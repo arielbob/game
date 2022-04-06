@@ -41,4 +41,6 @@ struct Memory {
     Stack_Allocator hash_table_stack;
 };
 
+void *allocate(Allocator *allocator, uint32 size, bool32 zero_memory = true);
+
 #endif

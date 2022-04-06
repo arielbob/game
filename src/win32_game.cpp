@@ -72,13 +72,14 @@ typedef void GL_DELETE_SHADER (GLuint shader);
 typedef void GL_USE_PROGRAM (GLuint program);
 typedef GLint GL_GET_UNIFORM_LOCATION (GLuint program, const GLchar *name);
 typedef void GL_UNIFORM_MATRIX_4FV (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
-typedef void GL_GET_SHADER_INFO_LOG(GLuint shader, GLsizei maxLength, GLsizei *length, GLchar *infoLog);
-typedef void GL_GET_SHADERIV(GLuint shader, GLenum pname, GLint *params);
+typedef void GL_GET_SHADER_INFO_LOG (GLuint shader, GLsizei maxLength, GLsizei *length, GLchar *infoLog);
+typedef void GL_GET_SHADERIV (GLuint shader, GLenum pname, GLint *params);
 typedef void GL_GET_PROGRAM_INFO_LOG (GLuint program, GLsizei bufSize, GLsizei *length, GLchar *infoLog);
 typedef void GL_GET_PROGRAMIV (GLuint program, GLenum pname, GLint *params);
-typedef void GL_UNIFORM_1I(GLint location, GLint value);
-typedef void GL_UNIFORM_3FV(GLint location, GLsizei count, const GLfloat *value);
-typedef void GL_UNIFORM_4FV(GLint location, GLsizei count, const GLfloat *value);
+typedef void GL_UNIFORM_1I (GLint location, GLint value);
+typedef void GL_UNIFORM_1F (GLint location, GLfloat v0);
+typedef void GL_UNIFORM_3FV (GLint location, GLsizei count, const GLfloat *value);
+typedef void GL_UNIFORM_4FV (GLint location, GLsizei count, const GLfloat *value);
 typedef void GL_FRAMEBUFFER_TEXTURE_2D (GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level);
 typedef void GL_GEN_RENDERBUFFERS (GLsizei n, GLuint *renderbuffers);
 typedef void GL_BIND_RENDERBUFFER (GLenum target, GLuint renderbuffer);
@@ -118,6 +119,7 @@ GL_GET_SHADERIV *glGetShaderiv;
 GL_GET_PROGRAM_INFO_LOG *glGetProgramInfoLog;
 GL_GET_PROGRAMIV *glGetProgramiv;
 GL_UNIFORM_1I *glUniform1i;
+GL_UNIFORM_1F *glUniform1f;
 GL_UNIFORM_3FV *glUniform3fv;
 GL_UNIFORM_4FV *glUniform4fv;
 GL_FRAMEBUFFER_TEXTURE_2D *glFramebufferTexture2D;
@@ -132,7 +134,6 @@ GL_BIND_BUFFER_BASE *glBindBufferBase;
 GL_GET_UNIFORM_BLOCK_INDEX *glGetUniformBlockIndex;
 GL_UNIFORM_BLOCK_BINDING *glUniformBlockBinding;
 GL_BIND_BUFFER_RANGE *glBindBufferRange;
-
 
 #include "game_gl.cpp"
 
@@ -330,6 +331,7 @@ internal bool32 win32_init_opengl(HDC hdc) {
                     glGetProgramiv = (GL_GET_PROGRAMIV *) wglGetProcAddress("glGetProgramiv");
                     glGetProgramInfoLog = (GL_GET_PROGRAM_INFO_LOG *) wglGetProcAddress("glGetProgramInfoLog");
                     glUniform1i = (GL_UNIFORM_1I *) wglGetProcAddress("glUniform1i");
+                    glUniform1f = (GL_UNIFORM_1F *) wglGetProcAddress("glUniform1f");
                     glUniform3fv = (GL_UNIFORM_3FV *) wglGetProcAddress("glUniform3fv");
                     glUniform4fv = (GL_UNIFORM_4FV *) wglGetProcAddress("glUniform4fv");  
                     glFramebufferTexture2D = (GL_FRAMEBUFFER_TEXTURE_2D *) wglGetProcAddress("glFramebufferTexture2D");
