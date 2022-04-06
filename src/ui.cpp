@@ -319,7 +319,9 @@ void do_box(UI_Manager *manager, Controller_State *controller_state,
     if (!manager->is_disabled && in_bounds(current_mouse,
                                            x, x + style.width,
                                            y, y + style.height)) {
-        manager->hot = box.id;
+        if (!controller_state->left_mouse.is_down) {
+            manager->hot = box.id;
+        }
     } else {
         if (ui_id_equals(manager->hot, box.id)) {
             manager->hot = {};

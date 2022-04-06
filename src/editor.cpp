@@ -42,26 +42,30 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
     char *font_name_bold = "courier18b";
 
     char *buf;
+    int32 buffer_size = 16;
+    do_text(ui_manager, offset_x, offset_y + font_height, "Entity Properties", font_name_bold, text_style, "entity_name_title");
+    offset_y += font_height * 2;
+
     do_text(ui_manager, offset_x, offset_y + font_height, "Mesh Name", font_name_bold, text_style, "entity_name_title");
     do_text(ui_manager, offset_x + column_offset, offset_y + font_height, mesh_name, font_name, text_style, "entity_name");
     offset_y += row_offset;
 
     do_text(ui_manager, offset_x, offset_y + font_height, "Position", font_name_bold, text_style, "position_title");
-    buf = string_format(allocator, 16, "%f", transform.position.x);
+    buf = string_format(allocator, buffer_size, "%f", transform.position.x);
     do_text(ui_manager, offset_x + column_offset, offset_y + font_height,
             "x", font_name_bold, text_style, "position.x");
     do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y + font_height,
             buf, font_name, text_style, "position.x");
     offset_y += font_height;
 
-    buf = string_format(allocator, 16, "%f", transform.position.y);
+    buf = string_format(allocator, buffer_size, "%f", transform.position.y);
     do_text(ui_manager, offset_x + column_offset, offset_y + font_height,
             "y", font_name_bold, text_style, "position.x");
     do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y + font_height,
             buf, font_name, text_style, "position.y");
     offset_y += font_height;
 
-    buf = string_format(allocator, 16, "%f", transform.position.z);
+    buf = string_format(allocator, buffer_size, "%f", transform.position.z);
     do_text(ui_manager, offset_x + column_offset, offset_y + font_height,
             "z", font_name_bold, text_style, "position.x");
     do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y + font_height,
@@ -69,28 +73,28 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
     offset_y += row_offset;
 
     do_text(ui_manager, offset_x, offset_y + font_height, "Rotation", font_name_bold, text_style, "rotation_title");
-    buf = string_format(allocator, 16, "%f", transform.rotation.w);
+    buf = string_format(allocator, buffer_size, "%f", transform.rotation.w);
     do_text(ui_manager, offset_x + column_offset, offset_y + font_height,
             "w", font_name_bold, text_style, "position.x");
     do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y + font_height,
             buf, font_name, text_style, "rotation.w");
     offset_y += font_height;
 
-    buf = string_format(allocator, 16, "%f", transform.rotation.v.x);
+    buf = string_format(allocator, buffer_size, "%f", transform.rotation.v.x);
     do_text(ui_manager, offset_x + column_offset, offset_y + font_height,
             "x", font_name_bold, text_style, "position.x");
     do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y + font_height,
             buf, font_name, text_style, "rotation.v.x");
     offset_y += font_height;
 
-    buf = string_format(allocator, 16, "%f", transform.rotation.v.y);
+    buf = string_format(allocator, buffer_size, "%f", transform.rotation.v.y);
     do_text(ui_manager, offset_x + column_offset, offset_y + font_height,
             "y", font_name_bold, text_style, "position.x");
     do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y + font_height,
             buf, font_name, text_style, "rotation.v.y");
     offset_y += font_height;
 
-    buf = string_format(allocator, 16, "%f", transform.rotation.v.z);
+    buf = string_format(allocator, buffer_size, "%f", transform.rotation.v.z);
     do_text(ui_manager, offset_x + column_offset, offset_y + font_height,
             "z", font_name_bold, text_style, "rotation.x");
     do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y + font_height,
@@ -98,27 +102,36 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
     offset_y += row_offset;
 
     do_text(ui_manager, offset_x, offset_y + font_height, "Scale", font_name_bold, text_style, "scale_title");
-    buf = string_format(allocator, 16, "%f", transform.scale.x);
+    buf = string_format(allocator, buffer_size, "%f", transform.scale.x);
     do_text(ui_manager, offset_x + column_offset, offset_y + font_height,
             "x", font_name_bold, text_style, "scale.x");
     do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y + font_height,
             buf, font_name, text_style, "scale.x");
     offset_y += font_height;
 
-    buf = string_format(allocator, 16, "%f", transform.scale.y);
+    buf = string_format(allocator, buffer_size, "%f", transform.scale.y);
     do_text(ui_manager, offset_x + column_offset, offset_y + font_height,
             "y", font_name_bold, text_style, "scale.y");
     do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y + font_height,
             buf, font_name, text_style, "scale.y");
     offset_y += font_height;
 
-    buf = string_format(allocator, 16, "%f", transform.scale.z);
+    buf = string_format(allocator, buffer_size, "%f", transform.scale.z);
     do_text(ui_manager, offset_x + column_offset, offset_y + font_height,
             "z", font_name_bold, text_style, "scale.z");
     do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y + font_height,
             buf, font_name, text_style, "scale.z");
     offset_y += row_offset;
 
+
+    // material info
+/*
+    buf = string_format(allocator, buffer_size, "%f", transform.scale.z);
+    do_text(ui_manager, offset_x + column_offset, offset_y + font_height,
+            "z", font_name_bold, text_style, "scale.z");
+    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y + font_height,
+            buf, font_name, text_style, "scale.z");
+*/
 }
 
 int32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, real32 *t_result) {

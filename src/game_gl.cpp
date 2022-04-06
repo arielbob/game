@@ -36,6 +36,8 @@
 // TODO (done): first person camera movement
 // TODO (done): disable hovering buttons when in freecam mode
 // TODO (done): add struct for storing material information
+// TODO (done): be able to get font metrics from game code (will have to init fonts in game.cpp, with game_gl.cpp
+//              just holding the texture_ids for that font)
 
 // TODO: material editing in editor
 //       be able to view material library, texture library, be able to change active material, change the texture
@@ -47,6 +49,7 @@
 //       this free list struct will also be used for text fields. since we often don't want a text field to hold
 //       the direct contents of where it will eventually be stored. we will need to update our immediate mode UI
 //       code to hold state for the UI elements.
+//       replace string_arena.
 
 // TODO: entity instances? copies of an entity, where you can modify the parent entity and all the instances
 //       will update as well.
@@ -56,8 +59,6 @@
 // TODO: level saving/loading
 //       in level loading, we should ensure that duplicates of mesh, texture, and material names do not exist.
 // TODO: nicer UI (start with window to display selected entity properties)
-// TODO: be able to get font metrics from game code (will have to init fonts in game.cpp, with game_gl.cpp
-//       just holding the texture_ids for that font)
 // TODO: make game_state, controller_state, and memory global variables
 // TODO: directional light (sun light)
 // TODO: better level editing (mesh libraries, textures libraries)
@@ -274,59 +275,28 @@ void gl_load_texture(GL_State *gl_state, Memory *memory,
 }
 
 // TODO: use the better stb_truetype packing procedures
-void gl_init_font(GL_State *gl_state, Memory *memory,
-                  char *font_filename, char *font_name,
-                  real32 font_height_pixels,
-                  int32 font_texture_width, int32 font_texture_height) {
-    GL_Font gl_font;
-    stbtt_fontinfo font_info;
-
-    File_Data font_file_data;
-    String font_filename_string = make_string(font_filename);
-    if (!hash_table_find(gl_state->font_file_table, font_filename_string, &font_file_data)) {
-        font_file_data = platform_open_and_read_file((Allocator *) &memory->font_arena,
-                                                     font_filename);
-        hash_table_add(&gl_state->font_file_table, font_filename_string, font_file_data);
-    }
-
-    // get font info
-    // NOTE: this assumes that the TTF file only has a single font and is at index 0, or else
-    //       stbtt_GetFontOffsetForIndex will return a negative value.
-    // NOTE: font_info uses the raw data from the file contents, so the file data allocation should NOT
-    //       be temporary.
-    stbtt_InitFont(&font_info, (uint8 *) font_file_data.contents,
-                   stbtt_GetFontOffsetForIndex((uint8 *) font_file_data.contents, 0));
-    gl_font.scale_for_pixel_height = stbtt_ScaleForPixelHeight(&font_info, font_height_pixels);
-    stbtt_GetFontVMetrics(&font_info, &gl_font.ascent, &gl_font.descent, &gl_font.line_gap);
-    gl_font.font_info = font_info;
-
-    uint32 baked_texture_id;
-    int32 first_char = 32;
-    int32 num_chars = 96;
-    gl_font.cdata = (stbtt_bakedchar *) arena_push(&memory->font_arena, 96 * sizeof(stbtt_bakedchar), false);
-
+void gl_init_font(GL_State *gl_state, Memory *memory, Font *font) {
     Marker m = begin_region(memory);
-    uint8 *temp_bitmap = (uint8 *) region_push(&memory->global_stack, font_texture_width*font_texture_height);
+    uint8 *temp_bitmap = (uint8 *) region_push(&memory->global_stack, font->texture_width*font->texture_height);
     // NOTE: no guarantee that the bitmap will fit the font, so choose temp_bitmap dimensions carefully
     // TODO: we may want to maybe render this out to an image so that we can verify that the font fits
-    int32 result = stbtt_BakeFontBitmap((uint8 *) font_file_data.contents, 0,
-                                        font_height_pixels, temp_bitmap, font_texture_width, font_texture_height,
-                                        first_char, num_chars,
-                                        gl_font.cdata);
+    int32 result = stbtt_BakeFontBitmap((uint8 *) font->file_data.contents, 0,
+                                        font->height_pixels, temp_bitmap, font->texture_width, font->texture_height,
+                                        font->first_char, font->num_chars,
+                                        font->cdata);
     assert(result > 0);
 
+    uint32 baked_texture_id;
     glGenTextures(1, &baked_texture_id);
     glBindTexture(GL_TEXTURE_2D, baked_texture_id);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA,
-                 font_texture_width, font_texture_height,
+                 font->texture_width, font->texture_height,
                  0, GL_ALPHA, GL_UNSIGNED_BYTE, temp_bitmap);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
     end_region(memory, m);
 
-    gl_font.baked_texture_id = baked_texture_id;
-    gl_font.font_height_pixels = font_height_pixels;
-    hash_table_add(&gl_state->font_table, make_string(font_name), gl_font);
+    hash_table_add(&gl_state->font_texture_table, make_string(font->name), baked_texture_id);
 }
 
 GL_Mesh gl_load_mesh(GL_State *gl_state, Mesh mesh) {
@@ -379,7 +349,7 @@ void gl_use_texture(GL_State *gl_state, String texture_name) {
     GL_Texture texture;
     uint32 texture_exists = hash_table_find(gl_state->texture_table, texture_name, &texture);
     assert(texture_exists);
-    glBindTexture(GL_TEXTURE_2D, texture.id);
+    glBindTexture(GL_TEXTURE_2D, texture.id); 
 }
 
 inline void gl_use_texture(GL_State *gl_state, char *texture_name) {
@@ -533,16 +503,9 @@ void copy_aligned_quad_to_arrays(stbtt_aligned_quad q, real32 *vertices, real32 
     uvs[7] = q.t1;
 }
 
-// TODO: we may want to reconsider our 2D coordinate-space and maybe have y=0 start at the top and increase
-//       going downwards. this is because right now if we wanted to draw some text starting from the top
-//       and going downwards, we would have to first compute the height of the text, then draw it at
-//       window_height - text_height. although.. the same can be said if we were to use a y=0 at top
-//       coordinate-system for drawing text from the bottom. actually, that's not necessarily true. text
-//       always grows downwards, so the benefit of starting at the top is that we can always at least see
-//       the start of the text. idk.
 void gl_draw_text(GL_State *gl_state,
                   Display_Output display_output,
-                  char *font_name,
+                  Font *font,
                   real32 x_pos_pixels, real32 y_pos_pixels,
                   char *text, Vec3 color) {
     uint32 text_shader_id;
@@ -555,9 +518,10 @@ void gl_draw_text(GL_State *gl_state,
     assert(mesh_exists);
     glBindVertexArray(glyph_mesh.vao);
 
-    GL_Font font;
-    uint32 font_exists = hash_table_find(gl_state->font_table, make_string(font_name), &font);
-    assert(font_exists);
+    uint32 font_texture_id;
+    uint32 font_texture_exists = hash_table_find(gl_state->font_texture_table, make_string(font->name),
+                                                 &font_texture_id);
+    assert(font_texture_exists);
 
     // TODO: we don't actually need to use a Mat4 here; we can just use a Mat2 and set z = 0
     Mat4 ortho_clip_matrix = make_ortho_clip_matrix((real32) display_output.width,
@@ -573,17 +537,17 @@ void gl_draw_text(GL_State *gl_state,
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_TEXTURE_2D);
-    glBindTexture(GL_TEXTURE_2D, font.baked_texture_id);
+    glBindTexture(GL_TEXTURE_2D, font_texture_id);
     glBindBuffer(GL_ARRAY_BUFFER, glyph_mesh.vbo);
 
     real32 quad_vertices[8];
     real32 quad_uvs[8];
-    real32 line_advance = font.scale_for_pixel_height * (font.ascent - font.descent + font.line_gap);
+    real32 line_advance = font->scale_for_pixel_height * (font->ascent - font->descent + font->line_gap);
     real32 start_x_pos_pixels = x_pos_pixels;
     while (*text) {
         if (*text >= 32 && *text < 128 || *text == '-') {
             stbtt_aligned_quad q;
-            stbtt_GetBakedQuad(font.cdata, 512, 512, *text - 32, &x_pos_pixels, &y_pos_pixels, &q, 1);
+            stbtt_GetBakedQuad(font->cdata, 512, 512, *text - 32, &x_pos_pixels, &y_pos_pixels, &q, 1);
 
             copy_aligned_quad_to_arrays(q, quad_vertices, quad_uvs);
 
@@ -661,10 +625,9 @@ void generate_circle_vertices(real32 *buffer, int32 num_vertices, real32 radius)
 void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) {
     gl_state->shader_ids_table = make_hash_table<uint32>((Allocator *) &memory->hash_table_stack);
     gl_state->debug_mesh_table = make_hash_table<GL_Mesh>((Allocator *) &memory->hash_table_stack);
-    gl_state->font_table = make_hash_table<GL_Font>((Allocator *) &memory->hash_table_stack);
     gl_state->mesh_table = make_hash_table<GL_Mesh>((Allocator *) &memory->hash_table_stack);
     gl_state->texture_table = make_hash_table<GL_Texture>((Allocator *) &memory->hash_table_stack);
-    gl_state->font_file_table = make_hash_table<File_Data>((Allocator *) &memory->hash_table_stack);
+    gl_state->font_texture_table = make_hash_table<uint32>((Allocator *) &memory->hash_table_stack);
 
     uint32 vbo, vao, ebo;
 
@@ -873,13 +836,6 @@ void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) 
     glUniformBlockBinding(shader_id, uniform_block_index, 0);
     glUseProgram(0);
     error = glGetError();
-
-    // NOTE: fonts
-    gl_init_font(gl_state, memory, "c:/windows/fonts/times.ttf", "times32", 32.0f, 512, 512);
-    gl_init_font(gl_state, memory, "c:/windows/fonts/times.ttf", "times24", 24.0f, 512, 512);
-    gl_init_font(gl_state, memory, "c:/windows/fonts/cour.ttf", "courier24", 24.0f, 512, 512);
-    gl_init_font(gl_state, memory, "c:/windows/fonts/cour.ttf", "courier18", 18.0f, 512, 512);
-    gl_init_font(gl_state, memory, "c:/windows/fonts/courbd.ttf", "courier18b", 18.0f, 512, 512);
 
     // NOTE: textures
     gl_load_texture(gl_state, memory, "src/textures/debug_texture.bmp", "debug");
@@ -1164,11 +1120,14 @@ void draw_sound_buffer(GL_State *gl_state,
     draw_sound_cursor(gl_state, display_output, win32_sound_output, write_cursor_position, make_vec3(1.0f, 0.0f, 0.0f));
 }
 
-real32 get_width(GL_State *gl_state, char *font_name, char *text) {
-    GL_Font font;
-    bool32 font_exists = hash_table_find(gl_state->font_table, make_string(font_name), &font);
+Font get_font(Game_State *game_state, char *font_name) {
+    Font font;
+    bool32 font_exists = hash_table_find(game_state->font_table, make_string(font_name), &font);
     assert(font_exists);
+    return font;
+}
 
+real32 get_width(Font font, char *text) {
     real32 width = 0;
 
     while (*text) {
@@ -1187,23 +1146,30 @@ real32 get_width(GL_State *gl_state, char *font_name, char *text) {
     return width;
 }
 
-void gl_draw_ui_text(GL_State *gl_state, Display_Output display_output, UI_Manager *ui_manager, UI_Text ui_text) {
+void gl_draw_ui_text(GL_State *gl_state, Game_State *game_state,
+                     Display_Output display_output, UI_Manager *ui_manager,
+                     UI_Text ui_text) {
     UI_Text_Style style = ui_text.style;
 
+    Font font = get_font(game_state, ui_text.font);
+
     if (style.use_offset_shadow) {
-        gl_draw_text(gl_state, display_output, ui_text.font,
+        gl_draw_text(gl_state, display_output, &font,
                      ui_text.x, ui_text.y + 2.0f,
                      ui_text.text, style.offset_shadow_color);
     }
 
-    gl_draw_text(gl_state, display_output, ui_text.font,
+    gl_draw_text(gl_state, display_output, &font,
                  ui_text.x, ui_text.y,
                  ui_text.text, style.color);
 }
 
-void gl_draw_ui_text_button(GL_State *gl_state, Display_Output display_output,
+void gl_draw_ui_text_button(GL_State *gl_state, Game_State *game_state,
+                            Display_Output display_output,
                             UI_Manager *ui_manager, UI_Text_Button ui_text_button) {
     Vec3 color = make_vec3(1.0f, 1.0f, 1.0f);
+
+    Font font = get_font(game_state, ui_text_button.font);
 
     if (ui_id_equals(ui_manager->hot, ui_text_button.id)) {
         color = make_vec3(0.0f, 1.0f, 0.0f);
@@ -1218,51 +1184,55 @@ void gl_draw_ui_text_button(GL_State *gl_state, Display_Output display_output,
                  ui_text_button.width, ui_text_button.height, color);
 
     // TODO: center this.. will have to use font metrics
-    gl_draw_text(gl_state, display_output, ui_text_button.font,
+    gl_draw_text(gl_state, display_output, &font,
                  ui_text_button.x, ui_text_button.y + ui_text_button.height,
                  ui_text_button.text, make_vec3(1.0f, 1.0f, 1.0f));
 }
 
-void gl_draw_ui_text_box(GL_State *gl_state, Display_Output display_output,
+void gl_draw_ui_text_box(GL_State *gl_state, Game_State *game_state,
+                         Display_Output display_output,
                          UI_Manager *ui_manager, UI_Text_Box text_box) {
-        Vec3 color = make_vec3(1.0f, 1.0f, 1.0f);
+    Vec3 color = make_vec3(1.0f, 1.0f, 1.0f);
 
-        if (ui_id_equals(ui_manager->active, text_box.id)) {
-            color = make_vec3(0.0f, 0.0f, 1.0f);
-        } else if (ui_id_equals(ui_manager->hot, text_box.id)) {
-            color = make_vec3(0.0f, 1.0f, 0.0f);
-        } else {
-            color = make_vec3(1.0f, 0.0f, 0.0f);
-        }
+    Font font = get_font(game_state, text_box.style.font);
 
-        UI_Text_Box_Style style = text_box.style;
-        gl_draw_quad(gl_state, display_output, text_box.x, text_box.y,
-                     style.width + style.padding_x * 2, style.height + style.padding_y * 2,
-                     color);
+    if (ui_id_equals(ui_manager->active, text_box.id)) {
+        color = make_vec3(0.0f, 0.0f, 1.0f);
+    } else if (ui_id_equals(ui_manager->hot, text_box.id)) {
+        color = make_vec3(0.0f, 1.0f, 0.0f);
+    } else {
+        color = make_vec3(1.0f, 0.0f, 0.0f);
+    }
 
-        glEnable(GL_SCISSOR_TEST);
-        // TODO: should move where the text renders depending on if the cursor moves outside of the
-        //       text box's bounds.
-        // glScissor((int32) (text_box.x + style.padding_x), (int32) (display_output.height - (text_box.y + style.padding_y)),
-        //           (int32) style.width, (int32) style.height);
-        glScissor((int32) (text_box.x + style.padding_x), (int32) (display_output.height - text_box.y - style.height - style.padding_y),
-                  (int32) style.width, (int32) style.height);
-        gl_draw_text(gl_state, display_output, style.font,
-                     text_box.x + style.padding_x, text_box.y + style.height - style.padding_y,
-                     text_box.current_text, make_vec3(1.0f, 1.0f, 1.0f));
-        glDisable(GL_SCISSOR_TEST);
+    UI_Text_Box_Style style = text_box.style;
+    gl_draw_quad(gl_state, display_output, text_box.x, text_box.y,
+                 style.width + style.padding_x * 2, style.height + style.padding_y * 2,
+                 color);
 
-        if (ui_id_equals(ui_manager->active, text_box.id)) {
-            // TODO: this cursor should actually be calculated using focus_cursor_index. we need to
-            //       split the text string on that index and draw the cursor at the width of the left
-            //       split. when we draw it, it has to be offset if it is outside the bounds of the text
-            //       box.
-            // in focus
-            real32 text_width = get_width(gl_state, style.font, text_box.current_text);
-            gl_draw_quad(gl_state, display_output,
-                         text_box.x + text_width + style.padding_x, text_box.y + style.padding_y,
-                         12.0f, style.height, make_vec3(0.0f, 1.0f, 0.0f));
-        }
+    glEnable(GL_SCISSOR_TEST);
+    // TODO: should move where the text renders depending on if the cursor moves outside of the
+    //       text box's bounds.
+    // glScissor((int32) (text_box.x + style.padding_x), (int32) (display_output.height - (text_box.y + style.padding_y)),
+    //           (int32) style.width, (int32) style.height);
+    glScissor((int32) (text_box.x + style.padding_x), (int32) (display_output.height - text_box.y - style.height - style.padding_y),
+              (int32) style.width, (int32) style.height);
+    gl_draw_text(gl_state, display_output, &font,
+                 text_box.x + style.padding_x, text_box.y + style.height - style.padding_y,
+                 text_box.current_text, make_vec3(1.0f, 1.0f, 1.0f));
+    glDisable(GL_SCISSOR_TEST);
+
+    if (ui_id_equals(ui_manager->active, text_box.id)) {
+        // TODO: this cursor should actually be calculated using focus_cursor_index. we need to
+        //       split the text string on that index and draw the cursor at the width of the left
+        //       split. when we draw it, it has to be offset if it is outside the bounds of the text
+        //       box.
+
+        // in focus
+        real32 text_width = get_width(font, text_box.current_text);
+        gl_draw_quad(gl_state, display_output,
+                     text_box.x + text_width + style.padding_x, text_box.y + style.padding_y,
+                     12.0f, style.height, make_vec3(0.0f, 1.0f, 0.0f));
+    }
 }
 
 void gl_draw_ui_box(GL_State *gl_state, Display_Output display_output,
@@ -1287,7 +1257,8 @@ void gl_draw_ui_line(GL_State *gl_state, Display_Output display_output,
 // TODO: we could, along with gl_draw_quad, replace the model_matrix stuff with just updating the VBO.
 //       the issue with this is that it could make it harder for us to do more interesting transformations like
 //       rotation.
-void gl_draw_ui(GL_State *gl_state, UI_Manager *ui_manager, Display_Output display_output) {
+void gl_draw_ui(GL_State *gl_state, Game_State *game_state,
+                UI_Manager *ui_manager, Display_Output display_output) {
     UI_Push_Buffer *push_buffer = &ui_manager->push_buffer;
     uint8 *address = (uint8 *) push_buffer->base;
 
@@ -1296,17 +1267,17 @@ void gl_draw_ui(GL_State *gl_state, UI_Manager *ui_manager, Display_Output displ
         switch (element->type) {
             case UI_TEXT: {
                 UI_Text *ui_text = (UI_Text *) element;
-                gl_draw_ui_text(gl_state, display_output, ui_manager, *ui_text);
+                gl_draw_ui_text(gl_state, game_state, display_output, ui_manager, *ui_text);
                 address += sizeof(UI_Text);
             } break;
             case UI_TEXT_BUTTON: {
                 UI_Text_Button *ui_text_button = (UI_Text_Button *) element;
-                gl_draw_ui_text_button(gl_state, display_output, ui_manager, *ui_text_button);
+                gl_draw_ui_text_button(gl_state, game_state, display_output, ui_manager, *ui_text_button);
                 address += sizeof(UI_Text_Button);
             } break;
             case UI_TEXT_BOX: {
                 UI_Text_Box *ui_text_box = (UI_Text_Box *) element;
-                gl_draw_ui_text_box(gl_state, display_output, ui_manager, *ui_text_box);
+                gl_draw_ui_text_box(gl_state, game_state, display_output, ui_manager, *ui_text_box);
                 address += sizeof(UI_Text_Box);
             } break;
             case UI_BOX: {
@@ -1324,84 +1295,6 @@ void gl_draw_ui(GL_State *gl_state, UI_Manager *ui_manager, Display_Output displ
             }
         }
     }
-
-#if 0
-    for (int32 i = 0; i < ui_manager->num_buttons; i++) {
-        UI_Button button = ui_manager->buttons[i];
-
-        Vec3 color = make_vec3(1.0f, 1.0f, 1.0f);
-
-        if (ui_id_equals(ui_manager->hot, button.id)) {
-            color = make_vec3(0.0f, 1.0f, 0.0f);
-            if (ui_id_equals(ui_manager->active, button.id)) {
-                color = make_vec3(0.0f, 0.0f, 1.0f);
-            }
-        } else {
-            color = make_vec3(1.0f, 0.0f, 0.0f);
-        }
-
-        gl_draw_quad(gl_state, display_output, button.x, button.y,
-                     button.width, button.height, color);
-
-        // TODO: center this.. will have to use font metrics
-        gl_draw_text(gl_state, display_output, button.font,
-                     button.x, button.y,
-                     button.text, make_vec3(1.0f, 1.0f, 1.0f));
-    }
-
-    for (int32 i = 0; i < ui_manager->num_text_boxes; i++) {
-        UI_Text_Box text_box = ui_manager->text_boxes[i];
-
-        Vec3 color = make_vec3(1.0f, 1.0f, 1.0f);
-
-
-        if (ui_id_equals(ui_manager->active, text_box.id)) {
-            color = make_vec3(0.0f, 0.0f, 1.0f);
-        } else if (ui_id_equals(ui_manager->hot, text_box.id)) {
-            color = make_vec3(0.0f, 1.0f, 0.0f);
-        } else {
-            color = make_vec3(1.0f, 0.0f, 0.0f);
-        }
-
-        UI_Text_Box_Style style = text_box.style;
-        gl_draw_quad(gl_state, display_output, text_box.x, text_box.y,
-                     style.width + style.padding_x * 2, style.height + style.padding_y * 2,
-                     color);
-
-        glEnable(GL_SCISSOR_TEST);
-        // TODO: should move where the text renders depending on if the cursor moves outside of the
-        //       text box's bounds.
-        glScissor((int32) (text_box.x + style.padding_x), (int32) (text_box.y + style.padding_y),
-                  (int32) style.width, (int32) style.height);
-        gl_draw_text(gl_state, display_output, style.font,
-                     text_box.x + style.padding_x, text_box.y + style.padding_y,
-                     text_box.current_text, make_vec3(1.0f, 1.0f, 1.0f));
-        glDisable(GL_SCISSOR_TEST);
-
-        if (ui_id_equals(ui_manager->active, text_box.id)) {
-            // TODO: this cursor should actually be calculated using focus_cursor_index. we need to
-            //       split the text string on that index and draw the cursor at the width of the left
-            //       split. when we draw it, it has to be offset if it is outside the bounds of the text
-            //       box.
-            // in focus
-            real32 text_width = get_width(gl_state, style.font, text_box.current_text);
-            gl_draw_quad(gl_state, display_output,
-                         text_box.x + text_width + style.padding_x, text_box.y + style.padding_y,
-                         12.0f, style.height, make_vec3(0.0f, 1.0f, 0.0f));
-        }
-    }
-
-    for (int32 i = 0; i < ui_manager->num_texts; i++) {
-        UI_Text ui_text = ui_manager->texts[i];
-
-        Vec3 color = make_vec3(1.0f, 1.0f, 1.0f);
-
-        // TODO: center this.. will have to use font metrics
-        gl_draw_text(gl_state, display_output, ui_text.font,
-                     ui_text.x, ui_text.y,
-                     ui_text.text, color);
-    }
-#endif
 }
 
 void gl_draw_circle(GL_State *gl_state, Render_State *render_state, Transform transform, Vec4 color) {
@@ -1523,7 +1416,8 @@ void gl_draw_framebuffer(GL_State *gl_state, GL_Framebuffer framebuffer) {
     glBindVertexArray(0);
 }
 
-void gl_render(GL_State *gl_state, Controller_State *controller_state, Game_State *game_state,
+void gl_render(Memory *memory, GL_State *gl_state, Game_State *game_state,
+               Controller_State *controller_state,
                Display_Output display_output, Win32_Sound_Output *win32_sound_output) {
     Render_State *render_state = &game_state->render_state;
 
@@ -1538,6 +1432,26 @@ void gl_render(GL_State *gl_state, Controller_State *controller_state, Game_Stat
             }
 
             mesh->is_loaded = true;
+        }
+    }
+
+    // TODO: replace hash table linked lists with array implementation.
+    //       this current implementation will probably be very slow if font table is large, but it works for now.
+    Hash_Table<Font> *font_table = &game_state->font_table;
+    for (int32 i = 0; i < HASH_TABLE_BUCKETS; i++) {
+        Hash_Table_Bucket_Node<Font> *current = font_table->buckets[i].start;
+        while (current) {
+            Font *font = &current->value;
+            if (!font->is_baked) {
+                if (!hash_table_exists(gl_state->font_texture_table, make_string(font->name))) {
+                    gl_init_font(gl_state, memory, font);
+                } else {
+                    debug_print("%s already loaded.\n", font->name);
+                }
+
+                font->is_baked = true;
+            }
+            current = current->next;
         }
     }
 
@@ -1719,7 +1633,7 @@ void gl_render(GL_State *gl_state, Controller_State *controller_state, Game_Stat
     
     gl_draw_framebuffer(gl_state, gl_state->gizmo_framebuffer);
 
-    gl_draw_ui(gl_state, &game_state->ui_manager, display_output);
+    gl_draw_ui(gl_state, game_state,  &game_state->ui_manager, display_output);
 
     glEnable(GL_DEPTH_TEST);
 }

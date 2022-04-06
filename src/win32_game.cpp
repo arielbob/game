@@ -37,6 +37,7 @@
 #include "memory.cpp"
 #include "math.cpp"
 #include "mesh.cpp"
+#include "font.cpp"
 #include "ui.cpp"
 #include "editor.cpp"
 #include "game.cpp"
@@ -1040,7 +1041,8 @@ int WinMain(HINSTANCE hInstance,
                     }
 
 
-                    gl_render(&gl_state, &controller_state, &game_state,
+                    gl_render(&memory, &gl_state, &game_state,
+                              &controller_state,
                               game_display_output, &sound_output);
 
                     clear_push_buffer(&game_state.ui_manager.push_buffer);

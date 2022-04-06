@@ -158,6 +158,10 @@ void add_material(Game_State *game_state, Material material) {
     game_state->materials[game_state->num_materials++] = material;
 }
 
+void add_font(Game_State *game_state, Font font) {
+    hash_table_add(&game_state->font_table, make_string(font.name), font);
+}
+
 void init_camera(Camera *camera, Display_Output *display_output) {
     camera->position = make_vec3(0.0f, 3.0f, -5.0f);
     camera->pitch = 10.0f;
@@ -184,6 +188,9 @@ void init_game(Memory *memory, Game_State *game_state,
     Camera *camera = &game_state->render_state.camera;
     Display_Output *display_output = &game_state->render_state.display_output;
 
+    game_state->font_table = make_hash_table<Font>((Allocator *) &memory->hash_table_stack);
+    game_state->font_file_table = make_hash_table<File_Data>((Allocator *) &memory->hash_table_stack);
+
     init_camera(camera, display_output);
 
     // add meshes
@@ -208,6 +215,21 @@ void init_game(Memory *memory, Game_State *game_state,
     mesh = read_and_load_mesh(memory, (Allocator *) &memory->mesh_arena, "blender/gizmo_sphere.mesh",
                               make_string_buffer(mesh_name_allocator, "gizmo_sphere", MESH_NAME_MAX_SIZE));
     add_mesh(game_state, mesh);
+
+    // init fonts
+    Font font;
+    font = load_font(memory, game_state, "c:/windows/fonts/times.ttf", "times32", 32.0f, 512, 512);
+    add_font(game_state, font);
+    font = load_font(memory, game_state, "c:/windows/fonts/times.ttf", "times24", 24.0f, 512, 512);
+    add_font(game_state, font);
+    font = load_font(memory, game_state, "c:/windows/fonts/cour.ttf", "courier24", 24.0f, 512, 512);
+    add_font(game_state, font);
+    font = load_font(memory, game_state, "c:/windows/fonts/cour.ttf", "courier18", 18.0f, 512, 512);
+    add_font(game_state, font);
+    font = load_font(memory, game_state, "c:/windows/fonts/courbd.ttf", "courier18b", 18.0f, 512, 512);
+    add_font(game_state, font);
+    font = load_font(memory, game_state, "c:/windows/fonts/lucon.ttf", "lucidaconsole18", 18.0f, 512, 512);
+    add_font(game_state, font);
 
     // init editor_state
     editor_state->gizmo.arrow_mesh_name = "gizmo_arrow";

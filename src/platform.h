@@ -1,6 +1,8 @@
 #ifndef PLATFORM_H
 #define PLATFORM_H
 
+#include "memory.h"
+
 struct Platform_File {
     HANDLE file_handle;
     uint32 file_size;

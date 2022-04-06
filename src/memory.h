@@ -38,6 +38,8 @@ struct Memory {
     //       such as for filepaths
     Arena_Allocator string_arena; 
     Stack_Allocator global_stack;
+    // i'm not exactly sure why hash_table_stack is a stack; this can be an arena, but either way, it'll
+    // probably be replaced
     Stack_Allocator hash_table_stack;
 };
 

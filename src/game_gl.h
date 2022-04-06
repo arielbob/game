@@ -117,14 +117,7 @@ struct GL_Mesh {
 };
 
 struct GL_Font {
-    stbtt_fontinfo font_info;
-    stbtt_bakedchar *cdata;
     uint32 baked_texture_id;
-    real32 font_height_pixels;
-    real32 scale_for_pixel_height;
-    int32 ascent;
-    int32 descent;
-    int32 line_gap;
 };
 
 struct GL_Texture {
@@ -153,10 +146,9 @@ struct GL_State {
     Hash_Table<uint32> shader_ids_table;
     // TODO: i'm not sure how useful it is for debug meshes and game meshes to be in separate hash tables..
     Hash_Table<GL_Mesh> debug_mesh_table;
-    Hash_Table<GL_Font> font_table;
     Hash_Table<GL_Mesh> mesh_table;
+    Hash_Table<uint32> font_texture_table;
     Hash_Table<GL_Texture> texture_table;
-    Hash_Table<File_Data> font_file_table;
     
     // TODO: will have to delete these and remake them on window resize
     GL_Framebuffer gizmo_framebuffer;

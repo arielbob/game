@@ -1,6 +1,8 @@
 #ifndef GAME_H
 #define GAME_H
 
+#include "platform.h"
+#include "hash_table.h"
 #include "ui.h"
 #include "mesh.h"
 #include "editor.h"
@@ -11,6 +13,7 @@
 #define MAX_MATERIALS 64
 #define MAX_ENTITIES 64
 #define MAX_POINT_LIGHTS 16
+#define MAX_FONTS 64
 
 #define MATERIAL_NAME_MAX_SIZE 128
 
@@ -118,6 +121,23 @@ struct Render_State {
     Mat4 cpv_matrix;
 };
 
+struct Font {
+    String_Buffer name;
+    File_Data file_data;
+    stbtt_fontinfo font_info;
+    stbtt_bakedchar *cdata;
+    real32 height_pixels;
+    real32 scale_for_pixel_height;
+    int32 ascent;
+    int32 descent;
+    int32 line_gap;
+    int32 texture_width;
+    int32 texture_height;
+    int32 first_char;
+    int32 num_chars;
+    bool32 is_baked;
+};
+
 struct Material {
     String_Buffer name;
     String_Buffer texture_name;
@@ -126,21 +146,11 @@ struct Material {
     bool32 use_color_override;
 };
 
-/*
-struct Light_Material {
-    char *texture_name;
-    Vec3 color_override;
-    bool32 use_color_override;
-};
-*/
-
 #define ENTITY_HEADER                           \
     Entity_Type type;                           \
     Transform transform;                        \
     int32 mesh_index;                           \
     int32 material_index;
-    //char *texture_name;                       \
-    //Vec3 color_override;                      \
 
 struct Entity {
     ENTITY_HEADER
@@ -184,7 +194,10 @@ struct Game_State {
     int32 num_point_lights;
     Point_Light_Entity point_lights[MAX_POINT_LIGHTS];
 
-    char text_buffer[256] = {};
+    Hash_Table<File_Data> font_file_table;
+    Hash_Table<Font> font_table;
+
+    char text_buffer[256] = {}; // debugging
 };
 
 bool32 was_clicked(Controller_Button_State button_state);
