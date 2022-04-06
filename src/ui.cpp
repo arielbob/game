@@ -32,15 +32,14 @@ void clear_push_buffer(UI_Push_Buffer *buffer) {
 }
 
 UI_Text_Button make_ui_text_button(real32 x, real32 y,
-                                   real32 width, real32 height,
+                                   UI_Text_Button_Style style,
                                    char *text, char *font, char *id) {
     UI_Text_Button button = {};
 
     button.type = UI_TEXT_BUTTON;
     button.x = x;
     button.y = y;
-    button.width = width;
-    button.height = height;
+    button.style = style;
     button.text = text;
     button.font = font;
 
@@ -196,16 +195,17 @@ void do_text(UI_Manager *manager,
 
 
 bool32 do_text_button(UI_Manager *manager, Controller_State *controller_state,
-                      real32 x_px, real32 y_px, real32 width_px, real32 height_px,
+                      real32 x_px, real32 y_px,
+                      UI_Text_Button_Style style,
                       char *text, char *font, char *id_string) {
     UI_Text_Button button = make_ui_text_button(x_px, y_px,
-                                                width_px, height_px,
+                                                style,
                                                 text, font, id_string);
 
     bool32 was_clicked = false;
 
     Vec2 current_mouse = controller_state->current_mouse;
-    if (!manager->is_disabled && in_bounds(current_mouse, x_px, x_px + width_px, y_px, y_px + height_px)) {
+    if (!manager->is_disabled && in_bounds(current_mouse, x_px, x_px + style.width, y_px, y_px + style.height)) {
         if (controller_state->left_mouse.is_down) {
             if (ui_id_equals(manager->hot, button.id) || !controller_state->left_mouse.was_down) {
                 manager->active = button.id;

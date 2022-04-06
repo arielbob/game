@@ -25,19 +25,24 @@ struct UI_Element {
     UI_HEADER
 };
 
+struct UI_Text_Button_Style {
+    real32 width;
+    real32 height;
+
+    Vec4 normal_color;
+    Vec4 hot_color;
+    Vec4 active_color;
+    Vec4 text_color;
+};
+
 // TODO: this is a text button - will probably want to add different types of buttons
 struct UI_Text_Button {
     UI_HEADER
 
-    // NOTE: these are positioned in window pixel-space, with (0,0) at the bottom left, +x is right,
-    //       and +y is up
     real32 x;
     real32 y;
 
-    // NOTE: the size starts from the bottom left of the button, width goes to the right, and height
-    //       goes up
-    real32 width;
-    real32 height;
+    UI_Text_Button_Style style;
 
     char *text;
     char *font;

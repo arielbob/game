@@ -1,3 +1,4 @@
+#include "font.h"
 #include "editor.h"
 #include "game.h"
 
@@ -7,8 +8,8 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
     real32 box_x = 5.0f;
     real32 box_y = 50.0f;
 
-    real32 box_padding_x = 5.0f;
-    real32 box_padding_y = 5.0f;
+    real32 box_padding_x = 10.0f;
+    real32 box_padding_y = 10.0f;
 
     UI_Box_Style box_style = { 350.0f, 265.0f, make_vec4(0.1f, 0.1f, 0.1f, 0.9f) };
     do_box(ui_manager, controller_state, box_x, box_y, box_style, "entity_properties_box");
@@ -30,96 +31,106 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
     };
 
     real32 offset_x = box_x + box_padding_x;
-    real32 offset_y = box_y + box_padding_y;
   
     real32 column_offset = 200.0f;
     real32 mini_column_offset = 20.0f;
 
-    real32 font_height = 18.0f;
-    real32 row_offset = font_height + 5.0f;
-
+    char *title_font_name = "courier24n";
     char *font_name = "courier18";
     char *font_name_bold = "courier18b";
 
+    Font title_font = get_font(game_state, title_font_name);
+    Font font = get_font(game_state, font_name);
+    Font font_bold = get_font(game_state, font_name_bold);
+
+    real32 offset_y = box_y + box_padding_y + font.scale_for_pixel_height*font.ascent;
+
+    real32 font_height = font.height_pixels;
+    real32 row_offset = font_height + 5.0f;
+
+    char *title = "Entity Properties";
+    real32 center_title_x_offset = box_style.width / 2.0f - get_width(title_font, title) / 2.0f;
+
     char *buf;
     int32 buffer_size = 16;
-    do_text(ui_manager, offset_x, offset_y + font_height, "Entity Properties", font_name_bold, text_style, "entity_name_title");
-    offset_y += font_height * 2;
-
-    do_text(ui_manager, offset_x, offset_y + font_height, "Mesh Name", font_name_bold, text_style, "entity_name_title");
-    do_text(ui_manager, offset_x + column_offset, offset_y + font_height, mesh_name, font_name, text_style, "entity_name");
+    do_text(ui_manager, offset_x, offset_y,
+            title, title_font_name, text_style, "entity_name_title");
     offset_y += row_offset;
 
-    do_text(ui_manager, offset_x, offset_y + font_height, "Position", font_name_bold, text_style, "position_title");
+    do_text(ui_manager, offset_x, offset_y, "Mesh Name", font_name_bold, text_style, "entity_name_title");
+    do_text(ui_manager, offset_x + column_offset, offset_y, mesh_name, font_name, text_style, "entity_name");
+    offset_y += row_offset;
+
+    do_text(ui_manager, offset_x, offset_y, "Position", font_name_bold, text_style, "position_title");
     buf = string_format(allocator, buffer_size, "%f", transform.position.x);
-    do_text(ui_manager, offset_x + column_offset, offset_y + font_height,
+    do_text(ui_manager, offset_x + column_offset, offset_y,
             "x", font_name_bold, text_style, "position.x");
-    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y + font_height,
+    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y,
             buf, font_name, text_style, "position.x");
     offset_y += font_height;
 
     buf = string_format(allocator, buffer_size, "%f", transform.position.y);
-    do_text(ui_manager, offset_x + column_offset, offset_y + font_height,
+    do_text(ui_manager, offset_x + column_offset, offset_y,
             "y", font_name_bold, text_style, "position.x");
-    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y + font_height,
+    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y,
             buf, font_name, text_style, "position.y");
     offset_y += font_height;
 
     buf = string_format(allocator, buffer_size, "%f", transform.position.z);
-    do_text(ui_manager, offset_x + column_offset, offset_y + font_height,
+    do_text(ui_manager, offset_x + column_offset, offset_y,
             "z", font_name_bold, text_style, "position.x");
-    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y + font_height,
+    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y,
             buf, font_name, text_style, "position.z");
     offset_y += row_offset;
 
-    do_text(ui_manager, offset_x, offset_y + font_height, "Rotation", font_name_bold, text_style, "rotation_title");
+    do_text(ui_manager, offset_x, offset_y, "Rotation", font_name_bold, text_style, "rotation_title");
     buf = string_format(allocator, buffer_size, "%f", transform.rotation.w);
-    do_text(ui_manager, offset_x + column_offset, offset_y + font_height,
+    do_text(ui_manager, offset_x + column_offset, offset_y,
             "w", font_name_bold, text_style, "position.x");
-    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y + font_height,
+    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y,
             buf, font_name, text_style, "rotation.w");
     offset_y += font_height;
 
     buf = string_format(allocator, buffer_size, "%f", transform.rotation.v.x);
-    do_text(ui_manager, offset_x + column_offset, offset_y + font_height,
+    do_text(ui_manager, offset_x + column_offset, offset_y,
             "x", font_name_bold, text_style, "position.x");
-    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y + font_height,
+    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y,
             buf, font_name, text_style, "rotation.v.x");
     offset_y += font_height;
 
     buf = string_format(allocator, buffer_size, "%f", transform.rotation.v.y);
-    do_text(ui_manager, offset_x + column_offset, offset_y + font_height,
+    do_text(ui_manager, offset_x + column_offset, offset_y,
             "y", font_name_bold, text_style, "position.x");
-    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y + font_height,
+    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y,
             buf, font_name, text_style, "rotation.v.y");
     offset_y += font_height;
 
     buf = string_format(allocator, buffer_size, "%f", transform.rotation.v.z);
-    do_text(ui_manager, offset_x + column_offset, offset_y + font_height,
+    do_text(ui_manager, offset_x + column_offset, offset_y,
             "z", font_name_bold, text_style, "rotation.x");
-    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y + font_height,
+    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y,
             buf, font_name, text_style, "rotation.v.z");
     offset_y += row_offset;
 
-    do_text(ui_manager, offset_x, offset_y + font_height, "Scale", font_name_bold, text_style, "scale_title");
+    do_text(ui_manager, offset_x, offset_y, "Scale", font_name_bold, text_style, "scale_title");
     buf = string_format(allocator, buffer_size, "%f", transform.scale.x);
-    do_text(ui_manager, offset_x + column_offset, offset_y + font_height,
+    do_text(ui_manager, offset_x + column_offset, offset_y,
             "x", font_name_bold, text_style, "scale.x");
-    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y + font_height,
+    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y,
             buf, font_name, text_style, "scale.x");
     offset_y += font_height;
 
     buf = string_format(allocator, buffer_size, "%f", transform.scale.y);
-    do_text(ui_manager, offset_x + column_offset, offset_y + font_height,
+    do_text(ui_manager, offset_x + column_offset, offset_y,
             "y", font_name_bold, text_style, "scale.y");
-    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y + font_height,
+    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y,
             buf, font_name, text_style, "scale.y");
     offset_y += font_height;
 
     buf = string_format(allocator, buffer_size, "%f", transform.scale.z);
-    do_text(ui_manager, offset_x + column_offset, offset_y + font_height,
+    do_text(ui_manager, offset_x + column_offset, offset_y,
             "z", font_name_bold, text_style, "scale.z");
-    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y + font_height,
+    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y,
             buf, font_name, text_style, "scale.z");
     offset_y += row_offset;
 

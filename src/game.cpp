@@ -162,6 +162,13 @@ void add_font(Game_State *game_state, Font font) {
     hash_table_add(&game_state->font_table, make_string(font.name), font);
 }
 
+Font get_font(Game_State *game_state, char *font_name) {
+    Font font;
+    bool32 font_exists = hash_table_find(game_state->font_table, make_string(font_name), &font);
+    assert(font_exists);
+    return font;
+}
+
 void init_camera(Camera *camera, Display_Output *display_output) {
     camera->position = make_vec3(0.0f, 3.0f, -5.0f);
     camera->pitch = 10.0f;
@@ -222,7 +229,7 @@ void init_game(Memory *memory, Game_State *game_state,
     add_font(game_state, font);
     font = load_font(memory, game_state, "c:/windows/fonts/times.ttf", "times24", 24.0f, 512, 512);
     add_font(game_state, font);
-    font = load_font(memory, game_state, "c:/windows/fonts/cour.ttf", "courier24", 24.0f, 512, 512);
+    font = load_font(memory, game_state, "c:/windows/fonts/courbd.ttf", "courier24n", 24.0f, 512, 512);
     add_font(game_state, font);
     font = load_font(memory, game_state, "c:/windows/fonts/cour.ttf", "courier18", 18.0f, 512, 512);
     add_font(game_state, font);
@@ -588,8 +595,13 @@ void update(Memory *memory, Game_State *game_state,
         toggle_transform_mode_text = "use global transform";
     }
 
+    UI_Text_Button_Style style = { 250.0f, 60.0f,
+                                   rgb_to_vec4(33, 62, 69),
+                                   rgb_to_vec4(47, 84, 102),
+                                   rgb_to_vec4(19, 37, 46),
+                                   make_vec4(1.0f, 1.0f, 1.0f, 1.0f) };
     bool32 toggle_global_clicked = do_text_button(ui_manager, controller_state,
-                                                  765.0f, 360.0f, 200.0f, 30.0f,
+                                                  765.0f, 360.0f, style,
                                                   toggle_transform_mode_text, "times24", "toggle_transform");
     if (toggle_global_clicked) {
         if (editor_state->transform_mode == TRANSFORM_GLOBAL) {

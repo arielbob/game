@@ -3,6 +3,7 @@
 
 #include "platform.h"
 #include "hash_table.h"
+#include "font.h"
 #include "ui.h"
 #include "mesh.h"
 #include "editor.h"
@@ -121,23 +122,6 @@ struct Render_State {
     Mat4 cpv_matrix;
 };
 
-struct Font {
-    String_Buffer name;
-    File_Data file_data;
-    stbtt_fontinfo font_info;
-    stbtt_bakedchar *cdata;
-    real32 height_pixels;
-    real32 scale_for_pixel_height;
-    int32 ascent;
-    int32 descent;
-    int32 line_gap;
-    int32 texture_width;
-    int32 texture_height;
-    int32 first_char;
-    int32 num_chars;
-    bool32 is_baked;
-};
-
 struct Material {
     String_Buffer name;
     String_Buffer texture_name;
@@ -203,5 +187,6 @@ struct Game_State {
 bool32 was_clicked(Controller_Button_State button_state);
 int32 get_mesh_index(Game_State *game_state, char *mesh_name_to_find);
 Entity *get_selected_entity(Game_State *game_state);
+Font get_font(Game_State *game_state, char *font_name);
 
 #endif

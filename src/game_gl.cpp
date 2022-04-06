@@ -38,6 +38,7 @@
 // TODO (done): add struct for storing material information
 // TODO (done): be able to get font metrics from game code (will have to init fonts in game.cpp, with game_gl.cpp
 //              just holding the texture_ids for that font)
+// TODO (done): nicer button rendering (center the text)
 
 // TODO: material editing in editor
 //       be able to view material library, texture library, be able to change active material, change the texture
@@ -99,7 +100,6 @@
 //       less complex and most likely faster. the downside is that if the amounts of entity types that exist at
 //       a given time differ by a large amount, you'll end up with a lot of unused memory.
 // TODO: interface for loading meshes with file explorer
-// TODO: nicer button rendering (center the text)
 // TODO: undoing
 
 // TODO: create an entity list
@@ -1120,32 +1120,6 @@ void draw_sound_buffer(GL_State *gl_state,
     draw_sound_cursor(gl_state, display_output, win32_sound_output, write_cursor_position, make_vec3(1.0f, 0.0f, 0.0f));
 }
 
-Font get_font(Game_State *game_state, char *font_name) {
-    Font font;
-    bool32 font_exists = hash_table_find(game_state->font_table, make_string(font_name), &font);
-    assert(font_exists);
-    return font;
-}
-
-real32 get_width(Font font, char *text) {
-    real32 width = 0;
-
-    while (*text) {
-        int32 advance, left_side_bearing;
-        stbtt_GetCodepointHMetrics(&font.font_info, *text, &advance, &left_side_bearing);
-        width += (advance) * font.scale_for_pixel_height;
-        
-        if (*(text + 1)) {
-            width += font.scale_for_pixel_height * stbtt_GetCodepointKernAdvance(&font.font_info,
-                                                                                 *text, *(text + 1));
-        }
-
-        text++;
-    }
-    
-    return width;
-}
-
 void gl_draw_ui_text(GL_State *gl_state, Game_State *game_state,
                      Display_Output display_output, UI_Manager *ui_manager,
                      UI_Text ui_text) {
@@ -1167,26 +1141,33 @@ void gl_draw_ui_text(GL_State *gl_state, Game_State *game_state,
 void gl_draw_ui_text_button(GL_State *gl_state, Game_State *game_state,
                             Display_Output display_output,
                             UI_Manager *ui_manager, UI_Text_Button ui_text_button) {
-    Vec3 color = make_vec3(1.0f, 1.0f, 1.0f);
+    Vec4 color;
 
     Font font = get_font(game_state, ui_text_button.font);
 
+    UI_Text_Button_Style style = ui_text_button.style;
+
     if (ui_id_equals(ui_manager->hot, ui_text_button.id)) {
-        color = make_vec3(0.0f, 1.0f, 0.0f);
+        color = style.hot_color;
         if (ui_id_equals(ui_manager->active, ui_text_button.id)) {
-            color = make_vec3(0.0f, 0.0f, 1.0f);
+            color = style.active_color;
         }
     } else {
-        color = make_vec3(1.0f, 0.0f, 0.0f);
+        color = style.normal_color;
     }
 
     gl_draw_quad(gl_state, display_output, ui_text_button.x, ui_text_button.y,
-                 ui_text_button.width, ui_text_button.height, color);
+                 style.width, style.height, color);
 
-    // TODO: center this.. will have to use font metrics
+    real32 adjusted_text_height = font.height_pixels - font.scale_for_pixel_height * (font.ascent + font.descent);
+
+    // center text
+    real32 text_width = get_width(font, ui_text_button.text);
+    real32 x_offset = style.width / 2.0f - text_width / 2.0f;
+    real32 y_offset = 0.5f * (style.height + adjusted_text_height);
     gl_draw_text(gl_state, display_output, &font,
-                 ui_text_button.x, ui_text_button.y + ui_text_button.height,
-                 ui_text_button.text, make_vec3(1.0f, 1.0f, 1.0f));
+                 ui_text_button.x + x_offset, ui_text_button.y + y_offset,
+                 ui_text_button.text, truncate_v4_to_v3(style.text_color));
 }
 
 void gl_draw_ui_text_box(GL_State *gl_state, Game_State *game_state,
