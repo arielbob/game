@@ -104,6 +104,8 @@
 #define GL_STENCIL_ATTACHMENT             0x8D20
 #define GL_FRAMEBUFFER_COMPLETE           0x8CD5
 #define GL_UNIFORM_BUFFER                 0x8A11
+#define GL_SRGB                           0x8C40
+#define GL_SRGB_ALPHA                     0x8C42
 
 enum Shader_Type {
     VERTEX,

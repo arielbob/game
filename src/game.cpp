@@ -118,7 +118,9 @@ Normal_Entity make_entity(Game_State *game_state,
                           char *material_name,
                           Transform transform) {
     int32 mesh_index = get_mesh_index(game_state, mesh_name);
+    assert(mesh_index >= 0);
     int32 material_index = get_material_index(game_state, material_name);
+    assert(material_index >= 0);
     Normal_Entity entity = { ENTITY_NORMAL, transform,
                              mesh_index, material_index };
     return entity;
@@ -223,6 +225,10 @@ void init_game(Memory *memory, Game_State *game_state,
                               make_string_buffer(mesh_name_allocator, "gizmo_sphere", MESH_NAME_MAX_SIZE));
     add_mesh(game_state, mesh);
 
+    mesh = read_and_load_mesh(memory, (Allocator *) &memory->mesh_arena, "blender/sphere.mesh",
+                              make_string_buffer(mesh_name_allocator, "sphere", MESH_NAME_MAX_SIZE));
+    add_mesh(game_state, mesh);
+
     // init fonts
     Font font;
     font = load_font(memory, game_state, "c:/windows/fonts/times.ttf", "times32", 32.0f, 512, 512);
@@ -285,6 +291,12 @@ void init_game(Memory *memory, Game_State *game_state,
                                                                     MATERIAL_NAME_MAX_SIZE),
                                                  0.0f, make_vec4(0.0f, 0.0f, 1.0f, 1.0f), true);
     add_material(game_state, blue_light_material);
+    Material diffuse_sphere_material = make_material(make_string_buffer(material_string_allocator,
+                                                                        "diffuse_sphere", MATERIAL_NAME_MAX_SIZE),
+                                                     make_string_buffer(material_string_allocator,
+                                                                        MATERIAL_NAME_MAX_SIZE),
+                                                     5.0f, rgb_to_vec4(176, 176, 176), true);
+    add_material(game_state, diffuse_sphere_material);
 
     // add entities
     Transform transform = {};
@@ -310,6 +322,13 @@ void init_game(Memory *memory, Game_State *game_state,
     entity = make_entity(game_state, "gizmo_arrow", "arrow_material", transform);
     add_entity(game_state, entity);
 
+    transform = {};
+    transform.scale = make_vec3(0.5f, 0.5f, 0.5f);
+    transform.position = make_vec3(-1.5f, 1.5f, -1.0f);
+    transform.rotation = make_quaternion();
+    entity = make_entity(game_state, "sphere", "diffuse_sphere", transform);
+    add_entity(game_state, entity);
+
     Vec3 light_color;
     Point_Light_Entity point_light_entity;
 
@@ -317,7 +336,7 @@ void init_game(Memory *memory, Game_State *game_state,
     transform.scale = make_vec3(0.1f, 0.1f, 0.1f);
     transform.position = make_vec3(0.8f, 1.8f, -2.3f);
     transform.rotation = make_quaternion();
-    light_color = make_vec3(1.0f, 1.0f, 1.0f);
+    light_color = make_vec3(0.8f, 0.8f, 0.8f);
     point_light_entity = make_point_light_entity(game_state, "cube", "white_light",
                                                  light_color,
                                                  0.0f, 3.0f,
