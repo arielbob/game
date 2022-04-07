@@ -235,7 +235,7 @@ void init_game(Memory *memory, Game_State *game_state,
     add_font(game_state, font);
     font = load_font(memory, game_state, "c:/windows/fonts/times.ttf", "times24", 24.0f, 512, 512);
     add_font(game_state, font);
-    font = load_font(memory, game_state, "c:/windows/fonts/courbd.ttf", "courier24n", 24.0f, 512, 512);
+    font = load_font(memory, game_state, "c:/windows/fonts/courbd.ttf", "courier24b", 24.0f, 512, 512);
     add_font(game_state, font);
     font = load_font(memory, game_state, "c:/windows/fonts/cour.ttf", "courier18", 18.0f, 512, 512);
     add_font(game_state, font);

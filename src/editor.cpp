@@ -2,6 +2,48 @@
 #include "editor.h"
 #include "game.h"
 
+void draw_row(UI_Manager *ui_manager, Controller_State *controller_state,
+              real32 x, real32 y,
+              real32 row_width, real32 row_height,
+              Vec4 color, bool32 draw_line = true) {
+    UI_Box_Style box_style = { row_width, row_height, color };
+    do_box(ui_manager, controller_state, x, y, box_style, "entity_properties_box");
+
+    Vec4 line_color = make_vec4(0.3f, 0.3f, 0.3f, 1.0f);
+    
+    if (draw_line) {
+        UI_Line_Style line_style = { line_color, 1.0f };
+        do_line(ui_manager, { x, y + row_height }, { x + row_width, y + row_height },
+                line_style,
+                "mesh_properties_line");
+    }
+}
+
+void draw_centered_text(Game_State *game_state, UI_Manager *ui,
+                        real32 box_x, real32 box_y,
+                        real32 row_width, real32 row_height,
+                        char *text, char *font_name, UI_Text_Style text_style) {
+    Font font = get_font(game_state, font_name);
+    real32 adjusted_text_height = font.height_pixels - font.scale_for_pixel_height * (font.ascent + font.descent);
+    real32 x_offset = 0.5f * row_width - 0.5f * get_width(font, text);
+    real32 y_offset = 0.5f * (row_height + adjusted_text_height);
+    do_text(ui, box_x + x_offset, box_y + y_offset,
+            text, font_name, text_style, "entity_properties_text");
+}
+
+void draw_v_centered_text(Game_State *game_state, UI_Manager *ui,
+                          real32 box_x, real32 box_y,
+                          real32 row_width, real32 row_height,
+                          real32 x_offset,
+                          char *text, char *font_name, UI_Text_Style text_style) {
+    Font font = get_font(game_state, font_name);
+    real32 adjusted_text_height = font.height_pixels - font.scale_for_pixel_height * (font.ascent + font.descent);
+    //real32 x_offset = 0.5f * row_width - 0.5f * get_width(font, text);
+    real32 y_offset = 0.5f * (row_height + adjusted_text_height);
+    do_text(ui, box_x + x_offset, box_y + y_offset,
+            text, font_name, text_style, "entity_properties_text");
+}
+
 void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *controller_state, Entity *entity) {
     UI_Manager *ui_manager = &game_state->ui_manager;
 
@@ -11,131 +53,162 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
     real32 box_padding_x = 10.0f;
     real32 box_padding_y = 10.0f;
 
-    UI_Box_Style box_style = { 350.0f, 265.0f, make_vec4(0.1f, 0.1f, 0.1f, 0.9f) };
-    do_box(ui_manager, controller_state, box_x, box_y, box_style, "entity_properties_box");
-
     Allocator *allocator = (Allocator *) &memory->frame_arena;
 
     char *mesh_name = to_char_array(allocator, game_state->meshes[entity->mesh_index].name);
     Transform transform = entity->transform;
-
+    
     UI_Text_Style text_style = {
         make_vec3(1.0f, 1.0f, 1.0f),
         true,
         make_vec3(0.0f, 0.0f, 0.0f)
     };
-
-    UI_Line_Style line_style = {
-        make_vec4(1.0f, 1.0f, 1.0f, 1.0f),
-        1.0f,
-    };
-
-    real32 offset_x = box_x + box_padding_x;
-  
-    real32 column_offset = 200.0f;
-    real32 mini_column_offset = 20.0f;
-
-    char *title_font_name = "courier24n";
+    char *title_font_name = "courier18b";
     char *font_name = "courier18";
     char *font_name_bold = "courier18b";
+    
+    real32 row_height = 25.0f;
+    real32 small_row_height = 20.0f;
+    real32 row_width = 350.0f;
+    
+    Vec4 row_color = make_vec4(0.1f, 0.1f, 0.1f, 0.9f);
 
-    Font title_font = get_font(game_state, title_font_name);
-    Font font = get_font(game_state, font_name);
-    Font font_bold = get_font(game_state, font_name_bold);
+    real32 x = box_x;
+    real32 y = box_y;
 
-    real32 offset_y = box_y + box_padding_y + font.scale_for_pixel_height*font.ascent;
-
-    real32 font_height = font.height_pixels;
-    real32 row_offset = font_height + 5.0f;
-
-    char *title = "Entity Properties";
-    real32 center_title_x_offset = box_style.width / 2.0f - get_width(title_font, title) / 2.0f;
+    real32 title_row_height = 30.0f;
+    draw_row(ui_manager, controller_state, x, y, row_width, title_row_height, row_color);
+    draw_centered_text(game_state, ui_manager, x, y, row_width, title_row_height,
+                       "Entity Properties", title_font_name, text_style);
+    y += title_row_height;
+    
+    real32 padding_left = 5.0f;
+    real32 right_column_offset = 200.0f;
+    
+    draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color);
+    draw_v_centered_text(game_state, ui_manager, x, y, row_width, row_height, padding_left,
+                         "Mesh Name", font_name_bold, text_style);
+    draw_v_centered_text(game_state, ui_manager, x, y, row_width, row_height, padding_left + right_column_offset,
+                         mesh_name, font_name, text_style);
+    y += row_height;
 
     char *buf;
     int32 buffer_size = 16;
-    do_text(ui_manager, offset_x, offset_y,
-            title, title_font_name, text_style, "entity_name_title");
-    offset_y += row_offset;
 
-    do_text(ui_manager, offset_x, offset_y, "Mesh Name", font_name_bold, text_style, "entity_name_title");
-    do_text(ui_manager, offset_x + column_offset, offset_y, mesh_name, font_name, text_style, "entity_name");
-    offset_y += row_offset;
-
-    do_text(ui_manager, offset_x, offset_y, "Position", font_name_bold, text_style, "position_title");
+    // position
+    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, false);
+    draw_v_centered_text(game_state, ui_manager, x, y, row_width, small_row_height, padding_left,
+                         "Position", font_name_bold, text_style);
+    // x
+    draw_v_centered_text(game_state, ui_manager, x, y, row_width, small_row_height, padding_left + right_column_offset,
+                         "x", font_name_bold, text_style);
+    x += 20.0f;
     buf = string_format(allocator, buffer_size, "%f", transform.position.x);
-    do_text(ui_manager, offset_x + column_offset, offset_y,
-            "x", font_name_bold, text_style, "position.x");
-    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y,
-            buf, font_name, text_style, "position.x");
-    offset_y += font_height;
-
+    draw_v_centered_text(game_state, ui_manager, x, y, row_width, small_row_height, padding_left + right_column_offset,
+                         buf, font_name, text_style);
+    x = box_x;
+    y += small_row_height;
+    // y
+    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, false);
+    draw_v_centered_text(game_state, ui_manager, x, y, row_width, small_row_height, padding_left + right_column_offset,
+                         "y", font_name_bold, text_style);
+    x += 20.0f;
     buf = string_format(allocator, buffer_size, "%f", transform.position.y);
-    do_text(ui_manager, offset_x + column_offset, offset_y,
-            "y", font_name_bold, text_style, "position.x");
-    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y,
-            buf, font_name, text_style, "position.y");
-    offset_y += font_height;
-
+    draw_v_centered_text(game_state, ui_manager, x, y, row_width, small_row_height, padding_left + right_column_offset,
+                         buf, font_name, text_style);
+    x = box_x;
+    y += small_row_height;
+    // z
+    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color);
+    draw_v_centered_text(game_state, ui_manager, x, y, row_width, small_row_height, padding_left + right_column_offset,
+                         "z", font_name_bold, text_style);
+    x += 20.0f;
     buf = string_format(allocator, buffer_size, "%f", transform.position.z);
-    do_text(ui_manager, offset_x + column_offset, offset_y,
-            "z", font_name_bold, text_style, "position.x");
-    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y,
-            buf, font_name, text_style, "position.z");
-    offset_y += row_offset;
+    draw_v_centered_text(game_state, ui_manager, x, y, row_width, small_row_height, padding_left + right_column_offset,
+                         buf, font_name, text_style);
+    x = box_x;
+    y += small_row_height;
 
-    do_text(ui_manager, offset_x, offset_y, "Rotation", font_name_bold, text_style, "rotation_title");
+    //rotation
+    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, false);
+    draw_v_centered_text(game_state, ui_manager, x, y, row_width, small_row_height, padding_left,
+                         "Rotation", font_name_bold, text_style);
+    // w
+    draw_v_centered_text(game_state, ui_manager, x, y, row_width, small_row_height, padding_left + right_column_offset,
+                         "w", font_name_bold, text_style);
+    x += 20.0f;
     buf = string_format(allocator, buffer_size, "%f", transform.rotation.w);
-    do_text(ui_manager, offset_x + column_offset, offset_y,
-            "w", font_name_bold, text_style, "position.x");
-    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y,
-            buf, font_name, text_style, "rotation.w");
-    offset_y += font_height;
-
+    draw_v_centered_text(game_state, ui_manager, x, y, row_width, small_row_height, padding_left + right_column_offset,
+                         buf, font_name, text_style);
+    x = box_x;
+    y += small_row_height;
+    // x
+    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, false);
+    draw_v_centered_text(game_state, ui_manager, x, y, row_width, small_row_height, padding_left + right_column_offset,
+                         "x", font_name_bold, text_style);
+    x += 20.0f;
     buf = string_format(allocator, buffer_size, "%f", transform.rotation.v.x);
-    do_text(ui_manager, offset_x + column_offset, offset_y,
-            "x", font_name_bold, text_style, "position.x");
-    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y,
-            buf, font_name, text_style, "rotation.v.x");
-    offset_y += font_height;
-
+    draw_v_centered_text(game_state, ui_manager, x, y, row_width, small_row_height, padding_left + right_column_offset,
+                         buf, font_name, text_style);
+    x = box_x;
+    y += small_row_height;
+    // y
+    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, false);
+    draw_v_centered_text(game_state, ui_manager, x, y, row_width, small_row_height, padding_left + right_column_offset,
+                         "y", font_name_bold, text_style);
+    x += 20.0f;
     buf = string_format(allocator, buffer_size, "%f", transform.rotation.v.y);
-    do_text(ui_manager, offset_x + column_offset, offset_y,
-            "y", font_name_bold, text_style, "position.x");
-    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y,
-            buf, font_name, text_style, "rotation.v.y");
-    offset_y += font_height;
-
+    draw_v_centered_text(game_state, ui_manager, x, y, row_width, small_row_height, padding_left + right_column_offset,
+                         buf, font_name, text_style);
+    x = box_x;
+    y += small_row_height;
+    // z
+    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color);
+    draw_v_centered_text(game_state, ui_manager, x, y, row_width, small_row_height, padding_left + right_column_offset,
+                         "z", font_name_bold, text_style);
+    x += 20.0f;
     buf = string_format(allocator, buffer_size, "%f", transform.rotation.v.z);
-    do_text(ui_manager, offset_x + column_offset, offset_y,
-            "z", font_name_bold, text_style, "rotation.x");
-    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y,
-            buf, font_name, text_style, "rotation.v.z");
-    offset_y += row_offset;
+    draw_v_centered_text(game_state, ui_manager, x, y, row_width, small_row_height, padding_left + right_column_offset,
+                         buf, font_name, text_style);
+    x = box_x;
+    y += small_row_height;
 
-    do_text(ui_manager, offset_x, offset_y, "Scale", font_name_bold, text_style, "scale_title");
+    // scale
+    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, false);
+    draw_v_centered_text(game_state, ui_manager, x, y, row_width, small_row_height, padding_left,
+                         "Scale", font_name_bold, text_style);
+    // x
+    draw_v_centered_text(game_state, ui_manager, x, y, row_width, small_row_height, padding_left + right_column_offset,
+                         "x", font_name_bold, text_style);
+    x += 20.0f;
     buf = string_format(allocator, buffer_size, "%f", transform.scale.x);
-    do_text(ui_manager, offset_x + column_offset, offset_y,
-            "x", font_name_bold, text_style, "scale.x");
-    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y,
-            buf, font_name, text_style, "scale.x");
-    offset_y += font_height;
-
+    draw_v_centered_text(game_state, ui_manager, x, y, row_width, small_row_height, padding_left + right_column_offset,
+                         buf, font_name, text_style);
+    x = box_x;
+    y += small_row_height;
+    // y
+    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, false);
+    draw_v_centered_text(game_state, ui_manager, x, y, row_width, small_row_height, padding_left + right_column_offset,
+                         "y", font_name_bold, text_style);
+    x += 20.0f;
     buf = string_format(allocator, buffer_size, "%f", transform.scale.y);
-    do_text(ui_manager, offset_x + column_offset, offset_y,
-            "y", font_name_bold, text_style, "scale.y");
-    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y,
-            buf, font_name, text_style, "scale.y");
-    offset_y += font_height;
-
+    draw_v_centered_text(game_state, ui_manager, x, y, row_width, small_row_height, padding_left + right_column_offset,
+                         buf, font_name, text_style);
+    x = box_x;
+    y += small_row_height;
+    // z
+    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color);
+    draw_v_centered_text(game_state, ui_manager, x, y, row_width, small_row_height, padding_left + right_column_offset,
+                         "z", font_name_bold, text_style);
+    x += 20.0f;
     buf = string_format(allocator, buffer_size, "%f", transform.scale.z);
-    do_text(ui_manager, offset_x + column_offset, offset_y,
-            "z", font_name_bold, text_style, "scale.z");
-    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y,
-            buf, font_name, text_style, "scale.z");
-    offset_y += row_offset;
+    draw_v_centered_text(game_state, ui_manager, x, y, row_width, small_row_height, padding_left + right_column_offset,
+                         buf, font_name, text_style);
+    x = box_x;
+    y += small_row_height;
 
-
-    // material info
+    // TODO: material info
+    
 /*
     buf = string_format(allocator, buffer_size, "%f", transform.scale.z);
     do_text(ui_manager, offset_x + column_offset, offset_y + font_height,

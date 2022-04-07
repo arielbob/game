@@ -193,7 +193,6 @@ void do_text(UI_Manager *manager,
     ui_add_text(manager, ui_text);
 }
 
-
 bool32 do_text_button(UI_Manager *manager, Controller_State *controller_state,
                       real32 x_px, real32 y_px,
                       UI_Text_Button_Style style,
