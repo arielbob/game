@@ -515,7 +515,7 @@ void gl_draw_text(GL_State *gl_state, Render_State *render_state,
     glUseProgram(text_shader_id);
 
     GL_Mesh glyph_mesh;
-    uint32 mesh_exists = hash_table_find(gl_state->debug_mesh_table, make_string("glyph_quad"), &glyph_mesh);
+    uint32 mesh_exists = hash_table_find(gl_state->mesh_table, make_string("glyph_quad"), &glyph_mesh);
     assert(mesh_exists);
     glBindVertexArray(glyph_mesh.vao);
 
@@ -621,7 +621,6 @@ void generate_circle_vertices(real32 *buffer, int32 num_vertices, real32 radius)
 
 void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) {
     gl_state->shader_ids_table = make_hash_table<uint32>((Allocator *) &memory->hash_table_stack);
-    gl_state->debug_mesh_table = make_hash_table<GL_Mesh>((Allocator *) &memory->hash_table_stack);
     gl_state->mesh_table = make_hash_table<GL_Mesh>((Allocator *) &memory->hash_table_stack);
     gl_state->texture_table = make_hash_table<GL_Texture>((Allocator *) &memory->hash_table_stack);
     gl_state->font_texture_table = make_hash_table<uint32>((Allocator *) &memory->hash_table_stack);
@@ -647,7 +646,7 @@ void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) 
     glEnableVertexAttribArray(0);
     
     glBindVertexArray(0);
-    hash_table_add(&gl_state->debug_mesh_table, make_string("triangle"), make_gl_mesh(vao, vbo, 1));
+    hash_table_add(&gl_state->mesh_table, make_string("triangle"), make_gl_mesh(vao, vbo, 1));
 
     // NOTE: quad mesh
     // we store them separately like this because we use glBufferSubData to send the vertex positions
@@ -693,7 +692,7 @@ void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) 
     glEnableVertexAttribArray(1);
     
     glBindVertexArray(0);
-    hash_table_add(&gl_state->debug_mesh_table, make_string("quad"), make_gl_mesh(vao, vbo, 2));
+    hash_table_add(&gl_state->mesh_table, make_string("quad"), make_gl_mesh(vao, vbo, 2));
 
     // NOTE: framebuffer mesh
     real32 framebuffer_mesh_data[] = {
@@ -724,7 +723,7 @@ void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) 
     glEnableVertexAttribArray(1);
     
     glBindVertexArray(0);
-    hash_table_add(&gl_state->debug_mesh_table, make_string("framebuffer_quad"), make_gl_mesh(vao, vbo, 2));
+    hash_table_add(&gl_state->mesh_table, make_string("framebuffer_quad"), make_gl_mesh(vao, vbo, 2));
 
     // NOTE: glyph quad
     glGenVertexArrays(1, &vao);
@@ -748,7 +747,7 @@ void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) 
     glEnableVertexAttribArray(1);
     
     glBindVertexArray(0);
-    hash_table_add(&gl_state->debug_mesh_table, make_string("glyph_quad"), make_gl_mesh(vao, vbo, 2));
+    hash_table_add(&gl_state->mesh_table, make_string("glyph_quad"), make_gl_mesh(vao, vbo, 2));
 
     // NOTE: line mesh
     real32 line_vertices[] = {
@@ -768,7 +767,7 @@ void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) 
     glEnableVertexAttribArray(0);
     
     glBindVertexArray(0);
-    hash_table_add(&gl_state->debug_mesh_table, make_string("line"), make_gl_mesh(vao, vbo, 0));
+    hash_table_add(&gl_state->mesh_table, make_string("line"), make_gl_mesh(vao, vbo, 0));
 
     real32 circle_vertices[32*3];
     generate_circle_vertices(circle_vertices, 32, 1.0f);
@@ -784,7 +783,7 @@ void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) 
     glEnableVertexAttribArray(0);
     
     glBindVertexArray(0);
-    hash_table_add(&gl_state->debug_mesh_table, make_string("circle"), make_gl_mesh(vao, vbo, 0));
+    hash_table_add(&gl_state->mesh_table, make_string("circle"), make_gl_mesh(vao, vbo, 0));
 
     // NOTE: shaders
     gl_load_shader(gl_state, memory,
@@ -854,7 +853,7 @@ void gl_draw_triangle_p(GL_State *gl_state,
     glUseProgram(basic_shader_id);
 
     GL_Mesh triangle_mesh;
-    bool32 mesh_exists = hash_table_find(gl_state->debug_mesh_table, make_string("triangle"), &triangle_mesh);
+    bool32 mesh_exists = hash_table_find(gl_state->mesh_table, make_string("triangle"), &triangle_mesh);
     assert(mesh_exists);
     glBindVertexArray(triangle_mesh.vao);
 
@@ -898,7 +897,7 @@ void gl_draw_line_p(GL_State *gl_state,
     glUseProgram(basic_shader_id);
 
     GL_Mesh line_mesh;
-    uint32 mesh_exists = hash_table_find(gl_state->debug_mesh_table, make_string("line"), &line_mesh);
+    uint32 mesh_exists = hash_table_find(gl_state->mesh_table, make_string("line"), &line_mesh);
     assert(mesh_exists);
     glBindVertexArray(line_mesh.vao);
 
@@ -930,7 +929,7 @@ void gl_draw_line(GL_State *gl_state,
     glUseProgram(basic_shader_id);
 
     GL_Mesh line_mesh;
-    uint32 vao_exists = hash_table_find(gl_state->debug_mesh_table, make_string("line"), &line_mesh);
+    uint32 vao_exists = hash_table_find(gl_state->mesh_table, make_string("line"), &line_mesh);
     assert(vao_exists);
     glBindVertexArray(line_mesh.vao);
 
@@ -971,7 +970,7 @@ void gl_draw_quad_p(GL_State *gl_state,
     glUseProgram(basic_shader_id);
 
     GL_Mesh square_mesh;
-    uint32 mesh_exists = hash_table_find(gl_state->debug_mesh_table, make_string("square"), &square_mesh);
+    uint32 mesh_exists = hash_table_find(gl_state->mesh_table, make_string("square"), &square_mesh);
     assert(mesh_exists);
     glBindVertexArray(square_mesh.vao);
 
@@ -993,22 +992,39 @@ void gl_draw_quad_p(GL_State *gl_state,
     glBindVertexArray(0);
 }
 
-// NOTE: pixel based position, with (0,0) being at bottom left and (width, height) being at top left
+void gl_draw_quad(GL_State *gl_state,
+                  Render_State *render_state,
+                  real32 x_pos_pixels, real32 y_pos_pixels,
+                  real32 width_pixels, real32 height_pixels,
+                  char *texture_name) {
+    uint32 basic_shader_id = gl_use_shader(gl_state, "basic2");
+    GL_Mesh quad_mesh = gl_use_mesh(gl_state, "quad");
+    gl_use_texture(gl_state, texture_name);
+
+    real32 quad_vertices[8] = {
+        x_pos_pixels, y_pos_pixels + height_pixels,               // bottom left
+        x_pos_pixels, y_pos_pixels,                               // top left
+        x_pos_pixels + width_pixels, y_pos_pixels,                // top right
+        x_pos_pixels + width_pixels, y_pos_pixels + height_pixels // bottom right
+    };
+    glBindBuffer(GL_ARRAY_BUFFER, quad_mesh.vbo);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(quad_vertices), quad_vertices);
+    gl_set_uniform_mat4(basic_shader_id, "ortho_matrix", &render_state->ortho_clip_matrix);
+    gl_set_uniform_int(basic_shader_id, "use_color", false);
+
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    glUseProgram(0);
+    glBindVertexArray(0);
+}
+
 void gl_draw_quad(GL_State *gl_state,
                   Render_State *render_state,
                   real32 x_pos_pixels, real32 y_pos_pixels,
                   real32 width_pixels, real32 height_pixels,
                   Vec4 color) {
-    uint32 basic_shader_id;
-    uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("basic2"), &basic_shader_id);
-    assert(shader_exists);
-    glUseProgram(basic_shader_id);
-
-    GL_Mesh quad_mesh;
-    uint32 mesh_exists = hash_table_find(gl_state->debug_mesh_table, make_string("quad"), &quad_mesh);
-    assert(mesh_exists);
-    glBindVertexArray(quad_mesh.vao);
-
+    uint32 basic_shader_id = gl_use_shader(gl_state, "basic2");
+    GL_Mesh quad_mesh = gl_use_mesh(gl_state, "quad");
+    
     real32 quad_vertices[8] = {
         x_pos_pixels, y_pos_pixels + height_pixels,               // bottom left
         x_pos_pixels, y_pos_pixels,                               // top left
@@ -1021,21 +1037,6 @@ void gl_draw_quad(GL_State *gl_state,
     gl_set_uniform_mat4(basic_shader_id, "ortho_matrix", &render_state->ortho_clip_matrix);
     gl_set_uniform_vec4(basic_shader_id, "color", &color);
     gl_set_uniform_int(basic_shader_id, "use_color", true);
-
-#if 0
-    Vec2 clip_space_position = make_vec2((x_pos_pixels / display_output.width) * 2.0f - 1.0f,
-                                         (y_pos_pixels / display_output.height) * -2.0f + 1.0f);
-    
-    real32 clip_space_width  = width_pixels / (display_output.width / 2.0f);
-    real32 clip_space_height = height_pixels / (display_output.height / 2.0f);
-
-    Mat4 model_matrix = (make_translate_matrix(make_vec3(clip_space_position, 0.0f)) *
-                         make_scale_matrix(y_axis, clip_space_height) *
-                         make_scale_matrix(x_axis, clip_space_width));
-    gl_set_uniform_mat4(basic_shader_id, "model", &model_matrix);
-
-    gl_set_uniform_vec4(basic_shader_id, "color", &color);
-#endif
 
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     glUseProgram(0);
@@ -1177,15 +1178,11 @@ void gl_draw_ui_text_button(GL_State *gl_state, Game_State *game_state,
                  ui_text_button.text, truncate_v4_to_v3(style.text_color));
 }
 
-/*
-void gl_draw_ui_text_button(GL_State *gl_state, Game_State *game_state,
-                            Display_Output display_output,
-                            UI_Manager *ui_manager, UI_Text_Button button) {
+void gl_draw_ui_image_button(GL_State *gl_state, Render_State *render_state,
+                             UI_Manager *ui_manager,
+                             UI_Image_Button button) {
+    UI_Image_Button_Style style = button.style;
     Vec4 color;
-
-    Font font = get_font(game_state, button.font);
-
-    Image_Button_Style style = button.style;
 
     if (ui_id_equals(ui_manager->hot, button.id)) {
         color = style.hot_color;
@@ -1196,22 +1193,11 @@ void gl_draw_ui_text_button(GL_State *gl_state, Game_State *game_state,
         color = style.normal_color;
     }
 
-    gl_draw_quad(gl_state, display_output, button.x, button.y,
+    gl_draw_quad(gl_state, render_state, button.x, button.y,
                  style.width, style.height, color);
-
-    gl_draw_quad
-
-    real32 adjusted_text_height = font.height_pixels - font.scale_for_pixel_height * (font.ascent + font.descent);
-
-    // center text
-    real32 text_width = get_width(font, button.text);
-    real32 x_offset = style.width / 2.0f - text_width / 2.0f;
-    real32 y_offset = 0.5f * (style.height + adjusted_text_height);
-    gl_draw_text(gl_state, display_output, &font,
-                 button.x + x_offset, button.y + y_offset,
-                 button.text, truncate_v4_to_v3(style.text_color));
+    gl_draw_quad(gl_state, render_state, button.x + style.padding_x, button.y + style.padding_y,
+                 style.width - style.padding_x*2, style.height - style.padding_y*2, button.texture_name);
 }
-*/
 
 void gl_draw_ui_text_box(GL_State *gl_state, Game_State *game_state,
                          Display_Output display_output,
@@ -1285,6 +1271,7 @@ void gl_draw_ui(GL_State *gl_state, Game_State *game_state,
                 UI_Manager *ui_manager, Display_Output display_output) {
     UI_Push_Buffer *push_buffer = &ui_manager->push_buffer;
     uint8 *address = (uint8 *) push_buffer->base;
+    Render_State *render_state = &game_state->render_state;
 
     while (address < ((uint8 *) push_buffer->base + push_buffer->used)) {
         UI_Element *element = (UI_Element *) address;
@@ -1299,6 +1286,11 @@ void gl_draw_ui(GL_State *gl_state, Game_State *game_state,
                 gl_draw_ui_text_button(gl_state, game_state, display_output, ui_manager, *ui_text_button);
                 address += sizeof(UI_Text_Button);
             } break;
+            case UI_IMAGE_BUTTON: {
+                UI_Image_Button *ui_image_button = (UI_Image_Button *) element;
+                gl_draw_ui_image_button(gl_state, render_state, ui_manager, *ui_image_button);
+                address += sizeof(UI_Image_Button);
+            } break;
             case UI_TEXT_BOX: {
                 UI_Text_Box *ui_text_box = (UI_Text_Box *) element;
                 gl_draw_ui_text_box(gl_state, game_state, display_output, ui_manager, *ui_text_box);
@@ -1306,7 +1298,7 @@ void gl_draw_ui(GL_State *gl_state, Game_State *game_state,
             } break;
             case UI_BOX: {
                 UI_Box *ui_box = (UI_Box *) element;
-                gl_draw_ui_box(gl_state, &game_state->render_state, ui_manager, *ui_box);
+                gl_draw_ui_box(gl_state, render_state, ui_manager, *ui_box);
                 address += sizeof(UI_Box);
             } break;
             case UI_LINE: {
@@ -1328,7 +1320,7 @@ void gl_draw_circle(GL_State *gl_state, Render_State *render_state, Transform tr
     glUseProgram(shader_id);
 
     GL_Mesh circle_mesh;
-    uint32 vao_exists = hash_table_find(gl_state->debug_mesh_table, make_string("circle"), &circle_mesh);
+    uint32 vao_exists = hash_table_find(gl_state->mesh_table, make_string("circle"), &circle_mesh);
     assert(vao_exists);
     glBindVertexArray(circle_mesh.vao);
 
@@ -1430,7 +1422,7 @@ void gl_draw_framebuffer(GL_State *gl_state, GL_Framebuffer framebuffer) {
     glBindTexture(GL_TEXTURE_2D, framebuffer.color_buffer_texture);
 
     GL_Mesh gl_mesh;
-    uint32 mesh_exists = hash_table_find(gl_state->debug_mesh_table, make_string("framebuffer_quad"), &gl_mesh);
+    uint32 mesh_exists = hash_table_find(gl_state->mesh_table, make_string("framebuffer_quad"), &gl_mesh);
     assert(mesh_exists);
     glBindVertexArray(gl_mesh.vao);
 

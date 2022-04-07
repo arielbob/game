@@ -137,6 +137,10 @@ void ui_add_text_button(UI_Manager *manager, UI_Text_Button button) {
     _push_element(&manager->push_buffer, UI_Text_Button, button);
 }
 
+void ui_add_image_button(UI_Manager *manager, UI_Image_Button button) {
+    _push_element(&manager->push_buffer, UI_Image_Button, button);
+}
+
 void ui_add_text(UI_Manager *manager, UI_Text text) {
     _push_element(&manager->push_buffer, UI_Text, text);
 }
@@ -254,7 +258,6 @@ bool32 do_text_button(UI_Manager *manager, Controller_State *controller_state,
     return was_clicked;
 }
 
-/*
 bool32 do_image_button(UI_Manager *manager, Controller_State *controller_state,
                        real32 x_px, real32 y_px,
                        UI_Image_Button_Style style,
@@ -295,11 +298,10 @@ bool32 do_image_button(UI_Manager *manager, Controller_State *controller_state,
         }
     }
 
-    ui_add_text_button(manager, button);
+    ui_add_image_button(manager, button);
 
     return was_clicked;
 }
-*/
 
 // TODO: this should return a bool32, since we want to be able to submit fields by pressing the enter key
 void do_text_box(UI_Manager *manager, Controller_State *controller_state,

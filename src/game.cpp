@@ -756,7 +756,7 @@ void update(Memory *memory, Game_State *game_state,
         rgb_to_vec4(47, 84, 102),
         rgb_to_vec4(19, 37, 46)
     };
-    //do_image_button(ui_manager, controller_state, 0, 0, image_button_style, "debug", "debug_image_button");
+    do_image_button(ui_manager, controller_state, 0, 0, image_button_style, "debug", "debug_image_button");
 
     fill_sound_buffer_with_audio(sound_output, game_state->is_playing_music, &game_state->music, num_samples);
 

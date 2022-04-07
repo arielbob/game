@@ -146,8 +146,6 @@ struct GL_Point_Light {
 
 struct GL_State {
     Hash_Table<uint32> shader_ids_table;
-    // TODO: i'm not sure how useful it is for debug meshes and game meshes to be in separate hash tables..
-    Hash_Table<GL_Mesh> debug_mesh_table;
     Hash_Table<GL_Mesh> mesh_table;
     Hash_Table<uint32> font_texture_table;
     Hash_Table<GL_Texture> texture_table;
