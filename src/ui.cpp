@@ -1,6 +1,12 @@
 #include "ui.h"
 #include "string.h"
 
+// TODO: we may want to move the width/height out of the style struct
+UI_Text_Button_Style default_text_button_style = { rgb_to_vec4(33, 62, 69),
+                                                   rgb_to_vec4(47, 84, 102),
+                                                   rgb_to_vec4(19, 37, 46),
+                                                   make_vec4(1.0f, 1.0f, 1.0f, 1.0f) };
+
 // TODO: store UI element state in a hash table, so we can do things like fading transitions.
 //       this requires some thought since we would like to remove elements from the hash table if
 //       the element is no longer being displayed. we want this while retaining the nice
@@ -31,7 +37,7 @@ void clear_push_buffer(UI_Push_Buffer *buffer) {
     buffer->used = 0;
 }
 
-UI_Text_Button make_ui_text_button(real32 x, real32 y,
+UI_Text_Button make_ui_text_button(real32 x, real32 y, real32 width, real32 height,
                                    UI_Text_Button_Style style,
                                    char *text, char *font, char *id, int32 index = 0) {
     UI_Text_Button button = {};
@@ -39,6 +45,8 @@ UI_Text_Button make_ui_text_button(real32 x, real32 y,
     button.type = UI_TEXT_BUTTON;
     button.x = x;
     button.y = y;
+    button.width = width;
+    button.height = height;
     button.style = style;
     button.text = text;
     button.font = font;
@@ -49,7 +57,7 @@ UI_Text_Button make_ui_text_button(real32 x, real32 y,
     return button;
 }
 
-UI_Image_Button make_ui_image_button(real32 x, real32 y,
+UI_Image_Button make_ui_image_button(real32 x, real32 y, real32 width, real32 height,
                                      UI_Image_Button_Style style,
                                      char *texture_name, char *id, int32 index = 0) {
     UI_Image_Button button = {};
@@ -57,6 +65,8 @@ UI_Image_Button make_ui_image_button(real32 x, real32 y,
     button.type = UI_IMAGE_BUTTON;
     button.x = x;
     button.y = y;
+    button.width = width;
+    button.height = height;
     button.style = style;
     button.texture_name = texture_name;
 
@@ -83,6 +93,7 @@ UI_Text make_ui_text(real32 x, real32 y, char *text, char *font, UI_Text_Style s
 }
 
 UI_Text_Box make_ui_text_box(real32 x, real32 y,
+                             real32 width, real32 height,
                              char *current_text, uint32 size,
                              UI_Text_Box_Style style,
                              char *id, int32 index = 0) {
@@ -91,6 +102,8 @@ UI_Text_Box make_ui_text_box(real32 x, real32 y,
     text_box.type = UI_TEXT_BOX;
     text_box.x = x;
     text_box.y = y;
+    text_box.width = width;
+    text_box.height = height;
     text_box.size = size;
     text_box.current_text = current_text;
     text_box.style = style;
@@ -102,6 +115,7 @@ UI_Text_Box make_ui_text_box(real32 x, real32 y,
 }
 
 UI_Box make_ui_box(real32 x, real32 y,
+                   real32 width, real32 height,
                    UI_Box_Style style,
                    char *id, int32 index = 0) {
     UI_Box box = {};
@@ -109,6 +123,8 @@ UI_Box make_ui_box(real32 x, real32 y,
     box.type = UI_BOX;
     box.x = x;
     box.y = y;
+    box.width = width;
+    box.height = height;
     box.style = style;
 
     UI_id box_id = { UI_BOX, id, index };
@@ -216,16 +232,17 @@ void do_text(UI_Manager *manager,
 
 bool32 do_text_button(UI_Manager *manager, Controller_State *controller_state,
                       real32 x_px, real32 y_px,
+                      real32 width, real32 height,
                       UI_Text_Button_Style style,
                       char *text, char *font, char *id_string, int32 index = 0) {
-    UI_Text_Button button = make_ui_text_button(x_px, y_px,
+    UI_Text_Button button = make_ui_text_button(x_px, y_px, width, height,
                                                 style,
                                                 text, font, id_string, index);
 
     bool32 was_clicked = false;
 
     Vec2 current_mouse = controller_state->current_mouse;
-    if (!manager->is_disabled && in_bounds(current_mouse, x_px, x_px + style.width, y_px, y_px + style.height)) {
+    if (!manager->is_disabled && in_bounds(current_mouse, x_px, x_px + width, y_px, y_px + height)) {
         if (controller_state->left_mouse.is_down) {
             if (ui_id_equals(manager->hot, button.id) || !controller_state->left_mouse.was_down) {
                 manager->active = button.id;
@@ -260,17 +277,18 @@ bool32 do_text_button(UI_Manager *manager, Controller_State *controller_state,
 
 bool32 do_image_button(UI_Manager *manager, Controller_State *controller_state,
                        real32 x_px, real32 y_px,
+                       real32 width, real32 height,
                        UI_Image_Button_Style style,
                        char *texture_name,
                        char *id_string, int32 index = 0) {
-    UI_Image_Button button = make_ui_image_button(x_px, y_px,
+    UI_Image_Button button = make_ui_image_button(x_px, y_px, width, height,
                                                   style,
                                                   texture_name, id_string, index);
 
     bool32 was_clicked = false;
 
     Vec2 current_mouse = controller_state->current_mouse;
-    if (!manager->is_disabled && in_bounds(current_mouse, x_px, x_px + style.width, y_px, y_px + style.height)) {
+    if (!manager->is_disabled && in_bounds(current_mouse, x_px, x_px + width, y_px, y_px + height)) {
         if (controller_state->left_mouse.is_down) {
             if (ui_id_equals(manager->hot, button.id) || !controller_state->left_mouse.was_down) {
                 manager->active = button.id;
@@ -304,18 +322,17 @@ bool32 do_image_button(UI_Manager *manager, Controller_State *controller_state,
 }
 
 // TODO: this should return a bool32, since we want to be able to submit fields by pressing the enter key
+// TODO: this may be messed up since we changed width/height to include padding
 void do_text_box(UI_Manager *manager, Controller_State *controller_state,
                  real32 x, real32 y,
+                 real32 width, real32 height,
                  char *current_text, int32 text_buffer_size,
                  UI_Text_Box_Style style,
                  char *id_string, int32 index = 0) {
-    UI_Text_Box text_box =  make_ui_text_box(x, y,
+    UI_Text_Box text_box =  make_ui_text_box(x, y, width, height,
                                              current_text, text_buffer_size,
                                              style,
                                              id_string, index);
-
-    real32 width = style.width + style.padding_x * 2;
-    real32 height = style.height + style.padding_y * 2;
 
     Vec2 current_mouse = controller_state->current_mouse;
     if (!manager->is_disabled && in_bounds(current_mouse, x, x + width, y, y + height)) {
@@ -374,16 +391,17 @@ void do_text_box(UI_Manager *manager, Controller_State *controller_state,
 
 void do_box(UI_Manager *manager, Controller_State *controller_state,
             real32 x, real32 y,
+            real32 width, real32 height,
             UI_Box_Style style,
             char *id_string, int32 index = 0) {
-    UI_Box box =  make_ui_box(x, y,
+    UI_Box box =  make_ui_box(x, y, width, height,
                               style,
                               id_string, index);
 
     Vec2 current_mouse = controller_state->current_mouse;
     if (!manager->is_disabled && in_bounds(current_mouse,
-                                           x, x + style.width,
-                                           y, y + style.height)) {
+                                           x, x + width,
+                                           y, y + height)) {
         //DebugBreak();
         manager->hot = box.id;
     } else {

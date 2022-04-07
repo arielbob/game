@@ -1165,14 +1165,14 @@ void gl_draw_ui_text_button(GL_State *gl_state, Game_State *game_state,
     }
 
     gl_draw_quad(gl_state, &game_state->render_state, ui_text_button.x, ui_text_button.y,
-                 style.width, style.height, color);
+                 ui_text_button.width, ui_text_button.height, color);
 
     real32 adjusted_text_height = font.height_pixels - font.scale_for_pixel_height * (font.ascent + font.descent);
 
     // center text
     real32 text_width = get_width(font, ui_text_button.text);
-    real32 x_offset = style.width / 2.0f - text_width / 2.0f;
-    real32 y_offset = 0.5f * (style.height + adjusted_text_height);
+    real32 x_offset = ui_text_button.width / 2.0f - ui_text_button.width / 2.0f;
+    real32 y_offset = 0.5f * (ui_text_button.height + adjusted_text_height);
     gl_draw_text(gl_state, &game_state->render_state, &font,
                  ui_text_button.x + x_offset, ui_text_button.y + y_offset,
                  ui_text_button.text, truncate_v4_to_v3(style.text_color));
@@ -1194,9 +1194,9 @@ void gl_draw_ui_image_button(GL_State *gl_state, Render_State *render_state,
     }
 
     gl_draw_quad(gl_state, render_state, button.x, button.y,
-                 style.width, style.height, color);
+                 button.width, button.height, color);
     gl_draw_quad(gl_state, render_state, button.x + style.padding_x, button.y + style.padding_y,
-                 style.width - style.padding_x*2, style.height - style.padding_y*2, button.texture_name);
+                 button.width - style.padding_x*2, button.height - style.padding_y*2, button.texture_name);
 }
 
 void gl_draw_ui_text_box(GL_State *gl_state, Game_State *game_state,
@@ -1251,7 +1251,7 @@ void gl_draw_ui_box(GL_State *gl_state, Render_State *render_state,
 
     gl_draw_quad(gl_state, render_state,
                  box.x, box.y,
-                 style.width, style.height, style.background_color);
+                 box.width, box.height, style.background_color);
 }
 
 void gl_draw_ui_line(GL_State *gl_state, Display_Output display_output,

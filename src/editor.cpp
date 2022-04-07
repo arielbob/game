@@ -13,9 +13,10 @@ void draw_row(UI_Manager *ui_manager, Controller_State *controller_state,
               real32 x, real32 y,
               real32 row_width, real32 row_height,
               Vec4 color, uint8 side_flags, int32 index) {
-    UI_Box_Style box_style = { row_width, row_height, color };
+    UI_Box_Style box_style = { color };
 
-    do_box(ui_manager, controller_state, x, y, box_style, row_ui_id_string, index); 
+    do_box(ui_manager, controller_state, x, y, row_width, row_height,
+           box_style, row_ui_id_string, index); 
 
     Vec4 line_color = make_vec4(0.3f, 0.3f, 0.3f, 1.0f);
     
@@ -219,18 +220,10 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
              row_index++);
     draw_v_centered_text(game_state, ui_manager, x, y, small_row_height, padding_left,
                          "Material", font_name_bold, text_style);
-    //do_image_button
+    //do_text_button(ui_manager, controller_state, x + right_column_offset, y, 
 
     x = box_x;
     y += small_row_height;
-
-/*
-    buf = string_format(allocator, buffer_size, "%f", transform.scale.z);
-    do_text(ui_manager, offset_x + column_offset, offset_y + font_height,
-            "z", font_name_bold, text_style, "scale.z");
-    do_text(ui_manager, offset_x + mini_column_offset + column_offset, offset_y + font_height,
-            buf, font_name, text_style, "scale.z");
-*/
 }
 
 int32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, real32 *t_result) {

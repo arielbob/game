@@ -33,9 +33,6 @@ struct UI_Element {
 };
 
 struct UI_Text_Button_Style {
-    real32 width;
-    real32 height;
-
     Vec4 normal_color;
     Vec4 hot_color;
     Vec4 active_color;
@@ -49,6 +46,9 @@ struct UI_Text_Button {
     real32 x;
     real32 y;
 
+    real32 width;
+    real32 height;
+
     UI_Text_Button_Style style;
 
     char *text;
@@ -56,9 +56,6 @@ struct UI_Text_Button {
 };
 
 struct UI_Image_Button_Style {
-    real32 width;
-    real32 height;
-
     real32 padding_x;
     real32 padding_y;
 
@@ -72,6 +69,9 @@ struct UI_Image_Button {
 
     real32 x;
     real32 y;
+
+    real32 width;
+    real32 height;
 
     UI_Image_Button_Style style;
 
@@ -111,6 +111,9 @@ struct UI_Text_Box {
     real32 x;
     real32 y;
 
+    real32 width;
+    real32 height;
+
     int32 size;
     char *current_text;
 
@@ -118,9 +121,6 @@ struct UI_Text_Box {
 };
 
 struct UI_Box_Style {
-    real32 width;
-    real32 height;
-
     Vec4 background_color;
 };
 
@@ -129,6 +129,9 @@ struct UI_Box {
     
     real32 x;
     real32 y;
+
+    real32 width;
+    real32 height;
 
     UI_Box_Style style;
 };

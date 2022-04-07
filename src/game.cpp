@@ -620,13 +620,14 @@ void update(Memory *memory, Game_State *game_state,
         toggle_transform_mode_text = "use global transform";
     }
 
-    UI_Text_Button_Style style = { 250.0f, 60.0f,
-                                   rgb_to_vec4(33, 62, 69),
+    UI_Text_Button_Style style = { rgb_to_vec4(33, 62, 69),
                                    rgb_to_vec4(47, 84, 102),
                                    rgb_to_vec4(19, 37, 46),
                                    make_vec4(1.0f, 1.0f, 1.0f, 1.0f) };
     bool32 toggle_global_clicked = do_text_button(ui_manager, controller_state,
-                                                  765.0f, 360.0f, style,
+                                                  765.0f, 360.0f,
+                                                  250.0f, 60.0f,
+                                                  style,
                                                   toggle_transform_mode_text, "times24", "toggle_transform");
     if (toggle_global_clicked) {
         if (editor_state->transform_mode == TRANSFORM_GLOBAL) {
@@ -750,13 +751,13 @@ void update(Memory *memory, Game_State *game_state,
     do_text(ui_manager, 800.0f, 24.0f, buf, "times24", "current_hot");
 
     UI_Image_Button_Style image_button_style = {
-        200.0f, 200.0f,
         10.0f, 10.0f,
         rgb_to_vec4(33, 62, 69),
         rgb_to_vec4(47, 84, 102),
         rgb_to_vec4(19, 37, 46)
     };
-    do_image_button(ui_manager, controller_state, 0, 0, image_button_style, "debug", "debug_image_button");
+    do_image_button(ui_manager, controller_state, 0, 0, 200.0f, 200.0f,
+                    image_button_style, "debug", "debug_image_button");
 
     fill_sound_buffer_with_audio(sound_output, game_state->is_playing_music, &game_state->music, num_samples);
 
