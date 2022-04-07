@@ -120,6 +120,7 @@ struct Render_State {
     Display_Output display_output;
     Camera camera;
     Mat4 cpv_matrix;
+    Mat4 ortho_clip_matrix;
 };
 
 struct Material {

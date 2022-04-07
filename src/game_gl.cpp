@@ -39,6 +39,8 @@
 // TODO (done): be able to get font metrics from game code (will have to init fonts in game.cpp, with game_gl.cpp
 //              just holding the texture_ids for that font)
 // TODO (done): nicer button rendering (center the text)
+// TODO (done): move ortho clip matrix into render_state
+// TODO (done): modify quad vbos to draw quads
 
 // TODO: material editing in editor
 //       be able to view material library, texture library, be able to change active material, change the texture
@@ -503,8 +505,7 @@ void copy_aligned_quad_to_arrays(stbtt_aligned_quad q, real32 *vertices, real32 
     uvs[7] = q.t1;
 }
 
-void gl_draw_text(GL_State *gl_state,
-                  Display_Output display_output,
+void gl_draw_text(GL_State *gl_state, Render_State *render_state,
                   Font *font,
                   real32 x_pos_pixels, real32 y_pos_pixels,
                   char *text, Vec3 color) {
@@ -523,11 +524,7 @@ void gl_draw_text(GL_State *gl_state,
                                                  &font_texture_id);
     assert(font_texture_exists);
 
-    // TODO: we don't actually need to use a Mat4 here; we can just use a Mat2 and set z = 0
-    Mat4 ortho_clip_matrix = make_ortho_clip_matrix((real32) display_output.width,
-                                                    (real32) display_output.height,
-                                                    0.0f, 100.0f);
-    gl_set_uniform_mat4(text_shader_id, "cpv_matrix", &ortho_clip_matrix);
+    gl_set_uniform_mat4(text_shader_id, "cpv_matrix", &render_state->ortho_clip_matrix);
     gl_set_uniform_vec3(text_shader_id, "color", &color);
 
     // NOTE: we disable depth test so that overlapping characters such as the "o" in "fo" doesn't cover the
@@ -652,16 +649,27 @@ void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) 
     glBindVertexArray(0);
     hash_table_add(&gl_state->debug_mesh_table, make_string("triangle"), make_gl_mesh(vao, vbo, 1));
 
-    // NOTE: square mesh
-    real32 square_vertices[] = {
-        0.0f, 0.0f, 0.0f,
-        1.0f, 0.0f, 0.0f,
-        0.0f, -1.0f, 0.0f,
-        1.0f, -1.0f, 0.0f,
+    // NOTE: quad mesh
+    // we store them separately like this because we use glBufferSubData to send the vertex positions
+    // directly to the shader, and i don't think there's a way to easily modify interleaved data, unless
+    // you're modifying all of the data, but when we modify the data we only modify the positions and not the uvs.
+    // the values in these arrays don't matter; we're just filling these arrays up with enough values such that
+    // sizeof() gives the correct values
+    real32 quad_vertices[] = {
+        0.0f, 0.0f,
+        0.0f, 1.0f,
+        1.0f, 1.0f,
+        1.0f, 0.0f
     };
-    uint32 square_indices[] = {
+    real32 quad_uvs[] = {
+        0.0f, 0.0f,
+        0.0f, 1.0f,
+        1.0f, 1.0f,
+        1.0f, 0.0f
+    };
+    uint32 quad_indices[] = {
         0, 1, 2,
-        1, 3, 2
+        0, 2, 3
     };
 
     glGenVertexArrays(1, &vao);
@@ -670,17 +678,22 @@ void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) 
 
     glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(square_vertices), square_vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vertices) + sizeof(quad_uvs), 0, GL_DYNAMIC_DRAW);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(quad_vertices), quad_vertices);
+    glBufferSubData(GL_ARRAY_BUFFER, (int *) sizeof(quad_vertices), sizeof(quad_uvs), quad_uvs);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(square_indices), square_indices, GL_STATIC_DRAW); 
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(quad_indices), quad_indices, GL_STATIC_DRAW); 
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,
-                          3 * sizeof(real32), (void *) 0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE,
+                          2 * sizeof(real32), (void *) 0);
     glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE,
+                          2 * sizeof(real32), (void *) sizeof(quad_vertices));
+    glEnableVertexAttribArray(1);
     
     glBindVertexArray(0);
-    hash_table_add(&gl_state->debug_mesh_table, make_string("square"), make_gl_mesh(vao, vbo, 2));
+    hash_table_add(&gl_state->debug_mesh_table, make_string("quad"), make_gl_mesh(vao, vbo, 2));
 
     // NOTE: framebuffer mesh
     real32 framebuffer_mesh_data[] = {
@@ -714,30 +727,6 @@ void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) 
     hash_table_add(&gl_state->debug_mesh_table, make_string("framebuffer_quad"), make_gl_mesh(vao, vbo, 2));
 
     // NOTE: glyph quad
-    // we store them separately like this because we use glBufferSubData to send the vertex positions
-    // directly to the shader, and i don't think there's a way to easily modify interleaved data, unless
-    // you're modifying all of the data, but when we modify the data we only modify the positions and not the uvs.
-#if 1
-    // the values in these arrays don't matter; we're just filling these arrays up with enough values such that
-    // sizeof() gives the correct values
-    real32 quad_vertices[] = {
-        0.0f, 0.0f,
-        0.0f, 1.0f,
-        1.0f, 1.0f,
-        1.0f, 0.0f
-    };
-    real32 quad_uvs[] = {
-        0.0f, 0.0f,
-        0.0f, 1.0f,
-        1.0f, 1.0f,
-        1.0f, 0.0f
-    };
-#endif
-    uint32 quad_indices[] = {
-        0, 1, 2,
-        0, 2, 3
-    };
-
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
     glGenBuffers(1, &ebo);
@@ -800,6 +789,8 @@ void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) 
     // NOTE: shaders
     gl_load_shader(gl_state, memory,
                    "src/shaders/basic.vs", "src/shaders/basic.fs", "basic");
+    gl_load_shader(gl_state, memory,
+                   "src/shaders/basic2.vs", "src/shaders/basic2.fs", "basic2");
     gl_load_shader(gl_state, memory,
                    "src/shaders/text.vs", "src/shaders/text.fs", "text");
     gl_load_shader(gl_state, memory,
@@ -1004,20 +995,34 @@ void gl_draw_quad_p(GL_State *gl_state,
 
 // NOTE: pixel based position, with (0,0) being at bottom left and (width, height) being at top left
 void gl_draw_quad(GL_State *gl_state,
-                  Display_Output display_output,
+                  Render_State *render_state,
                   real32 x_pos_pixels, real32 y_pos_pixels,
                   real32 width_pixels, real32 height_pixels,
                   Vec4 color) {
     uint32 basic_shader_id;
-    uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("basic"), &basic_shader_id);
+    uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("basic2"), &basic_shader_id);
     assert(shader_exists);
     glUseProgram(basic_shader_id);
 
-    GL_Mesh square_mesh;
-    uint32 mesh_exists = hash_table_find(gl_state->debug_mesh_table, make_string("square"), &square_mesh);
+    GL_Mesh quad_mesh;
+    uint32 mesh_exists = hash_table_find(gl_state->debug_mesh_table, make_string("quad"), &quad_mesh);
     assert(mesh_exists);
-    glBindVertexArray(square_mesh.vao);
+    glBindVertexArray(quad_mesh.vao);
 
+    real32 quad_vertices[8] = {
+        x_pos_pixels, y_pos_pixels + height_pixels,               // bottom left
+        x_pos_pixels, y_pos_pixels,                               // top left
+        x_pos_pixels + width_pixels, y_pos_pixels,                // top right
+        x_pos_pixels + width_pixels, y_pos_pixels + height_pixels // bottom right
+    };
+    //real32 quad_uvs[8];
+    glBindBuffer(GL_ARRAY_BUFFER, quad_mesh.vbo);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(quad_vertices), quad_vertices);
+    gl_set_uniform_mat4(basic_shader_id, "ortho_matrix", &render_state->ortho_clip_matrix);
+    gl_set_uniform_vec4(basic_shader_id, "color", &color);
+    gl_set_uniform_int(basic_shader_id, "use_color", true);
+
+#if 0
     Vec2 clip_space_position = make_vec2((x_pos_pixels / display_output.width) * 2.0f - 1.0f,
                                          (y_pos_pixels / display_output.height) * -2.0f + 1.0f);
     
@@ -1030,6 +1035,7 @@ void gl_draw_quad(GL_State *gl_state,
     gl_set_uniform_mat4(basic_shader_id, "model", &model_matrix);
 
     gl_set_uniform_vec4(basic_shader_id, "color", &color);
+#endif
 
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     glUseProgram(0);
@@ -1037,11 +1043,11 @@ void gl_draw_quad(GL_State *gl_state,
 }
 
 void gl_draw_quad(GL_State *gl_state,
-                  Display_Output display_output,
+                  Render_State *render_state,
                   real32 x_pos_pixels, real32 y_pos_pixels,
                   real32 width_pixels, real32 height_pixels,
                   Vec3 color) {
-    gl_draw_quad(gl_state, display_output, x_pos_pixels, y_pos_pixels, width_pixels, height_pixels,
+    gl_draw_quad(gl_state, render_state, x_pos_pixels, y_pos_pixels, width_pixels, height_pixels,
                  make_vec4(color, 1.0f));
 }
 
@@ -1064,12 +1070,13 @@ void draw_sound_cursor(GL_State *gl_state,
 }
 
 void draw_sound_buffer(GL_State *gl_state,
-                       Display_Output display_output, Win32_Sound_Output *win32_sound_output) {
+                       Render_State *render_state, Win32_Sound_Output *win32_sound_output) {
+    Display_Output display_output = render_state->display_output;
     int32 max_samples = win32_sound_output->buffer_size / win32_sound_output->bytes_per_sample;
 
     real32 channel_height = 100.0;
     real32 height_offset = channel_height;
-    gl_draw_quad(gl_state, display_output,
+    gl_draw_quad(gl_state, render_state,
                  0.0f, display_output.height - height_offset,
                  (real32) display_output.width, channel_height,
                  make_vec3(0.1f, 0.1f, 0.1f));
@@ -1079,7 +1086,7 @@ void draw_sound_buffer(GL_State *gl_state,
                  make_vec3(1.0f, 1.0f, 1.0f));
 
     height_offset += channel_height + 1;
-    gl_draw_quad(gl_state, display_output,
+    gl_draw_quad(gl_state, render_state,
                  0.0f, display_output.height - height_offset,
                  (real32) display_output.width, channel_height,
                  make_vec3(0.1f, 0.1f, 0.1f));
@@ -1121,19 +1128,19 @@ void draw_sound_buffer(GL_State *gl_state,
 }
 
 void gl_draw_ui_text(GL_State *gl_state, Game_State *game_state,
-                     Display_Output display_output, UI_Manager *ui_manager,
+                     UI_Manager *ui_manager,
                      UI_Text ui_text) {
     UI_Text_Style style = ui_text.style;
 
     Font font = get_font(game_state, ui_text.font);
 
     if (style.use_offset_shadow) {
-        gl_draw_text(gl_state, display_output, &font,
+        gl_draw_text(gl_state, &game_state->render_state, &font,
                      ui_text.x, ui_text.y + 2.0f,
                      ui_text.text, style.offset_shadow_color);
     }
 
-    gl_draw_text(gl_state, display_output, &font,
+    gl_draw_text(gl_state, &game_state->render_state, &font,
                  ui_text.x, ui_text.y,
                  ui_text.text, style.color);
 }
@@ -1156,7 +1163,7 @@ void gl_draw_ui_text_button(GL_State *gl_state, Game_State *game_state,
         color = style.normal_color;
     }
 
-    gl_draw_quad(gl_state, display_output, ui_text_button.x, ui_text_button.y,
+    gl_draw_quad(gl_state, &game_state->render_state, ui_text_button.x, ui_text_button.y,
                  style.width, style.height, color);
 
     real32 adjusted_text_height = font.height_pixels - font.scale_for_pixel_height * (font.ascent + font.descent);
@@ -1165,10 +1172,46 @@ void gl_draw_ui_text_button(GL_State *gl_state, Game_State *game_state,
     real32 text_width = get_width(font, ui_text_button.text);
     real32 x_offset = style.width / 2.0f - text_width / 2.0f;
     real32 y_offset = 0.5f * (style.height + adjusted_text_height);
-    gl_draw_text(gl_state, display_output, &font,
+    gl_draw_text(gl_state, &game_state->render_state, &font,
                  ui_text_button.x + x_offset, ui_text_button.y + y_offset,
                  ui_text_button.text, truncate_v4_to_v3(style.text_color));
 }
+
+/*
+void gl_draw_ui_text_button(GL_State *gl_state, Game_State *game_state,
+                            Display_Output display_output,
+                            UI_Manager *ui_manager, UI_Text_Button button) {
+    Vec4 color;
+
+    Font font = get_font(game_state, button.font);
+
+    Image_Button_Style style = button.style;
+
+    if (ui_id_equals(ui_manager->hot, button.id)) {
+        color = style.hot_color;
+        if (ui_id_equals(ui_manager->active, button.id)) {
+            color = style.active_color;
+        }
+    } else {
+        color = style.normal_color;
+    }
+
+    gl_draw_quad(gl_state, display_output, button.x, button.y,
+                 style.width, style.height, color);
+
+    gl_draw_quad
+
+    real32 adjusted_text_height = font.height_pixels - font.scale_for_pixel_height * (font.ascent + font.descent);
+
+    // center text
+    real32 text_width = get_width(font, button.text);
+    real32 x_offset = style.width / 2.0f - text_width / 2.0f;
+    real32 y_offset = 0.5f * (style.height + adjusted_text_height);
+    gl_draw_text(gl_state, display_output, &font,
+                 button.x + x_offset, button.y + y_offset,
+                 button.text, truncate_v4_to_v3(style.text_color));
+}
+*/
 
 void gl_draw_ui_text_box(GL_State *gl_state, Game_State *game_state,
                          Display_Output display_output,
@@ -1186,7 +1229,7 @@ void gl_draw_ui_text_box(GL_State *gl_state, Game_State *game_state,
     }
 
     UI_Text_Box_Style style = text_box.style;
-    gl_draw_quad(gl_state, display_output, text_box.x, text_box.y,
+    gl_draw_quad(gl_state, &game_state->render_state, text_box.x, text_box.y,
                  style.width + style.padding_x * 2, style.height + style.padding_y * 2,
                  color);
 
@@ -1197,7 +1240,7 @@ void gl_draw_ui_text_box(GL_State *gl_state, Game_State *game_state,
     //           (int32) style.width, (int32) style.height);
     glScissor((int32) (text_box.x + style.padding_x), (int32) (display_output.height - text_box.y - style.height - style.padding_y),
               (int32) style.width, (int32) style.height);
-    gl_draw_text(gl_state, display_output, &font,
+    gl_draw_text(gl_state, &game_state->render_state, &font,
                  text_box.x + style.padding_x, text_box.y + style.height - style.padding_y,
                  text_box.current_text, make_vec3(1.0f, 1.0f, 1.0f));
     glDisable(GL_SCISSOR_TEST);
@@ -1210,17 +1253,17 @@ void gl_draw_ui_text_box(GL_State *gl_state, Game_State *game_state,
 
         // in focus
         real32 text_width = get_width(font, text_box.current_text);
-        gl_draw_quad(gl_state, display_output,
+        gl_draw_quad(gl_state, &game_state->render_state,
                      text_box.x + text_width + style.padding_x, text_box.y + style.padding_y,
                      12.0f, style.height, make_vec3(0.0f, 1.0f, 0.0f));
     }
 }
 
-void gl_draw_ui_box(GL_State *gl_state, Display_Output display_output,
+void gl_draw_ui_box(GL_State *gl_state, Render_State *render_state,
                     UI_Manager *ui_manager, UI_Box box) {
     UI_Box_Style style = box.style;
 
-    gl_draw_quad(gl_state, display_output,
+    gl_draw_quad(gl_state, render_state,
                  box.x, box.y,
                  style.width, style.height, style.background_color);
 }
@@ -1248,7 +1291,7 @@ void gl_draw_ui(GL_State *gl_state, Game_State *game_state,
         switch (element->type) {
             case UI_TEXT: {
                 UI_Text *ui_text = (UI_Text *) element;
-                gl_draw_ui_text(gl_state, game_state, display_output, ui_manager, *ui_text);
+                gl_draw_ui_text(gl_state, game_state, ui_manager, *ui_text);
                 address += sizeof(UI_Text);
             } break;
             case UI_TEXT_BUTTON: {
@@ -1263,7 +1306,7 @@ void gl_draw_ui(GL_State *gl_state, Game_State *game_state,
             } break;
             case UI_BOX: {
                 UI_Box *ui_box = (UI_Box *) element;
-                gl_draw_ui_box(gl_state, display_output, ui_manager, *ui_box);
+                gl_draw_ui_box(gl_state, &game_state->render_state, ui_manager, *ui_box);
                 address += sizeof(UI_Box);
             } break;
             case UI_LINE: {

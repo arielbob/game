@@ -49,6 +49,23 @@ UI_Text_Button make_ui_text_button(real32 x, real32 y,
     return button;
 }
 
+UI_Image_Button make_ui_image_button(real32 x, real32 y,
+                                     UI_Image_Button_Style style,
+                                     char *texture_name, char *id, int32 index = 0) {
+    UI_Image_Button button = {};
+
+    button.type = UI_IMAGE_BUTTON;
+    button.x = x;
+    button.y = y;
+    button.style = style;
+    button.texture_name = texture_name;
+
+    UI_id button_id = { UI_IMAGE_BUTTON, id, index };
+    button.id = button_id;
+
+    return button;
+}
+
 UI_Text make_ui_text(real32 x, real32 y, char *text, char *font, UI_Text_Style style, char *id, int32 index = 0) {
     UI_Text ui_text = {};
 
@@ -236,6 +253,53 @@ bool32 do_text_button(UI_Manager *manager, Controller_State *controller_state,
 
     return was_clicked;
 }
+
+/*
+bool32 do_image_button(UI_Manager *manager, Controller_State *controller_state,
+                       real32 x_px, real32 y_px,
+                       UI_Image_Button_Style style,
+                       char *texture_name,
+                       char *id_string, int32 index = 0) {
+    UI_Image_Button button = make_ui_image_button(x_px, y_px,
+                                                  style,
+                                                  texture_name, id_string, index);
+
+    bool32 was_clicked = false;
+
+    Vec2 current_mouse = controller_state->current_mouse;
+    if (!manager->is_disabled && in_bounds(current_mouse, x_px, x_px + style.width, y_px, y_px + style.height)) {
+        if (controller_state->left_mouse.is_down) {
+            if (ui_id_equals(manager->hot, button.id) || !controller_state->left_mouse.was_down) {
+                manager->active = button.id;
+            } else if (ui_id_equals(manager->active, button.id)) {
+                manager->hot = button.id;
+            }
+        } else if (controller_state->left_mouse.was_down) {
+            if (ui_id_equals(manager->active, button.id)) {
+                was_clicked = true;
+                debug_print("%s was clicked\n", button.id);
+            }
+        } else {
+            manager->hot = button.id;
+            if (ui_id_equals(manager->active, button.id)) {
+                manager->active = {};
+            }   
+        }
+    } else {
+        if (ui_id_equals(manager->hot, button.id)) {
+            manager->hot = {};
+        }
+
+        if (ui_id_equals(manager->active, button.id) && !controller_state->left_mouse.is_down) {
+            manager->active = {};
+        }
+    }
+
+    ui_add_text_button(manager, button);
+
+    return was_clicked;
+}
+*/
 
 // TODO: this should return a bool32, since we want to be able to submit fields by pressing the enter key
 void do_text_box(UI_Manager *manager, Controller_State *controller_state,

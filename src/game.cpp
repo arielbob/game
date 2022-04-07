@@ -449,6 +449,12 @@ void update_render_state(Render_State *render_state) {
     Mat4 perspective_clip_matrix = make_perspective_clip_matrix(camera.fov_x_degrees, camera.aspect_ratio,
                                                                 camera.near, camera.far);
     render_state->cpv_matrix = perspective_clip_matrix * view_matrix;
+
+    Display_Output display_output = render_state->display_output;
+    Mat4 ortho_clip_matrix = make_ortho_clip_matrix((real32) display_output.width,
+                                                    (real32) display_output.height,
+                                                    0.0f, 100.0f);
+    render_state->ortho_clip_matrix = ortho_clip_matrix;
 }
 
 Entity *get_selected_entity(Game_State *game_state) {
@@ -743,6 +749,14 @@ void update(Memory *memory, Game_State *game_state,
                   (char *) ui_manager->hot.string_ptr);
     do_text(ui_manager, 800.0f, 24.0f, buf, "times24", "current_hot");
 
+    UI_Image_Button_Style image_button_style = {
+        200.0f, 200.0f,
+        10.0f, 10.0f,
+        rgb_to_vec4(33, 62, 69),
+        rgb_to_vec4(47, 84, 102),
+        rgb_to_vec4(19, 37, 46)
+    };
+    //do_image_button(ui_manager, controller_state, 0, 0, image_button_style, "debug", "debug_image_button");
 
     fill_sound_buffer_with_audio(sound_output, game_state->is_playing_music, &game_state->music, num_samples);
 
