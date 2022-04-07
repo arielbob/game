@@ -1171,8 +1171,16 @@ void gl_draw_ui_text_button(GL_State *gl_state, Game_State *game_state,
 
     // center text
     real32 text_width = get_width(font, ui_text_button.text);
-    real32 x_offset = ui_text_button.width / 2.0f - ui_text_button.width / 2.0f;
-    real32 y_offset = 0.5f * (ui_text_button.height + adjusted_text_height);
+    real32 x_offset = 0;
+    real32 y_offset = 0;
+
+    if (style.text_align_flags & TEXT_ALIGN_X) {
+        x_offset = ui_text_button.width / 2.0f - text_width / 2.0f;
+    }
+    if (style.text_align_flags & TEXT_ALIGN_Y) {
+        y_offset = 0.5f * (ui_text_button.height + adjusted_text_height);
+    }
+    
     gl_draw_text(gl_state, &game_state->render_state, &font,
                  ui_text_button.x + x_offset, ui_text_button.y + y_offset,
                  ui_text_button.text, truncate_v4_to_v3(style.text_color));

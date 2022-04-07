@@ -9,6 +9,10 @@ uint8 side_bottom = 0x8;
 
 char *row_ui_id_string = "entity_properties_row";
 
+inline real32 get_center_y_offset(real32 height, real32 box_height) {
+    return (height / 2.0f) - (box_height / 2.0f);
+}
+
 void draw_row(UI_Manager *ui_manager, Controller_State *controller_state,
               real32 x, real32 y,
               real32 row_width, real32 row_height,
@@ -96,7 +100,10 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
     Allocator *allocator = (Allocator *) &memory->frame_arena;
 
     char *mesh_name = to_char_array(allocator, game_state->meshes[entity->mesh_index].name);
+    char *material_name = to_char_array(allocator, game_state->materials[entity->material_index].name);
     Transform transform = entity->transform;
+
+    UI_Text_Button_Style button_style = default_text_button_style;
     
     UI_Text_Style text_style = {
         make_vec3(1.0f, 1.0f, 1.0f),
@@ -109,7 +116,7 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
     
     real32 row_height = 25.0f;
     real32 small_row_height = 20.0f;
-    real32 row_width = 350.0f;
+    real32 row_width = 500.0f;
 
     Vec4 title_row_color = make_vec4(0.05f, 0.2f, 0.5f, 1.0f);
     Vec4 row_color = make_vec4(0.1f, 0.1f, 0.1f, 0.9f);
@@ -126,6 +133,7 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
     y += title_row_height;
     
     real32 padding_left = 5.0f;
+    real32 padding_right = padding_left;
     real32 right_column_offset = padding_left + 200.0f;
     real32 small_spacing = 20.0f;
     
@@ -214,15 +222,19 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
                       font_name_bold, "z", font_name, buf, text_style);
     y += small_row_height;
 
-    // TODO: material info
-    
+    // material info
     draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags | side_bottom,
              row_index++);
     draw_v_centered_text(game_state, ui_manager, x, y, small_row_height, padding_left,
                          "Material", font_name_bold, text_style);
-    //do_text_button(ui_manager, controller_state, x + right_column_offset, y, 
+    draw_v_centered_text(game_state, ui_manager, x, y, small_row_height, x + right_column_offset,
+                         material_name, font_name, text_style);
+    do_text_button(ui_manager, controller_state,
+                   x + row_width - 50.0f - padding_right,
+                   y + get_center_y_offset(row_height, small_row_height),
+                   50.0f, small_row_height, button_style,
+                   "Edit", font_name_bold, "edit_material");
 
-    x = box_x;
     y += small_row_height;
 }
 

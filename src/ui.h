@@ -11,6 +11,9 @@ enum UI_Type {
     UI_LINE
 };
 
+#define TEXT_ALIGN_X 0x1
+#define TEXT_ALIGN_Y 0x2
+
 #define UI_HEADER                               \
     UI_id id;                                   \
     UI_Type type;
@@ -33,6 +36,7 @@ struct UI_Element {
 };
 
 struct UI_Text_Button_Style {
+    uint32 text_align_flags;
     Vec4 normal_color;
     Vec4 hot_color;
     Vec4 active_color;

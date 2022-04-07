@@ -2,7 +2,8 @@
 #include "string.h"
 
 // TODO: we may want to move the width/height out of the style struct
-UI_Text_Button_Style default_text_button_style = { rgb_to_vec4(33, 62, 69),
+UI_Text_Button_Style default_text_button_style = { TEXT_ALIGN_X | TEXT_ALIGN_Y,
+                                                   rgb_to_vec4(33, 62, 69),
                                                    rgb_to_vec4(47, 84, 102),
                                                    rgb_to_vec4(19, 37, 46),
                                                    make_vec4(1.0f, 1.0f, 1.0f, 1.0f) };

@@ -620,10 +620,7 @@ void update(Memory *memory, Game_State *game_state,
         toggle_transform_mode_text = "use global transform";
     }
 
-    UI_Text_Button_Style style = { rgb_to_vec4(33, 62, 69),
-                                   rgb_to_vec4(47, 84, 102),
-                                   rgb_to_vec4(19, 37, 46),
-                                   make_vec4(1.0f, 1.0f, 1.0f, 1.0f) };
+    UI_Text_Button_Style style = default_text_button_style;
     bool32 toggle_global_clicked = do_text_button(ui_manager, controller_state,
                                                   765.0f, 360.0f,
                                                   250.0f, 60.0f,
