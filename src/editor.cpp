@@ -16,7 +16,8 @@ inline real32 get_center_y_offset(real32 height, real32 box_height) {
 void draw_row(UI_Manager *ui_manager, Controller_State *controller_state,
               real32 x, real32 y,
               real32 row_width, real32 row_height,
-              Vec4 color, uint8 side_flags, int32 index) {
+              Vec4 color, uint8 side_flags,
+              char *row_id, int32 index) {
     UI_Box_Style box_style = { color };
 
     do_box(ui_manager, controller_state, x, y, row_width, row_height,
@@ -28,22 +29,22 @@ void draw_row(UI_Manager *ui_manager, Controller_State *controller_state,
     if (side_flags & side_left) {
         do_line(ui_manager, { x, y - 1 }, { x, y + row_height },
                 line_style,
-                "mesh_properties_line");
+                row_id);
     }
     if (side_flags & side_bottom) {
         do_line(ui_manager, { x, y + row_height }, { x + row_width, y + row_height },
                 line_style,
-                "mesh_properties_line");
+                row_id);
     }
     if (side_flags & side_top) {
         do_line(ui_manager, { x, y }, { x + row_width, y },
                 line_style,
-                "mesh_properties_line");
+                row_id);
     }
     if (side_flags & side_right) {
         do_line(ui_manager, { x + row_width, y }, { x + row_width, y + row_height },
                 line_style,
-                "mesh_properties_line");
+                row_id);
     }
 }
 
@@ -71,7 +72,6 @@ void draw_v_centered_text(Game_State *game_state, UI_Manager *ui,
             text, font_name, text_style, "entity_properties_text");
 }
 
-
 void draw_labeled_text(Game_State *game_state, UI_Manager *ui_manager,
                        real32 x, real32 y,
                        real32 x_offset,
@@ -86,10 +86,88 @@ void draw_labeled_text(Game_State *game_state, UI_Manager *ui_manager,
                          text, text_font, text_style);
 }
 
+void draw_material_library(Memory *memory, Game_State *game_state, Controller_State *controller_state,
+                           Entity *entity) {
+    Render_State *render_state = &game_state->render_state;
+    UI_Manager *ui_manager = &game_state->ui_manager;
+    Editor_State *editor_state = &game_state->editor_state;
+    
+    real32 padding_x = 20.0f;
+    real32 padding_y = 20.0f;
+
+    real32 x_gap = 10.0f;
+    real32 y_gap = 10.0f;
+
+    int32 num_items_per_row = 5;
+    real32 item_width = 100.0f;
+    real32 item_height = 100.0f;
+
+    real32 window_width = padding_x * 2 + x_gap * (num_items_per_row - 1) + num_items_per_row*item_width;
+
+    real32 title_row_height = 50.0f;
+    Vec4 title_row_color = make_vec4(0.05f, 0.2f, 0.5f, 1.0f);
+    Vec4 row_color = make_vec4(0.1f, 0.1f, 0.1f, 1.0f);
+
+    char *row_id = "material_library_row";
+    int32 row_index = 0;
+
+    real32 initial_x = render_state->display_output.width / 2.0f - window_width / 2.0f;
+    real32 x = initial_x;
+    real32 y = 80.0f;
+
+    UI_Text_Style text_style = {
+        make_vec3(1.0f, 1.0f, 1.0f),
+        true,
+        make_vec3(0.0f, 0.0f, 0.0f)
+    };
+
+    char *title_font_name = "courier18b";
+    char *font_name = "courier18";
+
+    draw_row(ui_manager, controller_state, x, y, window_width, title_row_height, title_row_color,
+             side_left | side_right | side_top | side_bottom, row_id, row_index++);
+    draw_centered_text(game_state, ui_manager, x, y, window_width, title_row_height,
+                       "Material Library", title_font_name, text_style);
+    y += title_row_height;
+
+    real32 content_height = 500.0f;
+    draw_row(ui_manager, controller_state, x, y, window_width, content_height, row_color,
+             side_left | side_right | side_bottom, row_id, row_index++);    
+
+    Allocator *allocator = (Allocator *) &memory->frame_arena;
+
+    x += padding_x;
+    y += padding_y;
+    Material *materials = game_state->materials;
+    int32 pressed_index = -1;
+    for (int32 i = 0; i < game_state->num_materials; i++) {
+        Material m = materials[i];
+        bool32 pressed = do_text_button(ui_manager, controller_state,
+                                        x, y,
+                                        item_width, item_height,
+                                        default_text_button_style,
+                                        to_char_array(allocator, m.name),
+                                        font_name,
+                                        "material_library_item", i);
+        if (pressed) pressed_index = i;
+        x += item_width + x_gap;
+        if (x + item_width > initial_x + window_width) {
+            x = initial_x + padding_x;
+            y += item_height + y_gap;
+        }
+    }
+
+    if (pressed_index >= 0) {
+        entity->material_index = pressed_index;
+        editor_state->choosing_material = false;
+    }
+};
+
 void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *controller_state, Entity *entity) {
     int32 row_index = 0;
 
     UI_Manager *ui_manager = &game_state->ui_manager;
+    Editor_State *editor_State = &game_state->editor_state;
 
     real32 box_x = 5.0f;
     real32 box_y = 50.0f;
@@ -126,8 +204,11 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
 
     real32 title_row_height = 30.0f;
     uint8 side_flags = side_left | side_right;
+
+    char *row_id = "mesh_properties_line";
+
     draw_row(ui_manager, controller_state, x, y, row_width, title_row_height, title_row_color,
-             side_flags | side_top | side_bottom, row_index++);
+             side_flags | side_top | side_bottom, row_id, row_index++);
     draw_centered_text(game_state, ui_manager, x, y, row_width, title_row_height,
                        "Entity Properties", title_font_name, text_style);
     y += title_row_height;
@@ -137,7 +218,7 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
     real32 right_column_offset = padding_left + 200.0f;
     real32 small_spacing = 20.0f;
     
-    draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags | side_bottom, row_index++);
+    draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags | side_bottom, row_id, row_index++);
     draw_v_centered_text(game_state, ui_manager, x, y, row_height, padding_left,
                          "Mesh Name", font_name_bold, text_style);
     draw_v_centered_text(game_state, ui_manager, x, y, row_height, padding_left + right_column_offset,
@@ -148,7 +229,7 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
     int32 buffer_size = 16;
     
     // position
-    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags, row_index++);
+    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags, row_id, row_index++);
     draw_v_centered_text(game_state, ui_manager, x, y, small_row_height, padding_left,
                          "Position", font_name_bold, text_style);
     // x
@@ -157,21 +238,21 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
                       font_name_bold, "x", font_name, buf, text_style);
     y += small_row_height;
     // y
-    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags, row_index++);
+    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags, row_id, row_index++);
     buf = string_format(allocator, buffer_size, "%f", transform.position.y);
     draw_labeled_text(game_state, ui_manager, x, y, x + right_column_offset, small_row_height,
                       font_name_bold, "y", font_name, buf, text_style);
     y += small_row_height;
     // z
     draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags | side_bottom,
-             row_index++);
+             row_id, row_index++);
     buf = string_format(allocator, buffer_size, "%f", transform.position.z);
     draw_labeled_text(game_state, ui_manager, x, y, x + right_column_offset, small_row_height,
                       font_name_bold, "z", font_name, buf, text_style);
     y += small_row_height;    
 
     // rotation
-    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags, row_index++);
+    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags, row_id, row_index++);
     draw_v_centered_text(game_state, ui_manager, x, y, small_row_height, padding_left,
                          "Rotation", font_name_bold, text_style);
     // w
@@ -180,27 +261,27 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
                       font_name_bold, "w", font_name, buf, text_style);
     y += small_row_height;
     // x
-    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags, row_index++);
+    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags, row_id, row_index++);
     buf = string_format(allocator, buffer_size, "%f", transform.rotation.v.x);
     draw_labeled_text(game_state, ui_manager, x, y, x + right_column_offset, small_row_height,
                       font_name_bold, "x", font_name, buf, text_style);
     y += small_row_height;
     // y
-    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags, row_index++);
+    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags, row_id, row_index++);
     buf = string_format(allocator, buffer_size, "%f", transform.rotation.v.y);
     draw_labeled_text(game_state, ui_manager, x, y, x + right_column_offset, small_row_height,
                       font_name_bold, "y", font_name, buf, text_style);
     y += small_row_height;
     // z
     draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags | side_bottom,
-             row_index++);
+             row_id, row_index++);
     buf = string_format(allocator, buffer_size, "%f", transform.rotation.v.z);
     draw_labeled_text(game_state, ui_manager, x, y, x + right_column_offset, small_row_height,
                       font_name_bold, "z", font_name, buf, text_style);
     y += small_row_height;
 
     // scale
-    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags, row_index++);
+    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags, row_id, row_index++);
     draw_v_centered_text(game_state, ui_manager, x, y, small_row_height, padding_left,
                          "Scale", font_name_bold, text_style);
     // x
@@ -209,14 +290,14 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
                       font_name_bold, "x", font_name, buf, text_style);
     y += small_row_height;
     // y
-    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags, row_index++);
+    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags, row_id, row_index++);
     buf = string_format(allocator, buffer_size, "%f", transform.scale.y);
     draw_labeled_text(game_state, ui_manager, x, y, x + right_column_offset, small_row_height,
                       font_name_bold, "y", font_name, buf, text_style);
     y += small_row_height;
     // z
     draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags | side_bottom,
-             row_index++);
+             row_id, row_index++);
     buf = string_format(allocator, buffer_size, "%f", transform.scale.z);
     draw_labeled_text(game_state, ui_manager, x, y, x + right_column_offset, small_row_height,
                       font_name_bold, "z", font_name, buf, text_style);
@@ -224,18 +305,37 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
 
     // material info
     draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags | side_bottom,
-             row_index++);
+             row_id, row_index++);
     draw_v_centered_text(game_state, ui_manager, x, y, small_row_height, padding_left,
                          "Material", font_name_bold, text_style);
     draw_v_centered_text(game_state, ui_manager, x, y, small_row_height, x + right_column_offset,
                          material_name, font_name, text_style);
-    do_text_button(ui_manager, controller_state,
-                   x + row_width - 50.0f - padding_right,
-                   y + get_center_y_offset(row_height, small_row_height),
-                   50.0f, small_row_height, button_style,
-                   "Edit", font_name_bold, "edit_material");
+    bool32 edit_material_pressed = do_text_button(ui_manager, controller_state,
+                                                  x + row_width - 50.0f - padding_right,
+                                                  y + get_center_y_offset(row_height, small_row_height),
+                                                  50.0f, small_row_height, button_style,
+                                                  "Edit", font_name_bold, "edit_material");
+
+    if (edit_material_pressed) {
+        game_state->editor_state.choosing_material = true;
+    }
 
     y += small_row_height;
+}
+
+void draw_editor_ui(Memory *memory, Game_State *game_state, Controller_State *controller_state) {
+    Editor_State *editor_state = &game_state->editor_state;
+
+    if (editor_state->selected_entity_index >= 0) {
+        Entity *selected_entity = get_selected_entity(game_state);
+        draw_entity_box(memory, game_state, controller_state, selected_entity);
+
+        if (editor_state->choosing_material) {
+            draw_material_library(memory, game_state, controller_state, selected_entity);
+        }
+    } else {
+        editor_state->choosing_material = false;
+    }
 }
 
 int32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, real32 *t_result) {

@@ -656,9 +656,13 @@ void update(Memory *memory, Game_State *game_state,
         }
     }
 
+    draw_editor_ui(memory, game_state, controller_state);
+
+/*
     if (editor_state->selected_entity_index >= 0) {
         draw_entity_box(memory, game_state, controller_state, get_selected_entity(game_state));
     }
+*/
 
     update_gizmo(game_state);
 

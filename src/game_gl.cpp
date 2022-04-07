@@ -41,10 +41,16 @@
 // TODO (done): nicer button rendering (center the text)
 // TODO (done): move ortho clip matrix into render_state
 // TODO (done): modify quad vbos to draw quads
-
 // TODO: material editing in editor
 //       be able to view material library, texture library, be able to change active material, change the texture
 //       a material uses, override color, use_override_color, etc.
+//       - TODO (done): just list existing materials for now and be able to change an entity's active material
+//       - TODO: then creating/deleting materials
+//       - TODO: closing material library
+//       - TODO: modifying materials (texture, color_override, use_color_override, name, etc.)
+// TODO: fix buttons being able to be set to hot/active behind layered UI
+//       we could push layers and pop layers and just assert at end of the frame that current_layer == 0
+
 // TODO: be able to add and delete materials, textures, meshes
 // TODO: make free list struct (start with using this for storing fixed length strings that could be deleted).
 //       this can be used for storing names of materials and meshes. since when we rename a string, we can just

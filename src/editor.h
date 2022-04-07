@@ -37,6 +37,8 @@ struct Editor_State {
     Vec3 gizmo_initial_hit;
     Vec3 gizmo_transform_axis;
     Vec3 last_gizmo_transform_point;
+
+    bool32 choosing_material;
 };
 
 #endif
