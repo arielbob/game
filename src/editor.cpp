@@ -7,12 +7,15 @@ uint8 side_right  = 0x2;
 uint8 side_top    = 0x4;
 uint8 side_bottom = 0x8;
 
+char *row_ui_id_string = "entity_properties_row";
+
 void draw_row(UI_Manager *ui_manager, Controller_State *controller_state,
               real32 x, real32 y,
               real32 row_width, real32 row_height,
-              Vec4 color, uint8 side_flags) {
+              Vec4 color, uint8 side_flags, int32 index) {
     UI_Box_Style box_style = { row_width, row_height, color };
-    do_box(ui_manager, controller_state, x, y, box_style, "entity_properties_box");
+
+    do_box(ui_manager, controller_state, x, y, box_style, row_ui_id_string, index); 
 
     Vec4 line_color = make_vec4(0.3f, 0.3f, 0.3f, 1.0f);
     
@@ -65,6 +68,8 @@ void draw_v_centered_text(Game_State *game_state, UI_Manager *ui,
 }
 
 void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *controller_state, Entity *entity) {
+    int32 row_index = 0;
+
     UI_Manager *ui_manager = &game_state->ui_manager;
 
     real32 box_x = 5.0f;
@@ -99,7 +104,8 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
 
     real32 title_row_height = 30.0f;
     uint8 side_flags = side_left | side_right;
-    draw_row(ui_manager, controller_state, x, y, row_width, title_row_height, title_row_color, side_flags | side_top | side_bottom);
+    draw_row(ui_manager, controller_state, x, y, row_width, title_row_height, title_row_color,
+             side_flags | side_top | side_bottom, row_index++);
     draw_centered_text(game_state, ui_manager, x, y, row_width, title_row_height,
                        "Entity Properties", title_font_name, text_style);
     y += title_row_height;
@@ -107,7 +113,7 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
     real32 padding_left = 5.0f;
     real32 right_column_offset = 200.0f;
     
-    draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags | side_bottom);
+    draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags | side_bottom, row_index++);
     draw_v_centered_text(game_state, ui_manager, x, y, row_width, row_height, padding_left,
                          "Mesh Name", font_name_bold, text_style);
     draw_v_centered_text(game_state, ui_manager, x, y, row_width, row_height, padding_left + right_column_offset,
@@ -118,7 +124,7 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
     int32 buffer_size = 16;
     
     // position
-    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags);
+    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags, row_index++);
     draw_v_centered_text(game_state, ui_manager, x, y, row_width, small_row_height, padding_left,
                          "Position", font_name_bold, text_style);
     // x
@@ -131,7 +137,7 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
     x = box_x;
     y += small_row_height;
     // y
-    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags);
+    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags, row_index++);
     draw_v_centered_text(game_state, ui_manager, x, y, row_width, small_row_height, padding_left + right_column_offset,
                          "y", font_name_bold, text_style);
     x += 20.0f;
@@ -141,7 +147,8 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
     x = box_x;
     y += small_row_height;
     // z
-    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags | side_bottom);
+    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags | side_bottom,
+             row_index++);
     draw_v_centered_text(game_state, ui_manager, x, y, row_width, small_row_height, padding_left + right_column_offset,
                          "z", font_name_bold, text_style);
     x += 20.0f;
@@ -152,7 +159,7 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
     y += small_row_height;
 
     // rotation
-    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags);
+    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags, row_index++);
     draw_v_centered_text(game_state, ui_manager, x, y, row_width, small_row_height, padding_left,
                          "Rotation", font_name_bold, text_style);
     // w
@@ -165,7 +172,7 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
     x = box_x;
     y += small_row_height;
     // x
-    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags);
+    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags, row_index++);
     draw_v_centered_text(game_state, ui_manager, x, y, row_width, small_row_height, padding_left + right_column_offset,
                          "x", font_name_bold, text_style);
     x += 20.0f;
@@ -175,7 +182,7 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
     x = box_x;
     y += small_row_height;
     // y
-    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags);
+    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags, row_index++);
     draw_v_centered_text(game_state, ui_manager, x, y, row_width, small_row_height, padding_left + right_column_offset,
                          "y", font_name_bold, text_style);
     x += 20.0f;
@@ -185,7 +192,7 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
     x = box_x;
     y += small_row_height;
     // z
-    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags | side_bottom);
+    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags | side_bottom, row_index++);
     draw_v_centered_text(game_state, ui_manager, x, y, row_width, small_row_height, padding_left + right_column_offset,
                          "z", font_name_bold, text_style);
     x += 20.0f;
@@ -196,7 +203,7 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
     y += small_row_height;
 
     // scale
-    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags);
+    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags, row_index++);
     draw_v_centered_text(game_state, ui_manager, x, y, row_width, small_row_height, padding_left,
                          "Scale", font_name_bold, text_style);
     // x
@@ -209,7 +216,7 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
     x = box_x;
     y += small_row_height;
     // y
-    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags);
+    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags, row_index++);
     draw_v_centered_text(game_state, ui_manager, x, y, row_width, small_row_height, padding_left + right_column_offset,
                          "y", font_name_bold, text_style);
     x += 20.0f;
@@ -219,7 +226,8 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
     x = box_x;
     y += small_row_height;
     // z
-    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags | side_bottom);
+    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color,
+             side_flags | side_bottom, row_index++);
     draw_v_centered_text(game_state, ui_manager, x, y, row_width, small_row_height, padding_left + right_column_offset,
                          "z", font_name_bold, text_style);
     x += 20.0f;

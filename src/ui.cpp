@@ -33,7 +33,7 @@ void clear_push_buffer(UI_Push_Buffer *buffer) {
 
 UI_Text_Button make_ui_text_button(real32 x, real32 y,
                                    UI_Text_Button_Style style,
-                                   char *text, char *font, char *id) {
+                                   char *text, char *font, char *id, int32 index = 0) {
     UI_Text_Button button = {};
 
     button.type = UI_TEXT_BUTTON;
@@ -43,13 +43,13 @@ UI_Text_Button make_ui_text_button(real32 x, real32 y,
     button.text = text;
     button.font = font;
 
-    UI_id button_id = { UI_TEXT_BUTTON, id };
+    UI_id button_id = { UI_TEXT_BUTTON, id, index };
     button.id = button_id;
 
     return button;
 }
 
-UI_Text make_ui_text(real32 x, real32 y, char *text, char *font, UI_Text_Style style, char *id) {
+UI_Text make_ui_text(real32 x, real32 y, char *text, char *font, UI_Text_Style style, char *id, int32 index = 0) {
     UI_Text ui_text = {};
 
     ui_text.type = UI_TEXT;
@@ -59,7 +59,7 @@ UI_Text make_ui_text(real32 x, real32 y, char *text, char *font, UI_Text_Style s
     ui_text.font = font;
     ui_text.style = style;
 
-    UI_id ui_text_id = { UI_TEXT, id };
+    UI_id ui_text_id = { UI_TEXT, id, index };
     ui_text.id = ui_text_id;
 
     return ui_text;
@@ -68,7 +68,7 @@ UI_Text make_ui_text(real32 x, real32 y, char *text, char *font, UI_Text_Style s
 UI_Text_Box make_ui_text_box(real32 x, real32 y,
                              char *current_text, uint32 size,
                              UI_Text_Box_Style style,
-                             char *id) {
+                             char *id, int32 index = 0) {
     UI_Text_Box text_box = {};
 
     text_box.type = UI_TEXT_BOX;
@@ -78,7 +78,7 @@ UI_Text_Box make_ui_text_box(real32 x, real32 y,
     text_box.current_text = current_text;
     text_box.style = style;
 
-    UI_id text_box_id = { UI_TEXT_BOX, id };
+    UI_id text_box_id = { UI_TEXT_BOX, id, index };
     text_box.id = text_box_id;
 
     return text_box;
@@ -86,7 +86,7 @@ UI_Text_Box make_ui_text_box(real32 x, real32 y,
 
 UI_Box make_ui_box(real32 x, real32 y,
                    UI_Box_Style style,
-                   char *id) {
+                   char *id, int32 index = 0) {
     UI_Box box = {};
 
     box.type = UI_BOX;
@@ -94,7 +94,7 @@ UI_Box make_ui_box(real32 x, real32 y,
     box.y = y;
     box.style = style;
 
-    UI_id box_id = { UI_BOX, id };
+    UI_id box_id = { UI_BOX, id, index };
     box.id = box_id;
 
     return box;
@@ -102,7 +102,7 @@ UI_Box make_ui_box(real32 x, real32 y,
 
 UI_Line make_ui_line(Vec2 start_pixels, Vec2 end_pixels,
                      UI_Line_Style style,
-                     char *id) {
+                     char *id, int32 index = 0) {
     UI_Line line = {};
 
     line.type = UI_LINE;
@@ -110,7 +110,7 @@ UI_Line make_ui_line(Vec2 start_pixels, Vec2 end_pixels,
     line.end = end_pixels;
     line.style = style;
 
-    UI_id line_id = { UI_LINE, id };
+    UI_id line_id = { UI_LINE, id, index };
     line.id = line_id;
 
     return line;
@@ -137,7 +137,7 @@ void ui_add_line(UI_Manager *manager, UI_Line line) {
 }
 
 inline bool32 ui_id_equals(UI_id id1, UI_id id2) {
-    return id1.string_ptr == id2.string_ptr;
+    return ((id1.string_ptr == id2.string_ptr) && (id1.index == id2.index));
 }
 
 bool32 in_bounds(Vec2 p, real32 x_min, real32 x_max, real32 y_min, real32 y_max) {
@@ -164,7 +164,7 @@ bool32 has_focus(UI_Manager *manager) {
 
 void do_text(UI_Manager *manager,
              real32 x_px, real32 y_px,
-             char *text, char *font, char *id_string) {
+             char *text, char *font, char *id_string, int32 index = 0) {
     Vec3 default_color = make_vec3(1.0f, 1.0f, 1.0f);
     UI_Text_Style style = {
         default_color,
@@ -173,7 +173,7 @@ void do_text(UI_Manager *manager,
     };
 
     UI_Text ui_text = make_ui_text(x_px, y_px,
-                                   text, font, style, id_string);
+                                   text, font, style, id_string, index);
 
     bool32 was_clicked = false;
 
@@ -184,9 +184,9 @@ void do_text(UI_Manager *manager,
              real32 x_px, real32 y_px,
              char *text, char *font, 
              UI_Text_Style style,
-             char *id_string) {
+             char *id_string, int32 index = 0) {
     UI_Text ui_text = make_ui_text(x_px, y_px,
-                                   text, font, style, id_string);
+                                   text, font, style, id_string, index);
 
     bool32 was_clicked = false;
 
@@ -196,10 +196,10 @@ void do_text(UI_Manager *manager,
 bool32 do_text_button(UI_Manager *manager, Controller_State *controller_state,
                       real32 x_px, real32 y_px,
                       UI_Text_Button_Style style,
-                      char *text, char *font, char *id_string) {
+                      char *text, char *font, char *id_string, int32 index = 0) {
     UI_Text_Button button = make_ui_text_button(x_px, y_px,
                                                 style,
-                                                text, font, id_string);
+                                                text, font, id_string, index);
 
     bool32 was_clicked = false;
 
@@ -242,11 +242,11 @@ void do_text_box(UI_Manager *manager, Controller_State *controller_state,
                  real32 x, real32 y,
                  char *current_text, int32 text_buffer_size,
                  UI_Text_Box_Style style,
-                 char *id_string) {
+                 char *id_string, int32 index = 0) {
     UI_Text_Box text_box =  make_ui_text_box(x, y,
                                              current_text, text_buffer_size,
                                              style,
-                                             id_string);
+                                             id_string, index);
 
     real32 width = style.width + style.padding_x * 2;
     real32 height = style.height + style.padding_y * 2;
@@ -309,18 +309,17 @@ void do_text_box(UI_Manager *manager, Controller_State *controller_state,
 void do_box(UI_Manager *manager, Controller_State *controller_state,
             real32 x, real32 y,
             UI_Box_Style style,
-            char *id_string) {
+            char *id_string, int32 index = 0) {
     UI_Box box =  make_ui_box(x, y,
                               style,
-                              id_string);
+                              id_string, index);
 
     Vec2 current_mouse = controller_state->current_mouse;
     if (!manager->is_disabled && in_bounds(current_mouse,
                                            x, x + style.width,
                                            y, y + style.height)) {
-        if (!controller_state->left_mouse.is_down) {
-            manager->hot = box.id;
-        }
+        //DebugBreak();
+        manager->hot = box.id;
     } else {
         if (ui_id_equals(manager->hot, box.id)) {
             manager->hot = {};
@@ -333,10 +332,10 @@ void do_box(UI_Manager *manager, Controller_State *controller_state,
 void do_line(UI_Manager *manager,
              Vec2 start_pixels, Vec2 end_pixels,
              UI_Line_Style style,
-             char *id_string) {
+             char *id_string, int32 index = 0) {
     UI_Line line =  make_ui_line(start_pixels, end_pixels,
                                  style,
-                                 id_string);
+                                 id_string, index);
 
     // right now, we only draw lines on top of other UI elements, so we don't check if the mouse is over
 

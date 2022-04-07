@@ -15,9 +15,6 @@ layout (std140) uniform shader_globals {
     Point_Light point_lights[16];   // 16
 };
 
-//uniform vec3 light_pos;
-//uniform vec3 light_color;
-
 uniform vec3 camera_pos;
 
 uniform vec3 material_color;
@@ -32,26 +29,24 @@ in vec3 normal;
 out vec4 FragColor;
 
 float gamma = 2.2;
-vec3 one_over_gamma = vec3(1.0 / gamma);
 
 vec3 calc_point_light(Point_Light point_light,
                       vec3 material_diffuse, vec3 normal, vec3 h, vec3 l, float fragment_to_light_distance) {
-    vec3 light_color = pow(vec3(point_light.color), one_over_gamma);
-    
-    vec3 mat_spec_color = vec3(light_color);
+    vec3 light_color = pow(vec3(point_light.color), vec3(1.0 / gamma));
+
+    vec3 mat_spec_color = light_color;
     
     vec3 mat_diffuse_color = material_diffuse;
 
     vec3 light_spec_color = vec3(light_color);
     vec3 light_diffuse_color = vec3(light_color);
 
-    // diffuse
-    float lambert = dot(normal, l);
-    vec3 diffuse_contrib = light_diffuse_color * mat_diffuse_color * max(lambert, 0);
-
     // specular
     vec3 spec_contrib = light_spec_color * mat_spec_color * pow(max(dot(normal, h), 0), gloss);
-    
+
+    // diffuse
+    vec3 diffuse_contrib = light_diffuse_color * mat_diffuse_color * max(dot(normal, l), 0);
+
     float attenuation_factor = 1.0 - ((fragment_to_light_distance - point_light.d_min) /
                                       (point_light.d_max - point_light.d_min));
     attenuation_factor = min(attenuation_factor, 1.0);
@@ -71,21 +66,19 @@ void main() {
         used_color = texture(image_texture, uv).xyz;
     }
 
-    used_color = pow(used_color, one_over_gamma);
-    
+    used_color = pow(used_color, vec3(1.0 / 2.2));
     vec3 mat_ambient_color = used_color;
 
     vec3 light_contrib = vec3(0.0);
 
     // ambient
-    vec3 global_ambient = pow(vec3(0.2, 0.2, 0.2), one_over_gamma);
+    vec3 global_ambient = vec3(0.2, 0.2, 0.2);
+    global_ambient = pow(global_ambient, vec3(1.0 / 2.2));
     vec3 ambient_contrib = global_ambient * mat_ambient_color;
     light_contrib += ambient_contrib;
 
-    #if 1
     for (int i = 0; i < num_point_lights; i++) {
         // fragment to light
-        #if 1
         vec3 fragment_to_light = point_lights[i].position.xyz - frag_pos;
         float fragment_to_light_distance = length(fragment_to_light);
         vec3 l = fragment_to_light / fragment_to_light_distance;
@@ -94,11 +87,8 @@ void main() {
 
         Point_Light point_light = point_lights[i];
         light_contrib += calc_point_light(point_light, used_color, normal, h, l, fragment_to_light_distance);
-        #endif
-        //light_contrib += point_lights[i].position.xyz;
     }
-    #endif
 
-    vec3 gamma_corrected_color = pow(light_contrib, vec3(gamma));
+    vec3 gamma_corrected_color = pow(light_contrib, vec3(2.2));
     FragColor = vec4(gamma_corrected_color, 1.0);
 }

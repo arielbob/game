@@ -19,6 +19,12 @@ struct UI_id {
     // NOTE: we use a pointer to some unique data, such as a constant string specific to a button, to
     //       identify UI elements
     void *string_ptr;
+    // this can be used to differentiate between UI_ids that use the same string_ptr.
+    // sometimes elements have the same string_ptr since we want to save time and we are creating a large
+    // amount of UI elements such that having a unique string ID is not tenable. these ID strings should
+    // not be stored in memory that can be overwritten because you could end up with undesirable behaviour.
+    // this is why we use constant char arrays whose addresses point to some place in the executable.
+    int32 index; 
 };
 
 struct UI_Element {

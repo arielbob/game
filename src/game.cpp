@@ -652,6 +652,10 @@ void update(Memory *memory, Game_State *game_state,
         }
     }
 
+    if (editor_state->selected_entity_index >= 0) {
+        draw_entity_box(memory, game_state, controller_state, get_selected_entity(game_state));
+    }
+
     update_gizmo(game_state);
 
     if (editor_state->selected_entity_index >= 0 &&
@@ -671,12 +675,14 @@ void update(Memory *memory, Game_State *game_state,
         }
     }
 
-    if (ui_has_hot(ui_manager) || editor_state->use_freecam) {
+    if (editor_state->use_freecam ||
+        (ui_has_hot(ui_manager) && !controller_state->left_mouse.is_down)) {
         editor_state->hovered_gizmo_handle = GIZMO_HANDLE_NONE;
         editor_state->selected_gizmo_handle = GIZMO_HANDLE_NONE;
     }
     
     if (editor_state->selected_gizmo_handle) {
+        disable_input(ui_manager);
         if (controller_state->left_mouse.is_down) {
             Entity *entity = get_selected_entity(game_state);
 
@@ -732,10 +738,10 @@ void update(Memory *memory, Game_State *game_state,
                   render_state->camera.pitch);
     do_text(ui_manager, 500.0f, 24.0f, buf, "times24", "camera_info");
 
-
-    if (editor_state->selected_entity_index >= 0) {
-        draw_entity_box(memory, game_state, controller_state, get_selected_entity(game_state));
-    }
+    buf = (char *) arena_push(&memory->frame_arena, 128);
+    string_format(buf, 128, "hot: %s",
+                  (char *) ui_manager->hot.string_ptr);
+    do_text(ui_manager, 800.0f, 24.0f, buf, "times24", "current_hot");
 
 
     fill_sound_buffer_with_audio(sound_output, game_state->is_playing_music, &game_state->music, num_samples);
