@@ -35,12 +35,29 @@ struct UI_Element {
     UI_HEADER
 };
 
+struct UI_Text_Style {
+    Vec4 color;
+    bool32 use_offset_shadow;
+    Vec4 offset_shadow_color;
+};
+
+struct UI_Text {
+    UI_HEADER
+
+    real32 x;
+    real32 y;
+
+    char *text;
+    char *font;
+
+    UI_Text_Style style;
+};
+
 struct UI_Text_Button_Style {
     uint32 text_align_flags;
     Vec4 normal_color;
     Vec4 hot_color;
     Vec4 active_color;
-    Vec4 text_color;
 };
 
 // TODO: this is a text button - will probably want to add different types of buttons
@@ -54,6 +71,7 @@ struct UI_Text_Button {
     real32 height;
 
     UI_Text_Button_Style style;
+    UI_Text_Style text_style;
 
     char *text;
     char *font;
@@ -80,24 +98,6 @@ struct UI_Image_Button {
     UI_Image_Button_Style style;
 
     char *texture_name;
-};
-
-struct UI_Text_Style {
-    Vec3 color;
-    bool32 use_offset_shadow;
-    Vec3 offset_shadow_color;
-};
-
-struct UI_Text {
-    UI_HEADER
-
-    real32 x;
-    real32 y;
-
-    char *text;
-    char *font;
-
-    UI_Text_Style style;
 };
 
 struct UI_Text_Box_Style {

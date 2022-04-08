@@ -625,7 +625,7 @@ void update(Memory *memory, Game_State *game_state,
     bool32 toggle_global_clicked = do_text_button(ui_manager, controller_state,
                                                   765.0f, 360.0f,
                                                   250.0f, 60.0f,
-                                                  style,
+                                                  style, default_text_style,
                                                   toggle_transform_mode_text, "times24", "toggle_transform");
     if (toggle_global_clicked) {
         if (editor_state->transform_mode == TRANSFORM_GLOBAL) {
@@ -711,17 +711,9 @@ void update(Memory *memory, Game_State *game_state,
     }
 
     update_gizmo(game_state);
-    
+
     char *buf = (char *) arena_push(&memory->frame_arena, 128);
-    string_format(buf, 128, "picked gizmo: %d",
-                  editor_state->selected_gizmo_handle);
-    do_text(ui_manager, 0.0f, 600.0f, buf, "times24", "picked_gizmo_text");
-
-    buf = (char *) arena_push(&memory->frame_arena, 128);
-    string_format(buf, 128, "hovered gizmo: %d",
-                  editor_state->hovered_gizmo_handle);
-    do_text(ui_manager, 0.0f, 564.0f, buf, "times24", "picked_gizmo_text");
-
+#if 0
     buf = (char *) arena_push(&memory->frame_arena, 128);
     string_format(buf, 128, "left mouse is down: %d",
                   controller_state->left_mouse.is_down);
@@ -730,23 +722,14 @@ void update(Memory *memory, Game_State *game_state,
     string_format(buf, 128, "left mouse was down: %d",
                   controller_state->left_mouse.was_down);
     do_text(ui_manager, 0.0f, 500.0f, buf, "times24", "mouse_was_down");
-
-    buf = (char *) arena_push(&memory->frame_arena, 128);
-    string_format(buf, 128, "selected entity type: %d\nselected entity index: %d",
-                  editor_state->selected_entity_type, editor_state->selected_entity_index);
-    do_text(ui_manager, 0.0f, 370.0f, buf, "times24", "selected_entity_index_text");
+#endif
 
     buf = (char *) arena_push(&memory->frame_arena, 128);
     string_format(buf, 128, "current_mouse: (%f, %f)",
                   controller_state->current_mouse.x, controller_state->current_mouse.y);
     do_text(ui_manager, 0.0f, 24.0f, buf, "times24", "current_mouse_text");
 
-    buf = (char *) arena_push(&memory->frame_arena, 128);
-    string_format(buf, 128, "camera heading: %f\ncamera pitch: %f",
-                  render_state->camera.heading,
-                  render_state->camera.pitch);
-    do_text(ui_manager, 500.0f, 24.0f, buf, "times24", "camera_info");
-
+#if 0
     UI_Image_Button_Style image_button_style = {
         10.0f, 10.0f,
         rgb_to_vec4(33, 62, 69),
@@ -755,6 +738,7 @@ void update(Memory *memory, Game_State *game_state,
     };
     do_image_button(ui_manager, controller_state, 0, 0, 200.0f, 200.0f,
                     image_button_style, "debug", "debug_image_button");
+#endif
 
     buf = (char *) arena_push(&memory->frame_arena, 128);
     string_format(buf, 128, "hot: %s\nactive: %s",

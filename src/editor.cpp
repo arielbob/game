@@ -98,9 +98,9 @@ void draw_material_library(Memory *memory, Game_State *game_state, Controller_St
     real32 x_gap = 10.0f;
     real32 y_gap = 10.0f;
 
-    int32 num_items_per_row = 5;
-    real32 item_width = 100.0f;
-    real32 item_height = 100.0f;
+    int32 num_items_per_row = 1;
+    real32 item_width = 500.0f;
+    real32 item_height = 20.0f;
 
     real32 window_width = padding_x * 2 + x_gap * (num_items_per_row - 1) + num_items_per_row*item_width;
 
@@ -115,11 +115,7 @@ void draw_material_library(Memory *memory, Game_State *game_state, Controller_St
     real32 x = initial_x;
     real32 y = 80.0f;
 
-    UI_Text_Style text_style = {
-        make_vec3(1.0f, 1.0f, 1.0f),
-        true,
-        make_vec3(0.0f, 0.0f, 0.0f)
-    };
+    UI_Text_Style text_style = default_text_style;
 
     char *title_font_name = "courier18b";
     char *font_name = "courier18";
@@ -146,7 +142,7 @@ void draw_material_library(Memory *memory, Game_State *game_state, Controller_St
         bool32 pressed = do_text_button(ui_manager, controller_state,
                                         x, y,
                                         item_width, item_height,
-                                        default_text_button_style,
+                                        default_text_button_style, default_text_style,
                                         to_char_array(allocator, m.name),
                                         font_name,
                                         "material_library_item", i);
@@ -186,11 +182,7 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
 
     UI_Text_Button_Style button_style = default_text_button_style;
     
-    UI_Text_Style text_style = {
-        make_vec3(1.0f, 1.0f, 1.0f),
-        true,
-        make_vec3(0.0f, 0.0f, 0.0f)
-    };
+    UI_Text_Style text_style = default_text_style;
     char *title_font_name = "courier18b";
     char *font_name = "courier18";
     char *font_name_bold = "courier18b";
@@ -311,14 +303,15 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
              row_id, row_index++);
     draw_v_centered_text(game_state, ui_manager, x, y, small_row_height, padding_left,
                          "Material", font_name_bold, text_style);
-    draw_v_centered_text(game_state, ui_manager, x, y, small_row_height, x + right_column_offset,
-                         material_name, font_name, text_style);
+    //draw_v_centered_text(game_state, ui_manager, x, y, small_row_height, x + right_column_offset,
+    //material_name, font_name, text_style);
     
     bool32 edit_material_pressed = do_text_button(ui_manager, controller_state,
-                                                  x + row_width - 50.0f - padding_right,
+                                                  x + padding_left + right_column_offset,
                                                   y + get_center_y_offset(row_height, small_row_height),
-                                                  50.0f, small_row_height, button_style,
-                                                  "Edit", font_name_bold, "edit_material");
+                                                  200.0f, small_row_height,
+                                                  button_style, default_text_style,
+                                                  material_name, font_name_bold, "edit_material");
 
     if (edit_material_pressed) {
         game_state->editor_state.choosing_material = true;

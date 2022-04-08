@@ -514,7 +514,7 @@ void copy_aligned_quad_to_arrays(stbtt_aligned_quad q, real32 *vertices, real32 
 void gl_draw_text(GL_State *gl_state, Render_State *render_state,
                   Font *font,
                   real32 x_pos_pixels, real32 y_pos_pixels,
-                  char *text, Vec3 color) {
+                  char *text, Vec4 color) {
     uint32 text_shader_id;
     uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("text"), &text_shader_id);
     assert(shader_exists);
@@ -531,7 +531,7 @@ void gl_draw_text(GL_State *gl_state, Render_State *render_state,
     assert(font_texture_exists);
 
     gl_set_uniform_mat4(text_shader_id, "cpv_matrix", &render_state->ortho_clip_matrix);
-    gl_set_uniform_vec3(text_shader_id, "color", &color);
+    gl_set_uniform_vec4(text_shader_id, "color", &color);
 
     // NOTE: we disable depth test so that overlapping characters such as the "o" in "fo" doesn't cover the
     //       quad of the previous character, causing a cut off look.
@@ -1153,43 +1153,50 @@ void gl_draw_ui_text(GL_State *gl_state, Game_State *game_state,
 }
 
 void gl_draw_ui_text_button(GL_State *gl_state, Game_State *game_state,
-                            Display_Output display_output,
-                            UI_Manager *ui_manager, UI_Text_Button ui_text_button) {
+                            UI_Manager *ui_manager, UI_Text_Button button) {
     Vec4 color;
 
-    Font font = get_font(game_state, ui_text_button.font);
+    Font font = get_font(game_state, button.font);
 
-    UI_Text_Button_Style style = ui_text_button.style;
+    UI_Text_Button_Style style = button.style;
 
-    if (ui_id_equals(ui_manager->hot, ui_text_button.id)) {
+    if (ui_id_equals(ui_manager->hot, button.id)) {
         color = style.hot_color;
-        if (ui_id_equals(ui_manager->active, ui_text_button.id)) {
+        if (ui_id_equals(ui_manager->active, button.id)) {
             color = style.active_color;
         }
     } else {
         color = style.normal_color;
     }
 
-    gl_draw_quad(gl_state, &game_state->render_state, ui_text_button.x, ui_text_button.y,
-                 ui_text_button.width, ui_text_button.height, color);
+    gl_draw_quad(gl_state, &game_state->render_state, button.x, button.y,
+                 button.width, button.height, color);
 
     real32 adjusted_text_height = font.height_pixels - font.scale_for_pixel_height * (font.ascent + font.descent);
 
     // center text
-    real32 text_width = get_width(font, ui_text_button.text);
+    real32 text_width = get_width(font, button.text);
     real32 x_offset = 0;
     real32 y_offset = 0;
 
     if (style.text_align_flags & TEXT_ALIGN_X) {
-        x_offset = ui_text_button.width / 2.0f - text_width / 2.0f;
+        x_offset = button.width / 2.0f - text_width / 2.0f;
     }
     if (style.text_align_flags & TEXT_ALIGN_Y) {
-        y_offset = 0.5f * (ui_text_button.height + adjusted_text_height);
+        y_offset = 0.5f * (button.height + adjusted_text_height);
     }
     
+    UI_Text_Style text_style = button.text_style;
+
+    if (text_style.use_offset_shadow) {
+        gl_draw_text(gl_state, &game_state->render_state, &font,
+                     button.x + x_offset, button.y + y_offset + 2.0f,
+                     button.text, text_style.offset_shadow_color);
+    }
+
     gl_draw_text(gl_state, &game_state->render_state, &font,
-                 ui_text_button.x + x_offset, ui_text_button.y + y_offset,
-                 ui_text_button.text, truncate_v4_to_v3(style.text_color));
+                 button.x + x_offset, button.y + y_offset,
+                 button.text, text_style.color);
 }
 
 void gl_draw_ui_image_button(GL_State *gl_state, Render_State *render_state,
@@ -1242,7 +1249,7 @@ void gl_draw_ui_text_box(GL_State *gl_state, Game_State *game_state,
               (int32) style.width, (int32) style.height);
     gl_draw_text(gl_state, &game_state->render_state, &font,
                  text_box.x + style.padding_x, text_box.y + style.height - style.padding_y,
-                 text_box.current_text, make_vec3(1.0f, 1.0f, 1.0f));
+                 text_box.current_text, make_vec4(1.0f, 1.0f, 1.0f, 1.0f));
     glDisable(GL_SCISSOR_TEST);
 
     if (ui_id_equals(ui_manager->active, text_box.id)) {
@@ -1297,7 +1304,7 @@ void gl_draw_ui(GL_State *gl_state, Game_State *game_state,
             } break;
             case UI_TEXT_BUTTON: {
                 UI_Text_Button *ui_text_button = (UI_Text_Button *) element;
-                gl_draw_ui_text_button(gl_state, game_state, display_output, ui_manager, *ui_text_button);
+                gl_draw_ui_text_button(gl_state, game_state, ui_manager, *ui_text_button);
                 address += sizeof(UI_Text_Button);
             } break;
             case UI_IMAGE_BUTTON: {

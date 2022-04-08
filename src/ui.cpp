@@ -1,12 +1,16 @@
 #include "ui.h"
 #include "string.h"
 
-// TODO: we may want to move the width/height out of the style struct
+UI_Text_Style default_text_style = {
+    make_vec4(1.0f, 1.0f, 1.0f, 1.0f),
+    true,
+    make_vec4(0.0f, 0.0f, 0.0f, 1.0f)
+};
+
 UI_Text_Button_Style default_text_button_style = { TEXT_ALIGN_X | TEXT_ALIGN_Y,
                                                    rgb_to_vec4(33, 62, 69),
                                                    rgb_to_vec4(47, 84, 102),
-                                                   rgb_to_vec4(19, 37, 46),
-                                                   make_vec4(1.0f, 1.0f, 1.0f, 1.0f) };
+                                                   rgb_to_vec4(19, 37, 46) };
 
 // TODO: store UI element state in a hash table, so we can do things like fading transitions.
 //       this requires some thought since we would like to remove elements from the hash table if
@@ -39,7 +43,7 @@ void clear_push_buffer(UI_Push_Buffer *buffer) {
 }
 
 UI_Text_Button make_ui_text_button(real32 x, real32 y, real32 width, real32 height,
-                                   UI_Text_Button_Style style,
+                                   UI_Text_Button_Style style, UI_Text_Style text_style,
                                    char *text, char *font, char *id, int32 index = 0) {
     UI_Text_Button button = {};
 
@@ -49,6 +53,7 @@ UI_Text_Button make_ui_text_button(real32 x, real32 y, real32 width, real32 heig
     button.width = width;
     button.height = height;
     button.style = style;
+    button.text_style = text_style;
     button.text = text;
     button.font = font;
 
@@ -270,15 +275,8 @@ void clear_hot_if_gone(UI_Manager *manager) {
 void do_text(UI_Manager *manager,
              real32 x_px, real32 y_px,
              char *text, char *font, char *id_string, int32 index = 0) {
-    Vec3 default_color = make_vec3(1.0f, 1.0f, 1.0f);
-    UI_Text_Style style = {
-        default_color,
-        false,
-        make_vec3(0.0f, 0.0f, 0.0f)
-    };
-
     UI_Text ui_text = make_ui_text(x_px, y_px,
-                                   text, font, style, id_string, index);
+                                   text, font, default_text_style, id_string, index);
 
     bool32 was_clicked = false;
 
@@ -301,10 +299,10 @@ void do_text(UI_Manager *manager,
 bool32 do_text_button(UI_Manager *manager, Controller_State *controller_state,
                       real32 x_px, real32 y_px,
                       real32 width, real32 height,
-                      UI_Text_Button_Style style,
+                      UI_Text_Button_Style style, UI_Text_Style text_style,
                       char *text, char *font, char *id_string, int32 index = 0) {
     UI_Text_Button button = make_ui_text_button(x_px, y_px, width, height,
-                                                style,
+                                                style, text_style,
                                                 text, font, id_string, index);
 
     bool32 was_clicked = false;
