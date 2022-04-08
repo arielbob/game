@@ -37,10 +37,5 @@ typedef double real64;
 
 typedef uint32 bool32;
 
-enum Entity_Type {
-    ENTITY_NORMAL,
-    ENTITY_POINT_LIGHT,
-};
-
 #define COMMON_H
 #endif

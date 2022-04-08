@@ -44,6 +44,7 @@
 // TODO (done): fix buttons being able to be set to hot/active behind layered UI
 //              we could push layers and pop layers and just assert at end of the frame that current_layer == 0
 
+// TODO: figure out functioning of text boxes
 // TODO: material editing in editor
 //       be able to view material library, texture library, be able to change active material, change the texture
 //       a material uses, override color, use_override_color, etc.
@@ -1258,7 +1259,7 @@ void gl_draw_ui_text_box(GL_State *gl_state, Game_State *game_state,
 
     UI_Text_Box_Style style = text_box.style;
     gl_draw_quad(gl_state, &game_state->render_state, text_box.x, text_box.y,
-                 style.width + style.padding_x * 2, style.height + style.padding_y * 2,
+                 text_box.width + style.padding_x * 2, text_box.height + style.padding_y * 2,
                  color);
 
     glEnable(GL_SCISSOR_TEST);
@@ -1266,10 +1267,10 @@ void gl_draw_ui_text_box(GL_State *gl_state, Game_State *game_state,
     //       text box's bounds.
     // glScissor((int32) (text_box.x + style.padding_x), (int32) (display_output.height - (text_box.y + style.padding_y)),
     //           (int32) style.width, (int32) style.height);
-    glScissor((int32) (text_box.x + style.padding_x), (int32) (display_output.height - text_box.y - style.height - style.padding_y),
-              (int32) style.width, (int32) style.height);
+    glScissor((int32) (text_box.x + style.padding_x), (int32) (display_output.height - text_box.y - text_box.height - style.padding_y),
+              (int32) text_box.width, (int32) text_box.height);
     gl_draw_text(gl_state, &game_state->render_state, &font,
-                 text_box.x + style.padding_x, text_box.y + style.height - style.padding_y,
+                 text_box.x + style.padding_x, text_box.y + text_box.height - style.padding_y,
                  text_box.current_text, make_vec4(1.0f, 1.0f, 1.0f, 1.0f));
     glDisable(GL_SCISSOR_TEST);
 
@@ -1283,7 +1284,7 @@ void gl_draw_ui_text_box(GL_State *gl_state, Game_State *game_state,
         real32 text_width = get_width(font, text_box.current_text);
         gl_draw_quad(gl_state, &game_state->render_state,
                      text_box.x + text_width + style.padding_x, text_box.y + style.padding_y,
-                     12.0f, style.height, make_vec3(0.0f, 1.0f, 0.0f));
+                     12.0f, text_box.height, make_vec3(0.0f, 1.0f, 0.0f));
     }
 }
 

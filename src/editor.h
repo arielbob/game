@@ -31,6 +31,9 @@ struct Editor_State {
     int32 selected_entity_index;
     Entity_Type selected_entity_type;
 
+    int32 last_selected_entity_index;
+    Entity_Type last_selected_entity_type;
+
     Gizmo gizmo;
     Gizmo_Handle hovered_gizmo_handle;
     Gizmo_Handle selected_gizmo_handle;
@@ -40,6 +43,8 @@ struct Editor_State {
 
     bool32 choosing_material;
     bool32 editing_selected_entity_material;
+    
+    Material temp_material;
 };
 
 #endif

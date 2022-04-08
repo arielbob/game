@@ -53,6 +53,16 @@ void copy_string(char *dest, char *src, uint32 max_size) {
     }
 }
 
+void copy_string(String_Buffer *dest, String_Buffer *src) {
+    assert(dest->size >= src->size);
+
+    for (uint32 i = 0; i < src->current_length; i++) {
+        dest->contents[i] = src->contents[i];
+    }
+
+    dest->current_length = src->current_length;
+}
+
 /*
 // TODO: this may be outdated
 void copy_string(String *dest, String src, uint32 max_size) {

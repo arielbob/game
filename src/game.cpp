@@ -249,6 +249,9 @@ void init_game(Memory *memory, Game_State *game_state,
     editor_state->gizmo.ring_mesh_name = "gizmo_ring";
     editor_state->gizmo.sphere_mesh_name = "gizmo_sphere";
     editor_state->selected_entity_index = -1;
+    Allocator *temp_string_allocator = (Allocator *) &memory->string_arena;
+    editor_state->temp_material.name = make_string_buffer(temp_string_allocator, MATERIAL_STRING_MAX_SIZE);
+    editor_state->temp_material.texture_name = make_string_buffer(temp_string_allocator, MATERIAL_STRING_MAX_SIZE);
 
     // init ui state
     UI_Manager *ui_manager = &game_state->ui_manager;
@@ -262,40 +265,40 @@ void init_game(Memory *memory, Game_State *game_state,
     // add materials
     Allocator *material_string_allocator = (Allocator *) &memory->string_arena;
     Material shiny_monkey = make_material(make_string_buffer(material_string_allocator,
-                                                             "shiny_monkey", MATERIAL_NAME_MAX_SIZE),
+                                                             "shiny_monkey", MATERIAL_STRING_MAX_SIZE),
                                           make_string_buffer(material_string_allocator,
-                                                             "debug", MATERIAL_NAME_MAX_SIZE),
+                                                             "debug", MATERIAL_STRING_MAX_SIZE),
                                           100.0f, make_vec4(0.6f, 0.6f, 0.6f, 1.0f), true);
     add_material(game_state, shiny_monkey);
 
     Material plane_material = make_material(make_string_buffer(material_string_allocator,
-                                                               "diffuse_plane", MATERIAL_NAME_MAX_SIZE),
-                                            make_string_buffer(material_string_allocator, MATERIAL_NAME_MAX_SIZE),
+                                                               "diffuse_plane", MATERIAL_STRING_MAX_SIZE),
+                                            make_string_buffer(material_string_allocator, MATERIAL_STRING_MAX_SIZE),
                                             1.0f, make_vec4(0.9f, 0.9f, 0.9f, 1.0f), true);
     add_material(game_state, plane_material);
 
     Material arrow_material = make_material(make_string_buffer(material_string_allocator,
-                                                               "arrow_material", MATERIAL_NAME_MAX_SIZE),
-                                            make_string_buffer(material_string_allocator, MATERIAL_NAME_MAX_SIZE),
+                                                               "arrow_material", MATERIAL_STRING_MAX_SIZE),
+                                            make_string_buffer(material_string_allocator, MATERIAL_STRING_MAX_SIZE),
                                             100.0f, make_vec4(1.0f, 0.0f, 0.0f, 1.0f), true);
     add_material(game_state, arrow_material);
 
     Material white_light_material = make_material(make_string_buffer(material_string_allocator,
-                                                                     "white_light", MATERIAL_NAME_MAX_SIZE),
+                                                                     "white_light", MATERIAL_STRING_MAX_SIZE),
                                                   make_string_buffer(material_string_allocator,
-                                                                     MATERIAL_NAME_MAX_SIZE),
+                                                                     MATERIAL_STRING_MAX_SIZE),
                                                   0.0f, make_vec4(1.0f, 1.0f, 1.0f, 1.0f), true);
     add_material(game_state, white_light_material);
     Material blue_light_material = make_material(make_string_buffer(material_string_allocator,
-                                                                    "blue_light", MATERIAL_NAME_MAX_SIZE),
+                                                                    "blue_light", MATERIAL_STRING_MAX_SIZE),
                                                  make_string_buffer(material_string_allocator,
-                                                                    MATERIAL_NAME_MAX_SIZE),
+                                                                    MATERIAL_STRING_MAX_SIZE),
                                                  0.0f, make_vec4(0.0f, 0.0f, 1.0f, 1.0f), true);
     add_material(game_state, blue_light_material);
     Material diffuse_sphere_material = make_material(make_string_buffer(material_string_allocator,
-                                                                        "diffuse_sphere", MATERIAL_NAME_MAX_SIZE),
+                                                                        "diffuse_sphere", MATERIAL_STRING_MAX_SIZE),
                                                      make_string_buffer(material_string_allocator,
-                                                                        MATERIAL_NAME_MAX_SIZE),
+                                                                        MATERIAL_STRING_MAX_SIZE),
                                                      5.0f, rgb_to_vec4(176, 176, 176), true);
     add_material(game_state, diffuse_sphere_material);
 
@@ -481,6 +484,8 @@ Entity *get_selected_entity(Game_State *game_state) {
 
 void update_gizmo(Game_State *game_state) {
     Editor_State *editor_state = &game_state->editor_state;
+    if (editor_state->selected_entity_index < 0) return;
+
     Camera *camera = &game_state->render_state.camera;
     real32 gizmo_scale_factor = distance(editor_state->gizmo.transform.position - camera->position) /
         5.0f;
@@ -648,9 +653,17 @@ void update(Memory *memory, Game_State *game_state,
             bool32 picked = pick_entity(game_state, cursor_ray, &entity, &entity_index);
             
             if (picked) {
-                editor_state->selected_entity_type = entity.type;
-                editor_state->selected_entity_index = entity_index;
-                editor_state->gizmo.transform = entity.transform;
+                if (selected_entity_changed(editor_state, entity_index, entity.type)) {
+                    editor_state->last_selected_entity_type = editor_state->selected_entity_type;
+                    editor_state->last_selected_entity_index = editor_state->selected_entity_index;
+
+                    editor_state->selected_entity_type = entity.type;
+                    editor_state->selected_entity_index = entity_index;
+
+                    editor_state->gizmo.transform = entity.transform;
+
+                    reset_entity_editors(editor_state);
+                }
             } else {
                 editor_state->selected_entity_index = -1;
             }

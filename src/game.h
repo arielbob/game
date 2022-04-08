@@ -16,7 +16,8 @@
 #define MAX_POINT_LIGHTS 16
 #define MAX_FONTS 64
 
-#define MATERIAL_NAME_MAX_SIZE 128
+//#define MATERIAL_NAME_MAX_SIZE 128
+#define MATERIAL_STRING_MAX_SIZE 128
 
 struct Display_Output {
     int32 width;
@@ -121,36 +122,6 @@ struct Render_State {
     Camera camera;
     Mat4 cpv_matrix;
     Mat4 ortho_clip_matrix;
-};
-
-struct Material {
-    String_Buffer name;
-    String_Buffer texture_name;
-    real32 gloss;
-    Vec4 color_override;
-    bool32 use_color_override;
-};
-
-#define ENTITY_HEADER                           \
-    Entity_Type type;                           \
-    Transform transform;                        \
-    int32 mesh_index;                           \
-    int32 material_index;
-
-struct Entity {
-    ENTITY_HEADER
-};
-
-struct Normal_Entity {
-    ENTITY_HEADER
-};
-
-struct Point_Light_Entity {
-    ENTITY_HEADER
-
-    Vec3 light_color;
-    real32 d_min;
-    real32 d_max;
 };
 
 struct Game_State {

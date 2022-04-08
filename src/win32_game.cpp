@@ -29,6 +29,7 @@
 #include "lib/stb_image.h"
 
 #include "math.h"
+#include "entity.h"
 #include "game.h"
 #include "memory.h"
 #include "platform.h"

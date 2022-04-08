@@ -126,11 +126,13 @@ struct UI_Color_Button {
 
 struct UI_Text_Box_Style {
     char *font;
-    real32 width;
-    real32 height;
+
     real32 padding_x;
     real32 padding_y;
-    //real32 cursor_width;
+
+    Vec4 normal_color;
+    Vec4 hot_color;
+    Vec4 active_color;
 };
 
 struct UI_Text_Box {
