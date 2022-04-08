@@ -257,6 +257,7 @@ void init_game(Memory *memory, Game_State *game_state,
     ui_push_buffer.base = allocate((Allocator *) game_data_arena, ui_push_buffer.size);
     ui_push_buffer.used = 0;
     ui_manager->push_buffer = ui_push_buffer;
+    ui_manager->current_layer = 0;
 
     // add materials
     Allocator *material_string_allocator = (Allocator *) &memory->string_arena;
@@ -746,11 +747,6 @@ void update(Memory *memory, Game_State *game_state,
                   render_state->camera.pitch);
     do_text(ui_manager, 500.0f, 24.0f, buf, "times24", "camera_info");
 
-    buf = (char *) arena_push(&memory->frame_arena, 128);
-    string_format(buf, 128, "hot: %s",
-                  (char *) ui_manager->hot.string_ptr);
-    do_text(ui_manager, 800.0f, 24.0f, buf, "times24", "current_hot");
-
     UI_Image_Button_Style image_button_style = {
         10.0f, 10.0f,
         rgb_to_vec4(33, 62, 69),
@@ -760,7 +756,17 @@ void update(Memory *memory, Game_State *game_state,
     do_image_button(ui_manager, controller_state, 0, 0, 200.0f, 200.0f,
                     image_button_style, "debug", "debug_image_button");
 
+    buf = (char *) arena_push(&memory->frame_arena, 128);
+    string_format(buf, 128, "hot: %s\nactive: %s",
+                  (char *) ui_manager->hot.string_ptr,
+                  (char *) ui_manager->active.string_ptr);
+    do_text(ui_manager, 800.0f, 24.0f, buf, "times24", "current_hot");
+    
     fill_sound_buffer_with_audio(sound_output, game_state->is_playing_music, &game_state->music, num_samples);
 
     //game_state->current_char = controller_state->pressed_key;
+
+    clear_hot_if_gone(ui_manager);
+    
+    assert(ui_manager->current_layer == 0);
 }

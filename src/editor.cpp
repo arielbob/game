@@ -7,8 +7,6 @@ uint8 side_right  = 0x2;
 uint8 side_top    = 0x4;
 uint8 side_bottom = 0x8;
 
-char *row_ui_id_string = "entity_properties_row";
-
 inline real32 get_center_y_offset(real32 height, real32 box_height) {
     return (height / 2.0f) - (box_height / 2.0f);
 }
@@ -21,7 +19,7 @@ void draw_row(UI_Manager *ui_manager, Controller_State *controller_state,
     UI_Box_Style box_style = { color };
 
     do_box(ui_manager, controller_state, x, y, row_width, row_height,
-           box_style, row_ui_id_string, index); 
+           box_style, row_id, index); 
 
     Vec4 line_color = make_vec4(0.3f, 0.3f, 0.3f, 1.0f);
     
@@ -91,6 +89,8 @@ void draw_material_library(Memory *memory, Game_State *game_state, Controller_St
     Render_State *render_state = &game_state->render_state;
     UI_Manager *ui_manager = &game_state->ui_manager;
     Editor_State *editor_state = &game_state->editor_state;
+
+    push_layer(ui_manager);
     
     real32 padding_x = 20.0f;
     real32 padding_y = 20.0f;
@@ -140,6 +140,7 @@ void draw_material_library(Memory *memory, Game_State *game_state, Controller_St
     y += padding_y;
     Material *materials = game_state->materials;
     int32 pressed_index = -1;
+    
     for (int32 i = 0; i < game_state->num_materials; i++) {
         Material m = materials[i];
         bool32 pressed = do_text_button(ui_manager, controller_state,
@@ -161,6 +162,8 @@ void draw_material_library(Memory *memory, Game_State *game_state, Controller_St
         entity->material_index = pressed_index;
         editor_state->choosing_material = false;
     }
+
+    pop_layer(ui_manager);
 };
 
 void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *controller_state, Entity *entity) {
@@ -310,6 +313,7 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
                          "Material", font_name_bold, text_style);
     draw_v_centered_text(game_state, ui_manager, x, y, small_row_height, x + right_column_offset,
                          material_name, font_name, text_style);
+    
     bool32 edit_material_pressed = do_text_button(ui_manager, controller_state,
                                                   x + row_width - 50.0f - padding_right,
                                                   y + get_center_y_offset(row_height, small_row_height),

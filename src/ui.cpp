@@ -182,6 +182,11 @@ bool32 in_bounds(Vec2 p, real32 x_min, real32 x_max, real32 y_min, real32 y_max)
     return (p.x >= x_min && p.x <= x_max && p.y >= y_min && p.y <= y_max);
 }
 
+inline bool32 in_bounds_on_layer(UI_Manager *manager, Vec2 p, real32 x_min, real32 x_max, real32 y_min, real32 y_max) {
+    return ((manager->current_layer >= manager->hot_layer) &&
+            in_bounds(p, x_min, x_max, y_min, y_max));
+}
+
 inline bool32 ui_has_hot(UI_Manager *manager) {
     return (manager->hot.string_ptr != NULL);
 }
@@ -198,6 +203,68 @@ void enable_input(UI_Manager *manager) {
 
 bool32 has_focus(UI_Manager *manager) {
     return (manager->active.type == UI_TEXT_BOX);
+}
+
+inline void push_layer(UI_Manager *manager) {
+    manager->current_layer++;
+}
+
+inline void pop_layer(UI_Manager *manager) {
+    manager->current_layer--;
+}
+
+inline void set_hot(UI_Manager *manager, UI_id hot) {
+    manager->hot = hot;
+    manager->hot_layer = manager->current_layer;
+}
+
+inline void clear_hot(UI_Manager *manager) {
+    manager->hot = {};
+    manager->hot_layer = 0;
+}
+
+// NOTE: since in immediate-mode GUIs, we only update hot if we call the do_ procedure for some element,
+//       if the element disappears, we lose the ability to change hot based on that element, for example,
+//       setting hot to empty if we're not over a button. this procedure loops through all the elements
+//       that were added during the frame and checks if the current hot element was added. if it was not,
+//       that element is gone and thus if hot is that element, it should be cleared.
+void clear_hot_if_gone(UI_Manager *manager) {
+    UI_Push_Buffer *push_buffer = &manager->push_buffer;
+    uint8 *address = (uint8 *) push_buffer->base;
+
+    while (address < ((uint8 *) push_buffer->base + push_buffer->used)) {
+        UI_Element *element = (UI_Element *) address;
+
+        // hot is still visible
+        if (ui_id_equals(manager->hot, element->id)) return;
+
+        switch (element->type) {
+            case UI_TEXT: {
+                address += sizeof(UI_Text);
+            } break;
+            case UI_TEXT_BUTTON: {
+                address += sizeof(UI_Text_Button);
+            } break;
+            case UI_IMAGE_BUTTON: {
+                address += sizeof(UI_Image_Button);
+            } break;
+            case UI_TEXT_BOX: {
+                address += sizeof(UI_Text_Box);
+            } break;
+            case UI_BOX: {
+                address += sizeof(UI_Box);
+            } break;
+            case UI_LINE: {
+                address += sizeof(UI_Line);
+            } break;
+            default: {
+                assert(!"Unhandled UI element type.");
+            }
+        }
+    }
+
+    // hot is gone
+    clear_hot(manager);
 }
 
 void do_text(UI_Manager *manager,
@@ -243,27 +310,27 @@ bool32 do_text_button(UI_Manager *manager, Controller_State *controller_state,
     bool32 was_clicked = false;
 
     Vec2 current_mouse = controller_state->current_mouse;
-    if (!manager->is_disabled && in_bounds(current_mouse, x_px, x_px + width, y_px, y_px + height)) {
-        if (controller_state->left_mouse.is_down) {
-            if (ui_id_equals(manager->hot, button.id) || !controller_state->left_mouse.was_down) {
-                manager->active = button.id;
-            } else if (ui_id_equals(manager->active, button.id)) {
-                manager->hot = button.id;
-            }
-        } else if (controller_state->left_mouse.was_down) {
+
+    if (!manager->is_disabled && in_bounds_on_layer(manager, current_mouse, x_px, x_px + width, y_px, y_px + height)) {
+        // NOTE: ui state is modified in sequence that the immediate mode calls are done. this is why we have to always
+        //       set hot again. if we didn't have this, if we drew a box, then drew a button on top of it, and then moved
+        //       our cursor over top of the button, hot would be the box and NOT the button. which is not desired.
+        set_hot(manager, button.id);
+        
+        if (controller_state->left_mouse.is_down && !controller_state->left_mouse.was_down) {
+            // we check for !was_down to avoid setting a button active if we click and hold outside then
+            // move into the button
+            manager->active = button.id;
+        } else if (!controller_state->left_mouse.is_down && controller_state->left_mouse.was_down) {
             if (ui_id_equals(manager->active, button.id)) {
                 was_clicked = true;
+                manager->active = {};
                 debug_print("%s was clicked\n", button.id);
             }
-        } else {
-            manager->hot = button.id;
-            if (ui_id_equals(manager->active, button.id)) {
-                manager->active = {};
-            }   
         }
     } else {
         if (ui_id_equals(manager->hot, button.id)) {
-            manager->hot = {};
+            clear_hot(manager);
         }
 
         if (ui_id_equals(manager->active, button.id) && !controller_state->left_mouse.is_down) {
@@ -289,27 +356,21 @@ bool32 do_image_button(UI_Manager *manager, Controller_State *controller_state,
     bool32 was_clicked = false;
 
     Vec2 current_mouse = controller_state->current_mouse;
-    if (!manager->is_disabled && in_bounds(current_mouse, x_px, x_px + width, y_px, y_px + height)) {
-        if (controller_state->left_mouse.is_down) {
-            if (ui_id_equals(manager->hot, button.id) || !controller_state->left_mouse.was_down) {
-                manager->active = button.id;
-            } else if (ui_id_equals(manager->active, button.id)) {
-                manager->hot = button.id;
-            }
-        } else if (controller_state->left_mouse.was_down) {
+    if (!manager->is_disabled && in_bounds_on_layer(manager, current_mouse, x_px, x_px + width, y_px, y_px + height)) {
+        set_hot(manager, button.id);
+        
+        if (controller_state->left_mouse.is_down && !controller_state->left_mouse.was_down) {
+            manager->active = button.id;
+        } else if (!controller_state->left_mouse.is_down && controller_state->left_mouse.was_down) {
             if (ui_id_equals(manager->active, button.id)) {
                 was_clicked = true;
+                manager->active = {};
                 debug_print("%s was clicked\n", button.id);
             }
-        } else {
-            manager->hot = button.id;
-            if (ui_id_equals(manager->active, button.id)) {
-                manager->active = {};
-            }   
         }
     } else {
         if (ui_id_equals(manager->hot, button.id)) {
-            manager->hot = {};
+            clear_hot(manager);
         }
 
         if (ui_id_equals(manager->active, button.id) && !controller_state->left_mouse.is_down) {
@@ -336,9 +397,9 @@ void do_text_box(UI_Manager *manager, Controller_State *controller_state,
                                              id_string, index);
 
     Vec2 current_mouse = controller_state->current_mouse;
-    if (!manager->is_disabled && in_bounds(current_mouse, x, x + width, y, y + height)) {
+    if (!manager->is_disabled && in_bounds_on_layer(manager, current_mouse, x, x + width, y, y + height)) {
         if (!controller_state->left_mouse.is_down) {
-            manager->hot = text_box.id;
+            set_hot(manager, text_box.id);
         }
         
 
@@ -355,7 +416,7 @@ void do_text_box(UI_Manager *manager, Controller_State *controller_state,
         //        keeps focus after clicking outside of the textbox and characters keep getting inputted.
         //        actually, i think it's because we're doing while(PeekMessage...).
         if (ui_id_equals(manager->hot, text_box.id)) {
-            manager->hot = {};
+            clear_hot(manager);
         }
 
         if (ui_id_equals(manager->active, text_box.id) &&
@@ -400,14 +461,13 @@ void do_box(UI_Manager *manager, Controller_State *controller_state,
                               id_string, index);
 
     Vec2 current_mouse = controller_state->current_mouse;
-    if (!manager->is_disabled && in_bounds(current_mouse,
-                                           x, x + width,
-                                           y, y + height)) {
-        //DebugBreak();
-        manager->hot = box.id;
+    if (!manager->is_disabled && in_bounds_on_layer(manager, current_mouse,
+                                                    x, x + width,
+                                                    y, y + height)) {
+        set_hot(manager, box.id);
     } else {
         if (ui_id_equals(manager->hot, box.id)) {
-            manager->hot = {};
+            clear_hot(manager);
         }
     }
 
@@ -426,4 +486,3 @@ void do_line(UI_Manager *manager,
 
     ui_add_line(manager, line);
 }
-

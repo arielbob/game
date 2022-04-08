@@ -164,6 +164,9 @@ struct UI_Manager {
     UI_id hot;
     UI_id active;
 
+    int32 hot_layer;
+    int32 current_layer;
+    
     UI_Push_Buffer push_buffer;
 
     bool32 is_disabled;
