@@ -48,9 +48,9 @@
 //       be able to view material library, texture library, be able to change active material, change the texture
 //       a material uses, override color, use_override_color, etc.
 //       - TODO (done): just list existing materials for now and be able to change an entity's active material
+//       - TODO: modifying materials (texture, color_override, use_color_override, name, etc.)
 //       - TODO: then creating/deleting materials
 //       - TODO: closing material library
-//       - TODO: modifying materials (texture, color_override, use_color_override, name, etc.)
 // TODO: be able to add and delete materials, textures, meshes
 // TODO: make free list struct (start with using this for storing fixed length strings that could be deleted).
 //       this can be used for storing names of materials and meshes. since when we rename a string, we can just
@@ -1220,6 +1220,27 @@ void gl_draw_ui_image_button(GL_State *gl_state, Render_State *render_state,
                  button.width - style.padding_x*2, button.height - style.padding_y*2, button.texture_name);
 }
 
+void gl_draw_ui_color_button(GL_State *gl_state, Render_State *render_state,
+                             UI_Manager *ui_manager,
+                             UI_Color_Button button) {
+    UI_Color_Button_Style style = button.style;
+    Vec4 button_color;
+
+    if (ui_id_equals(ui_manager->hot, button.id)) {
+        button_color = style.hot_color;
+        if (ui_id_equals(ui_manager->active, button.id)) {
+            button_color = style.active_color;
+        }
+    } else {
+        button_color = style.normal_color;
+    }
+
+    gl_draw_quad(gl_state, render_state, button.x, button.y,
+                 button.width, button.height, button_color);
+    gl_draw_quad(gl_state, render_state, button.x + style.padding_x, button.y + style.padding_y,
+                 button.width - style.padding_x*2, button.height - style.padding_y*2, button.color);
+}
+
 void gl_draw_ui_text_box(GL_State *gl_state, Game_State *game_state,
                          Display_Output display_output,
                          UI_Manager *ui_manager, UI_Text_Box text_box) {
@@ -1311,6 +1332,11 @@ void gl_draw_ui(GL_State *gl_state, Game_State *game_state,
                 UI_Image_Button *ui_image_button = (UI_Image_Button *) element;
                 gl_draw_ui_image_button(gl_state, render_state, ui_manager, *ui_image_button);
                 address += sizeof(UI_Image_Button);
+            } break;
+            case UI_COLOR_BUTTON: {
+                UI_Color_Button *ui_color_button = (UI_Color_Button *) element;
+                gl_draw_ui_color_button(gl_state, render_state, ui_manager, *ui_color_button);
+                address += sizeof(UI_Color_Button);
             } break;
             case UI_TEXT_BOX: {
                 UI_Text_Box *ui_text_box = (UI_Text_Box *) element;

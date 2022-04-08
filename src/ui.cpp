@@ -12,6 +12,16 @@ UI_Text_Button_Style default_text_button_style = { TEXT_ALIGN_X | TEXT_ALIGN_Y,
                                                    rgb_to_vec4(47, 84, 102),
                                                    rgb_to_vec4(19, 37, 46) };
 
+UI_Image_Button_Style default_image_button_style = { 5.0f, 5.0f,
+                                                    rgb_to_vec4(33, 62, 69),
+                                                    rgb_to_vec4(47, 84, 102),
+                                                    rgb_to_vec4(19, 37, 46) };
+
+UI_Color_Button_Style default_color_button_style = { 5.0f, 5.0f,
+                                                     rgb_to_vec4(33, 62, 69),
+                                                     rgb_to_vec4(47, 84, 102),
+                                                     rgb_to_vec4(19, 37, 46) };
+
 // TODO: store UI element state in a hash table, so we can do things like fading transitions.
 //       this requires some thought since we would like to remove elements from the hash table if
 //       the element is no longer being displayed. we want this while retaining the nice
@@ -77,6 +87,25 @@ UI_Image_Button make_ui_image_button(real32 x, real32 y, real32 width, real32 he
     button.texture_name = texture_name;
 
     UI_id button_id = { UI_IMAGE_BUTTON, id, index };
+    button.id = button_id;
+
+    return button;
+}
+
+UI_Color_Button make_ui_color_button(real32 x, real32 y, real32 width, real32 height,
+                                     UI_Color_Button_Style style,
+                                     Vec4 color, char *id, int32 index = 0) {
+    UI_Color_Button button = {};
+
+    button.type = UI_COLOR_BUTTON;
+    button.x = x;
+    button.y = y;
+    button.width = width;
+    button.height = height;
+    button.style = style;
+    button.color = color;
+
+    UI_id button_id = { UI_COLOR_BUTTON, id, index };
     button.id = button_id;
 
     return button;
@@ -161,6 +190,10 @@ void ui_add_text_button(UI_Manager *manager, UI_Text_Button button) {
 
 void ui_add_image_button(UI_Manager *manager, UI_Image_Button button) {
     _push_element(&manager->push_buffer, UI_Image_Button, button);
+}
+
+void ui_add_color_button(UI_Manager *manager, UI_Color_Button button) {
+    _push_element(&manager->push_buffer, UI_Color_Button, button);
 }
 
 void ui_add_text(UI_Manager *manager, UI_Text text) {
@@ -252,6 +285,9 @@ void clear_hot_if_gone(UI_Manager *manager) {
             } break;
             case UI_IMAGE_BUTTON: {
                 address += sizeof(UI_Image_Button);
+            } break;
+            case UI_COLOR_BUTTON: {
+                address += sizeof(UI_Color_Button);
             } break;
             case UI_TEXT_BOX: {
                 address += sizeof(UI_Text_Box);
@@ -377,6 +413,46 @@ bool32 do_image_button(UI_Manager *manager, Controller_State *controller_state,
     }
 
     ui_add_image_button(manager, button);
+
+    return was_clicked;
+}
+
+bool32 do_color_button(UI_Manager *manager, Controller_State *controller_state,
+                       real32 x_px, real32 y_px,
+                       real32 width, real32 height,
+                       UI_Color_Button_Style style,
+                       Vec4 color,
+                       char *id_string, int32 index = 0) {
+    UI_Color_Button button = make_ui_color_button(x_px, y_px, width, height,
+                                                  style,
+                                                  color, id_string, index);
+
+    bool32 was_clicked = false;
+
+    Vec2 current_mouse = controller_state->current_mouse;
+    if (!manager->is_disabled && in_bounds_on_layer(manager, current_mouse, x_px, x_px + width, y_px, y_px + height)) {
+        set_hot(manager, button.id);
+        
+        if (controller_state->left_mouse.is_down && !controller_state->left_mouse.was_down) {
+            manager->active = button.id;
+        } else if (!controller_state->left_mouse.is_down && controller_state->left_mouse.was_down) {
+            if (ui_id_equals(manager->active, button.id)) {
+                was_clicked = true;
+                manager->active = {};
+                debug_print("%s was clicked\n", button.id);
+            }
+        }
+    } else {
+        if (ui_id_equals(manager->hot, button.id)) {
+            clear_hot(manager);
+        }
+
+        if (ui_id_equals(manager->active, button.id) && !controller_state->left_mouse.is_down) {
+            manager->active = {};
+        }
+    }
+
+    ui_add_color_button(manager, button);
 
     return was_clicked;
 }

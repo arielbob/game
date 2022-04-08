@@ -6,6 +6,7 @@ enum UI_Type {
     UI_TEXT,
     UI_TEXT_BUTTON,
     UI_IMAGE_BUTTON,
+    UI_COLOR_BUTTON,
     UI_TEXT_BOX,
     UI_BOX,
     UI_LINE
@@ -98,6 +99,29 @@ struct UI_Image_Button {
     UI_Image_Button_Style style;
 
     char *texture_name;
+};
+
+struct UI_Color_Button_Style {
+    real32 padding_x;
+    real32 padding_y;
+
+    Vec4 normal_color;
+    Vec4 hot_color;
+    Vec4 active_color;
+};
+
+struct UI_Color_Button {
+    UI_HEADER
+
+    real32 x;
+    real32 y;
+
+    real32 width;
+    real32 height;
+
+    UI_Color_Button_Style style;
+
+    Vec4 color;
 };
 
 struct UI_Text_Box_Style {

@@ -39,6 +39,7 @@ struct Editor_State {
     Vec3 last_gizmo_transform_point;
 
     bool32 choosing_material;
+    bool32 editing_selected_entity_material;
 };
 
 #endif

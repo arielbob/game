@@ -253,7 +253,7 @@ void init_game(Memory *memory, Game_State *game_state,
     // init ui state
     UI_Manager *ui_manager = &game_state->ui_manager;
     UI_Push_Buffer ui_push_buffer = {};
-    ui_push_buffer.size = KILOBYTES(8);
+    ui_push_buffer.size = MEGABYTES(1);
     ui_push_buffer.base = allocate((Allocator *) game_data_arena, ui_push_buffer.size);
     ui_push_buffer.used = 0;
     ui_manager->push_buffer = ui_push_buffer;
