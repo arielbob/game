@@ -22,6 +22,12 @@ UI_Color_Button_Style default_color_button_style = { 5.0f, 5.0f,
                                                      rgb_to_vec4(47, 84, 102),
                                                      rgb_to_vec4(19, 37, 46) };
 
+UI_Text_Box_Style default_text_box_style = { TEXT_ALIGN_Y,
+                                             5.0f, 5.0f,
+                                             rgb_to_vec4(33, 62, 69),
+                                             rgb_to_vec4(47, 84, 102),
+                                             rgb_to_vec4(19, 37, 46) };
+
 // TODO: store UI element state in a hash table, so we can do things like fading transitions.
 //       this requires some thought since we would like to remove elements from the hash table if
 //       the element is no longer being displayed. we want this while retaining the nice
@@ -127,6 +133,7 @@ UI_Text make_ui_text(real32 x, real32 y, char *text, char *font, UI_Text_Style s
     return ui_text;
 }
 
+#if 0
 UI_Text_Box make_ui_text_box(real32 x, real32 y,
                              real32 width, real32 height,
                              char *current_text, uint32 size,
@@ -142,6 +149,31 @@ UI_Text_Box make_ui_text_box(real32 x, real32 y,
     text_box.size = size;
     text_box.current_text = current_text;
     text_box.style = style;
+
+    UI_id text_box_id = { UI_TEXT_BOX, id, index };
+    text_box.id = text_box_id;
+
+    return text_box;
+}
+#endif
+
+UI_Text_Box make_ui_text_box(real32 x, real32 y,
+                             real32 width, real32 height,
+                             String_Buffer buffer,
+                             char *font,
+                             UI_Text_Box_Style style, UI_Text_Style text_style,
+                             char *id, int32 index = 0) {
+    UI_Text_Box text_box = {};
+
+    text_box.type = UI_TEXT_BOX;
+    text_box.x = x;
+    text_box.y = y;
+    text_box.width = width;
+    text_box.height = height;
+    text_box.buffer = buffer;
+    text_box.font = font;
+    text_box.style = style;
+    text_box.text_style = text_style;
 
     UI_id text_box_id = { UI_TEXT_BOX, id, index };
     text_box.id = text_box_id;
@@ -459,6 +491,9 @@ bool32 do_color_button(UI_Manager *manager, Controller_State *controller_state,
 
 // TODO: this should return a bool32, since we want to be able to submit fields by pressing the enter key
 // TODO: this may be messed up since we changed width/height to include padding
+#if 0
+// TODO: this should return a bool32, since we want to be able to submit fields by pressing the enter key
+// TODO: this may be messed up since we changed width/height to include padding
 void do_text_box(UI_Manager *manager, Controller_State *controller_state,
                  real32 x, real32 y,
                  real32 width, real32 height,
@@ -521,8 +556,89 @@ void do_text_box(UI_Manager *manager, Controller_State *controller_state,
     }
 
     ui_add_text_box(manager, text_box);
+}
+#endif
 
-    //return was_clicked;
+void do_text_box(UI_Manager *manager, Controller_State *controller_state,
+                 real32 x, real32 y,
+                 real32 width, real32 height,
+                 String_Buffer *buffer,
+                 char *font,
+                 UI_Text_Box_Style style, UI_Text_Style text_style,
+                 char *id_string, int32 index = 0) {
+    UI_Text_Box text_box =  make_ui_text_box(x, y, width, height,
+                                             *buffer,
+                                             font,
+                                             style, text_style,
+                                             id_string, index);
+
+    Vec2 current_mouse = controller_state->current_mouse;
+    if (!manager->is_disabled && in_bounds_on_layer(manager, current_mouse, x, x + width, y, y + height)) {
+        set_hot(manager, text_box.id);
+
+        if (!controller_state->left_mouse.is_down) {
+            set_hot(manager, text_box.id);
+        }
+
+        if (controller_state->left_mouse.is_down && !controller_state->left_mouse.was_down) {
+        } else if (!controller_state->left_mouse.is_down && controller_state->left_mouse.was_down) {
+            manager->active = text_box.id;
+            manager->focus_timer = platform_get_wall_clock_time();
+            manager->focus_cursor_index = buffer->current_length;
+#if 0
+            if (ui_id_equals(manager->active, text_box.id)) {
+                manager->active = {};
+                debug_print("%s was clicked\n", button.id);
+            }
+#endif
+        }
+  
+#if 0
+        if (ui_id_equals(manager->hot, text_box.id) &&
+            controller_state->left_mouse.is_down) {
+            manager->active = text_box.id;
+            manager->focus_timer = platform_get_wall_clock_time();
+            manager->focus_cursor_index = buffer->current_length;
+        }
+#endif
+    } else {
+        // FIXME: this isn't really a bug (other programs seem to behave this way), but i'm not sure
+        //        why it's happening: if you hold down a key in the textbox and you click outside of the textbox,
+        //        the textbox should lose focus and text should no longer be inputted. but, for some reason it
+        //        keeps focus after clicking outside of the textbox and characters keep getting inputted.
+        //        actually, i think it's because we're doing while(PeekMessage...).
+        if (ui_id_equals(manager->hot, text_box.id)) {
+            clear_hot(manager);
+        }
+
+        if (ui_id_equals(manager->active, text_box.id) &&
+            controller_state->left_mouse.is_down &&
+            !controller_state->left_mouse.was_down) {
+            manager->active = {};
+            manager->focus_cursor_index = 0;
+        }
+    }
+
+    if (ui_id_equals(manager->active, text_box.id)) {
+        for (int32 i = 0; i < controller_state->num_pressed_chars; i++) {
+            char c = controller_state->pressed_chars[i];
+            if (c == '\b') {
+                manager->focus_cursor_index--;
+                if (manager->focus_cursor_index < 0) {
+                    manager->focus_cursor_index = 0;
+                }
+                buffer->current_length = manager->focus_cursor_index;
+            } else if (manager->focus_cursor_index < buffer->size &&
+                       c >= 32 &&
+                       c <= 126) {
+                buffer->contents[manager->focus_cursor_index] = c;
+                manager->focus_cursor_index++;
+                buffer->current_length++;
+            }
+        }
+    }
+
+    ui_add_text_box(manager, text_box);
 }
 
 void do_box(UI_Manager *manager, Controller_State *controller_state,

@@ -361,6 +361,13 @@ void gl_use_texture(GL_State *gl_state, String texture_name) {
     glBindTexture(GL_TEXTURE_2D, texture.id); 
 }
 
+void gl_use_font_texture(GL_State *gl_state, String font_texture_name) {
+    uint32 texture_id;
+    uint32 texture_exists = hash_table_find(gl_state->font_texture_table, font_texture_name, &texture_id);
+    assert(texture_exists);
+    glBindTexture(GL_TEXTURE_2D, texture_id);
+}
+
 inline void gl_use_texture(GL_State *gl_state, char *texture_name) {
     return gl_use_texture(gl_state, make_string(texture_name));
 }
@@ -565,6 +572,58 @@ void gl_draw_text(GL_State *gl_state, Render_State *render_state,
         }
         
         ++text;
+    }
+
+    //glEnable(GL_DEPTH_TEST);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindVertexArray(0);
+}
+
+void gl_draw_text(GL_State *gl_state, Render_State *render_state,
+                  Font *font,
+                  real32 x_pos_pixels, real32 y_pos_pixels,
+                  String_Buffer buffer, Vec4 color) {
+    uint32 text_shader_id = gl_use_shader(gl_state, "text");
+    GL_Mesh glyph_mesh = gl_use_mesh(gl_state, "glyph_quad");
+    gl_use_font_texture(gl_state, make_string(font->name));
+
+    gl_set_uniform_mat4(text_shader_id, "cpv_matrix", &render_state->ortho_clip_matrix);
+    gl_set_uniform_vec4(text_shader_id, "color", &color);
+
+    // NOTE: we disable depth test so that overlapping characters such as the "o" in "fo" doesn't cover the
+    //       quad of the previous character, causing a cut off look.
+    // NOTE: we assume that GL_DEPTH_TEST is disabled
+    //glDisable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_TEXTURE_2D);
+    glBindBuffer(GL_ARRAY_BUFFER, glyph_mesh.vbo);
+
+    real32 quad_vertices[8];
+    real32 quad_uvs[8];
+    real32 line_advance = font->scale_for_pixel_height * (font->ascent - font->descent + font->line_gap);
+    real32 start_x_pos_pixels = x_pos_pixels;
+    
+    char *text = buffer.contents;
+    int32 i = 0;
+    while (*text && i < buffer.current_length) {
+        if (*text >= 32 && *text < 128 || *text == '-') {
+            stbtt_aligned_quad q;
+            stbtt_GetBakedQuad(font->cdata, 512, 512, *text - 32, &x_pos_pixels, &y_pos_pixels, &q, 1);
+
+            copy_aligned_quad_to_arrays(q, quad_vertices, quad_uvs);
+
+            glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(quad_vertices), quad_vertices);
+            glBufferSubData(GL_ARRAY_BUFFER, (int *) sizeof(quad_vertices), sizeof(quad_uvs), quad_uvs);
+
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        } else if (*text == '\n') {
+            x_pos_pixels = start_x_pos_pixels;
+            y_pos_pixels += line_advance;
+        }
+        
+        ++text;
+        ++i;
     }
 
     //glEnable(GL_DEPTH_TEST);
@@ -1144,7 +1203,7 @@ void gl_draw_ui_text(GL_State *gl_state, Game_State *game_state,
 
     if (style.use_offset_shadow) {
         gl_draw_text(gl_state, &game_state->render_state, &font,
-                     ui_text.x, ui_text.y + 2.0f,
+                     ui_text.x, ui_text.y + TEXT_SHADOW_OFFSET,
                      ui_text.text, style.offset_shadow_color);
     }
 
@@ -1191,7 +1250,7 @@ void gl_draw_ui_text_button(GL_State *gl_state, Game_State *game_state,
 
     if (text_style.use_offset_shadow) {
         gl_draw_text(gl_state, &game_state->render_state, &font,
-                     button.x + x_offset, button.y + y_offset + 2.0f,
+                     button.x + x_offset, button.y + y_offset + TEXT_SHADOW_OFFSET,
                      button.text, text_style.offset_shadow_color);
     }
 
@@ -1247,7 +1306,7 @@ void gl_draw_ui_text_box(GL_State *gl_state, Game_State *game_state,
                          UI_Manager *ui_manager, UI_Text_Box text_box) {
     Vec3 color = make_vec3(1.0f, 1.0f, 1.0f);
 
-    Font font = get_font(game_state, text_box.style.font);
+    Font font = get_font(game_state, text_box.font);
 
     if (ui_id_equals(ui_manager->active, text_box.id)) {
         color = make_vec3(0.0f, 0.0f, 1.0f);
@@ -1259,20 +1318,39 @@ void gl_draw_ui_text_box(GL_State *gl_state, Game_State *game_state,
 
     UI_Text_Box_Style style = text_box.style;
     gl_draw_quad(gl_state, &game_state->render_state, text_box.x, text_box.y,
-                 text_box.width + style.padding_x * 2, text_box.height + style.padding_y * 2,
+                 text_box.width, text_box.height,
                  color);
+
+    UI_Text_Style text_style = text_box.text_style;
 
     glEnable(GL_SCISSOR_TEST);
     // TODO: should move where the text renders depending on if the cursor moves outside of the
     //       text box's bounds.
-    // glScissor((int32) (text_box.x + style.padding_x), (int32) (display_output.height - (text_box.y + style.padding_y)),
-    //           (int32) style.width, (int32) style.height);
-    glScissor((int32) (text_box.x + style.padding_x), (int32) (display_output.height - text_box.y - text_box.height - style.padding_y),
-              (int32) text_box.width, (int32) text_box.height);
+    glScissor((int32) (text_box.x + style.padding_x),
+              (int32) (display_output.height - text_box.y - text_box.height - style.padding_y),
+              (int32) text_box.width, (int32) display_output.height);
+
+    real32 adjusted_text_height = font.height_pixels - font.scale_for_pixel_height * (font.ascent + font.descent);
+    real32 text_y = text_box.y + text_box.height - style.padding_y;
+    if (style.text_align_flags & TEXT_ALIGN_Y) {
+        real32 inner_height = (text_box.height - 2*style.padding_y);
+        text_y += -0.5f*inner_height + 0.5f*adjusted_text_height;
+        //y_offset = 0.5f * (-inner_height + adjusted_text_height);
+    }
+
+    if (text_style.use_offset_shadow) {
+        gl_draw_text(gl_state, &game_state->render_state, &font,
+                     text_box.x + style.padding_x, text_y + TEXT_SHADOW_OFFSET,
+                     text_box.buffer, text_style.offset_shadow_color);
+    }
+
     gl_draw_text(gl_state, &game_state->render_state, &font,
-                 text_box.x + style.padding_x, text_box.y + text_box.height - style.padding_y,
-                 text_box.current_text, make_vec4(1.0f, 1.0f, 1.0f, 1.0f));
+                 text_box.x + style.padding_x, text_y,
+                 text_box.buffer, text_style.color);
+    
     glDisable(GL_SCISSOR_TEST);
+
+    real32 cursor_width = get_width(font, "M");
 
     if (ui_id_equals(ui_manager->active, text_box.id)) {
         // TODO: this cursor should actually be calculated using focus_cursor_index. we need to
@@ -1281,10 +1359,11 @@ void gl_draw_ui_text_box(GL_State *gl_state, Game_State *game_state,
         //       box.
 
         // in focus
-        real32 text_width = get_width(font, text_box.current_text);
+        real32 text_width = get_width(font, text_box.buffer);
         gl_draw_quad(gl_state, &game_state->render_state,
                      text_box.x + text_width + style.padding_x, text_box.y + style.padding_y,
-                     12.0f, text_box.height, make_vec3(0.0f, 1.0f, 0.0f));
+                     cursor_width, text_box.height - style.padding_y * 2 + TEXT_SHADOW_OFFSET,
+                     make_vec3(0.0f, 1.0f, 0.0f));
     }
 }
 

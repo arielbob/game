@@ -17,7 +17,7 @@
 #define MAX_FONTS 64
 
 //#define MATERIAL_NAME_MAX_SIZE 128
-#define MATERIAL_STRING_MAX_SIZE 128
+#define MATERIAL_STRING_MAX_SIZE 16
 
 struct Display_Output {
     int32 width;

@@ -23,6 +23,28 @@ real32 get_width(Font font, char *text) {
     return width;
 }
 
+real32 get_width(Font font, String_Buffer buffer) {
+    real32 width = 0;
+
+    int32 i = 0;
+    char *text = buffer.contents;
+    while (*text && i < buffer.current_length) {
+        int32 advance, left_side_bearing;
+        stbtt_GetCodepointHMetrics(&font.font_info, *text, &advance, &left_side_bearing);
+        width += (advance) * font.scale_for_pixel_height;
+        
+        if (*(text + 1)) {
+            width += font.scale_for_pixel_height * stbtt_GetCodepointKernAdvance(&font.font_info,
+                                                                                 *text, *(text + 1));
+        }
+
+        text++;
+        i++;
+    }
+    
+    return width;
+}
+
 Font load_font(Memory *memory,
                Game_State *game_state,
                char *font_filename, char *font_name,

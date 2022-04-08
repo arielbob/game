@@ -125,7 +125,7 @@ struct UI_Color_Button {
 };
 
 struct UI_Text_Box_Style {
-    char *font;
+    uint32 text_align_flags;
 
     real32 padding_x;
     real32 padding_y;
@@ -144,10 +144,12 @@ struct UI_Text_Box {
     real32 width;
     real32 height;
 
-    int32 size;
-    char *current_text;
+    String_Buffer buffer;
 
     UI_Text_Box_Style style;
+    UI_Text_Style text_style;
+
+    char *font;
 };
 
 struct UI_Box_Style {

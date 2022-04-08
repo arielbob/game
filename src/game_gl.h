@@ -107,6 +107,8 @@
 #define GL_SRGB                           0x8C40
 #define GL_SRGB_ALPHA                     0x8C42
 
+#define TEXT_SHADOW_OFFSET 2.0f
+
 enum Shader_Type {
     VERTEX,
     FRAGMENT

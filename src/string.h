@@ -27,8 +27,8 @@ struct String {
 
 struct String_Buffer {
     char *contents;
-    uint32 current_length;
-    uint32 size;
+    int32 current_length;
+    int32 size;
 };
 
 struct String_Iterator {
@@ -56,7 +56,7 @@ void copy_string(char *dest, char *src, uint32 max_size) {
 void copy_string(String_Buffer *dest, String_Buffer *src) {
     assert(dest->size >= src->size);
 
-    for (uint32 i = 0; i < src->current_length; i++) {
+    for (int32 i = 0; i < src->current_length; i++) {
         dest->contents[i] = src->contents[i];
     }
 
@@ -194,7 +194,7 @@ void to_char_array(String string, char *buffer, uint32 buffer_size) {
 char *to_char_array(Allocator *allocator, String_Buffer string) {
     char *buf = (char *) allocate(allocator, string.current_length + 1);
 
-    for (uint32 i = 0; i < string.current_length; i++) {
+    for (int32 i = 0; i < string.current_length; i++) {
         buf[i] = string.contents[i];
     }
     
