@@ -44,14 +44,17 @@
 // TODO (done): fix buttons being able to be set to hot/active behind layered UI
 //              we could push layers and pop layers and just assert at end of the frame that current_layer == 0
 
-// TODO: figure out functioning of text boxes
 // TODO: material editing in editor
-//       be able to view material library, texture library, be able to change active material, change the texture
-//       a material uses, override color, use_override_color, etc.
-//       - TODO (done): just list existing materials for now and be able to change an entity's active material
-//       - TODO: modifying materials (texture, color_override, use_color_override, name, etc.)
-//       - TODO: then creating/deleting materials
-//       - TODO: closing material library
+// TODO (done): list existing materials and be able to change an entity's active material
+// TODO: figure out functioning of text boxes
+// TODO: texture library
+// TODO: color selector
+// TODO: slider UI element
+// TODO: material saving in edit box
+// TODO: material creation/deletion
+// TODO: closing material library
+// TODO: preview mode for materials
+
 // TODO: be able to add and delete materials, textures, meshes
 // TODO: make free list struct (start with using this for storing fixed length strings that could be deleted).
 //       this can be used for storing names of materials and meshes. since when we rename a string, we can just
@@ -1227,6 +1230,10 @@ void gl_draw_ui_text_button(GL_State *gl_state, Game_State *game_state,
         }
     } else {
         color = style.normal_color;
+    }
+
+    if (button.is_disabled) {
+        color = style.disabled_color;
     }
 
     gl_draw_quad(gl_state, &game_state->render_state, button.x, button.y,

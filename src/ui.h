@@ -59,6 +59,7 @@ struct UI_Text_Button_Style {
     Vec4 normal_color;
     Vec4 hot_color;
     Vec4 active_color;
+    Vec4 disabled_color;
 };
 
 // TODO: this is a text button - will probably want to add different types of buttons
@@ -76,6 +77,8 @@ struct UI_Text_Button {
 
     char *text;
     char *font;
+
+    bool32 is_disabled;
 };
 
 struct UI_Image_Button_Style {

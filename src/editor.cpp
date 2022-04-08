@@ -362,12 +362,16 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
 
     real32 edit_material_button_width = (row_width - choose_material_button_width - padding_left * 2 -
                                          right_column_offset - 1.0f);
+
     bool32 edit_material_pressed = do_text_button(ui_manager, controller_state,
                                                   x + right_column_offset + 200.0f + padding_left,
                                                   y + get_center_y_offset(row_height, inset_row_height),
                                                   edit_material_button_width, inset_row_height,
                                                   button_style, default_text_style,
-                                                  "Edit", font_name_bold, "edit_material");
+                                                  "Edit", font_name_bold,
+                                                  editor_state->editing_selected_entity_material,
+                                                  "edit_material");
+    
     y += row_height;
 
     if (!editor_state->editing_selected_entity_material) {
@@ -408,8 +412,6 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
                     text_box_style, default_text_style,
                     "material_name_text_box");
 
-        //draw_v_centered_text(game_state, ui_manager, x+right_column_offset, y, row_height,
-        //                     temp_material_name, font_name, text_style);
         y += row_height;
 
         char *texture_name = to_char_array(allocator, temp_material->texture_name);
@@ -451,25 +453,45 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
                  row_id, row_index++);
         draw_v_centered_text(game_state, ui_manager, x + padding_left, y, row_height,
                              "Use Color Override", font_name_bold, text_style);
-        do_text_button(ui_manager, controller_state,
-                       x + right_column_offset, y + get_center_y_offset(row_height, inset_row_height),
-                       100.0f, inset_row_height,
-                       button_style, default_text_style,
-                       temp_material->use_color_override ? "true" : "false",
-                       font_name_bold,
-                       "material_toggle_use_color_override");
+        bool32 toggle_color_override_pressed = do_text_button(ui_manager, controller_state,
+                                                              x + right_column_offset,
+                                                              y + get_center_y_offset(row_height, inset_row_height),
+                                                              100.0f, inset_row_height,
+                                                              button_style, default_text_style,
+                                                              temp_material->use_color_override ? "true" : "false",
+                                                              font_name_bold,
+                                                              "material_toggle_use_color_override");
         y += row_height;
+        
+        if (toggle_color_override_pressed) {
+            temp_material->use_color_override = !temp_material->use_color_override;
+        }
 
         draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags,
                  row_id, row_index++);
-        do_text_button(ui_manager, controller_state,
-                       x + padding_left, y + get_center_y_offset(row_height, inset_row_height),
-                       100.0f, inset_row_height,
-                       button_style, default_text_style,
-                       "Cancel",
-                       font_name_bold,
-                       "material_edit_cancel");
+
+        bool32 cancel_pressed = do_text_button(ui_manager, controller_state,
+                                               x + padding_left,
+                                               y + get_center_y_offset(row_height, inset_row_height),
+                                               100.0f, inset_row_height,
+                                               default_text_button_cancel_style, default_text_style,
+                                               "Cancel",
+                                               font_name_bold,
+                                               "material_edit_cancel");
+
+        bool32 save_pressed = do_text_button(ui_manager, controller_state,
+                                             x + row_width - padding_left - 100.0f,
+                                             y + get_center_y_offset(row_height, inset_row_height),
+                                             100.0f, inset_row_height,
+                                             default_text_button_save_style, default_text_style,
+                                             "Save",
+                                             font_name_bold,
+                                             "material_edit_save");
         y += row_height;
+
+        if (cancel_pressed) {
+            editor_state->editing_selected_entity_material = false;
+        }
 
         // some more padding
         draw_row(ui_manager, controller_state, x, y, row_width, padding_bottom / 2.0f + 1.0f, row_color,

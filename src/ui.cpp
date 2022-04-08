@@ -10,7 +10,18 @@ UI_Text_Style default_text_style = {
 UI_Text_Button_Style default_text_button_style = { TEXT_ALIGN_X | TEXT_ALIGN_Y,
                                                    rgb_to_vec4(33, 62, 69),
                                                    rgb_to_vec4(47, 84, 102),
-                                                   rgb_to_vec4(19, 37, 46) };
+                                                   rgb_to_vec4(19, 37, 46),
+                                                   rgb_to_vec4(102, 102, 102) };
+
+UI_Text_Button_Style default_text_button_cancel_style = { TEXT_ALIGN_X | TEXT_ALIGN_Y,
+                                                          rgb_to_vec4(140, 38, 60),
+                                                          rgb_to_vec4(199, 66, 103),
+                                                          rgb_to_vec4(102, 22, 45) };
+
+UI_Text_Button_Style default_text_button_save_style = { TEXT_ALIGN_X | TEXT_ALIGN_Y,
+                                                        rgb_to_vec4(37, 179, 80),
+                                                        rgb_to_vec4(68, 201, 108),
+                                                        rgb_to_vec4(31, 102, 70) };
 
 UI_Image_Button_Style default_image_button_style = { 5.0f, 5.0f,
                                                     rgb_to_vec4(33, 62, 69),
@@ -60,7 +71,7 @@ void clear_push_buffer(UI_Push_Buffer *buffer) {
 
 UI_Text_Button make_ui_text_button(real32 x, real32 y, real32 width, real32 height,
                                    UI_Text_Button_Style style, UI_Text_Style text_style,
-                                   char *text, char *font, char *id, int32 index = 0) {
+                                   char *text, char *font, bool32 is_disabled, char *id, int32 index = 0) {
     UI_Text_Button button = {};
 
     button.type = UI_TEXT_BUTTON;
@@ -72,6 +83,7 @@ UI_Text_Button make_ui_text_button(real32 x, real32 y, real32 width, real32 heig
     button.text_style = text_style;
     button.text = text;
     button.font = font;
+    button.is_disabled = is_disabled;
 
     UI_id button_id = { UI_TEXT_BUTTON, id, index };
     button.id = button_id;
@@ -368,16 +380,18 @@ bool32 do_text_button(UI_Manager *manager, Controller_State *controller_state,
                       real32 x_px, real32 y_px,
                       real32 width, real32 height,
                       UI_Text_Button_Style style, UI_Text_Style text_style,
-                      char *text, char *font, char *id_string, int32 index = 0) {
+                      char *text, char *font, bool32 is_disabled, char *id_string, int32 index = 0) {
     UI_Text_Button button = make_ui_text_button(x_px, y_px, width, height,
                                                 style, text_style,
-                                                text, font, id_string, index);
+                                                text, font, is_disabled, id_string, index);
 
     bool32 was_clicked = false;
 
     Vec2 current_mouse = controller_state->current_mouse;
 
-    if (!manager->is_disabled && in_bounds_on_layer(manager, current_mouse, x_px, x_px + width, y_px, y_px + height)) {
+    if (!manager->is_disabled &&
+        !is_disabled &&
+        in_bounds_on_layer(manager, current_mouse, x_px, x_px + width, y_px, y_px + height)) {
         // NOTE: ui state is modified in sequence that the immediate mode calls are done. this is why we have to always
         //       set hot again. if we didn't have this, if we drew a box, then drew a button on top of it, and then moved
         //       our cursor over top of the button, hot would be the box and NOT the button. which is not desired.
@@ -407,6 +421,18 @@ bool32 do_text_button(UI_Manager *manager, Controller_State *controller_state,
     ui_add_text_button(manager, button);
 
     return was_clicked;
+}
+
+inline bool32 do_text_button(UI_Manager *manager, Controller_State *controller_state,
+                      real32 x_px, real32 y_px,
+                      real32 width, real32 height,
+                      UI_Text_Button_Style style, UI_Text_Style text_style,
+                      char *text, char *font, char *id_string, int32 index = 0) {
+    return do_text_button(manager, controller_state,
+                          x_px, y_px,
+                          width, height,
+                          style, text_style,
+                          text, font, false, id_string, index);
 }
 
 bool32 do_image_button(UI_Manager *manager, Controller_State *controller_state,
