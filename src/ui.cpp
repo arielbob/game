@@ -50,182 +50,8 @@ UI_Text_Box_Style default_text_box_style = { TEXT_ALIGN_Y,
     *((type *) ((uint8 *) (push_buffer)->base + (push_buffer)->used)) = element; \
     (push_buffer)->used += sizeof(type)
     
-
-#if 0
-void push_element(UI_Push_Buffer *buffer, UI_Text element) {
-    _push_element(buffer, UI_Text, element);
-}
-
-void push_element(UI_Push_Buffer *buffer, UI_Text_Button element) {
-    _push_element(buffer, UI_Text_Button, element);
-}
-
-void push_element(UI_Push_Buffer *buffer, UI_Text_Box element) {
-    _push_element(buffer, UI_Text_Box, element);
-}
-#endif
-
 void clear_push_buffer(UI_Push_Buffer *buffer) {
     buffer->used = 0;
-}
-
-UI_Text_Button make_ui_text_button(real32 x, real32 y, real32 width, real32 height,
-                                   UI_Text_Button_Style style, UI_Text_Style text_style,
-                                   char *text, char *font, bool32 is_disabled, char *id, int32 index = 0) {
-    UI_Text_Button button = {};
-
-    button.type = UI_TEXT_BUTTON;
-    button.x = x;
-    button.y = y;
-    button.width = width;
-    button.height = height;
-    button.style = style;
-    button.text_style = text_style;
-    button.text = text;
-    button.font = font;
-    button.is_disabled = is_disabled;
-
-    UI_id button_id = { UI_TEXT_BUTTON, id, index };
-    button.id = button_id;
-
-    return button;
-}
-
-UI_Image_Button make_ui_image_button(real32 x, real32 y, real32 width, real32 height,
-                                     UI_Image_Button_Style style,
-                                     char *texture_name, char *id, int32 index = 0) {
-    UI_Image_Button button = {};
-
-    button.type = UI_IMAGE_BUTTON;
-    button.x = x;
-    button.y = y;
-    button.width = width;
-    button.height = height;
-    button.style = style;
-    button.texture_name = texture_name;
-
-    UI_id button_id = { UI_IMAGE_BUTTON, id, index };
-    button.id = button_id;
-
-    return button;
-}
-
-UI_Color_Button make_ui_color_button(real32 x, real32 y, real32 width, real32 height,
-                                     UI_Color_Button_Style style,
-                                     Vec4 color, char *id, int32 index = 0) {
-    UI_Color_Button button = {};
-
-    button.type = UI_COLOR_BUTTON;
-    button.x = x;
-    button.y = y;
-    button.width = width;
-    button.height = height;
-    button.style = style;
-    button.color = color;
-
-    UI_id button_id = { UI_COLOR_BUTTON, id, index };
-    button.id = button_id;
-
-    return button;
-}
-
-UI_Text make_ui_text(real32 x, real32 y, char *text, char *font, UI_Text_Style style, char *id, int32 index = 0) {
-    UI_Text ui_text = {};
-
-    ui_text.type = UI_TEXT;
-    ui_text.x = x;
-    ui_text.y = y;
-    ui_text.text = text;
-    ui_text.font = font;
-    ui_text.style = style;
-
-    UI_id ui_text_id = { UI_TEXT, id, index };
-    ui_text.id = ui_text_id;
-
-    return ui_text;
-}
-
-#if 0
-UI_Text_Box make_ui_text_box(real32 x, real32 y,
-                             real32 width, real32 height,
-                             char *current_text, uint32 size,
-                             UI_Text_Box_Style style,
-                             char *id, int32 index = 0) {
-    UI_Text_Box text_box = {};
-
-    text_box.type = UI_TEXT_BOX;
-    text_box.x = x;
-    text_box.y = y;
-    text_box.width = width;
-    text_box.height = height;
-    text_box.size = size;
-    text_box.current_text = current_text;
-    text_box.style = style;
-
-    UI_id text_box_id = { UI_TEXT_BOX, id, index };
-    text_box.id = text_box_id;
-
-    return text_box;
-}
-#endif
-
-UI_Text_Box make_ui_text_box(real32 x, real32 y,
-                             real32 width, real32 height,
-                             String_Buffer buffer,
-                             char *font,
-                             UI_Text_Box_Style style, UI_Text_Style text_style,
-                             char *id, int32 index = 0) {
-    UI_Text_Box text_box = {};
-
-    text_box.type = UI_TEXT_BOX;
-    text_box.x = x;
-    text_box.y = y;
-    text_box.width = width;
-    text_box.height = height;
-    text_box.buffer = buffer;
-    text_box.font = font;
-    text_box.style = style;
-    text_box.text_style = text_style;
-
-    UI_id text_box_id = { UI_TEXT_BOX, id, index };
-    text_box.id = text_box_id;
-
-    return text_box;
-}
-
-UI_Box make_ui_box(real32 x, real32 y,
-                   real32 width, real32 height,
-                   UI_Box_Style style,
-                   char *id, int32 index = 0) {
-    UI_Box box = {};
-
-    box.type = UI_BOX;
-    box.x = x;
-    box.y = y;
-    box.width = width;
-    box.height = height;
-    box.style = style;
-
-    UI_id box_id = { UI_BOX, id, index };
-    box.id = box_id;
-
-    return box;
-}
-
-UI_Line make_ui_line(Vec2 start_pixels, Vec2 end_pixels,
-                     UI_Line_Style style,
-                     char *id, int32 index = 0) {
-    UI_Line line = {};
-
-    line.type = UI_LINE;
-    line.start = start_pixels;
-    line.end = end_pixels;
-    line.style = style;
-
-    UI_id line_id = { UI_LINE, id, index };
-    line.id = line_id;
-
-    return line;
 }
 
 void ui_add_text_button(UI_Manager *manager, UI_Text_Button button) {
@@ -246,6 +72,10 @@ void ui_add_text(UI_Manager *manager, UI_Text text) {
 
 void ui_add_text_box(UI_Manager *manager, UI_Text_Box text_box) {
     _push_element(&manager->push_buffer, UI_Text_Box, text_box);
+}
+
+void ui_add_slider(UI_Manager *manager, UI_Slider slider) {
+    _push_element(&manager->push_buffer, UI_Slider, slider);
 }
 
 void ui_add_box(UI_Manager *manager, UI_Box box) {
@@ -335,6 +165,9 @@ void clear_hot_if_gone(UI_Manager *manager) {
             } break;
             case UI_TEXT_BOX: {
                 address += sizeof(UI_Text_Box);
+            } break;
+            case UI_SLIDER: {
+                address += sizeof(UI_Slider);
             } break;
             case UI_BOX: {
                 address += sizeof(UI_Box);
@@ -602,6 +435,7 @@ void do_text_box(UI_Manager *manager, Controller_State *controller_state,
     if (!manager->is_disabled && in_bounds_on_layer(manager, current_mouse, x, x + width, y, y + height)) {
         set_hot(manager, text_box.id);
 
+        // TODO: this is useless
         if (!controller_state->left_mouse.is_down) {
             set_hot(manager, text_box.id);
         }
@@ -611,22 +445,7 @@ void do_text_box(UI_Manager *manager, Controller_State *controller_state,
             manager->active = text_box.id;
             manager->focus_timer = platform_get_wall_clock_time();
             manager->focus_cursor_index = buffer->current_length;
-#if 0
-            if (ui_id_equals(manager->active, text_box.id)) {
-                manager->active = {};
-                debug_print("%s was clicked\n", button.id);
-            }
-#endif
         }
-  
-#if 0
-        if (ui_id_equals(manager->hot, text_box.id) &&
-            controller_state->left_mouse.is_down) {
-            manager->active = text_box.id;
-            manager->focus_timer = platform_get_wall_clock_time();
-            manager->focus_cursor_index = buffer->current_length;
-        }
-#endif
     } else {
         // FIXME: this isn't really a bug (other programs seem to behave this way), but i'm not sure
         //        why it's happening: if you hold down a key in the textbox and you click outside of the textbox,
@@ -665,6 +484,58 @@ void do_text_box(UI_Manager *manager, Controller_State *controller_state,
     }
 
     ui_add_text_box(manager, text_box);
+}
+
+real32 do_slider(UI_Manager *manager, Controller_State *controller_state,
+                 real32 x, real32 y,
+                 real32 width, real32 height,
+                 char *text, char *font,
+                 real32 min, real32 max, real32 value,
+                 UI_Slider_Style style, UI_Text_Style text_style,
+                 char *id_string, int32 index = 0) {
+    UI_Slider slider =  make_ui_slider(x, y, width, height,
+                                       text, font,
+                                       min, max, value,
+                                       style, text_style,
+                                       id_string, index);
+
+    Vec2 current_mouse = controller_state->current_mouse;
+    if (!manager->is_disabled && in_bounds_on_layer(manager, current_mouse, x, x + width, y, y + height)) {
+        set_hot(manager, slider.id);
+
+        if (controller_state->left_mouse.is_down && !controller_state->left_mouse.was_down) {
+            manager->active = slider.id;
+        }
+
+        if (!controller_state->left_mouse.is_down) {
+            manager->active = {};
+        }
+    } else {
+        // FIXME: this isn't really a bug (other programs seem to behave this way), but i'm not sure
+        //        why it's happening: if you hold down a key in the textbox and you click outside of the textbox,
+        //        the textbox should lose focus and text should no longer be inputted. but, for some reason it
+        //        keeps focus after clicking outside of the textbox and characters keep getting inputted.
+        //        actually, i think it's because we're doing while(PeekMessage...).
+        if (ui_id_equals(manager->hot, slider.id)) {
+            clear_hot(manager);
+        }
+
+        if (ui_id_equals(manager->active, slider.id) && !controller_state->left_mouse.is_down) {
+            manager->active = {};
+        }
+    }
+
+    if (ui_id_equals(manager->active, slider.id) && being_held(controller_state->left_mouse)) {
+        real32 rate = (max - min) / width;
+        real32 delta_pixels = (controller_state->current_mouse - controller_state->last_mouse).x;
+        value += delta_pixels * rate;
+        value = min(max, value);
+        value = max(min, value);
+    }
+
+    ui_add_slider(manager, slider);
+
+    return value;
 }
 
 void do_box(UI_Manager *manager, Controller_State *controller_state,

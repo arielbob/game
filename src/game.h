@@ -156,7 +156,10 @@ struct Game_State {
     char text_buffer[256] = {}; // debugging
 };
 
-bool32 was_clicked(Controller_Button_State button_state);
+inline bool32 was_clicked(Controller_Button_State button_state);
+inline bool32 being_held(Controller_Button_State button_state);
+inline bool32 just_pressed(Controller_Button_State button_state);
+inline bool32 just_lifted(Controller_Button_State button_state);
 int32 get_mesh_index(Game_State *game_state, char *mesh_name_to_find);
 Entity *get_selected_entity(Game_State *game_state);
 Font get_font(Game_State *game_state, char *font_name);

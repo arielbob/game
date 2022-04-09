@@ -8,6 +8,7 @@ enum UI_Type {
     UI_IMAGE_BUTTON,
     UI_COLOR_BUTTON,
     UI_TEXT_BOX,
+    UI_SLIDER,
     UI_BOX,
     UI_LINE
 };
@@ -54,6 +55,22 @@ struct UI_Text {
     UI_Text_Style style;
 };
 
+UI_Text make_ui_text(real32 x, real32 y, char *text, char *font, UI_Text_Style style, char *id, int32 index = 0) {
+    UI_Text ui_text = {};
+
+    ui_text.type = UI_TEXT;
+    ui_text.x = x;
+    ui_text.y = y;
+    ui_text.text = text;
+    ui_text.font = font;
+    ui_text.style = style;
+
+    UI_id ui_text_id = { UI_TEXT, id, index };
+    ui_text.id = ui_text_id;
+
+    return ui_text;
+}
+
 struct UI_Text_Button_Style {
     uint32 text_align_flags;
     Vec4 normal_color;
@@ -81,6 +98,28 @@ struct UI_Text_Button {
     bool32 is_disabled;
 };
 
+UI_Text_Button make_ui_text_button(real32 x, real32 y, real32 width, real32 height,
+                                   UI_Text_Button_Style style, UI_Text_Style text_style,
+                                   char *text, char *font, bool32 is_disabled, char *id, int32 index = 0) {
+    UI_Text_Button button = {};
+
+    button.type = UI_TEXT_BUTTON;
+    button.x = x;
+    button.y = y;
+    button.width = width;
+    button.height = height;
+    button.style = style;
+    button.text_style = text_style;
+    button.text = text;
+    button.font = font;
+    button.is_disabled = is_disabled;
+
+    UI_id button_id = { UI_TEXT_BUTTON, id, index };
+    button.id = button_id;
+
+    return button;
+}
+
 struct UI_Image_Button_Style {
     real32 padding_x;
     real32 padding_y;
@@ -104,6 +143,25 @@ struct UI_Image_Button {
     char *texture_name;
 };
 
+UI_Image_Button make_ui_image_button(real32 x, real32 y, real32 width, real32 height,
+                                     UI_Image_Button_Style style,
+                                     char *texture_name, char *id, int32 index = 0) {
+    UI_Image_Button button = {};
+
+    button.type = UI_IMAGE_BUTTON;
+    button.x = x;
+    button.y = y;
+    button.width = width;
+    button.height = height;
+    button.style = style;
+    button.texture_name = texture_name;
+
+    UI_id button_id = { UI_IMAGE_BUTTON, id, index };
+    button.id = button_id;
+
+    return button;
+}
+
 struct UI_Color_Button_Style {
     real32 padding_x;
     real32 padding_y;
@@ -126,6 +184,25 @@ struct UI_Color_Button {
 
     Vec4 color;
 };
+
+UI_Color_Button make_ui_color_button(real32 x, real32 y, real32 width, real32 height,
+                                     UI_Color_Button_Style style,
+                                     Vec4 color, char *id, int32 index = 0) {
+    UI_Color_Button button = {};
+
+    button.type = UI_COLOR_BUTTON;
+    button.x = x;
+    button.y = y;
+    button.width = width;
+    button.height = height;
+    button.style = style;
+    button.color = color;
+
+    UI_id button_id = { UI_COLOR_BUTTON, id, index };
+    button.id = button_id;
+
+    return button;
+}
 
 struct UI_Text_Box_Style {
     uint32 text_align_flags;
@@ -155,6 +232,90 @@ struct UI_Text_Box {
     char *font;
 };
 
+UI_Text_Box make_ui_text_box(real32 x, real32 y,
+                             real32 width, real32 height,
+                             String_Buffer buffer,
+                             char *font,
+                             UI_Text_Box_Style style, UI_Text_Style text_style,
+                             char *id, int32 index = 0) {
+    UI_Text_Box text_box = {};
+
+    text_box.type = UI_TEXT_BOX;
+    text_box.x = x;
+    text_box.y = y;
+    text_box.width = width;
+    text_box.height = height;
+    text_box.buffer = buffer;
+    text_box.font = font;
+    text_box.style = style;
+    text_box.text_style = text_style;
+
+    UI_id text_box_id = { UI_TEXT_BOX, id, index };
+    text_box.id = text_box_id;
+
+    return text_box;
+}
+
+// start slider
+struct UI_Slider_Style {
+    Vec4 normal_color;
+    Vec4 hot_color;
+    Vec4 active_color;
+
+    Vec4 slider_normal_color;
+    Vec4 slider_hot_color;
+    Vec4 slider_active_color;
+};
+
+struct UI_Slider {
+    UI_HEADER
+    
+    real32 x;
+    real32 y;
+
+    real32 width;
+    real32 height;
+
+    char *text;
+    char *font;
+    
+    UI_Slider_Style style;
+    UI_Text_Style text_style;
+
+    real32 min;
+    real32 max;
+    real32 value;
+};
+
+UI_Slider make_ui_slider(real32 x, real32 y,
+                         real32 width, real32 height,
+                         char *text, char *font,
+                         real32 min, real32 max, real32 value,
+                         UI_Slider_Style style, UI_Text_Style text_style,
+                         char *id, int32 index = 0) {
+    UI_Slider slider;
+
+    slider.type = UI_SLIDER;
+    slider.x = x;
+    slider.y = y;
+    slider.width = width;
+    slider.height = height;
+    slider.text = text;
+    slider.font = font;
+    slider.style = style;
+    slider.text_style = text_style;
+    slider.min = min;
+    slider.max = max;
+    slider.value = value;
+    
+    UI_id slider_id = { UI_SLIDER, id, index };
+    slider.id = slider_id;
+
+    return slider;
+}
+// end slider
+
+
 struct UI_Box_Style {
     Vec4 background_color;
 };
@@ -171,6 +332,25 @@ struct UI_Box {
     UI_Box_Style style;
 };
 
+UI_Box make_ui_box(real32 x, real32 y,
+                   real32 width, real32 height,
+                   UI_Box_Style style,
+                   char *id, int32 index = 0) {
+    UI_Box box = {};
+
+    box.type = UI_BOX;
+    box.x = x;
+    box.y = y;
+    box.width = width;
+    box.height = height;
+    box.style = style;
+
+    UI_id box_id = { UI_BOX, id, index };
+    box.id = box_id;
+
+    return box;
+}
+
 struct UI_Line_Style {
     Vec4 color;
     real32 line_width;
@@ -184,6 +364,22 @@ struct UI_Line {
 
     UI_Line_Style style;
 };
+
+UI_Line make_ui_line(Vec2 start_pixels, Vec2 end_pixels,
+                     UI_Line_Style style,
+                     char *id, int32 index = 0) {
+    UI_Line line = {};
+
+    line.type = UI_LINE;
+    line.start = start_pixels;
+    line.end = end_pixels;
+    line.style = style;
+
+    UI_id line_id = { UI_LINE, id, index };
+    line.id = line_id;
+
+    return line;
+}
 
 struct UI_Push_Buffer {
     void *base;

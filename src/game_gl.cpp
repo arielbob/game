@@ -1374,6 +1374,63 @@ void gl_draw_ui_text_box(GL_State *gl_state, Game_State *game_state,
     }
 }
 
+void gl_draw_ui_slider(GL_State *gl_state, Game_State *game_state,
+                       Display_Output display_output,
+                       UI_Manager *ui_manager, UI_Slider slider) {
+    UI_Slider_Style style = slider.style;
+
+    // background box
+    Vec4 color = style.normal_color;
+    if (ui_id_equals(ui_manager->hot, slider.id)) {
+        color = style.hot_color;
+        if (ui_id_equals(ui_manager->active, slider.id)) {
+            color = style.active_color;
+        }
+    }
+
+    gl_draw_quad(gl_state, &game_state->render_state, slider.x, slider.y,
+                 slider.width, slider.height,
+                 color);
+
+    // slider bar
+    glEnable(GL_SCISSOR_TEST);
+    glScissor((int32) (slider.x),
+              (int32) (display_output.height - slider.y - slider.height),
+              (int32) slider.width, (int32) slider.height);
+    
+    Vec4 slider_color = style.slider_normal_color;
+    if (ui_id_equals(ui_manager->hot, slider.id)) {
+        slider_color = style.slider_hot_color;
+    }
+    if (ui_id_equals(ui_manager->active, slider.id)) {
+        slider_color = style.slider_active_color;
+    }
+
+    real32 bar_width = (slider.value / (slider.max - slider.min)) * slider.width;
+    gl_draw_quad(gl_state, &game_state->render_state, 0.0f, 0.0f,
+                 bar_width, slider.height,
+                 slider_color);
+    glDisable(GL_SCISSOR_TEST);
+
+    // text
+    UI_Text_Style text_style = slider.text_style;
+    Font font = get_font(game_state, slider.font);
+    real32 adjusted_text_height = font.height_pixels - font.scale_for_pixel_height * (font.ascent + font.descent);
+    real32 text_width = get_width(font, slider.text);
+    real32 text_x = slider.x + 0.5f*slider.width - 0.5f*text_width;
+    real32 text_y = slider.y + 0.5f*slider.height + 0.5f*adjusted_text_height;
+
+    if (text_style.use_offset_shadow) {
+        gl_draw_text(gl_state, &game_state->render_state, &font,
+                     text_x, text_y + TEXT_SHADOW_OFFSET,
+                     slider.text, text_style.offset_shadow_color);
+    }
+
+    gl_draw_text(gl_state, &game_state->render_state, &font,
+                 text_x, text_y,
+                 slider.text, text_style.color);
+}
+
 void gl_draw_ui_box(GL_State *gl_state, Render_State *render_state,
                     UI_Manager *ui_manager, UI_Box box) {
     UI_Box_Style style = box.style;
@@ -1429,6 +1486,11 @@ void gl_draw_ui(GL_State *gl_state, Game_State *game_state,
                 UI_Text_Box *ui_text_box = (UI_Text_Box *) element;
                 gl_draw_ui_text_box(gl_state, game_state, display_output, ui_manager, *ui_text_box);
                 address += sizeof(UI_Text_Box);
+            } break;
+            case UI_SLIDER: {
+                UI_Slider *ui_slider = (UI_Slider *) element;
+                gl_draw_ui_slider(gl_state, game_state, display_output, ui_manager, *ui_slider);
+                address += sizeof(UI_Slider);
             } break;
             case UI_BOX: {
                 UI_Box *ui_box = (UI_Box *) element;

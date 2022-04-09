@@ -365,6 +365,10 @@ inline bool32 was_clicked(Controller_Button_State button_state) {
     return (!button_state.is_down && button_state.was_down);
 }
 
+inline bool32 being_held(Controller_Button_State button_state) {
+    return (button_state.is_down && button_state.was_down);
+}
+
 inline bool32 just_pressed(Controller_Button_State button_state) {
     return (button_state.is_down && !button_state.was_down);
 }
@@ -752,7 +756,30 @@ void update(Memory *memory, Game_State *game_state,
     do_image_button(ui_manager, controller_state, 0, 0, 200.0f, 200.0f,
                     image_button_style, "debug", "debug_image_button");
 #endif
+    
+    UI_Slider_Style slider_style = {
+        rgb_to_vec4(33, 62, 69),
+        rgb_to_vec4(47, 84, 102),
+        rgb_to_vec4(19, 37, 46),
 
+        rgb_to_vec4(116, 116, 138),
+        rgb_to_vec4(158, 158, 186),
+        rgb_to_vec4(186, 45, 47)
+    };
+
+    static real32 value = 50.0f;
+    buf = (char *) arena_push(&memory->frame_arena, 16);
+    string_format(buf, 32, "%f", value);
+    value = do_slider(ui_manager, controller_state,
+                      0, 0,
+                      200.0f, 50.0f,
+                      buf, "times24",
+                      0.0f, 100.0f, value,
+                      slider_style, default_text_style,
+                      "test_slider");
+              
+
+    
     buf = (char *) arena_push(&memory->frame_arena, 128);
     string_format(buf, 128, "hot: %s\nactive: %s",
                   (char *) ui_manager->hot.string_ptr,
