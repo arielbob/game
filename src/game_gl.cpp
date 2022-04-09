@@ -52,6 +52,9 @@
 // TODO: slider UI element
 //       - TODO (done): basic slider
 //       - TODO: click slider for manual value entry
+// TODO: fix issue when letting go of slider UI outside of any UI element causes a mesh pick to happen,
+//       which can cause the editor UI to go away, which is annoying. i think we can just check if there's
+//       an active UI element and if so, don't mesh pick.
 // TODO: material saving in edit box
 // TODO: material creation/deletion
 // TODO: closing material library
