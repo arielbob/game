@@ -50,6 +50,8 @@
 // TODO: texture library
 // TODO: color selector
 // TODO: slider UI element
+//       - TODO (done): basic slider
+//       - TODO: click slider for manual value entry
 // TODO: material saving in edit box
 // TODO: material creation/deletion
 // TODO: closing material library
@@ -1407,7 +1409,7 @@ void gl_draw_ui_slider(GL_State *gl_state, Game_State *game_state,
     }
 
     real32 bar_width = (slider.value / (slider.max - slider.min)) * slider.width;
-    gl_draw_quad(gl_state, &game_state->render_state, 0.0f, 0.0f,
+    gl_draw_quad(gl_state, &game_state->render_state, slider.x, slider.y,
                  bar_width, slider.height,
                  slider_color);
     glDisable(GL_SCISSOR_TEST);

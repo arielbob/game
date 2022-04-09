@@ -23,6 +23,14 @@ UI_Text_Button_Style default_text_button_save_style = { TEXT_ALIGN_X | TEXT_ALIG
                                                         rgb_to_vec4(68, 201, 108),
                                                         rgb_to_vec4(31, 102, 70) };
 
+UI_Slider_Style default_slider_style = { rgb_to_vec4(33, 62, 69),
+                                         rgb_to_vec4(47, 84, 102),
+                                         rgb_to_vec4(19, 37, 46),
+
+                                         rgb_to_vec4(116, 116, 138),
+                                         rgb_to_vec4(158, 158, 186),
+                                         rgb_to_vec4(186, 45, 47) };
+
 UI_Image_Button_Style default_image_button_style = { 5.0f, 5.0f,
                                                     rgb_to_vec4(33, 62, 69),
                                                     rgb_to_vec4(47, 84, 102),
