@@ -7,6 +7,10 @@
 #define SIDE_TOP    0x4
 #define SIDE_BOTTOM 0x8
 
+
+#define ROW_HEIGHT 30.0f
+#define SMALL_ROW_HEIGHT 20.0f
+
 void set_temp_material(Editor_State *editor_state, Material material) {
     Material *temp_material = &editor_state->temp_material;
     copy_string(&temp_material->name, &material.name);
@@ -150,12 +154,27 @@ void draw_material_library(Memory *memory, Game_State *game_state, Controller_St
              SIDE_LEFT | SIDE_RIGHT | SIDE_TOP | SIDE_BOTTOM, row_id, row_index++);
     draw_centered_text(game_state, ui_manager, x, y, window_width, title_row_height,
                        "Material Library", font_name_bold, text_style);
+    
+    
     y += title_row_height;
 
     real32 content_height = 500.0f;
     draw_row(ui_manager, controller_state, x, y, window_width, content_height, row_color,
              SIDE_LEFT | SIDE_RIGHT | SIDE_BOTTOM, row_id, row_index++);    
 
+    real32 cancel_button_width = 100.0f;
+    bool32 cancel_pressed = do_text_button(ui_manager, controller_state,
+                                           x + padding_x,
+                                           y + content_height - SMALL_ROW_HEIGHT - padding_y - 1,
+                                           cancel_button_width, SMALL_ROW_HEIGHT,
+                                           default_text_button_cancel_style, default_text_style,
+                                           "Cancel",
+                                           font_name_bold,
+                                           "choose_material_cancel");
+    if (cancel_pressed) {
+        editor_state->choosing_material = false;
+    }
+    
     Allocator *allocator = (Allocator *) &memory->frame_arena;
 
     x += padding_x;
@@ -225,9 +244,9 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
     real32 right_column_offset = padding_left + 200.0f;
     real32 small_spacing = 20.0f;
 
-    real32 row_height = 30.0f;
-    real32 small_row_height = 20.0f;
-    real32 inset_row_height = small_row_height;//row_height - padding_top - padding_bottom;
+    real32 row_height = ROW_HEIGHT;
+    real32 small_row_height = SMALL_ROW_HEIGHT;
+    real32 inset_row_height = small_row_height;
     real32 row_width = 500.0f;
 
     Vec4 title_row_color = make_vec4(0.05f, 0.2f, 0.5f, 1.0f);
