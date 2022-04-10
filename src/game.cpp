@@ -252,6 +252,7 @@ void init_game(Memory *memory, Game_State *game_state,
     Allocator *temp_string_allocator = (Allocator *) &memory->string_arena;
     editor_state->temp_material.name = make_string_buffer(temp_string_allocator, MATERIAL_STRING_MAX_SIZE);
     editor_state->temp_material.texture_name = make_string_buffer(temp_string_allocator, MATERIAL_STRING_MAX_SIZE);
+    editor_state->show_wireframe = true;
 
     // init ui state
     UI_Manager *ui_manager = &game_state->ui_manager;
@@ -623,27 +624,6 @@ void update(Memory *memory, Game_State *game_state,
                 style, "mesh_name_text_box");
 #endif
     
-    char *toggle_transform_mode_text;
-    if (editor_state->transform_mode == TRANSFORM_GLOBAL) {
-        toggle_transform_mode_text = "use local transform";
-    } else {
-        toggle_transform_mode_text = "use global transform";
-    }
-
-    UI_Text_Button_Style style = default_text_button_style;
-    bool32 toggle_global_clicked = do_text_button(ui_manager, controller_state,
-                                                  765.0f, 360.0f,
-                                                  250.0f, 60.0f,
-                                                  style, default_text_style,
-                                                  toggle_transform_mode_text, "times24", "toggle_transform");
-    if (toggle_global_clicked) {
-        if (editor_state->transform_mode == TRANSFORM_GLOBAL) {
-            editor_state->transform_mode = TRANSFORM_LOCAL;
-        } else {
-            editor_state->transform_mode = TRANSFORM_GLOBAL;
-        }
-    }
-
     // mesh picking
     Vec3 cursor_world_space = cursor_pos_to_world_space(controller_state->current_mouse,
                                                         &game_state->render_state);
@@ -675,14 +655,6 @@ void update(Memory *memory, Game_State *game_state,
             }
         }
     }
-
-    draw_editor_ui(memory, game_state, controller_state);
-
-/*
-    if (editor_state->selected_entity_index >= 0) {
-        draw_entity_box(memory, game_state, controller_state, get_selected_entity(game_state));
-    }
-*/
 
     update_gizmo(game_state);
 
@@ -731,6 +703,8 @@ void update(Memory *memory, Game_State *game_state,
 
     update_gizmo(game_state);
 
+    draw_editor_ui(memory, game_state, controller_state);
+        
     char *buf = (char *) arena_push(&memory->frame_arena, 128);
 #if 0
     buf = (char *) arena_push(&memory->frame_arena, 128);

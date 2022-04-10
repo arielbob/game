@@ -1698,8 +1698,9 @@ void gl_render(Memory *memory, GL_State *gl_state, Game_State *game_state,
                            mesh_name, material,
                            entity->transform);
 
-        if (game_state->editor_state.selected_entity_type == ENTITY_POINT_LIGHT &&
-            game_state->editor_state.selected_entity_index == i) {
+        if (editor_state->show_wireframe &&
+            editor_state->selected_entity_type == ENTITY_POINT_LIGHT &&
+            editor_state->selected_entity_index == i) {
             gl_draw_wireframe(gl_state, render_state, mesh_name, entity->transform);
         }
     }
@@ -1739,8 +1740,9 @@ void gl_render(Memory *memory, GL_State *gl_state, Game_State *game_state,
                      mesh_name, material,
                      entity->transform);
 
-        if (game_state->editor_state.selected_entity_type == ENTITY_NORMAL &&
-            game_state->editor_state.selected_entity_index == i) {
+        if (editor_state->show_wireframe &&
+            editor_state->selected_entity_type == ENTITY_NORMAL &&
+            editor_state->selected_entity_index == i) {
             gl_draw_wireframe(gl_state, render_state, mesh_name, entity->transform);
         }
     }

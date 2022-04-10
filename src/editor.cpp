@@ -508,7 +508,45 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
 
 void draw_editor_ui(Memory *memory, Game_State *game_state, Controller_State *controller_state) {
     Editor_State *editor_state = &game_state->editor_state;
+    UI_Manager *ui_manager = &game_state->ui_manager;
+    Render_State *render_state = &game_state->render_state;
 
+    real32 y = 0.0f;
+    real32 button_gap = 1.0f;
+    
+    real32 button_height = 25.0f;
+    char *button_font_name = "courier18b";
+    // wireframe toggle
+    real32 wireframe_button_width = 200.0f;
+    bool32 toggle_show_wireframe_clicked = do_text_button(ui_manager, controller_state,
+                                                          render_state->display_output.width - wireframe_button_width, y,
+                                                          wireframe_button_width, button_height,
+                                                          default_text_button_style, default_text_style,
+                                                          editor_state->show_wireframe ? "Hide Wireframe" : "Show Wireframe",
+                                                          button_font_name, "toggle_wireframe");
+    if (toggle_show_wireframe_clicked) {
+        editor_state->show_wireframe = !editor_state->show_wireframe;
+    }
+    y += button_height + button_gap;
+
+    // transform mode toggle
+    real32 toggle_global_button_width = 200.0f;
+    bool32 toggle_global_clicked = do_text_button(ui_manager, controller_state,
+                                                  render_state->display_output.width - toggle_global_button_width, y,
+                                                  toggle_global_button_width, button_height,
+                                                  default_text_button_style, default_text_style,
+                                                  editor_state->transform_mode == TRANSFORM_GLOBAL ?
+                                                  "Use Local Transform" : "Use Global Transform",
+                                                  button_font_name, "toggle_transform");
+    if (toggle_global_clicked) {
+        if (editor_state->transform_mode == TRANSFORM_GLOBAL) {
+            editor_state->transform_mode = TRANSFORM_LOCAL;
+        } else {
+            editor_state->transform_mode = TRANSFORM_GLOBAL;
+        }
+    }
+    y += button_height + button_gap;
+    
     if (editor_state->selected_entity_index >= 0) {
         Entity *selected_entity = get_selected_entity(game_state);
         draw_entity_box(memory, game_state, controller_state, selected_entity);

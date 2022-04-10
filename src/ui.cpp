@@ -453,7 +453,6 @@ void do_text_box(UI_Manager *manager, Controller_State *controller_state,
         }
 
         if (controller_state->left_mouse.is_down && !controller_state->left_mouse.was_down) {
-        } else if (!controller_state->left_mouse.is_down && controller_state->left_mouse.was_down) {
             manager->active = text_box.id;
             manager->focus_timer = platform_get_wall_clock_time();
             manager->focus_cursor_index = buffer->current_length;
