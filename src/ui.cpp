@@ -111,6 +111,10 @@ inline bool32 ui_has_hot(UI_Manager *manager) {
     return (manager->hot.string_ptr != NULL);
 }
 
+inline bool32 ui_has_active(UI_Manager *manager) {
+    return (manager->active.string_ptr != NULL);
+}
+
 void disable_input(UI_Manager *manager) {
     manager->hot = { NULL };
     manager->active = { NULL };

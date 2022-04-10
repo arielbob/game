@@ -650,7 +650,9 @@ void update(Memory *memory, Game_State *game_state,
     Ray cursor_ray = { cursor_world_space,
                        normalize(cursor_world_space - render_state->camera.position) };
     
-    if (!ui_has_hot(ui_manager) && !editor_state->use_freecam && was_clicked(controller_state->left_mouse)) {
+    if (!ui_has_hot(ui_manager) &&
+        !ui_has_active(ui_manager) &&
+        !editor_state->use_freecam && was_clicked(controller_state->left_mouse)) {
         if (!editor_state->selected_gizmo_handle) {
             Entity entity;
             int32 entity_index;
