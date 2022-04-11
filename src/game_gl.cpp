@@ -52,6 +52,7 @@
 //       always store enough.
 // TODO (done): make it so you can specify the max number of hash table slots.
 //              (do this after replacing the hash table linked lists with arrays)
+// TODO (done): memory alignment in allocate procedures and in ui push buffer
 
 // TODO: material editing in editor
 // TODO (done): list existing materials and be able to change an entity's active material
@@ -91,7 +92,6 @@
 // TODO: better level editing (mesh libraries, textures libraries)
 // TODO: be able to edit materials
 // TODO: in-game console for outputting messages
-// TODO: memory alignment in allocate procedures and in ui push buffer
 
 // TODO: maybe use a push buffer for entities? and use an Entity_Type enum to differentiate between entities?
 //       the upside is that we don't waste space when the amount of one entity type far exceeds another entity

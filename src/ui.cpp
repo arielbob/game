@@ -52,46 +52,69 @@ UI_Text_Box_Style default_text_box_style = { TEXT_ALIGN_Y,
 //       the element is no longer being displayed. we want this while retaining the nice
 //       immediate mode API.
 
-// TODO: memory alignment
-#define _push_element(push_buffer, type, element)                       \
-    assert(((push_buffer)->used + sizeof(type)) <= (push_buffer)->size);    \
-    *((type *) ((uint8 *) (push_buffer)->base + (push_buffer)->used)) = element; \
-    (push_buffer)->used += sizeof(type)
+void *allocate(UI_Push_Buffer *push_buffer, uint32 size, uint32 alignment_bytes = 8) {
+    assert(((alignment_bytes) & (alignment_bytes - 1)) == 0);
+
+    uint8 *current_pointer = (uint8 *) push_buffer->base + push_buffer->used;
+
+    uint32 align_mask = alignment_bytes - 1;
+    uint32 misalignment = ((uint64) current_pointer) & align_mask;
+    uint32 align_offset = 0;
+    if (misalignment) {
+        align_offset = alignment_bytes - misalignment;
+    }
+    
+    size += align_offset;
+    assert((push_buffer->used + size) <= push_buffer->size);
+
+    void *start_byte = (void *) (current_pointer + align_offset);
+    push_buffer->used += size;
+
+    return start_byte;
+}
     
 void clear_push_buffer(UI_Push_Buffer *buffer) {
     buffer->used = 0;
 }
 
 void ui_add_text_button(UI_Manager *manager, UI_Text_Button button) {
-    _push_element(&manager->push_buffer, UI_Text_Button, button);
+    UI_Text_Button *element = (UI_Text_Button *) allocate(&manager->push_buffer, sizeof(UI_Text_Button));
+    *element = button;
 }
 
 void ui_add_image_button(UI_Manager *manager, UI_Image_Button button) {
-    _push_element(&manager->push_buffer, UI_Image_Button, button);
+    UI_Image_Button *element = (UI_Image_Button *) allocate(&manager->push_buffer, sizeof(UI_Image_Button));
+    *element = button;
 }
 
 void ui_add_color_button(UI_Manager *manager, UI_Color_Button button) {
-    _push_element(&manager->push_buffer, UI_Color_Button, button);
+    UI_Color_Button *element = (UI_Color_Button *) allocate(&manager->push_buffer, sizeof(UI_Color_Button));
+    *element = button;
 }
 
 void ui_add_text(UI_Manager *manager, UI_Text text) {
-    _push_element(&manager->push_buffer, UI_Text, text);
+    UI_Text *element = (UI_Text *) allocate(&manager->push_buffer, sizeof(UI_Text));
+    *element = text;
 }
 
 void ui_add_text_box(UI_Manager *manager, UI_Text_Box text_box) {
-    _push_element(&manager->push_buffer, UI_Text_Box, text_box);
+    UI_Text_Box *element = (UI_Text_Box *) allocate(&manager->push_buffer, sizeof(UI_Text_Box));
+    *element = text_box;
 }
 
 void ui_add_slider(UI_Manager *manager, UI_Slider slider) {
-    _push_element(&manager->push_buffer, UI_Slider, slider);
+    UI_Slider *element = (UI_Slider *) allocate(&manager->push_buffer, sizeof(UI_Slider));
+    *element = slider;
 }
 
 void ui_add_box(UI_Manager *manager, UI_Box box) {
-    _push_element(&manager->push_buffer, UI_Box, box);
+    UI_Box *element = (UI_Box *) allocate(&manager->push_buffer, sizeof(UI_Box));
+    *element = box;
 }
 
 void ui_add_line(UI_Manager *manager, UI_Line line) {
-    _push_element(&manager->push_buffer, UI_Line, line);
+    UI_Line *element = (UI_Line *) allocate(&manager->push_buffer, sizeof(UI_Line));
+    *element = line;
 }
 
 inline bool32 ui_id_equals(UI_id id1, UI_id id2) {

@@ -3,7 +3,8 @@
 
 enum Allocator_Type {
     STACK_ALLOCATOR,
-    ARENA_ALLOCATOR
+    ARENA_ALLOCATOR,
+    POOL_ALLOCATOR
 };
 
 struct Allocator {
@@ -22,6 +23,18 @@ struct Marker {
 };
 
 struct Arena_Allocator {
+    Allocator_Type type;
+    void *base;
+    uint32 size;
+    uint32 used;
+};
+
+struct Slot {
+    Slot *next_free_slot;
+    
+};
+
+struct Pool_Allocator {
     Allocator_Type type;
     void *base;
     uint32 size;
