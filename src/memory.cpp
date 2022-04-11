@@ -146,27 +146,78 @@ inline void *region_push(Memory *memory, uint32 size, bool32 zero_memory = true,
     return region_push(&memory->global_stack, size, zero_memory, alignment_bytes);
 }
 
-#if 0
-Pool_Allocator make_pool_allocator(Allocator *allocator, uint32 slot_size, uint32 num_slots) {    
+// NOTE: block_size is assumed to be obtained by using sizeof(some struct), so we don't have to worry
+//       about struct packing/alignment.
+Pool_Allocator make_pool_allocator(void *base, uint32 block_size, uint32 size, uint32 alignment_bytes = 8) {
+    assert (block_size >= sizeof(void *));
+    assert(((alignment_bytes) & (alignment_bytes - 1)) == 0); // ensure that alignment_bytes is a power of 2
+
+    uint32 align_mask = alignment_bytes - 1;
+    uint32 misalignment = ((uint64) ((uint8 *) base) & align_mask);
+    uint32 align_offset = 0;
+    if (misalignment) {
+        align_offset = alignment_bytes - misalignment;
+    }
+    
+    // we're only aligning the base here, since allocations to the pool allocator are always aligned as long as
+    // you only store one type of struct/type in it.
+
+    // since the size parameter is actually the maximum size, if base is not aligned, we will just subtract
+    // align_offset from the maximum size and add the offset to the base.
+
+    // [xxxx|x___|____]
+    // assuming base is right where the x's end, align offset would be 3 here, so we subtract 3 from the
+    // max size and add 3 to base.
+    size -= align_offset;
+
+    base = (void *) ((uint8 *) base + align_offset);
+
     Pool_Allocator pool_allocator;
-    uint32 size = slot_size * num_slots;
-    pool_allocator->base = allocate(allocator, size);
-    pool_allocator->size = size;
-    pool_allocator->used = 0;
-    //pool_allocator 
-}
+    pool_allocator.type = POOL_ALLOCATOR;
+    pool_allocator.size = size;
+    pool_allocator.base = base;
+    pool_allocator.first = base;
+
+    // initialize the free list
+    void **current = (void **) pool_allocator.base;
+    while ((uint8 *) current < (((uint8 *) base + size) - block_size)) {
+        // store a pointer to the next free block, which initially is just a pointer to the next block in memory
+        *current = current + block_size;
+        current = (void **) ((uint8 *) current +  block_size);
+    }
+
+#if 0
+    for (uint32 i = 0; i < pool_allocator.max_blocks - 1; i++) {
+        // store a pointer to the next free block
+        *current = current + block_size;
+        current += block_size;
+    }
 #endif
 
-/*
-  struct Entity = { real32 x; real32 y; real32 z; };
-  int32 num_slots = 128;
-  Pool_Allocator pool_allocator = make_pool_allocator(sizeof(Entity) * num_slots);
-  Entity entity = { 1, 2, 3 };
-  int32 index = pool_add(&pool_allocator, entity);
-  pool_get(pool_allocator, index);
-  
+    *current = NULL;
 
- */
+    return pool_allocator;
+}
+
+void *pool_push(Pool_Allocator *pool) {
+    // set the address to the next free block (which is the address stored at pool->first)
+    void *base = pool->first;
+    if (!base) {
+        assert(!"Pool is full.");
+    }
+
+    pool->first = *((void **)pool->first);
+
+    return base;
+}
+
+void pool_remove(Pool_Allocator *pool, void *block_address) {
+    // the removed block becomes the first to be returned on the next allocation and the old first
+    // is stored in the removed block.
+    void **block_pointer = (void **) block_address;
+    *block_pointer = pool->first;
+    pool->first = block_pointer;
+}
 
 void *allocate(Allocator *allocator, uint32 size, bool32 zero_memory) {
     switch (allocator->type) {

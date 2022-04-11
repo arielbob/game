@@ -647,6 +647,7 @@ bool32 win32_init_memory(Memory *memory) {
     uint32 mesh_arena_size = MEGABYTES(64);
     uint32 string_arena_size = MEGABYTES(64);
     uint32 frame_arena_size = MEGABYTES(64);
+    uint32 string64_pool_size = MEGABYTES(64);
 
     uint32 total_memory_size = (global_stack_size +
                                 hash_table_stack_size +
@@ -654,7 +655,8 @@ bool32 win32_init_memory(Memory *memory) {
                                 font_arena_size +
                                 mesh_arena_size +
                                 string_arena_size +
-                                frame_arena_size);
+                                frame_arena_size +
+                                string64_pool_size);
     void *memory_base = VirtualAlloc(0, total_memory_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
     if (memory_base) {
@@ -686,6 +688,10 @@ bool32 win32_init_memory(Memory *memory) {
         Arena_Allocator frame_arena = make_arena_allocator(base, frame_arena_size);
         memory->frame_arena = frame_arena;
         base = (uint8 *) base + frame_arena_size;
+
+        Pool_Allocator string64_pool = make_pool_allocator(base, 64, string64_pool_size);
+        memory->string64_pool = string64_pool;
+        base = (uint8 *) base + string64_pool_size;
 
         memory->is_initted = true;
 

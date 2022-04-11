@@ -183,6 +183,17 @@ void init_camera(Camera *camera, Display_Output *display_output) {
 
 void init_game(Memory *memory, Game_State *game_state,
                Sound_Output *sound_output, uint32 num_samples) {
+#if 0
+    char *buf = (char *) pool_push(&memory->string64_pool);
+    string_format(buf, 64, "%s", "hello, world!");
+    pool_remove(&memory->string64_pool, buf);
+    char *buf2 = (char *) pool_push(&memory->string64_pool);
+    string_format(buf2, 64, "%s", "wassup");
+    char *buf3 = (char *) pool_push(&memory->string64_pool);
+    string_format(buf3, 64, "%s", "a profound silence has entered the chat");
+    pool_remove(&memory->string64_pool, buf3);
+#endif
+
     Editor_State *editor_state = &game_state->editor_state;
 
     Arena_Allocator *game_data_arena = &memory->game_data;

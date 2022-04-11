@@ -71,13 +71,13 @@
 // TODO: preview mode for materials
 
 // TODO: be able to add and delete materials, textures, meshes
-// TODO: make free list struct (start with using this for storing fixed length strings that could be deleted).
-//       this can be used for storing names of materials and meshes. since when we rename a string, we can just
-//       modify its string_buffer. and if the mesh or texture gets deleted, we can delete its strings.
-//       this free list struct will also be used for text fields. since we often don't want a text field to hold
-//       the direct contents of where it will eventually be stored. we will need to update our immediate mode UI
-//       code to hold state for the UI elements.
-//       replace string_arena.
+// TODO (done): make free list struct (start with using this for storing fixed length strings that could be deleted).
+//              this can be used for storing names of materials and meshes. since when we rename a string, we can just
+//              modify its string_buffer. and if the mesh or texture gets deleted, we can delete its strings.
+//              this free list struct will also be used for text fields. since we often don't want a text field to
+//              hold the direct contents of where it will eventually be stored. we will need to update our
+//              immediate mode UI code to hold state for the UI elements.
+// TODO: replace string arena with the string pool allocator
 
 // TODO: entity instances? copies of an entity, where you can modify the parent entity and all the instances
 //       will update as well.

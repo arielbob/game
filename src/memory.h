@@ -29,16 +29,14 @@ struct Arena_Allocator {
     uint32 used;
 };
 
-struct Slot {
-    Slot *next_free_slot;
-    
-};
-
 struct Pool_Allocator {
     Allocator_Type type;
     void *base;
+    void *first;
     uint32 size;
-    uint32 used;
+
+    //uint32 max_blocks;
+    //uint32 used_blocks;
 };
 
 struct Memory {
@@ -54,6 +52,7 @@ struct Memory {
     // i'm not exactly sure why hash_table_stack is a stack; this can be an arena, but either way, it'll
     // probably be replaced
     Stack_Allocator hash_table_stack;
+    Pool_Allocator string64_pool;
 };
 
 void *allocate(Allocator *allocator, uint32 size, bool32 zero_memory = true);

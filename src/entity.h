@@ -50,11 +50,11 @@ struct Material {
 
   this requires:
   - TODO (done): hash map implementation that uses open addressing
-  - pool allocator for strings (fixed size array with ability to allocate and deallocate)
-  - some type of hash map implementation that can store base classes (without having to store pointers)
+  - TODO (done): figure out memory alignment
+  - TODO (done): pool allocator for strings (fixed size array with ability to allocate and deallocate)
+  - TODO: some type of hash map implementation that can store base classes (without having to store pointers)
     - just use the new hash map implementation with a variant struct, which is just a union of all the derived
       structs
-  - should figure out memory alignment as well
  */
 
 #endif
