@@ -150,8 +150,8 @@ struct Game_State {
     int32 num_point_lights;
     Point_Light_Entity point_lights[MAX_POINT_LIGHTS];
 
-    Hash_Table<File_Data> font_file_table;
-    Hash_Table<Font> font_table;
+    Hash_Table<String, File_Data> font_file_table;
+    Hash_Table<String, Font> font_table;
 
     char text_buffer[256] = {}; // debugging
 };

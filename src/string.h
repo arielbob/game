@@ -202,4 +202,18 @@ char *to_char_array(Allocator *allocator, String_Buffer string) {
     return buf;
 }
 
+uint32 get_hash(String name, uint32 bucket_size) {
+    String_Iterator it = make_string_iterator(name);
+    uint32 sum = 0;
+    char c = get_next_char(&it);
+    while (c) {
+        sum += c;
+        c = get_next_char(&it);
+    }
+
+    uint32 hash = sum % bucket_size;
+    
+    return hash;
+}
+
 #endif

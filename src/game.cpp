@@ -197,8 +197,12 @@ void init_game(Memory *memory, Game_State *game_state,
     Camera *camera = &game_state->render_state.camera;
     Display_Output *display_output = &game_state->render_state.display_output;
 
-    game_state->font_table = make_hash_table<Font>((Allocator *) &memory->hash_table_stack);
-    game_state->font_file_table = make_hash_table<File_Data>((Allocator *) &memory->hash_table_stack);
+    game_state->font_table = make_hash_table<String, Font>((Allocator *) &memory->hash_table_stack,
+                                                           HASH_TABLE_SIZE,
+                                                           &string_equals);
+    game_state->font_file_table = make_hash_table<String, File_Data>((Allocator *) &memory->hash_table_stack,
+                                                                     HASH_TABLE_SIZE,
+                                                                     &string_equals);
 
     init_camera(camera, display_output);
 

@@ -40,4 +40,21 @@ struct Material {
     bool32 use_color_override;
 };
 
+/*
+  we call do_slider()
+  in Slider_State, we allocate a String_Buffer,
+  at the end of the game update procedure, we do the same thing we do for removing hot if the element no longer
+  exists. except this time, if it no longer exists, we delete the state object. to delete the state object,
+  in the hash map in which the UI element states are stored, we make that slot free. and we also delete the
+  string buffer.
+
+  this requires:
+  - TODO (done): hash map implementation that uses open addressing
+  - pool allocator for strings (fixed size array with ability to allocate and deallocate)
+  - some type of hash map implementation that can store base classes (without having to store pointers)
+    - just use the new hash map implementation with a variant struct, which is just a union of all the derived
+      structs
+  - should figure out memory alignment as well
+ */
+
 #endif

@@ -43,6 +43,15 @@
 // TODO (done): modify quad vbos to draw quads
 // TODO (done): fix buttons being able to be set to hot/active behind layered UI
 //              we could push layers and pop layers and just assert at end of the frame that current_layer == 0
+// TODO (done): add remove key procedure for hash tables.
+//              we should use open addressing, which is just storing all the values in an array instead of using
+//              linked lists.
+//       this is more cache-friendly. this also makes it easier to remove elements without fragmenting memory.
+//       we may need to think about ways to have the tables dynamically resize. this would require the allocator
+//       to be able to free arbitrary chunks of memory, so we could use something like a free list. or we can just
+//       always store enough.
+// TODO (done): make it so you can specify the max number of hash table slots.
+//              (do this after replacing the hash table linked lists with arrays)
 
 // TODO: material editing in editor
 // TODO (done): list existing materials and be able to change an entity's active material
@@ -83,14 +92,6 @@
 // TODO: be able to edit materials
 // TODO: in-game console for outputting messages
 // TODO: memory alignment in allocate procedures and in ui push buffer
-// TODO: add remove key procedure for hash tables.
-//       we should use open addressing, which is just storing all the values in an array instead of using linked lists.
-//       this is more cache-friendly. this also makes it easier to remove elements without fragmenting memory.
-//       we may need to think about ways to have the tables dynamically resize. this would require the allocator
-//       to be able to free arbitrary chunks of memory, so we could use something like a free list. or we can just
-//       always store enough.
-// TODO: make it so you can specify the size of the hash table. (do this after replacing the hash table linked lists with arrays)
-
 
 // TODO: maybe use a push buffer for entities? and use an Entity_Type enum to differentiate between entities?
 //       the upside is that we don't waste space when the amount of one entity type far exceeds another entity
@@ -694,10 +695,14 @@ void generate_circle_vertices(real32 *buffer, int32 num_vertices, real32 radius)
 }
 
 void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) {
-    gl_state->shader_ids_table = make_hash_table<uint32>((Allocator *) &memory->hash_table_stack);
-    gl_state->mesh_table = make_hash_table<GL_Mesh>((Allocator *) &memory->hash_table_stack);
-    gl_state->texture_table = make_hash_table<GL_Texture>((Allocator *) &memory->hash_table_stack);
-    gl_state->font_texture_table = make_hash_table<uint32>((Allocator *) &memory->hash_table_stack);
+    gl_state->shader_ids_table = make_hash_table<String, uint32>((Allocator *) &memory->hash_table_stack,
+                                                                 HASH_TABLE_SIZE, &string_equals);
+    gl_state->mesh_table = make_hash_table<String, GL_Mesh>((Allocator *) &memory->hash_table_stack,
+                                                            HASH_TABLE_SIZE, &string_equals);
+    gl_state->texture_table = make_hash_table<String, GL_Texture>((Allocator *) &memory->hash_table_stack,
+                                                                  HASH_TABLE_SIZE, &string_equals);
+    gl_state->font_texture_table = make_hash_table<String, uint32>((Allocator *) &memory->hash_table_stack,
+                                                                   HASH_TABLE_SIZE, &string_equals);
 
     uint32 vbo, vao, ebo;
 
@@ -1654,7 +1659,26 @@ void gl_render(Memory *memory, GL_State *gl_state, Game_State *game_state,
 
     // TODO: replace hash table linked lists with array implementation.
     //       this current implementation will probably be very slow if font table is large, but it works for now.
-    Hash_Table<Font> *font_table = &game_state->font_table;
+    Hash_Table<String, Font> *font_table = &game_state->font_table;
+    for (int32 i = 0; i < font_table->max_entries; i++) {
+        Hash_Table_Entry<String, Font> *entry = &font_table->entries[i];
+        if (!entry->is_occupied) continue;
+
+        Font *font = &entry->value;
+
+        // TODO: test this
+        if (!font->is_baked) {
+            if (!hash_table_exists(gl_state->font_texture_table, make_string(font->name))) {
+                gl_init_font(gl_state, memory, font);
+            } else {
+                debug_print("%s already loaded.\n", font->name);
+            }
+
+            font->is_baked = true;
+        }
+    }
+#if 0
+    Hash_Table<String, Font> *font_table = &game_state->font_table;
     for (int32 i = 0; i < HASH_TABLE_BUCKETS; i++) {
         Hash_Table_Bucket_Node<Font> *current = font_table->buckets[i].start;
         while (current) {
@@ -1671,6 +1695,7 @@ void gl_render(Memory *memory, GL_State *gl_state, Game_State *game_state,
             current = current->next;
         }
     }
+#endif
 
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);

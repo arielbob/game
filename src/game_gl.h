@@ -147,10 +147,10 @@ struct GL_Point_Light {
 };
 
 struct GL_State {
-    Hash_Table<uint32> shader_ids_table;
-    Hash_Table<GL_Mesh> mesh_table;
-    Hash_Table<uint32> font_texture_table;
-    Hash_Table<GL_Texture> texture_table;
+    Hash_Table<String, uint32> shader_ids_table;
+    Hash_Table<String, GL_Mesh> mesh_table;
+    Hash_Table<String, uint32> font_texture_table;
+    Hash_Table<String, GL_Texture> texture_table;
     
     // TODO: will have to delete these and remake them on window resize
     GL_Framebuffer gizmo_framebuffer;

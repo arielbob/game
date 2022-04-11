@@ -387,6 +387,12 @@ struct UI_Push_Buffer {
     uint32 used;
 };
 
+#if 0
+struct UI_State_Push_Buffer {
+    
+};
+#endif
+
 struct UI_Manager {
     UI_id hot;
     UI_id active;
@@ -400,6 +406,9 @@ struct UI_Manager {
     
     real64 focus_timer;
     int32 focus_cursor_index;
+
+    Vec2 active_initial_position;
+    real64 active_initial_time;
 };
 
 struct Button_State {

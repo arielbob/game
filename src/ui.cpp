@@ -147,6 +147,47 @@ inline void clear_hot(UI_Manager *manager) {
     manager->hot_layer = 0;
 }
 
+UI_Element *next_element(UI_Element *current_element, UI_Push_Buffer *push_buffer) {
+    if (!current_element) return NULL;
+
+    uint8 *address = (uint8 *) current_element;
+    switch (current_element->type) {
+        case UI_TEXT: {
+            address += sizeof(UI_Text);
+        } break;
+        case UI_TEXT_BUTTON: {
+            address += sizeof(UI_Text_Button);
+        } break;
+        case UI_IMAGE_BUTTON: {
+            address += sizeof(UI_Image_Button);
+        } break;
+        case UI_COLOR_BUTTON: {
+            address += sizeof(UI_Color_Button);
+        } break;
+        case UI_TEXT_BOX: {
+            address += sizeof(UI_Text_Box);
+        } break;
+        case UI_SLIDER: {
+            address += sizeof(UI_Slider);
+        } break;
+        case UI_BOX: {
+            address += sizeof(UI_Box);
+        } break;
+        case UI_LINE: {
+            address += sizeof(UI_Line);
+        } break;
+        default: {
+            assert(!"Unhandled UI element type.");
+        }
+    }
+
+    if (address < ((uint8 *) push_buffer->base + push_buffer->used)) {
+        return (UI_Element *) address;
+    } else {
+        return NULL;
+    }
+}
+
 // NOTE: since in immediate-mode GUIs, we only update hot if we call the do_ procedure for some element,
 //       if the element disappears, we lose the ability to change hot based on that element, for example,
 //       setting hot to empty if we're not over a button. this procedure loops through all the elements
@@ -154,43 +195,15 @@ inline void clear_hot(UI_Manager *manager) {
 //       that element is gone and thus if hot is that element, it should be cleared.
 void clear_hot_if_gone(UI_Manager *manager) {
     UI_Push_Buffer *push_buffer = &manager->push_buffer;
-    uint8 *address = (uint8 *) push_buffer->base;
+    UI_Element *element = (UI_Element *) push_buffer->base;
 
-    while (address < ((uint8 *) push_buffer->base + push_buffer->used)) {
-        UI_Element *element = (UI_Element *) address;
-
-        // hot is still visible
-        if (ui_id_equals(manager->hot, element->id)) return;
-
-        switch (element->type) {
-            case UI_TEXT: {
-                address += sizeof(UI_Text);
-            } break;
-            case UI_TEXT_BUTTON: {
-                address += sizeof(UI_Text_Button);
-            } break;
-            case UI_IMAGE_BUTTON: {
-                address += sizeof(UI_Image_Button);
-            } break;
-            case UI_COLOR_BUTTON: {
-                address += sizeof(UI_Color_Button);
-            } break;
-            case UI_TEXT_BOX: {
-                address += sizeof(UI_Text_Box);
-            } break;
-            case UI_SLIDER: {
-                address += sizeof(UI_Slider);
-            } break;
-            case UI_BOX: {
-                address += sizeof(UI_Box);
-            } break;
-            case UI_LINE: {
-                address += sizeof(UI_Line);
-            } break;
-            default: {
-                assert(!"Unhandled UI element type.");
-            }
+    while (element) {
+        if (ui_id_equals(manager->hot, element->id)) {
+            // hot still exists
+            return;
         }
+
+        element = next_element(element, push_buffer);
     }
 
     // hot is gone
@@ -509,6 +522,7 @@ real32 do_slider(UI_Manager *manager, Controller_State *controller_state,
                                        min, max, value,
                                        style, text_style,
                                        id_string, index);
+    //UI_Slider_State *state = get_state(manager, slider.id);
 
     Vec2 current_mouse = controller_state->current_mouse;
     if (!manager->is_disabled && in_bounds_on_layer(manager, current_mouse, x, x + width, y, y + height)) {
@@ -516,17 +530,26 @@ real32 do_slider(UI_Manager *manager, Controller_State *controller_state,
 
         if (controller_state->left_mouse.is_down && !controller_state->left_mouse.was_down) {
             manager->active = slider.id;
+            manager->active_initial_position = controller_state->current_mouse;
+            manager->active_initial_time = platform_get_wall_clock_time();
         }
 
         if (!controller_state->left_mouse.is_down) {
+        
             manager->active = {};
+#if 0
+            real64 deadzone_time = 0.5;
+            real32 time_since_first_active = platform_get_wall_clock_time() - manager->active_initial_time;
+
+            if (time_since_first_active < deadzone_time) {
+                state->is_textbox = true;
+                manager->active = slider.id;
+            } else {
+                manager->active = {};
+            }
+#endif
         }
     } else {
-        // FIXME: this isn't really a bug (other programs seem to behave this way), but i'm not sure
-        //        why it's happening: if you hold down a key in the textbox and you click outside of the textbox,
-        //        the textbox should lose focus and text should no longer be inputted. but, for some reason it
-        //        keeps focus after clicking outside of the textbox and characters keep getting inputted.
-        //        actually, i think it's because we're doing while(PeekMessage...).
         if (ui_id_equals(manager->hot, slider.id)) {
             clear_hot(manager);
         }
@@ -537,8 +560,19 @@ real32 do_slider(UI_Manager *manager, Controller_State *controller_state,
     }
 
     if (ui_id_equals(manager->active, slider.id) && being_held(controller_state->left_mouse)) {
-        real32 rate = (max - min) / width;
+#if 0
+        real32 pixel_deadzone_radius = 5.0f;
+        real64 deadzone_time = 0.5;
+        real32 time_since_first_active = platform_get_wall_clock_time() - manager->active_initial_time;
+        if (time_since_first_active >= deadzone_time || delta_pixels > pixel_deadzone_radius) {
+            value += delta_pixels * rate;
+            value = min(max, value);
+            value = max(min, value);
+        }
+#endif
         real32 delta_pixels = (controller_state->current_mouse - controller_state->last_mouse).x;
+        real32 rate = (max - min) / width;
+
         value += delta_pixels * rate;
         value = min(max, value);
         value = max(min, value);

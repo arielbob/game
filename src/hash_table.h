@@ -1,128 +1,128 @@
-#ifndef HASH_TABLE_H
-#define HASH_TABLE_H
+#ifndef HASH_TABLE_2_H
+#define HASH_TABLE_2_H
 
 #include "string.h"
 
 #define HASH_TABLE_BUCKETS 64
+//#define HASH_TABLE_SIZE 256
+#define HASH_TABLE_SIZE 16
 
-uint32 get_hash(String name, uint32 bucket_size) {
-    String_Iterator it = make_string_iterator(name);
-    uint32 sum = 0;
-    char c = get_next_char(&it);
-    while (c) {
-        sum += c;
-        c = get_next_char(&it);
-    }
-
-    uint32 hash = sum % bucket_size;
-    
-    return hash;
-}
-
-template <class Value_Type>
-struct Hash_Table_Bucket_Node {
-    String key;
+template <class Key_Type, class Value_Type>
+struct Hash_Table_Entry {
+    bool32 is_occupied;
+    Key_Type key;
     Value_Type value;
-    Hash_Table_Bucket_Node<Value_Type> *next;
 };
 
-template <class Value_Type>
-struct Hash_Table_Linked_List {
-    Hash_Table_Bucket_Node<Value_Type> *start;
-};
-
-template <class Value_Type>
+template <class Key_Type, class Value_Type>
 struct Hash_Table {
-    Hash_Table_Linked_List<Value_Type> buckets[HASH_TABLE_BUCKETS];
-    Allocator *allocator; // all the keys, values, linked lists are stored using this allocator
+    Hash_Table_Entry<Key_Type, Value_Type> *entries;
+    int32 num_entries;
+    int32 max_entries;
+    Allocator *allocator;
+    bool32 (*key_equals) (Key_Type, Key_Type);
 };
 
-// TODO: we may want to be able to specify how many buckets we want
-template <class Value_Type>
-Hash_Table<Value_Type> make_hash_table(Allocator *allocator) {
-    Hash_Table<Value_Type> hash_table = {};
+// create a UI_Element_Variant struct which is a union of all derived types
+template <class Key_Type, class Value_Type>
+Hash_Table<Key_Type, Value_Type> make_hash_table(Allocator *allocator,
+                                                 int32 max_entries,
+                                                 bool32 (*key_equals) (Key_Type, Key_Type)) {
+    Hash_Table<Key_Type, Value_Type> hash_table;
+    uint32 entry_size = sizeof(Hash_Table_Entry<Key_Type, Value_Type>);
+    hash_table.entries = ((Hash_Table_Entry<Key_Type, Value_Type> *)
+                          allocate(allocator, entry_size * max_entries));
+    hash_table.num_entries = 0;
+    hash_table.max_entries = max_entries;
     hash_table.allocator = allocator;
+    hash_table.key_equals = key_equals;
+
     return hash_table;
 }
 
-template <class Value_Type>
-bool32 hash_table_find(Hash_Table<Value_Type> hash_table, String key, Value_Type *value_result) {
-    uint32 hash = get_hash(key, HASH_TABLE_BUCKETS);
-    Hash_Table_Linked_List<Value_Type> bucket = hash_table.buckets[hash];
-    Hash_Table_Bucket_Node<Value_Type> *current = bucket.start;
+template <class Key_Type, class Value_Type>
+void hash_table_add(Hash_Table<Key_Type, Value_Type> *hash_table, Key_Type key, Value_Type value) {
+    assert(hash_table->num_entries < hash_table->max_entries);
 
-    while (current) {
-        if (string_equals(current->key, key)) {
-            *value_result = current->value;
+    uint32 hash = get_hash(key, hash_table->max_entries);
+    
+    int32 num_checked = 0;
+    while (num_checked < hash_table->max_entries) {
+        Hash_Table_Entry<Key_Type, Value_Type> entry = hash_table->entries[hash];
+        if (entry.is_occupied) {
+            hash++;
+            hash %= hash_table->max_entries;
+            num_checked++;
+        } else {
+            Hash_Table_Entry<Key_Type, Value_Type> new_entry = { true, key, value };
+            hash_table->entries[hash] = new_entry;
+            hash_table->num_entries++;
+            return;
+        }
+    }
+
+    assert(!"Should be unreachable");
+}
+
+template <class Key_Type, class Value_Type>
+void hash_table_remove(Hash_Table<Key_Type, Value_Type> *hash_table, Key_Type key) {
+    uint32 hash = get_hash(key, hash_table->max_entries);
+
+    int32 num_checked = 0;
+    while (num_checked < hash_table->max_entries) {
+        Hash_Table_Entry<Key_Type, Value_Type> *entry = &hash_table->entries[hash];
+        if (hash_table->key_equals(key, entry->key)) {
+            entry->is_occupied = false;
+            deallocate(entry->value);
+            return;
+        }
+
+        hash++;
+        hash %= hash_table->max_entries;
+        num_checked++;
+    }
+
+    assert(!"Entry to be removed does not exist.");
+}
+
+template <class Key_Type, class Value_Type>
+bool32 hash_table_exists(Hash_Table<Key_Type, Value_Type> hash_table, Key_Type key) {
+    uint32 hash = get_hash(key, hash_table.max_entries);
+
+    int32 num_checked = 0;
+    while (num_checked < hash_table.max_entries) {
+        Hash_Table_Entry<Key_Type, Value_Type> entry = hash_table.entries[hash];
+
+        if (hash_table.key_equals(key, entry.key)) {
             return true;
         }
-        current = current->next;
+
+        hash++;
+        hash %= hash_table.max_entries;
+        num_checked++;
     }
 
     return false;
 }
 
-template <class Value_Type>
-bool32 hash_table_exists(Hash_Table<Value_Type> hash_table, String key) {
-    uint32 hash = get_hash(key, HASH_TABLE_BUCKETS);
-    Hash_Table_Linked_List<Value_Type> bucket = hash_table.buckets[hash];
-    Hash_Table_Bucket_Node<Value_Type> *current = bucket.start;
+template <class Key_Type, class Value_Type>
+bool32 hash_table_find(Hash_Table<Key_Type, Value_Type> hash_table, Key_Type key, Value_Type *value_result) {
+    uint32 hash = get_hash(key, hash_table.max_entries);
 
-    while (current) {
-        if (string_equals(current->key, key)) {
+    int32 num_checked = 0;
+    while (num_checked < hash_table.max_entries) {
+        Hash_Table_Entry<Key_Type, Value_Type> entry = hash_table.entries[hash];
+        if (hash_table.key_equals(key, entry.key)) {
+            *value_result = entry.value;
             return true;
         }
-        current = current->next;
+
+        hash++;
+        hash %= hash_table.max_entries;
+        num_checked++;
     }
 
     return false;
-}
-
-template <class Value_Type>
-internal void hash_table_add(Hash_Table<Value_Type> *hash_table, String key, Value_Type value) {
-    uint32 hash = get_hash(key, HASH_TABLE_BUCKETS);
-    Hash_Table_Linked_List<Value_Type> *bucket = &hash_table->buckets[hash];
-
-    if (bucket->start) {
-        Hash_Table_Bucket_Node<Value_Type> *current = bucket->start;
-        
-        while (current) {
-            if (string_equals(current->key, key)) {
-                assert(!"Entry with that key already exists");
-            }
-
-            if (!current->next) {
-                Hash_Table_Bucket_Node<Value_Type> *node =
-                    (Hash_Table_Bucket_Node<Value_Type> *) allocate(hash_table->allocator,
-                                                                    sizeof(Hash_Table_Bucket_Node<Value_Type>));
-                node->key = key;
-                node->value = value;
-                node->next = NULL;
-                current->next = node;
-
-                return;
-            } else {
-                current = current->next;
-            }
-        }
-
-        // should be unreachable
-        assert(false);
-    } else {
-        Hash_Table_Bucket_Node<Value_Type> *node =
-            (Hash_Table_Bucket_Node<Value_Type> *) allocate(hash_table->allocator,
-                                                            sizeof(Hash_Table_Bucket_Node<Value_Type>));
-        node->key = key;
-        node->value = value;
-        node->next = NULL;
-
-        bucket->start = node;
-    }
-}
-
-template <class Value_Type>
-internal void hash_table_add(Hash_Table<Value_Type> *hash_table, char *key, Value_Type value) {
-    hash_table_add(hash_table, make_string(key), value);
 }
 
 #endif
