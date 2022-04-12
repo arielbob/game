@@ -264,9 +264,6 @@ void init_game(Game_State *game_state,
     editor_state->gizmo.ring_mesh_name = "gizmo_ring";
     editor_state->gizmo.sphere_mesh_name = "gizmo_sphere";
     editor_state->selected_entity_index = -1;
-    Allocator *temp_string_allocator = (Allocator *) &memory.string_arena;
-    editor_state->temp_material.name = make_string_buffer(temp_string_allocator, MATERIAL_STRING_MAX_SIZE);
-    editor_state->temp_material.texture_name = make_string_buffer(temp_string_allocator, MATERIAL_STRING_MAX_SIZE);
     editor_state->show_wireframe = true;
 
     // init ui state

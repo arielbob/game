@@ -76,21 +76,26 @@
 //              which can cause the editor UI to go away, which is annoying. i think we can just check if there's
 //              an active UI element and if so, don't mesh pick.
 // TODO (done): closing material library
-
-// TODO: material saving in edit box
-
-// TODO: material editing in editor
+// TODO (done): basic UI slider
+// TODO (done): material editing in editor
 // TODO (done): list existing materials and be able to change an entity's active material
+
+// TODO: texture library
 // TODO: make textbox use the string pool allocator and use UI states so we don't have to handle making the
 //       string buffer ourselves
-// TODO: figure out functioning of text boxes
-// TODO: texture library
+//       - this also allows us to validate the text box without having to create a temp buffer ourselves
+//         (we would just validate the String_Buffer from the text box's state)
+//       - use this in the material name textbox, since right now the material name can be empty
+
+// TODO: click slider for manual value entry
 // TODO: color selector
 // TODO: slider UI element
-//       - TODO (done): basic slider
-//       - TODO: click slider for manual value entry
+
 // TODO: material creation/deletion
-// TODO: preview mode for materials
+// TODO: material name/texture strings validation
+//       check for duplicates and empties. it matters that we don't have duplicates since texture names are used
+//       as keys in the opengl code. we don't store material structs in the opengl code, but it's better to be
+//       consistent.
 
 // TODO: be able to add and delete materials, textures, meshes
 // TODO (done): make free list struct (start with using this for storing fixed length strings that could be deleted).

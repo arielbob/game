@@ -44,8 +44,6 @@ struct Editor_State {
     bool32 show_wireframe;
     bool32 choosing_material;
     bool32 editing_selected_entity_material;
-    
-    Material temp_material;
 };
 
 #endif

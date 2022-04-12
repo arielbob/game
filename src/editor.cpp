@@ -11,6 +11,7 @@
 #define ROW_HEIGHT 30.0f
 #define SMALL_ROW_HEIGHT 20.0f
 
+#if 0
 void set_temp_material(Editor_State *editor_state, Material material) {
     Material *temp_material = &editor_state->temp_material;
     copy_string(&temp_material->name, &material.name);
@@ -20,10 +21,7 @@ void set_temp_material(Editor_State *editor_state, Material material) {
     temp_material->color_override = material.color_override;
     temp_material->use_color_override = material.use_color_override;
 }
-
-void save_material(Editor_State *editor_state) {
-
-}
+#endif
 
 // for comparing current to new
 bool32 selected_entity_changed(Editor_State *editor_state,
@@ -206,7 +204,6 @@ void draw_material_library(Game_State *game_state, Controller_State *controller_
     if (pressed_index >= 0) {
         if (pressed_index != entity->material_index) {
             entity->material_index = pressed_index;
-            set_temp_material(editor_state, materials[pressed_index]);
         }
 
         editor_state->choosing_material = false;
@@ -392,7 +389,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                                   edit_material_button_width, inset_row_height,
                                                   button_style, default_text_style,
                                                   "Edit", font_name_bold,
-                                                  editor_state->editing_selected_entity_material,
+                                                  false,
                                                   "edit_material");
     
     y += row_height;
@@ -407,22 +404,13 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     }
 
     if (edit_material_pressed) {
-        editor_state->editing_selected_entity_material = true;
-        Material *temp_material = &editor_state->temp_material;
-        copy_string(&temp_material->name, &material->name);
-        copy_string(&temp_material->texture_name, &material->texture_name);
-
-        temp_material->gloss = material->gloss;
-        temp_material->color_override = material->color_override;
-        temp_material->use_color_override = material->use_color_override;
+        editor_state->editing_selected_entity_material = !editor_state->editing_selected_entity_material;
     }
 
     if (editor_state->editing_selected_entity_material) {
-        Material *temp_material = &editor_state->temp_material;
-
         UI_Text_Box_Style text_box_style = default_text_box_style;
 
-        char *temp_material_name = to_char_array(allocator, temp_material->name);
+        //char *temp_material_name = to_char_array(allocator, temp_material->name);
         draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags,
                  row_id, row_index++);
         draw_v_centered_text(game_state, ui_manager, x + padding_left, y, row_height,
@@ -431,13 +419,13 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                     x + right_column_offset,
                     y + get_center_y_offset(row_height, inset_row_height),
                     200.0f, inset_row_height,
-                    &temp_material->name, font_name_bold,
+                    &material->name, font_name_bold,
                     text_box_style, default_text_style,
                     "material_name_text_box");
 
         y += row_height;
 
-        char *texture_name = to_char_array(allocator, temp_material->texture_name);
+        char *texture_name = to_char_array(allocator, material->texture_name);
         draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags,
                  row_id, row_index++);
         draw_v_centered_text(game_state, ui_manager, x + padding_left, y, row_height,
@@ -452,29 +440,29 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
 
         draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags,
                  row_id, row_index++);
-        buf = string_format(allocator, buffer_size, "%f", temp_material->gloss);
+        buf = string_format(allocator, buffer_size, "%f", material->gloss);
         draw_v_centered_text(game_state, ui_manager, x + padding_left, y, row_height,
                              "Gloss", font_name_bold, text_style);
-        temp_material->gloss = do_slider(ui_manager, controller_state,
-                                         x+right_column_offset,
-                                         y + get_center_y_offset(row_height, inset_row_height),
-                                         choose_material_button_width, inset_row_height,
-                                         buf, font_name_bold,
-                                         0.0f, 100.0f, temp_material->gloss,
-                                         default_slider_style, default_text_style,
-                                         "edit_material_gloss_slider");
+        material->gloss = do_slider(ui_manager, controller_state,
+                                    x+right_column_offset,
+                                    y + get_center_y_offset(row_height, inset_row_height),
+                                    choose_material_button_width, inset_row_height,
+                                    buf, font_name_bold,
+                                    0.0f, 100.0f, material->gloss,
+                                    default_slider_style, default_text_style,
+                                    "edit_material_gloss_slider");
         y += row_height;
 
         draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags,
                  row_id, row_index++);
-        buf = string_format(allocator, buffer_size, "%f", temp_material->gloss);
+        buf = string_format(allocator, buffer_size, "%f", material->gloss);
         draw_v_centered_text(game_state, ui_manager, x + padding_left, y, row_height,
                              "Color Override", font_name_bold, text_style);
         do_color_button(ui_manager, controller_state,
                         x + right_column_offset, y + get_center_y_offset(row_height, inset_row_height),
                         inset_row_height, inset_row_height,
                         default_color_button_style,
-                        temp_material->color_override,
+                        material->color_override,
                         "material_color_override");
         y += row_height;
 
@@ -487,66 +475,18 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                                               y + get_center_y_offset(row_height, inset_row_height),
                                                               100.0f, inset_row_height,
                                                               button_style, default_text_style,
-                                                              temp_material->use_color_override ? "true" : "false",
+                                                              material->use_color_override ? "true" : "false",
                                                               font_name_bold,
+                                                              is_empty(material->texture_name),
                                                               "material_toggle_use_color_override");
         y += row_height;
         
         if (toggle_color_override_pressed) {
-            temp_material->use_color_override = !temp_material->use_color_override;
-        }
-
-        draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags,
-                 row_id, row_index++);
-
-        bool32 cancel_pressed = do_text_button(ui_manager, controller_state,
-                                               x + padding_left,
-                                               y + get_center_y_offset(row_height, inset_row_height),
-                                               100.0f, inset_row_height,
-                                               default_text_button_cancel_style, default_text_style,
-                                               "Cancel",
-                                               font_name_bold,
-                                               "material_edit_cancel");
-
-        bool32 save_pressed = do_text_button(ui_manager, controller_state,
-                                             x + row_width - padding_left - 100.0f,
-                                             y + get_center_y_offset(row_height, inset_row_height),
-                                             100.0f, inset_row_height,
-                                             default_text_button_save_style, default_text_style,
-                                             "Save",
-                                             font_name_bold,
-                                             "material_edit_save");
-     
-        y += row_height;
-
-        if (cancel_pressed) {
-            editor_state->editing_selected_entity_material = false;
-        }
-
-        if (save_pressed) {
-            // TODO: should have some way of outputting feedback (like a console or something)
-            if (!is_empty(temp_material->name)) {
-                copy_string(&material->name, &temp_material->name);
-            } else {
-                // just reset the name to its original value if the inputted one is empty
-                copy_string(&temp_material->name, &material->name);
+            material->use_color_override = !material->use_color_override;
+            if (is_empty(material->texture_name) && !material->use_color_override) {
+                material->use_color_override = true;
             }
-
-            if (!is_empty(temp_material->texture_name)) {
-                copy_string(&material->texture_name, &temp_material->texture_name);
-            } else {
-                copy_string(&temp_material->texture_name, &material->texture_name);
-            }
-
-            material->gloss = temp_material->gloss;
-            material->color_override = temp_material->color_override;
-
-            if (is_empty(material->texture_name) && !temp_material->use_color_override) {
-                temp_material->use_color_override = true;
-            }
-            material->use_color_override = temp_material->use_color_override;
         }
-        
 
         // some more padding
         draw_row(ui_manager, controller_state, x, y, row_width, padding_bottom / 2.0f + 1.0f, row_color,
