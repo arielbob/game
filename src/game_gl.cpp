@@ -62,6 +62,26 @@
 // TODO: slider UI element
 //       - TODO (done): basic slider
 //       - TODO: click slider for manual value entry
+
+/*
+  we call do_slider()
+  in Slider_State, we allocate a String_Buffer,
+  at the end of the game update procedure, we do the same thing we do for removing hot if the element no longer
+  exists. except this time, if it no longer exists, we delete the state object. to delete the state object,
+  in the hash map in which the UI element states are stored, we make that slot free. and we also delete the
+  string buffer.
+
+  this requires:
+  - TODO (done): hash map implementation that uses open addressing
+  - TODO (done): figure out memory alignment
+  - TODO (done): pool allocator for strings (fixed size array with ability to allocate and deallocate)
+  - TODO (done): some type of hash map implementation that can store base classes (without having to store pointers)
+                 - just use the new hash map implementation with a variant struct, which is just a union of all the
+                 - derived structs
+  - TODO (done): allocation of string buffers when a slider is first shown
+  - TODO: deallocation of string buffers when a slider is no longer showing
+*/
+
 // TODO (done): fix issue when letting go of slider UI outside of any UI element causes a mesh pick to happen,
 //              which can cause the editor UI to go away, which is annoying. i think we can just check if there's
 //              an active UI element and if so, don't mesh pick.
@@ -77,6 +97,9 @@
 //              this free list struct will also be used for text fields. since we often don't want a text field to
 //              hold the direct contents of where it will eventually be stored. we will need to update our
 //              immediate mode UI code to hold state for the UI elements.
+// TODO: we may want to add some metadata to allocations, since if we're just given a pointer to some memory and
+//       we want to deallocate it, it's impossible to know from where to deallocate it from unless its just known
+//       where, such as when we deallocate the String_Buffer in UI_Slider_State.
 // TODO: replace string arena with the string pool allocator
 
 // TODO: entity instances? copies of an entity, where you can modify the parent entity and all the instances
@@ -228,7 +251,7 @@ inline void gl_set_uniform_float(uint32 shader_id, char* uniform_name, real32 f)
 }
 
 void gl_load_shader(GL_State *gl_state, Memory *memory,
-                      char *vertex_shader_filename, char *fragment_shader_filename, char *shader_name) {
+                    char *vertex_shader_filename, char *fragment_shader_filename, char *shader_name) {
     Marker m = begin_region(memory);
 
     // NOTE: vertex shader
@@ -1659,6 +1682,7 @@ void gl_render(Memory *memory, GL_State *gl_state, Game_State *game_state,
 
     // TODO: replace hash table linked lists with array implementation.
     //       this current implementation will probably be very slow if font table is large, but it works for now.
+
     Hash_Table<String, Font> *font_table = &game_state->font_table;
     for (int32 i = 0; i < font_table->max_entries; i++) {
         Hash_Table_Entry<String, Font> *entry = &font_table->entries[i];
@@ -1677,6 +1701,7 @@ void gl_render(Memory *memory, GL_State *gl_state, Game_State *game_state,
             font->is_baked = true;
         }
     }
+
 #if 0
     Hash_Table<String, Font> *font_table = &game_state->font_table;
     for (int32 i = 0; i < HASH_TABLE_BUCKETS; i++) {

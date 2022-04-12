@@ -175,8 +175,10 @@ Pool_Allocator make_pool_allocator(void *base, uint32 block_size, uint32 size, u
     Pool_Allocator pool_allocator;
     pool_allocator.type = POOL_ALLOCATOR;
     pool_allocator.size = size;
+    pool_allocator.block_size = block_size;
     pool_allocator.base = base;
     pool_allocator.first = base;
+    pool_allocator.max_blocks = size / block_size;
 
     // initialize the free list
     void **current = (void **) pool_allocator.base;
@@ -186,20 +188,40 @@ Pool_Allocator make_pool_allocator(void *base, uint32 block_size, uint32 size, u
         current = (void **) ((uint8 *) current +  block_size);
     }
 
-#if 0
-    for (uint32 i = 0; i < pool_allocator.max_blocks - 1; i++) {
-        // store a pointer to the next free block
+    *current = NULL;
+
+    return pool_allocator;
+}
+
+Pool_Allocator make_pool_allocator(Allocator *allocator,
+                                   uint32 block_size, uint32 max_blocks) {
+    uint32 pool_size_bytes = block_size * max_blocks;
+    void *base = allocate(allocator, pool_size_bytes);
+
+    Pool_Allocator pool_allocator;
+    pool_allocator.type = POOL_ALLOCATOR;
+    pool_allocator.size = pool_size_bytes;
+    pool_allocator.block_size = block_size;
+    pool_allocator.base = base;
+    pool_allocator.first = base;
+    pool_allocator.max_blocks = max_blocks;
+
+    // initialize the free list
+    void **current = (void **) pool_allocator.base;
+    while ((uint8 *) current < (((uint8 *) base + pool_size_bytes) - block_size)) {
+        // store a pointer to the next free block, which initially is just a pointer to the next block in memory
         *current = current + block_size;
-        current += block_size;
+        current = (void **) ((uint8 *) current +  block_size);
     }
-#endif
 
     *current = NULL;
 
     return pool_allocator;
 }
 
-void *pool_push(Pool_Allocator *pool) {
+void *pool_push(Pool_Allocator *pool, uint32 size, bool32 zero_memory = false) {
+    assert(size <= pool->block_size);
+
     // set the address to the next free block (which is the address stored at pool->first)
     void *base = pool->first;
     if (!base) {
@@ -207,6 +229,10 @@ void *pool_push(Pool_Allocator *pool) {
     }
 
     pool->first = *((void **)pool->first);
+
+    if (zero_memory) {
+        platform_zero_memory(base, pool->block_size);
+    }
 
     return base;
 }
@@ -219,17 +245,29 @@ void pool_remove(Pool_Allocator *pool, void *block_address) {
     pool->first = block_pointer;
 }
 
+#if 0
+void *get_block(Pool_Allocator *pool, uint32 index) {
+    assert(index < pool
+    return pool->base + (pool->block_size * index);
+}
+#endif
+
 void *allocate(Allocator *allocator, uint32 size, bool32 zero_memory) {
     switch (allocator->type) {
         case STACK_ALLOCATOR:
         {
             Stack_Allocator *stack = (Stack_Allocator *) allocator;
             return region_push(stack, size, zero_memory);
-        } break;
+        }
         case ARENA_ALLOCATOR:
         {
             Arena_Allocator *arena = (Arena_Allocator *) allocator;
             return arena_push(arena, size, zero_memory);
+        }
+        case POOL_ALLOCATOR:
+        {
+            Pool_Allocator *pool = (Pool_Allocator *) allocator;
+            return pool_push(pool, size, zero_memory);
         }
         default:
         {

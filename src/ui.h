@@ -387,11 +387,22 @@ struct UI_Push_Buffer {
     uint32 used;
 };
 
-#if 0
-struct UI_State_Push_Buffer {
-    
+// UI element states
+enum UI_Element_State_Type {
+    UI_STATE_NONE,
+    UI_STATE_SLIDER
 };
-#endif
+
+struct UI_Slider_State {
+    String_Buffer buffer;
+};
+
+struct UI_State_Variant {
+    UI_Element_State_Type type;
+    union {
+        UI_Slider_State slider_state;
+    };
+};
 
 struct UI_Manager {
     UI_id hot;
@@ -401,6 +412,7 @@ struct UI_Manager {
     int32 current_layer;
     
     UI_Push_Buffer push_buffer;
+    Hash_Table<UI_id, UI_State_Variant> state_table;
 
     bool32 is_disabled;
     

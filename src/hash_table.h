@@ -86,6 +86,27 @@ void hash_table_remove(Hash_Table<Key_Type, Value_Type> *hash_table, Key_Type ke
 }
 
 template <class Key_Type, class Value_Type>
+bool32 hash_table_remove_if_exists(Hash_Table<Key_Type, Value_Type> *hash_table, Key_Type key) {
+    uint32 hash = get_hash(key, hash_table->max_entries);
+
+    int32 num_checked = 0;
+    while (num_checked < hash_table->max_entries) {
+        Hash_Table_Entry<Key_Type, Value_Type> *entry = &hash_table->entries[hash];
+        if (hash_table->key_equals(key, entry->key)) {
+            entry->is_occupied = false;
+            deallocate(entry->value);
+            return true;
+        }
+
+        hash++;
+        hash %= hash_table->max_entries;
+        num_checked++;
+    }
+
+    return false;
+}
+
+template <class Key_Type, class Value_Type>
 bool32 hash_table_exists(Hash_Table<Key_Type, Value_Type> hash_table, Key_Type key) {
     uint32 hash = get_hash(key, hash_table.max_entries);
 
@@ -114,6 +135,26 @@ bool32 hash_table_find(Hash_Table<Key_Type, Value_Type> hash_table, Key_Type key
         Hash_Table_Entry<Key_Type, Value_Type> entry = hash_table.entries[hash];
         if (hash_table.key_equals(key, entry.key)) {
             *value_result = entry.value;
+            return true;
+        }
+
+        hash++;
+        hash %= hash_table.max_entries;
+        num_checked++;
+    }
+
+    return false;
+}
+
+template <class Key_Type, class Value_Type>
+bool32 hash_table_find_pointer(Hash_Table<Key_Type, Value_Type> hash_table, Key_Type key, Value_Type **value_result) {
+    uint32 hash = get_hash(key, hash_table.max_entries);
+
+    int32 num_checked = 0;
+    while (num_checked < hash_table.max_entries) {
+        Hash_Table_Entry<Key_Type, Value_Type> *entry = &hash_table.entries[hash];
+        if (hash_table.key_equals(key, entry->key)) {
+            *value_result = &entry->value;
             return true;
         }
 

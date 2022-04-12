@@ -451,7 +451,8 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
         buf = string_format(allocator, buffer_size, "%f", temp_material->gloss);
         draw_v_centered_text(game_state, ui_manager, x + padding_left, y, row_height,
                              "Gloss", font_name_bold, text_style);
-        temp_material->gloss = do_slider(ui_manager, controller_state,
+        temp_material->gloss = do_slider(memory,
+                                         ui_manager, controller_state,
                                          x+right_column_offset,
                                          y + get_center_y_offset(row_height, inset_row_height),
                                          choose_material_button_width, inset_row_height,

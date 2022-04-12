@@ -277,6 +277,8 @@ void init_game(Memory *memory, Game_State *game_state,
     ui_push_buffer.used = 0;
     ui_manager->push_buffer = ui_push_buffer;
     ui_manager->current_layer = 0;
+    ui_manager->state_table = make_hash_table<UI_id, UI_State_Variant>((Allocator *) &memory->hash_table_stack,
+                                                                       HASH_TABLE_SIZE, &ui_id_equals);
 
     // add materials
     Allocator *material_string_allocator = (Allocator *) &memory->string_arena;
@@ -761,7 +763,8 @@ void update(Memory *memory, Game_State *game_state,
     static real32 value = 50.0f;
     buf = (char *) arena_push(&memory->frame_arena, 16);
     string_format(buf, 32, "%f", value);
-    value = do_slider(ui_manager, controller_state,
+    value = do_slider(memory,
+                      ui_manager, controller_state,
                       0, 0,
                       200.0f, 50.0f,
                       buf, "times24",

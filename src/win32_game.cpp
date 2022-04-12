@@ -47,6 +47,7 @@ global_variable int64 perf_counter_frequency;
 global_variable bool32 is_running = true;
 global_variable bool32 is_paused = true;
 global_variable HWND window;
+//global_variable Memory memory;
 
 typedef char GLchar;
 typedef signed long long int khronos_ssize_t;
