@@ -72,19 +72,19 @@
   - TODO (done): allocation of string buffers when a slider is first shown
   - TODO (done): deallocation of string buffers when a slider is no longer showing
 */
+// TODO (done): fix issue when letting go of slider UI outside of any UI element causes a mesh pick to happen,
+//              which can cause the editor UI to go away, which is annoying. i think we can just check if there's
+//              an active UI element and if so, don't mesh pick.
+// TODO: slider UI element
+//       - TODO (done): basic slider
+//       - TODO: click slider for manual value entry
 
 // TODO: material editing in editor
 // TODO (done): list existing materials and be able to change an entity's active material
 // TODO: figure out functioning of text boxes
 // TODO: texture library
 // TODO: color selector
-// TODO: slider UI element
-//       - TODO (done): basic slider
-//       - TODO: click slider for manual value entry
 
-// TODO (done): fix issue when letting go of slider UI outside of any UI element causes a mesh pick to happen,
-//              which can cause the editor UI to go away, which is annoying. i think we can just check if there's
-//              an active UI element and if so, don't mesh pick.
 // TODO: material saving in edit box
 // TODO: material creation/deletion
 // TODO: closing material library

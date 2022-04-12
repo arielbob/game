@@ -556,11 +556,6 @@ void do_text_box(UI_Manager *manager, Controller_State *controller_state,
     if (!manager->is_disabled && in_bounds_on_layer(manager, current_mouse, x, x + width, y, y + height)) {
         set_hot(manager, text_box.id);
 
-        // TODO: this is useless
-        if (!controller_state->left_mouse.is_down) {
-            set_hot(manager, text_box.id);
-        }
-
         if (controller_state->left_mouse.is_down && !controller_state->left_mouse.was_down) {
             manager->active = text_box.id;
             manager->focus_timer = platform_get_wall_clock_time();
@@ -619,73 +614,110 @@ real32 do_slider(UI_Manager *manager, Controller_State *controller_state,
                                        style, text_style,
                                        id_string, index);
     
+    // TODO: try and move this element state getting stuff into its own procedure
     UI_State_Variant *state_variant;
     bool32 state_exists = get_state(manager, slider.id, &state_variant);
     if (!state_exists) {
         UI_Slider_State new_slider_state = {
-            make_string_buffer((Allocator *) &memory.string64_pool, text, 64)
+            make_string_buffer((Allocator *) &memory.string64_pool, text, 64),
+            false
         };
         UI_State_Variant new_state = {};
         new_state.type = UI_STATE_SLIDER;
         new_state.slider_state = new_slider_state;
         
         add_state(manager, slider.id, new_state);
+        state_exists = get_state(manager, slider.id, &state_variant);
+        assert(state_exists);
     }
     UI_Slider_State *state = &state_variant->slider_state;
 
     Vec2 current_mouse = controller_state->current_mouse;
-    if (!manager->is_disabled && in_bounds_on_layer(manager, current_mouse, x, x + width, y, y + height)) {
-        set_hot(manager, slider.id);
 
-        if (controller_state->left_mouse.is_down && !controller_state->left_mouse.was_down) {
-            manager->active = slider.id;
-            manager->active_initial_position = controller_state->current_mouse;
-            manager->active_initial_time = platform_get_wall_clock_time();
-        }
+    if (!state->is_manual_editing) {
+        if (!manager->is_disabled && in_bounds_on_layer(manager, current_mouse, x, x + width, y, y + height)) {
+            set_hot(manager, slider.id);
 
-        if (!controller_state->left_mouse.is_down) {
-        
-            manager->active = {};
-#if 0
-            real64 deadzone_time = 0.5;
-            real32 time_since_first_active = platform_get_wall_clock_time() - manager->active_initial_time;
-
-            if (time_since_first_active < deadzone_time) {
-                state->is_textbox = true;
+            if (just_pressed(controller_state->left_mouse)) {
                 manager->active = slider.id;
-            } else {
-                manager->active = {};
+                manager->active_initial_position = controller_state->current_mouse;
+                manager->active_initial_time = platform_get_wall_clock_time();
+            } else if (was_clicked(controller_state->left_mouse)) {
+                real64 deadzone_time = 0.5;
+                real64 time_since_first_active = platform_get_wall_clock_time() - manager->active_initial_time;
+
+                if (time_since_first_active < deadzone_time) {
+                    state->is_manual_editing = true;
+                    manager->active = slider.id;
+                } else {
+                    manager->active = {};
+                }
             }
-#endif
+        } else {
+            if (ui_id_equals(manager->hot, slider.id)) {
+                clear_hot(manager);
+            }
+
+            if (ui_id_equals(manager->active, slider.id)) {
+                if (!state->is_manual_editing && !controller_state->left_mouse.is_down) {
+                    manager->active = {};
+                }
+            }
         }
     } else {
-        if (ui_id_equals(manager->hot, slider.id)) {
-            clear_hot(manager);
-        }
+        // this is just copy-pasted from do_text_box
+        if (!manager->is_disabled && in_bounds_on_layer(manager, current_mouse, x, x + width, y, y + height)) {
+            set_hot(manager, slider.id);
 
-        if (ui_id_equals(manager->active, slider.id) && !controller_state->left_mouse.is_down) {
-            manager->active = {};
+            if (controller_state->left_mouse.is_down && !controller_state->left_mouse.was_down) {
+                manager->active = slider.id;
+                manager->focus_timer = platform_get_wall_clock_time();
+                manager->focus_cursor_index = state->buffer.current_length;
+            }
+        } else {
+            if (ui_id_equals(manager->hot, slider.id)) {
+                clear_hot(manager);
+            }
+
+            if (ui_id_equals(manager->active, slider.id) &&
+                controller_state->left_mouse.is_down &&
+                !controller_state->left_mouse.was_down) {
+                manager->active = {};
+                state->is_manual_editing = false;
+                manager->focus_cursor_index = 0;
+            }
         }
     }
 
-    if (ui_id_equals(manager->active, slider.id) && being_held(controller_state->left_mouse)) {
-#if 0
-        real32 pixel_deadzone_radius = 5.0f;
-        real64 deadzone_time = 0.5;
-        real32 time_since_first_active = platform_get_wall_clock_time() - manager->active_initial_time;
-        if (time_since_first_active >= deadzone_time || delta_pixels > pixel_deadzone_radius) {
-            value += delta_pixels * rate;
-            value = min(max, value);
-            value = max(min, value);
-        }
-#endif
-        real32 delta_pixels = (controller_state->current_mouse - controller_state->last_mouse).x;
-        real32 rate = (max - min) / width;
+    if (ui_id_equals(manager->active, slider.id)) {
+        if (!state->is_manual_editing) {
+            if (being_held(controller_state->left_mouse)) {
+                real32 delta_pixels = (controller_state->current_mouse - controller_state->last_mouse).x;
+                real32 rate = (max - min) / width;
 
-        value += delta_pixels * rate;
-        value = min(max, value);
-        value = max(min, value);
-    }
+                value += delta_pixels * rate;
+                value = min(max, value);
+                value = max(min, value);
+            }
+        } else {
+            for (int32 i = 0; i < controller_state->num_pressed_chars; i++) {
+                char c = controller_state->pressed_chars[i];
+                if (c == '\b') {
+                    manager->focus_cursor_index--;
+                    if (manager->focus_cursor_index < 0) {
+                        manager->focus_cursor_index = 0;
+                    }
+                    state->buffer.current_length = manager->focus_cursor_index;
+                } else if (manager->focus_cursor_index < state->buffer.size &&
+                           c >= 32 &&
+                           c <= 126) {
+                    state->buffer.contents[manager->focus_cursor_index] = c;
+                    manager->focus_cursor_index++;
+                    state->buffer.current_length++;
+                }
+            }
+        }
+    }   
 
     ui_add_slider(manager, slider);
 

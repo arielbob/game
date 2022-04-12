@@ -395,6 +395,7 @@ enum UI_Element_State_Type {
 
 struct UI_Slider_State {
     String_Buffer buffer;
+    bool32 is_manual_editing;
 };
 
 struct UI_State_Variant {
