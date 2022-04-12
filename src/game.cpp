@@ -181,22 +181,22 @@ void init_camera(Camera *camera, Display_Output *display_output) {
     camera->initial_basis = { z_axis, x_axis, y_axis };
 }
 
-void init_game(Memory *memory, Game_State *game_state,
+void init_game(Game_State *game_state,
                Sound_Output *sound_output, uint32 num_samples) {
 #if 0
-    char *buf = (char *) pool_push(&memory->string64_pool);
+    char *buf = (char *) pool_push(&memory.string64_pool);
     string_format(buf, 64, "%s", "hello, world!");
-    pool_remove(&memory->string64_pool, buf);
-    char *buf2 = (char *) pool_push(&memory->string64_pool);
+    pool_remove(&memory.string64_pool, buf);
+    char *buf2 = (char *) pool_push(&memory.string64_pool);
     string_format(buf2, 64, "%s", "wassup");
-    char *buf3 = (char *) pool_push(&memory->string64_pool);
+    char *buf3 = (char *) pool_push(&memory.string64_pool);
     string_format(buf3, 64, "%s", "a profound silence has entered the chat");
-    pool_remove(&memory->string64_pool, buf3);
+    pool_remove(&memory.string64_pool, buf3);
 #endif
 
     Editor_State *editor_state = &game_state->editor_state;
 
-    Arena_Allocator *game_data_arena = &memory->game_data;
+    Arena_Allocator *game_data_arena = &memory.game_data;
     File_Data music_file_data = platform_open_and_read_file((Allocator *) game_data_arena,
                                                             "../drive my car.wav");
     Wav_Data *wav_data = (Wav_Data *) music_file_data.contents;
@@ -208,55 +208,55 @@ void init_game(Memory *memory, Game_State *game_state,
     Camera *camera = &game_state->render_state.camera;
     Display_Output *display_output = &game_state->render_state.display_output;
 
-    game_state->font_table = make_hash_table<String, Font>((Allocator *) &memory->hash_table_stack,
+    game_state->font_table = make_hash_table<String, Font>((Allocator *) &memory.hash_table_stack,
                                                            HASH_TABLE_SIZE,
                                                            &string_equals);
-    game_state->font_file_table = make_hash_table<String, File_Data>((Allocator *) &memory->hash_table_stack,
+    game_state->font_file_table = make_hash_table<String, File_Data>((Allocator *) &memory.hash_table_stack,
                                                                      HASH_TABLE_SIZE,
                                                                      &string_equals);
 
     init_camera(camera, display_output);
 
     // add meshes
-    Allocator *mesh_name_allocator = (Allocator *) &memory->string_arena;
+    Allocator *mesh_name_allocator = (Allocator *) &memory.string_arena;
     Mesh mesh;
-    mesh = read_and_load_mesh(memory, (Allocator *) &memory->mesh_arena, "blender/cube.mesh",
+    mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena, "blender/cube.mesh",
                               make_string_buffer(mesh_name_allocator, "cube", MESH_NAME_MAX_SIZE));
     add_mesh(game_state, mesh);
 
-    mesh = read_and_load_mesh(memory, (Allocator *) &memory->mesh_arena, "blender/suzanne2.mesh",
+    mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena, "blender/suzanne2.mesh",
                               make_string_buffer(mesh_name_allocator, "suzanne", MESH_NAME_MAX_SIZE));
     add_mesh(game_state, mesh);
 
-    mesh = read_and_load_mesh(memory, (Allocator *) &memory->mesh_arena, "blender/gizmo_arrow.mesh",
+    mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena, "blender/gizmo_arrow.mesh",
                               make_string_buffer(mesh_name_allocator, "gizmo_arrow", MESH_NAME_MAX_SIZE));
     add_mesh(game_state, mesh);
 
-    mesh = read_and_load_mesh(memory, (Allocator *) &memory->mesh_arena, "blender/gizmo_ring.mesh",
+    mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena, "blender/gizmo_ring.mesh",
                               make_string_buffer(mesh_name_allocator, "gizmo_ring", MESH_NAME_MAX_SIZE));
     add_mesh(game_state, mesh);
 
-    mesh = read_and_load_mesh(memory, (Allocator *) &memory->mesh_arena, "blender/gizmo_sphere.mesh",
+    mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena, "blender/gizmo_sphere.mesh",
                               make_string_buffer(mesh_name_allocator, "gizmo_sphere", MESH_NAME_MAX_SIZE));
     add_mesh(game_state, mesh);
 
-    mesh = read_and_load_mesh(memory, (Allocator *) &memory->mesh_arena, "blender/sphere.mesh",
+    mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena, "blender/sphere.mesh",
                               make_string_buffer(mesh_name_allocator, "sphere", MESH_NAME_MAX_SIZE));
     add_mesh(game_state, mesh);
 
     // init fonts
     Font font;
-    font = load_font(memory, game_state, "c:/windows/fonts/times.ttf", "times32", 32.0f, 512, 512);
+    font = load_font(game_state, "c:/windows/fonts/times.ttf", "times32", 32.0f, 512, 512);
     add_font(game_state, font);
-    font = load_font(memory, game_state, "c:/windows/fonts/times.ttf", "times24", 24.0f, 512, 512);
+    font = load_font(game_state, "c:/windows/fonts/times.ttf", "times24", 24.0f, 512, 512);
     add_font(game_state, font);
-    font = load_font(memory, game_state, "c:/windows/fonts/courbd.ttf", "courier24b", 24.0f, 512, 512);
+    font = load_font(game_state, "c:/windows/fonts/courbd.ttf", "courier24b", 24.0f, 512, 512);
     add_font(game_state, font);
-    font = load_font(memory, game_state, "c:/windows/fonts/cour.ttf", "courier18", 18.0f, 512, 512);
+    font = load_font(game_state, "c:/windows/fonts/cour.ttf", "courier18", 18.0f, 512, 512);
     add_font(game_state, font);
-    font = load_font(memory, game_state, "c:/windows/fonts/courbd.ttf", "courier18b", 18.0f, 512, 512);
+    font = load_font(game_state, "c:/windows/fonts/courbd.ttf", "courier18b", 18.0f, 512, 512);
     add_font(game_state, font);
-    font = load_font(memory, game_state, "c:/windows/fonts/lucon.ttf", "lucidaconsole18", 18.0f, 512, 512);
+    font = load_font(game_state, "c:/windows/fonts/lucon.ttf", "lucidaconsole18", 18.0f, 512, 512);
     add_font(game_state, font);
 
     // init editor_state
@@ -264,7 +264,7 @@ void init_game(Memory *memory, Game_State *game_state,
     editor_state->gizmo.ring_mesh_name = "gizmo_ring";
     editor_state->gizmo.sphere_mesh_name = "gizmo_sphere";
     editor_state->selected_entity_index = -1;
-    Allocator *temp_string_allocator = (Allocator *) &memory->string_arena;
+    Allocator *temp_string_allocator = (Allocator *) &memory.string_arena;
     editor_state->temp_material.name = make_string_buffer(temp_string_allocator, MATERIAL_STRING_MAX_SIZE);
     editor_state->temp_material.texture_name = make_string_buffer(temp_string_allocator, MATERIAL_STRING_MAX_SIZE);
     editor_state->show_wireframe = true;
@@ -277,11 +277,11 @@ void init_game(Memory *memory, Game_State *game_state,
     ui_push_buffer.used = 0;
     ui_manager->push_buffer = ui_push_buffer;
     ui_manager->current_layer = 0;
-    ui_manager->state_table = make_hash_table<UI_id, UI_State_Variant>((Allocator *) &memory->hash_table_stack,
+    ui_manager->state_table = make_hash_table<UI_id, UI_State_Variant>((Allocator *) &memory.hash_table_stack,
                                                                        HASH_TABLE_SIZE, &ui_id_equals);
 
     // add materials
-    Allocator *material_string_allocator = (Allocator *) &memory->string_arena;
+    Allocator *material_string_allocator = (Allocator *) &memory.string_arena;
     Material shiny_monkey = make_material(make_string_buffer(material_string_allocator,
                                                              "shiny_monkey", MATERIAL_STRING_MAX_SIZE),
                                           make_string_buffer(material_string_allocator,
@@ -518,12 +518,12 @@ void update_gizmo(Game_State *game_state) {
     editor_state->gizmo.transform.rotation = entity->transform.rotation;
 }
 
-void update(Memory *memory, Game_State *game_state,
+void update(Game_State *game_state,
             Controller_State *controller_state,
             Sound_Output *sound_output, uint32 num_samples) {
     Display_Output *display_output = &game_state->render_state.display_output;
     if (!game_state->is_initted) {
-        init_game(memory, game_state, sound_output, num_samples);
+        init_game(game_state, sound_output, num_samples);
         return;
     }
 
@@ -576,16 +576,16 @@ void update(Memory *memory, Game_State *game_state,
     // TODO: GetOpenFileName blocks, so we should do the open file dialog stuff on a separate thread.
     //       https://docs.microsoft.com/en-us/windows/win32/procthread/processes-and-threads
     if (btn1_clicked) {
-        char *filepath = (char *) arena_push(&memory->string_arena, PLATFORM_MAX_PATH);
-        char *mesh_name_buffer = (char *) arena_push(&memory->string_arena, MESH_NAME_MAX_SIZE);
+        char *filepath = (char *) arena_push(&memory.string_arena, PLATFORM_MAX_PATH);
+        char *mesh_name_buffer = (char *) arena_push(&memory.string_arena, MESH_NAME_MAX_SIZE);
 
         if (platform_open_file_dialog(filepath, PLATFORM_MAX_PATH)) {
             //Marker m = begin_region(memory);
-            //File_Data file_data = platform_open_and_read_file((Allocator *) &memory->global_stack, filepath);
-            //end_region(memory, m);
+            //File_Data file_data = platform_open_and_read_file((Allocator *) &memory.global_stack, filepath);
+            //end_region(m);
 
             // TODO: prompt user to enter name for mesh; just using filepath name for now
-            Mesh mesh = read_and_load_mesh(memory, (Allocator *) &memory->mesh_arena, filepath,
+            Mesh mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena, filepath,
                                            mesh_name_buffer, MESH_NAME_MAX_SIZE);
             game_state->is_naming_mesh = true;
             game_state->mesh_to_add = mesh;
@@ -720,21 +720,21 @@ void update(Memory *memory, Game_State *game_state,
 
     update_gizmo(game_state);
 
-    draw_editor_ui(memory, game_state, controller_state);
+    draw_editor_ui(game_state, controller_state);
         
-    char *buf = (char *) arena_push(&memory->frame_arena, 128);
+    char *buf = (char *) arena_push(&memory.frame_arena, 128);
 #if 0
-    buf = (char *) arena_push(&memory->frame_arena, 128);
+    buf = (char *) arena_push(&memory.frame_arena, 128);
     string_format(buf, 128, "left mouse is down: %d",
                   controller_state->left_mouse.is_down);
     do_text(ui_manager, 0.0f, 516.0f, buf, "times24", "mouse_is_down");
-    buf = (char *) arena_push(&memory->frame_arena, 128);
+    buf = (char *) arena_push(&memory.frame_arena, 128);
     string_format(buf, 128, "left mouse was down: %d",
                   controller_state->left_mouse.was_down);
     do_text(ui_manager, 0.0f, 500.0f, buf, "times24", "mouse_was_down");
 #endif
 
-    buf = (char *) arena_push(&memory->frame_arena, 128);
+    buf = (char *) arena_push(&memory.frame_arena, 128);
     string_format(buf, 128, "current_mouse: (%f, %f)",
                   controller_state->current_mouse.x, controller_state->current_mouse.y);
     do_text(ui_manager, 0.0f, 24.0f, buf, "times24", "current_mouse_text");
@@ -761,10 +761,9 @@ void update(Memory *memory, Game_State *game_state,
     };
 
     static real32 value = 50.0f;
-    buf = (char *) arena_push(&memory->frame_arena, 16);
+    buf = (char *) arena_push(&memory.frame_arena, 16);
     string_format(buf, 32, "%f", value);
-    value = do_slider(memory,
-                      ui_manager, controller_state,
+    value = do_slider(ui_manager, controller_state,
                       0, 0,
                       200.0f, 50.0f,
                       buf, "times24",
@@ -772,19 +771,30 @@ void update(Memory *memory, Game_State *game_state,
                       slider_style, default_text_style,
                       "test_slider");
               
-
-    
-    buf = (char *) arena_push(&memory->frame_arena, 128);
+    buf = (char *) arena_push(&memory.frame_arena, 128);
     string_format(buf, 128, "hot: %s\nactive: %s",
                   (char *) ui_manager->hot.string_ptr,
                   (char *) ui_manager->active.string_ptr);
     do_text(ui_manager, 800.0f, 24.0f, buf, "times24", "current_hot");
+
+    buf = (char *) arena_push(&memory.frame_arena, 128);
+    string_format(buf, 128, "num ui states: %d",
+                  ui_manager->state_table.num_entries);
+    do_text(ui_manager, 500.0f, 24.0f, buf, "times24", "num_ui_states");
+    buf = (char *) arena_push(&memory.frame_arena, 128);
+
+    buf = (char *) arena_push(&memory.frame_arena, 128);
+    string_format(buf, 128, "pool->first: %p",
+                  memory.string64_pool.first);
+    do_text(ui_manager, 500.0f, 48.0f, buf, "times24", "pool->first");
+    buf = (char *) arena_push(&memory.frame_arena, 128);
     
     fill_sound_buffer_with_audio(sound_output, game_state->is_playing_music, &game_state->music, num_samples);
 
     //game_state->current_char = controller_state->pressed_key;
 
     clear_hot_if_gone(ui_manager);
+    delete_state_if_gone(ui_manager);
     
     assert(ui_manager->current_layer == 0);
 }

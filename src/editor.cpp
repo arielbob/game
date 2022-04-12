@@ -114,7 +114,7 @@ void draw_labeled_text(Game_State *game_state, UI_Manager *ui_manager,
                          text, text_font, text_style);
 }
 
-void draw_material_library(Memory *memory, Game_State *game_state, Controller_State *controller_state,
+void draw_material_library(Game_State *game_state, Controller_State *controller_state,
                            Entity *entity) {
     Render_State *render_state = &game_state->render_state;
     UI_Manager *ui_manager = &game_state->ui_manager;
@@ -175,7 +175,7 @@ void draw_material_library(Memory *memory, Game_State *game_state, Controller_St
         editor_state->choosing_material = false;
     }
     
-    Allocator *allocator = (Allocator *) &memory->frame_arena;
+    Allocator *allocator = (Allocator *) &memory.frame_arena;
 
     x += padding_x;
     y += padding_y;
@@ -211,7 +211,7 @@ void draw_material_library(Memory *memory, Game_State *game_state, Controller_St
     pop_layer(ui_manager);
 };
 
-void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *controller_state, Entity *entity) {
+void draw_entity_box(Game_State *game_state, Controller_State *controller_state, Entity *entity) {
     int32 row_index = 0;
 
     UI_Manager *ui_manager = &game_state->ui_manager;
@@ -223,7 +223,7 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
     real32 box_padding_x = 10.0f;
     real32 box_padding_y = 10.0f;
 
-    Allocator *allocator = (Allocator *) &memory->frame_arena;
+    Allocator *allocator = (Allocator *) &memory.frame_arena;
 
     char *mesh_name = to_char_array(allocator, game_state->meshes[entity->mesh_index].name);
     Material *material = &game_state->materials[entity->material_index];
@@ -451,8 +451,7 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
         buf = string_format(allocator, buffer_size, "%f", temp_material->gloss);
         draw_v_centered_text(game_state, ui_manager, x + padding_left, y, row_height,
                              "Gloss", font_name_bold, text_style);
-        temp_material->gloss = do_slider(memory,
-                                         ui_manager, controller_state,
+        temp_material->gloss = do_slider(ui_manager, controller_state,
                                          x+right_column_offset,
                                          y + get_center_y_offset(row_height, inset_row_height),
                                          choose_material_button_width, inset_row_height,
@@ -526,7 +525,7 @@ void draw_entity_box(Memory *memory, Game_State *game_state, Controller_State *c
     }
 }
 
-void draw_editor_ui(Memory *memory, Game_State *game_state, Controller_State *controller_state) {
+void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) {
     Editor_State *editor_state = &game_state->editor_state;
     UI_Manager *ui_manager = &game_state->ui_manager;
     Render_State *render_state = &game_state->render_state;
@@ -569,10 +568,10 @@ void draw_editor_ui(Memory *memory, Game_State *game_state, Controller_State *co
     
     if (editor_state->selected_entity_index >= 0) {
         Entity *selected_entity = get_selected_entity(game_state);
-        draw_entity_box(memory, game_state, controller_state, selected_entity);
+        draw_entity_box(game_state, controller_state, selected_entity);
 
         if (editor_state->choosing_material) {
-            draw_material_library(memory, game_state, controller_state, selected_entity);
+            draw_material_library(game_state, controller_state, selected_entity);
         }
     } else {
         reset_entity_editors(editor_state);

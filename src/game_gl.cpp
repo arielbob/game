@@ -53,16 +53,7 @@
 // TODO (done): make it so you can specify the max number of hash table slots.
 //              (do this after replacing the hash table linked lists with arrays)
 // TODO (done): memory alignment in allocate procedures and in ui push buffer
-
-// TODO: material editing in editor
-// TODO (done): list existing materials and be able to change an entity's active material
-// TODO: figure out functioning of text boxes
-// TODO: texture library
-// TODO: color selector
-// TODO: slider UI element
-//       - TODO (done): basic slider
-//       - TODO: click slider for manual value entry
-
+// TODO (done): make memory a global variable
 /*
   we call do_slider()
   in Slider_State, we allocate a String_Buffer,
@@ -76,11 +67,20 @@
   - TODO (done): figure out memory alignment
   - TODO (done): pool allocator for strings (fixed size array with ability to allocate and deallocate)
   - TODO (done): some type of hash map implementation that can store base classes (without having to store pointers)
-                 - just use the new hash map implementation with a variant struct, which is just a union of all the
-                 - derived structs
+  - just use the new hash map implementation with a variant struct, which is just a union of all the
+  - derived structs
   - TODO (done): allocation of string buffers when a slider is first shown
-  - TODO: deallocation of string buffers when a slider is no longer showing
+  - TODO (done): deallocation of string buffers when a slider is no longer showing
 */
+
+// TODO: material editing in editor
+// TODO (done): list existing materials and be able to change an entity's active material
+// TODO: figure out functioning of text boxes
+// TODO: texture library
+// TODO: color selector
+// TODO: slider UI element
+//       - TODO (done): basic slider
+//       - TODO: click slider for manual value entry
 
 // TODO (done): fix issue when letting go of slider UI outside of any UI element causes a mesh pick to happen,
 //              which can cause the editor UI to go away, which is annoying. i think we can just check if there's
@@ -110,7 +110,7 @@
 // TODO: level saving/loading
 //       in level loading, we should ensure that duplicates of mesh, texture, and material names do not exist.
 // TODO: nicer UI (start with window to display selected entity properties)
-// TODO: make game_state, controller_state, and memory global variables
+// TODO: maybe make game_state and controller_state global variables
 // TODO: directional light (sun light)
 // TODO: better level editing (mesh libraries, textures libraries)
 // TODO: be able to edit materials
@@ -250,9 +250,9 @@ inline void gl_set_uniform_float(uint32 shader_id, char* uniform_name, real32 f)
     glUniform1f(uniform_location, f);
 }
 
-void gl_load_shader(GL_State *gl_state, Memory *memory,
+void gl_load_shader(GL_State *gl_state,
                     char *vertex_shader_filename, char *fragment_shader_filename, char *shader_name) {
-    Marker m = begin_region(memory);
+    Marker m = begin_region();
 
     // NOTE: vertex shader
     Platform_File platform_file;
@@ -260,7 +260,7 @@ void gl_load_shader(GL_State *gl_state, Memory *memory,
     assert(file_exists);
 
     File_Data vertex_shader_file_data = {};
-    vertex_shader_file_data.contents = (char *) region_push(memory, platform_file.file_size);
+    vertex_shader_file_data.contents = (char *) region_push(platform_file.file_size);
     bool32 result = platform_read_file(platform_file, &vertex_shader_file_data);
     assert(result);
 
@@ -271,7 +271,7 @@ void gl_load_shader(GL_State *gl_state, Memory *memory,
     assert(file_exists);
 
     File_Data fragment_shader_file_data = {};
-    fragment_shader_file_data.contents = (char *) region_push(memory, platform_file.file_size);
+    fragment_shader_file_data.contents = (char *) region_push(platform_file.file_size);
     result = platform_read_file(platform_file, &fragment_shader_file_data);
     assert(result);
 
@@ -280,15 +280,15 @@ void gl_load_shader(GL_State *gl_state, Memory *memory,
                                                    fragment_shader_file_data.contents,
                                                    fragment_shader_file_data.size);
 
-    end_region(memory, m);
+    end_region(m);
 
     hash_table_add(&gl_state->shader_ids_table, make_string(shader_name), shader_id);
 }
 
-void gl_load_texture(GL_State *gl_state, Memory *memory,
+void gl_load_texture(GL_State *gl_state,
                      char *texture_filename, char *texture_name) {
-    Marker m = begin_region(memory);
-    File_Data texture_file_data = platform_open_and_read_file((Allocator *) &memory->global_stack,
+    Marker m = begin_region();
+    File_Data texture_file_data = platform_open_and_read_file((Allocator *) &memory.global_stack,
                                                               texture_filename);
 
     int32 width, height, num_channels;
@@ -309,16 +309,16 @@ void gl_load_texture(GL_State *gl_state, Memory *memory,
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    end_region(memory, m);
+    end_region(m);
 
     GL_Texture gl_texture = { texture_id, width, height, num_channels };
     hash_table_add(&gl_state->texture_table, make_string(texture_name), gl_texture);
 }
 
 // TODO: use the better stb_truetype packing procedures
-void gl_init_font(GL_State *gl_state, Memory *memory, Font *font) {
-    Marker m = begin_region(memory);
-    uint8 *temp_bitmap = (uint8 *) region_push(&memory->global_stack, font->texture_width*font->texture_height);
+void gl_init_font(GL_State *gl_state, Font *font) {
+    Marker m = begin_region();
+    uint8 *temp_bitmap = (uint8 *) region_push(&memory.global_stack, font->texture_width*font->texture_height);
     // NOTE: no guarantee that the bitmap will fit the font, so choose temp_bitmap dimensions carefully
     // TODO: we may want to maybe render this out to an image so that we can verify that the font fits
     int32 result = stbtt_BakeFontBitmap((uint8 *) font->file_data.contents, 0,
@@ -335,7 +335,7 @@ void gl_init_font(GL_State *gl_state, Memory *memory, Font *font) {
                  0, GL_ALPHA, GL_UNSIGNED_BYTE, temp_bitmap);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
-    end_region(memory, m);
+    end_region(m);
 
     hash_table_add(&gl_state->font_texture_table, make_string(font->name), baked_texture_id);
 }
@@ -717,14 +717,14 @@ void generate_circle_vertices(real32 *buffer, int32 num_vertices, real32 radius)
     }
 }
 
-void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) {
-    gl_state->shader_ids_table = make_hash_table<String, uint32>((Allocator *) &memory->hash_table_stack,
+void gl_init(GL_State *gl_state, Display_Output display_output) {
+    gl_state->shader_ids_table = make_hash_table<String, uint32>((Allocator *) &memory.hash_table_stack,
                                                                  HASH_TABLE_SIZE, &string_equals);
-    gl_state->mesh_table = make_hash_table<String, GL_Mesh>((Allocator *) &memory->hash_table_stack,
+    gl_state->mesh_table = make_hash_table<String, GL_Mesh>((Allocator *) &memory.hash_table_stack,
                                                             HASH_TABLE_SIZE, &string_equals);
-    gl_state->texture_table = make_hash_table<String, GL_Texture>((Allocator *) &memory->hash_table_stack,
+    gl_state->texture_table = make_hash_table<String, GL_Texture>((Allocator *) &memory.hash_table_stack,
                                                                   HASH_TABLE_SIZE, &string_equals);
-    gl_state->font_texture_table = make_hash_table<String, uint32>((Allocator *) &memory->hash_table_stack,
+    gl_state->font_texture_table = make_hash_table<String, uint32>((Allocator *) &memory.hash_table_stack,
                                                                    HASH_TABLE_SIZE, &string_equals);
 
     uint32 vbo, vao, ebo;
@@ -888,24 +888,24 @@ void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) 
     hash_table_add(&gl_state->mesh_table, make_string("circle"), make_gl_mesh(vao, vbo, 0));
 
     // NOTE: shaders
-    gl_load_shader(gl_state, memory,
+    gl_load_shader(gl_state,
                    "src/shaders/basic.vs", "src/shaders/basic.fs", "basic");
-    gl_load_shader(gl_state, memory,
+    gl_load_shader(gl_state,
                    "src/shaders/basic2.vs", "src/shaders/basic2.fs", "basic2");
-    gl_load_shader(gl_state, memory,
+    gl_load_shader(gl_state,
                    "src/shaders/text.vs", "src/shaders/text.fs", "text");
-    gl_load_shader(gl_state, memory,
+    gl_load_shader(gl_state,
                    "src/shaders/solid.vs", "src/shaders/solid.fs", "solid");
-    gl_load_shader(gl_state, memory,
+    gl_load_shader(gl_state,
                    "src/shaders/basic_3d.vs", "src/shaders/basic_3d.fs", "basic_3d");
 
-    gl_load_shader(gl_state, memory,
+    gl_load_shader(gl_state,
                    "src/shaders/basic_3d_textured.vs", "src/shaders/basic_3d_textured.fs", "basic_3d_textured");
-    gl_load_shader(gl_state, memory,
+    gl_load_shader(gl_state,
                    "src/shaders/debug_wireframe.vs",
                    "src/shaders/debug_wireframe.fs",
                    "debug_wireframe");
-    gl_load_shader(gl_state, memory,
+    gl_load_shader(gl_state,
                    "src/shaders/framebuffer.vs", "src/shaders/framebuffer.fs",
                    "framebuffer");
     gl_state->gizmo_framebuffer = gl_make_framebuffer(display_output.width, display_output.height);
@@ -930,7 +930,7 @@ void gl_init(Memory *memory, GL_State *gl_state, Display_Output display_output) 
     error = glGetError();
 
     // NOTE: textures
-    gl_load_texture(gl_state, memory, "src/textures/debug_texture.bmp", "debug");
+    gl_load_texture(gl_state, "src/textures/debug_texture.bmp", "debug");
 
     // NOTE: disable culling for now, just for easier debugging...
 #if 0
@@ -1661,7 +1661,7 @@ void gl_draw_framebuffer(GL_State *gl_state, GL_Framebuffer framebuffer) {
     glBindVertexArray(0);
 }
 
-void gl_render(Memory *memory, GL_State *gl_state, Game_State *game_state,
+void gl_render(GL_State *gl_state, Game_State *game_state,
                Controller_State *controller_state,
                Display_Output display_output, Win32_Sound_Output *win32_sound_output) {
     Render_State *render_state = &game_state->render_state;
@@ -1693,7 +1693,7 @@ void gl_render(Memory *memory, GL_State *gl_state, Game_State *game_state,
         // TODO: test this
         if (!font->is_baked) {
             if (!hash_table_exists(gl_state->font_texture_table, make_string(font->name))) {
-                gl_init_font(gl_state, memory, font);
+                gl_init_font(gl_state, font);
             } else {
                 debug_print("%s already loaded.\n", font->name);
             }
@@ -1710,7 +1710,7 @@ void gl_render(Memory *memory, GL_State *gl_state, Game_State *game_state,
             Font *font = &current->value;
             if (!font->is_baked) {
                 if (!hash_table_exists(gl_state->font_texture_table, make_string(font->name))) {
-                    gl_init_font(gl_state, memory, font);
+                    gl_init_font(gl_state, font);
                 } else {
                     debug_print("%s already loaded.\n", font->name);
                 }

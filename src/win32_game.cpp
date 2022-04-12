@@ -35,6 +35,8 @@
 #include "platform.h"
 #include "win32_game.h"
 
+global_variable Memory memory;
+
 #include "memory.cpp"
 #include "math.cpp"
 #include "mesh.cpp"
@@ -47,7 +49,6 @@ global_variable int64 perf_counter_frequency;
 global_variable bool32 is_running = true;
 global_variable bool32 is_paused = true;
 global_variable HWND window;
-//global_variable Memory memory;
 
 typedef char GLchar;
 typedef signed long long int khronos_ssize_t;
@@ -640,7 +641,7 @@ void fill_sound_buffer(Win32_Sound_Output *win32_sound_output,
     // debug_print("samples written: %d\n", samples_written);
 }
 
-bool32 win32_init_memory(Memory *memory) {
+bool32 win32_init_memory() {
     uint32 global_stack_size = MEGABYTES(8);
     uint32 hash_table_stack_size = MEGABYTES(8);
     uint32 game_data_arena_size = GIGABYTES(1);
@@ -663,38 +664,38 @@ bool32 win32_init_memory(Memory *memory) {
     if (memory_base) {
         void *base = (uint8 *) memory_base;
         Stack_Allocator global_stack = make_stack_allocator(base, global_stack_size);
-        memory->global_stack = global_stack;
+        memory.global_stack = global_stack;
         base = (uint8 *) base + global_stack_size;
 
         Stack_Allocator hash_table_stack = make_stack_allocator(base, hash_table_stack_size);
-        memory->hash_table_stack = hash_table_stack;
+        memory.hash_table_stack = hash_table_stack;
         base = (uint8 *) base + hash_table_stack_size;
 
         Arena_Allocator game_data_arena = make_arena_allocator(base, game_data_arena_size);
-        memory->game_data = game_data_arena;
+        memory.game_data = game_data_arena;
         base = (uint8 *) base + game_data_arena_size;
 
         Arena_Allocator font_arena = make_arena_allocator(base, font_arena_size);
-        memory->font_arena = font_arena;
+        memory.font_arena = font_arena;
         base = (uint8 *) base + font_arena_size;
 
         Arena_Allocator mesh_arena = make_arena_allocator(base, mesh_arena_size);
-        memory->mesh_arena = mesh_arena;
+        memory.mesh_arena = mesh_arena;
         base = (uint8 *) base + mesh_arena_size;
 
         Arena_Allocator string_arena = make_arena_allocator(base, string_arena_size);
-        memory->string_arena = string_arena;
+        memory.string_arena = string_arena;
         base = (uint8 *) base + string_arena_size;
 
         Arena_Allocator frame_arena = make_arena_allocator(base, frame_arena_size);
-        memory->frame_arena = frame_arena;
+        memory.frame_arena = frame_arena;
         base = (uint8 *) base + frame_arena_size;
 
         Pool_Allocator string64_pool = make_pool_allocator(base, 64, string64_pool_size);
-        memory->string64_pool = string64_pool;
+        memory.string64_pool = string64_pool;
         base = (uint8 *) base + string64_pool_size;
 
-        memory->is_initted = true;
+        memory.is_initted = true;
 
         return true;
     }
@@ -897,8 +898,7 @@ int WinMain(HINSTANCE hInstance,
             bool32 opengl_is_valid = win32_init_opengl(hdc);
             bool32 directsound_is_valid = win32_init_directsound(&sound_output);
 
-            Memory memory;
-            bool32 memory_is_valid = win32_init_memory(&memory);
+            bool32 memory_is_valid = win32_init_memory();
 
             MSG message;
 
@@ -917,7 +917,7 @@ int WinMain(HINSTANCE hInstance,
             if (memory_is_valid && opengl_is_valid && directsound_is_valid) {
                 GL_State gl_state = {};
                 Display_Output initial_display_output = { display_output.width, display_output.height };
-                gl_init(&memory, &gl_state, initial_display_output);
+                gl_init(&gl_state, initial_display_output);
 
                 Sound_Output game_sound_output = {};
                 int16 sound_buffer[SOUND_BUFFER_SAMPLE_COUNT * 2];
@@ -1038,7 +1038,7 @@ int WinMain(HINSTANCE hInstance,
                         
                     uint32 num_samples = bytes_delta / sound_output.bytes_per_sample;
 
-                    update(&memory, &game_state,
+                    update(&game_state,
                            &controller_state,
                            &game_sound_output, num_samples);
 
@@ -1049,7 +1049,7 @@ int WinMain(HINSTANCE hInstance,
                     }
 
 
-                    gl_render(&memory, &gl_state, &game_state,
+                    gl_render(&gl_state, &game_state,
                               &controller_state,
                               game_display_output, &sound_output);
 

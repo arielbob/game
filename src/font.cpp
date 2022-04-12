@@ -45,8 +45,7 @@ real32 get_width(Font font, String_Buffer buffer) {
     return width;
 }
 
-Font load_font(Memory *memory,
-               Game_State *game_state,
+Font load_font(Game_State *game_state,
                char *font_filename, char *font_name,
                real32 font_height_pixels,
                int32 font_texture_width, int32 font_texture_height) {
@@ -60,7 +59,7 @@ Font load_font(Memory *memory,
     File_Data font_file_data;
     String font_filename_string = make_string(font_filename);
     if (!hash_table_find(game_state->font_file_table, font_filename_string, &font_file_data)) {
-        font_file_data = platform_open_and_read_file((Allocator *) &memory->font_arena,
+        font_file_data = platform_open_and_read_file((Allocator *) &memory.font_arena,
                                                      font_filename);
         hash_table_add(&game_state->font_file_table, font_filename_string, font_file_data);
     }
@@ -79,10 +78,10 @@ Font load_font(Memory *memory,
 
     int32 first_char = 32;
     int32 num_chars = 96;
-    font.cdata = (stbtt_bakedchar *) arena_push(&memory->font_arena, num_chars * sizeof(stbtt_bakedchar), false);
+    font.cdata = (stbtt_bakedchar *) arena_push(&memory.font_arena, num_chars * sizeof(stbtt_bakedchar), false);
     font.first_char = first_char;
     font.num_chars = num_chars;
-    font.name = make_string_buffer((Allocator *) &memory->string_arena, font_name, FONT_NAME_MAX_SIZE);
+    font.name = make_string_buffer((Allocator *) &memory.string_arena, font_name, FONT_NAME_MAX_SIZE);
 
     return font;
 }

@@ -235,7 +235,7 @@ UI_Element *next_element(UI_Element *current_element, UI_Push_Buffer *push_buffe
     }
 }
 
-void deallocate(Memory *memory, UI_State_Variant variant) {
+void deallocate(UI_State_Variant variant) {
     switch (variant.type) {
         case UI_STATE_NONE: {
             assert(!"Variant cannot exist without a UI state type.");
@@ -243,7 +243,7 @@ void deallocate(Memory *memory, UI_State_Variant variant) {
         }
         case UI_STATE_SLIDER: {
             UI_Slider_State state = variant.slider_state;
-            pool_remove(&memory->string64_pool, state.buffer.contents);
+            pool_remove(&memory.string64_pool, state.buffer.contents);
             return;
         }
         default: {
@@ -287,16 +287,20 @@ void delete_state_if_gone(UI_Manager *manager) {
         Hash_Table_Entry<UI_id, UI_State_Variant> *entry = &state_table->entries[i];
         if (!entry->is_occupied) continue;
 
+        bool32 exists_this_frame = false;
         while (element) {
             if (ui_id_equals(entry->key, element->id)) {
                 // the corresponding element for this state entry exists
+                exists_this_frame = true;
                 break;
             }
             element = next_element(element, push_buffer);
         }
 
-        // couldn't find the element for this state entry, so delete the state entry
-        hash_table_remove(state_table, entry->key);
+        if (!exists_this_frame) {
+            // couldn't find the element for this state entry, so delete the state entry
+            hash_table_remove(state_table, entry->key);
+        }
 
         element = (UI_Element *) push_buffer->base;
     }
@@ -602,8 +606,7 @@ void do_text_box(UI_Manager *manager, Controller_State *controller_state,
     ui_add_text_box(manager, text_box);
 }
 
-real32 do_slider(Memory *memory,
-                 UI_Manager *manager, Controller_State *controller_state,
+real32 do_slider(UI_Manager *manager, Controller_State *controller_state,
                  real32 x, real32 y,
                  real32 width, real32 height,
                  char *text, char *font,
@@ -620,7 +623,7 @@ real32 do_slider(Memory *memory,
     bool32 state_exists = get_state(manager, slider.id, &state_variant);
     if (!state_exists) {
         UI_Slider_State new_slider_state = {
-            make_string_buffer((Allocator *) &memory->string64_pool, text, 64)
+            make_string_buffer((Allocator *) &memory.string64_pool, text, 64)
         };
         UI_State_Variant new_state = {};
         new_state.type = UI_STATE_SLIDER;

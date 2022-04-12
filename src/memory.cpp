@@ -95,17 +95,17 @@ internal void verify(Stack_Allocator *stack) {
     assert(stack->base == stack->top);
 }
 
-Marker begin_region(Memory *memory) {
-    assert(memory->is_initted);
+Marker begin_region() {
+    assert(memory.is_initted);
 
     Marker marker;
-    marker.start = memory->global_stack.top;
+    marker.start = memory.global_stack.top;
     return marker;
 }
 
-void end_region(Memory *memory, Marker marker) {
-    assert(marker.start <= memory->global_stack.top);
-    memory->global_stack.top = marker.start;
+void end_region(Marker marker) {
+    assert(marker.start <= memory.global_stack.top);
+    memory.global_stack.top = marker.start;
 }
 
 Marker begin_region(Stack_Allocator *stack) {
@@ -142,8 +142,8 @@ void *region_push(Stack_Allocator *stack, uint32 size, bool32 zero_memory = true
     return start_byte;
 }
 
-inline void *region_push(Memory *memory, uint32 size, bool32 zero_memory = true, uint32 alignment_bytes = 8) {
-    return region_push(&memory->global_stack, size, zero_memory, alignment_bytes);
+inline void *region_push(uint32 size, bool32 zero_memory = true, uint32 alignment_bytes = 8) {
+    return region_push(&memory.global_stack, size, zero_memory, alignment_bytes);
 }
 
 // NOTE: block_size is assumed to be obtained by using sizeof(some struct), so we don't have to worry

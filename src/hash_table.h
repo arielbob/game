@@ -71,9 +71,10 @@ void hash_table_remove(Hash_Table<Key_Type, Value_Type> *hash_table, Key_Type ke
     int32 num_checked = 0;
     while (num_checked < hash_table->max_entries) {
         Hash_Table_Entry<Key_Type, Value_Type> *entry = &hash_table->entries[hash];
-        if (hash_table->key_equals(key, entry->key)) {
+        if (entry->is_occupied && hash_table->key_equals(key, entry->key)) {
             entry->is_occupied = false;
             deallocate(entry->value);
+            hash_table->num_entries--;
             return;
         }
 
@@ -92,7 +93,7 @@ bool32 hash_table_remove_if_exists(Hash_Table<Key_Type, Value_Type> *hash_table,
     int32 num_checked = 0;
     while (num_checked < hash_table->max_entries) {
         Hash_Table_Entry<Key_Type, Value_Type> *entry = &hash_table->entries[hash];
-        if (hash_table->key_equals(key, entry->key)) {
+        if (entry->is_occupied && hash_table->key_equals(key, entry->key)) {
             entry->is_occupied = false;
             deallocate(entry->value);
             return true;
@@ -114,7 +115,7 @@ bool32 hash_table_exists(Hash_Table<Key_Type, Value_Type> hash_table, Key_Type k
     while (num_checked < hash_table.max_entries) {
         Hash_Table_Entry<Key_Type, Value_Type> entry = hash_table.entries[hash];
 
-        if (hash_table.key_equals(key, entry.key)) {
+        if (entry.is_occupied && hash_table.key_equals(key, entry.key)) {
             return true;
         }
 
@@ -133,7 +134,7 @@ bool32 hash_table_find(Hash_Table<Key_Type, Value_Type> hash_table, Key_Type key
     int32 num_checked = 0;
     while (num_checked < hash_table.max_entries) {
         Hash_Table_Entry<Key_Type, Value_Type> entry = hash_table.entries[hash];
-        if (hash_table.key_equals(key, entry.key)) {
+        if (entry.is_occupied && hash_table.key_equals(key, entry.key)) {
             *value_result = entry.value;
             return true;
         }
@@ -153,7 +154,7 @@ bool32 hash_table_find_pointer(Hash_Table<Key_Type, Value_Type> hash_table, Key_
     int32 num_checked = 0;
     while (num_checked < hash_table.max_entries) {
         Hash_Table_Entry<Key_Type, Value_Type> *entry = &hash_table.entries[hash];
-        if (hash_table.key_equals(key, entry->key)) {
+        if (entry->is_occupied && hash_table.key_equals(key, entry->key)) {
             *value_result = &entry->value;
             return true;
         }
