@@ -72,22 +72,24 @@
   - TODO (done): allocation of string buffers when a slider is first shown
   - TODO (done): deallocation of string buffers when a slider is no longer showing
 */
+// TODO (done): fix issue when letting go of slider UI outside of any UI element causes a mesh pick to happen,
+//              which can cause the editor UI to go away, which is annoying. i think we can just check if there's
+//              an active UI element and if so, don't mesh pick.
+// TODO (done): closing material library
+
+// TODO: material saving in edit box
 
 // TODO: material editing in editor
 // TODO (done): list existing materials and be able to change an entity's active material
+// TODO: make textbox use the string pool allocator and use UI states so we don't have to handle making the
+//       string buffer ourselves
 // TODO: figure out functioning of text boxes
 // TODO: texture library
 // TODO: color selector
 // TODO: slider UI element
 //       - TODO (done): basic slider
 //       - TODO: click slider for manual value entry
-
-// TODO (done): fix issue when letting go of slider UI outside of any UI element causes a mesh pick to happen,
-//              which can cause the editor UI to go away, which is annoying. i think we can just check if there's
-//              an active UI element and if so, don't mesh pick.
-// TODO: material saving in edit box
 // TODO: material creation/deletion
-// TODO: closing material library
 // TODO: preview mode for materials
 
 // TODO: be able to add and delete materials, textures, meshes
@@ -113,7 +115,6 @@
 // TODO: maybe make game_state and controller_state global variables
 // TODO: directional light (sun light)
 // TODO: better level editing (mesh libraries, textures libraries)
-// TODO: be able to edit materials
 // TODO: in-game console for outputting messages
 
 // TODO: maybe use a push buffer for entities? and use an Entity_Type enum to differentiate between entities?
@@ -1344,19 +1345,17 @@ void gl_draw_ui_color_button(GL_State *gl_state, Render_State *render_state,
 void gl_draw_ui_text_box(GL_State *gl_state, Game_State *game_state,
                          Display_Output display_output,
                          UI_Manager *ui_manager, UI_Text_Box text_box) {
-    Vec3 color = make_vec3(1.0f, 1.0f, 1.0f);
+    UI_Text_Box_Style style = text_box.style;
+    Vec4 color = style.normal_color;
 
     Font font = get_font(game_state, text_box.font);
 
     if (ui_id_equals(ui_manager->active, text_box.id)) {
-        color = make_vec3(0.0f, 0.0f, 1.0f);
+        color = style.active_color;
     } else if (ui_id_equals(ui_manager->hot, text_box.id)) {
-        color = make_vec3(0.0f, 1.0f, 0.0f);
-    } else {
-        color = make_vec3(1.0f, 0.0f, 0.0f);
+        color = style.hot_color;
     }
 
-    UI_Text_Box_Style style = text_box.style;
     gl_draw_quad(gl_state, &game_state->render_state, text_box.x, text_box.y,
                  text_box.width, text_box.height,
                  color);

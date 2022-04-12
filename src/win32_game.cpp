@@ -2,6 +2,8 @@
 // TODO (done): basic directsound
 // TODO (done): play sounds with directsound
 
+#define OEMRESOURCE
+
 #include <windows.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -766,7 +768,6 @@ int WinMain(HINSTANCE hInstance,
             HINSTANCE hPrevInstance,
             LPSTR lpCmdLine,
             int nShowCmd) {
-    
     Ray ray = make_ray(make_vec3(0.0f, 0.0f, -1.1f),
                        make_vec3(1.0f, 0.0f, 0.0f));
     Vec3 triangle_vertices[3] = {

@@ -21,6 +21,10 @@ void set_temp_material(Editor_State *editor_state, Material material) {
     temp_material->use_color_override = material.use_color_override;
 }
 
+void save_material(Editor_State *editor_state) {
+
+}
+
 // for comparing current to new
 bool32 selected_entity_changed(Editor_State *editor_state,
                                int32 new_entity_index, Entity_Type new_entity_type) {
@@ -512,11 +516,37 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                              "Save",
                                              font_name_bold,
                                              "material_edit_save");
+     
         y += row_height;
 
         if (cancel_pressed) {
             editor_state->editing_selected_entity_material = false;
         }
+
+        if (save_pressed) {
+            if (!is_empty(temp_material->name)) {
+                copy_string(&material->name, &temp_material->name);
+            } else {
+                // just reset the name to its original value if the inputted one is empty
+                copy_string(&temp_material->name, &material->name);
+            }
+
+            if (!is_empty(temp_material->texture_name)) {
+                copy_string(&material->texture_name, &temp_material->texture_name);
+            } else {
+                copy_string(&temp_material->texture_name, &material->texture_name);
+            }
+
+            material->gloss = temp_material->gloss;
+            material->color_override = temp_material->color_override;
+
+            if (is_empty(material->texture_name) && !temp_material->use_color_override) {
+                material->use_color_override = false;temp_material->use_color_override;    
+            } else {
+                material->use_color_override = temp_material->use_color_override;
+            }
+        }
+        
 
         // some more padding
         draw_row(ui_manager, controller_state, x, y, row_width, padding_bottom / 2.0f + 1.0f, row_color,

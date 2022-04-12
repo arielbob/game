@@ -45,7 +45,7 @@ UI_Text_Box_Style default_text_box_style = { TEXT_ALIGN_Y,
                                              5.0f, 5.0f,
                                              rgb_to_vec4(33, 62, 69),
                                              rgb_to_vec4(47, 84, 102),
-                                             rgb_to_vec4(19, 37, 46) };
+                                             rgb_to_vec4(33, 62, 69), };
 
 // TODO: store UI element state in a hash table, so we can do things like fading transitions.
 //       this requires some thought since we would like to remove elements from the hash table if
@@ -556,11 +556,6 @@ void do_text_box(UI_Manager *manager, Controller_State *controller_state,
     if (!manager->is_disabled && in_bounds_on_layer(manager, current_mouse, x, x + width, y, y + height)) {
         set_hot(manager, text_box.id);
 
-        // TODO: this is useless
-        if (!controller_state->left_mouse.is_down) {
-            set_hot(manager, text_box.id);
-        }
-
         if (controller_state->left_mouse.is_down && !controller_state->left_mouse.was_down) {
             manager->active = text_box.id;
             manager->focus_timer = platform_get_wall_clock_time();
@@ -645,7 +640,9 @@ real32 do_slider(UI_Manager *manager, Controller_State *controller_state,
 
         if (!controller_state->left_mouse.is_down) {
         
-            manager->active = {};
+            if (ui_id_equals(manager->active, slider.id)) {
+                manager->active = {};
+            }
 #if 0
             real64 deadzone_time = 0.5;
             real32 time_since_first_active = platform_get_wall_clock_time() - manager->active_initial_time;
