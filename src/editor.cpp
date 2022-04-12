@@ -524,6 +524,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         }
 
         if (save_pressed) {
+            // TODO: should have some way of outputting feedback (like a console or something)
             if (!is_empty(temp_material->name)) {
                 copy_string(&material->name, &temp_material->name);
             } else {
@@ -541,10 +542,9 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
             material->color_override = temp_material->color_override;
 
             if (is_empty(material->texture_name) && !temp_material->use_color_override) {
-                material->use_color_override = false;temp_material->use_color_override;    
-            } else {
-                material->use_color_override = temp_material->use_color_override;
+                temp_material->use_color_override = true;
             }
+            material->use_color_override = temp_material->use_color_override;
         }
         
 
