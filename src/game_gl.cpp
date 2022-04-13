@@ -87,7 +87,14 @@
 //       - TODO (done): modify image_button to also be able to have text
 //       - TODO (done): draw image boxes for all the textures
 //       - TODO (done): change material texture using texture library
+// TODO (nevermind): standalone material library 
+//                   - actually, i don't think there's really a point to a standalone material library. you
+//                     usually want to look at materials on an entity, so it makes sense that material adding is
+//                     also in the entity window.
 // TODO: material creation
+//       - TODO (done): add an add button next to material on the entity window
+//       - TODO: use hash tables for storing materials
+//       - TODO: create new material when add button is pressed
 // TODO: material deletion
 // TODO: texture creation
 //       - we should be able do this in a way where we don't need to have an entity selected to add/remove textures

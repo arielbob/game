@@ -282,6 +282,10 @@ void init_game(Game_State *game_state,
                            make_string_buffer(string64_allocator, "debug", 64),
                            make_string_buffer(filename_allocator, "src/textures/debug_texture.bmp", MAX_PATH));
     add_texture(game_state, texture);
+    texture = make_texture(game_state,
+                           make_string_buffer(string64_allocator, "white", 64),
+                           make_string_buffer(filename_allocator, "src/textures/white.bmp", MAX_PATH));
+    add_texture(game_state, texture);
 
     // init editor_state
     editor_state->gizmo.arrow_mesh_name = "gizmo_arrow";

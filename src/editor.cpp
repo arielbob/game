@@ -350,6 +350,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     Vec4 title_row_color = make_vec4(0.05f, 0.2f, 0.5f, 1.0f);
     Vec4 row_color = make_vec4(0.1f, 0.1f, 0.1f, 0.9f);
 
+    real32 initial_x = box_x;
     real32 x = box_x;
     real32 y = box_y;
 
@@ -466,8 +467,11 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     side_flags = SIDE_LEFT | SIDE_RIGHT;
 
     real32 choose_material_button_width = 200.0f;
+    real32 add_material_button_width = 30.0f;
+    choose_material_button_width -= add_material_button_width;
+    x += right_column_offset;
     bool32 choose_material_pressed = do_text_button(ui_manager, controller_state,
-                                                    x + right_column_offset,
+                                                    x,
                                                     y + get_center_y_offset(row_height, inset_row_height),
                                                     choose_material_button_width, inset_row_height,
                                                     button_style, default_text_style,
@@ -476,19 +480,33 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     if (!editor_state->open_window_flags && choose_material_pressed) {
         editor_state->open_window_flags |= MATERIAL_LIBRARY_WINDOW;
     }
+    x += choose_material_button_width + padding_left;
 
-    real32 edit_material_button_width = (row_width - choose_material_button_width - padding_left * 2 -
-                                         right_column_offset - 1.0f);
+    bool32 add_material_pressed = do_text_button(ui_manager, controller_state,
+                                                 x,
+                                                 y + get_center_y_offset(row_height, inset_row_height),
+                                                 add_material_button_width, inset_row_height,
+                                                 button_style, default_text_style,
+                                                 "+", font_name_bold, "add_material");
+    x += add_material_button_width + padding_left;
 
+    if (add_material_pressed) {
+        Material new_material = {};
+        add_material(game_state, 
+    }
+
+    real32 edit_material_button_width = row_width - (x - initial_x) - padding_right;
     bool32 edit_material_pressed = do_text_button(ui_manager, controller_state,
-                                                  x + right_column_offset + 200.0f + padding_left,
+                                                  x,
                                                   y + get_center_y_offset(row_height, inset_row_height),
                                                   edit_material_button_width, inset_row_height,
                                                   button_style, default_text_style,
                                                   "Edit", font_name_bold,
                                                   false,
                                                   "edit_material");
+
     
+    x = initial_x;
     y += row_height;
 
     if (!editor_state->editing_selected_entity_material) {
@@ -506,6 +524,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
 
     if (editor_state->editing_selected_entity_material) {
         UI_Text_Box_Style text_box_style = default_text_box_style;
+        real32 edit_box_width = choose_material_button_width + padding_left + add_material_button_width;
 
         //char *temp_material_name = to_char_array(allocator, temp_material->name);
         draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags,
@@ -515,7 +534,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         do_text_box(ui_manager, controller_state,
                     x + right_column_offset,
                     y + get_center_y_offset(row_height, inset_row_height),
-                    200.0f, inset_row_height,
+                    edit_box_width, inset_row_height,
                     &material->name, font_name_bold,
                     text_box_style, default_text_style,
                     "material_name_text_box");
@@ -530,7 +549,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         bool32 choose_texture_pressed = do_text_button(ui_manager, controller_state,
                                                        x + right_column_offset,
                                                        y + get_center_y_offset(row_height, inset_row_height),
-                                                       choose_material_button_width, inset_row_height,
+                                                       edit_box_width, inset_row_height,
                                                        button_style, default_text_style,
                                                        texture_name, font_name_bold, "choose_texture");
         if (!editor_state->open_window_flags && choose_texture_pressed) {
@@ -547,7 +566,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         material->gloss = do_slider(ui_manager, controller_state,
                                     x+right_column_offset,
                                     y + get_center_y_offset(row_height, inset_row_height),
-                                    choose_material_button_width, inset_row_height,
+                                    edit_box_width, inset_row_height,
                                     buf, font_name_bold,
                                     0.0f, 100.0f, material->gloss,
                                     default_slider_style, default_text_style,
