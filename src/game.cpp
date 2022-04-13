@@ -265,6 +265,7 @@ void init_game(Game_State *game_state,
     editor_state->gizmo.sphere_mesh_name = "gizmo_sphere";
     editor_state->selected_entity_index = -1;
     editor_state->show_wireframe = true;
+    editor_state->open_window_flags = 0;
 
     // init ui state
     UI_Manager *ui_manager = &game_state->ui_manager;

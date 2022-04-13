@@ -23,6 +23,9 @@ struct Gizmo {
     char *sphere_mesh_name;
 };
 
+#define MATERIAL_LIBRARY_WINDOW 0x1
+#define TEXTURE_LIBRARY_WINDOW  0x2
+
 struct Editor_State {
     Transform_Mode transform_mode;
 
@@ -42,7 +45,7 @@ struct Editor_State {
     Vec3 last_gizmo_transform_point;
 
     bool32 show_wireframe;
-    bool32 choosing_material;
+    uint32 open_window_flags;
     bool32 editing_selected_entity_material;
 };
 

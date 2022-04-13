@@ -37,7 +37,7 @@ bool32 selected_entity_changed(Editor_State *editor_state) {
 }
 
 void reset_entity_editors(Editor_State *editor_state) {
-    editor_state->choosing_material = false;
+    editor_state->open_window_flags = 0;
     editor_state->editing_selected_entity_material = false;
 }
 
@@ -116,6 +116,80 @@ void draw_labeled_text(Game_State *game_state, UI_Manager *ui_manager,
                          text, text_font, text_style);
 }
 
+void draw_texture_library(Game_State *game_state, Controller_State *controller_state, Entity *selected_entity) {
+    Render_State *render_state = &game_state->render_state;
+    UI_Manager *ui_manager = &game_state->ui_manager;
+    Editor_State *editor_state = &game_state->editor_state;
+
+    push_layer(ui_manager);
+
+    real32 padding_x = 20.0f;
+    real32 padding_y = 20.0f;
+
+    real32 x_gap = 10.0f;
+    real32 y_gap = 10.0f;
+
+    int32 num_items_per_row = 1;
+    real32 item_width = 500.0f;
+    real32 item_height = 20.0f;
+
+    real32 window_width = padding_x * 2 + x_gap * (num_items_per_row - 1) + num_items_per_row*item_width;
+
+    real32 title_row_height = 50.0f;
+    Vec4 title_row_color = make_vec4(0.05f, 0.2f, 0.5f, 1.0f);
+    Vec4 row_color = make_vec4(0.1f, 0.1f, 0.1f, 1.0f);
+
+    char *row_id = "texture_library_row";
+    int32 row_index = 0;
+
+    real32 initial_x = render_state->display_output.width / 2.0f - window_width / 2.0f;
+    real32 x = initial_x;
+    real32 y = 80.0f;
+
+    UI_Text_Style text_style = default_text_style;
+
+    char *font_name = "courier18";
+    char *font_name_bold = "courier18b";
+
+    draw_row(ui_manager, controller_state, x, y, window_width, title_row_height, title_row_color,
+             SIDE_LEFT | SIDE_RIGHT | SIDE_TOP | SIDE_BOTTOM, row_id, row_index++);
+    draw_centered_text(game_state, ui_manager, x, y, window_width, title_row_height,
+                       "Texture Library", font_name_bold, text_style);
+    y += title_row_height;
+
+    real32 content_height = 500.0f;
+    draw_row(ui_manager, controller_state, x, y, window_width, content_height, row_color,
+             SIDE_LEFT | SIDE_RIGHT | SIDE_BOTTOM, row_id, row_index++);    
+
+    real32 cancel_button_width = 100.0f;
+    bool32 cancel_pressed = do_text_button(ui_manager, controller_state,
+                                           x + padding_x,
+                                           y + content_height - SMALL_ROW_HEIGHT - padding_y - 1,
+                                           cancel_button_width, SMALL_ROW_HEIGHT,
+                                           default_text_button_cancel_style, default_text_style,
+                                           "Cancel",
+                                           font_name_bold,
+                                           "choose_texture_cancel");
+    if (cancel_pressed) {
+        editor_state->open_window_flags = 0;
+    }
+
+    Allocator *allocator = (Allocator *) &memory.frame_arena;
+
+
+
+
+
+
+
+
+
+
+
+
+    pop_layer(ui_manager);
+}
+
 void draw_material_library(Game_State *game_state, Controller_State *controller_state,
                            Entity *entity) {
     Render_State *render_state = &game_state->render_state;
@@ -156,8 +230,6 @@ void draw_material_library(Game_State *game_state, Controller_State *controller_
              SIDE_LEFT | SIDE_RIGHT | SIDE_TOP | SIDE_BOTTOM, row_id, row_index++);
     draw_centered_text(game_state, ui_manager, x, y, window_width, title_row_height,
                        "Material Library", font_name_bold, text_style);
-    
-    
     y += title_row_height;
 
     real32 content_height = 500.0f;
@@ -174,7 +246,7 @@ void draw_material_library(Game_State *game_state, Controller_State *controller_
                                            font_name_bold,
                                            "choose_material_cancel");
     if (cancel_pressed) {
-        editor_state->choosing_material = false;
+        editor_state->open_window_flags = 0;
     }
     
     Allocator *allocator = (Allocator *) &memory.frame_arena;
@@ -206,7 +278,7 @@ void draw_material_library(Game_State *game_state, Controller_State *controller_
             entity->material_index = pressed_index;
         }
 
-        editor_state->choosing_material = false;
+        editor_state->open_window_flags = 0;
     }
 
     pop_layer(ui_manager);
@@ -376,8 +448,8 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                                     button_style, default_text_style,
                                                     material_name, font_name_bold, "choose_material");
 
-    if (choose_material_pressed) {
-        game_state->editor_state.choosing_material = true;
+    if (!editor_state->open_window_flags && choose_material_pressed) {
+        editor_state->open_window_flags |= MATERIAL_LIBRARY_WINDOW;
     }
 
     real32 edit_material_button_width = (row_width - choose_material_button_width - padding_left * 2 -
@@ -436,6 +508,10 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                                        choose_material_button_width, inset_row_height,
                                                        button_style, default_text_style,
                                                        texture_name, font_name_bold, "choose_texture");
+        if (!editor_state->open_window_flags && choose_texture_pressed) {
+            editor_state->open_window_flags |= TEXTURE_LIBRARY_WINDOW;
+        }
+
         y += row_height;
 
         draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags,
@@ -540,8 +616,10 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
         Entity *selected_entity = get_selected_entity(game_state);
         draw_entity_box(game_state, controller_state, selected_entity);
 
-        if (editor_state->choosing_material) {
+        if (editor_state->open_window_flags & MATERIAL_LIBRARY_WINDOW) {
             draw_material_library(game_state, controller_state, selected_entity);
+        } else if (editor_state->open_window_flags & TEXTURE_LIBRARY_WINDOW) {
+            draw_texture_library(game_state, controller_state, selected_entity);
         }
     } else {
         reset_entity_editors(editor_state);

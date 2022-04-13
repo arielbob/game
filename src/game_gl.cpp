@@ -81,21 +81,26 @@
 // TODO (done): list existing materials and be able to change an entity's active material
 
 // TODO: texture library
+//       - TODO (done): show a box when the texture button is clicked
 // TODO: make textbox use the string pool allocator and use UI states so we don't have to handle making the
 //       string buffer ourselves
 //       - this also allows us to validate the text box without having to create a temp buffer ourselves
 //         (we would just validate the String_Buffer from the text box's state)
 //       - use this in the material name textbox, since right now the material name can be empty
-
-// TODO: click slider for manual value entry
-// TODO: color selector
-// TODO: slider UI element
-
 // TODO: material creation/deletion
+// TODO: texture creation/deletion
+//       - we should be able do this in a way where we don't need to have an entity selected to add/remove textures
 // TODO: material name/texture strings validation
 //       check for duplicates and empties. it matters that we don't have duplicates since texture names are used
 //       as keys in the opengl code. we don't store material structs in the opengl code, but it's better to be
 //       consistent.
+// TODO: mesh library
+
+// TODO: click slider for manual value entry
+// TODO: color selector
+// TODO: slider UI element
+// TODO: level saving/loading
+//       in level loading, we should ensure that duplicates of mesh, texture, and material names do not exist.
 
 // TODO: be able to add and delete materials, textures, meshes
 // TODO (done): make free list struct (start with using this for storing fixed length strings that could be deleted).
@@ -114,12 +119,9 @@
 // TODO: in the future we may want to have per entity/per entity instance materials or maybe material parameters.
 //       it would be nice to have material parameters in general, so that multiple entities can have the same
 //       material, but look slightly different.
-// TODO: level saving/loading
-//       in level loading, we should ensure that duplicates of mesh, texture, and material names do not exist.
 // TODO: nicer UI (start with window to display selected entity properties)
 // TODO: maybe make game_state and controller_state global variables
 // TODO: directional light (sun light)
-// TODO: better level editing (mesh libraries, textures libraries)
 // TODO: in-game console for outputting messages
 
 // TODO: maybe use a push buffer for entities? and use an Entity_Type enum to differentiate between entities?
