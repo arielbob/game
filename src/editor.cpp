@@ -205,7 +205,7 @@ void draw_texture_library(Game_State *game_state, Controller_State *controller_s
     if (picked_texture) {
         if (is_empty(selected_material->texture_name) ||
             !string_equals(make_string(picked_texture->name), make_string(selected_material->texture_name))) {
-            selected_material->texture_name = picked_texture->name;
+            copy_string(&selected_material->texture_name, &picked_texture->name);
         }
 
         editor_state->open_window_flags = 0;
@@ -278,29 +278,33 @@ void draw_material_library(Game_State *game_state, Controller_State *controller_
     x += padding_x;
     y += padding_y;
 
-    Material *materials = game_state->materials;
-    int32 pressed_index = -1;
-    
-    for (int32 i = 0; i < game_state->num_materials; i++) {
-        Material m = materials[i];
+    Hash_Table<String, Material> *material_table = &game_state->material_table;
+    char *button_id_string = "material_library_item";
+    Material *picked_material = NULL;
+    for (int32 i = 0; i < material_table->max_entries; i++) {
+        Hash_Table_Entry<String, Material> *entry = &material_table->entries[i];
+        if (!entry->is_occupied) continue;
+
+        Material *material = &entry->value;
         bool32 pressed = do_text_button(ui_manager, controller_state,
                                         x, y,
                                         item_width, item_height,
                                         default_text_button_style, default_text_style,
-                                        to_char_array(allocator, m.name),
+                                        to_char_array(allocator, material->name),
                                         font_name_bold,
-                                        "material_library_item", i);
-        if (pressed) pressed_index = i;
+                                        button_id_string, i);
+
+        if (pressed) picked_material = material;
         x += item_width + x_gap;
         if (x + item_width > initial_x + window_width) {
             x = initial_x + padding_x;
             y += item_height + y_gap;
         }
     }
-
-    if (pressed_index >= 0) {
-        if (pressed_index != entity->material_index) {
-            entity->material_index = pressed_index;
+    
+    if (picked_material) {
+        if (!string_equals(make_string(picked_material->name), make_string(entity->material_name))) {
+            copy_string(&entity->material_name, &picked_material->name);
         }
 
         editor_state->open_window_flags = 0;
@@ -324,8 +328,12 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     Allocator *allocator = (Allocator *) &memory.frame_arena;
 
     char *mesh_name = to_char_array(allocator, game_state->meshes[entity->mesh_index].name);
-    Material *material = &game_state->materials[entity->material_index];
-    char *material_name = to_char_array(allocator, material->name);
+    //char *material_name = to_char_array(allocator, entity->material_name);
+    Material *material;
+    bool32 material_exists = hash_table_find_pointer(game_state->material_table,
+                                                     make_string(entity->material_name),
+                                                     &material);
+    assert(material_exists);
     Transform transform = entity->transform;
 
     UI_Text_Button_Style button_style = default_text_button_style;
@@ -475,7 +483,8 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                                     y + get_center_y_offset(row_height, inset_row_height),
                                                     choose_material_button_width, inset_row_height,
                                                     button_style, default_text_style,
-                                                    material_name, font_name_bold, "choose_material");
+                                                    to_char_array(allocator, material->name),
+                                                    font_name_bold, "choose_material");
 
     if (!editor_state->open_window_flags && choose_material_pressed) {
         editor_state->open_window_flags |= MATERIAL_LIBRARY_WINDOW;
@@ -490,10 +499,12 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                                  "+", font_name_bold, "add_material");
     x += add_material_button_width + padding_left;
 
+#if 0
     if (add_material_pressed) {
         Material new_material = {};
         add_material(game_state, 
     }
+#endif
 
     real32 edit_material_button_width = row_width - (x - initial_x) - padding_right;
     bool32 edit_material_pressed = do_text_button(ui_manager, controller_state,
@@ -526,7 +537,6 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         UI_Text_Box_Style text_box_style = default_text_box_style;
         real32 edit_box_width = choose_material_button_width + padding_left + add_material_button_width;
 
-        //char *temp_material_name = to_char_array(allocator, temp_material->name);
         draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags,
                  row_id, row_index++);
         draw_v_centered_text(game_state, ui_manager, x + padding_left, y, row_height,
@@ -663,7 +673,11 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
         if (editor_state->open_window_flags & MATERIAL_LIBRARY_WINDOW) {
             draw_material_library(game_state, controller_state, selected_entity);
         } else if (editor_state->open_window_flags & TEXTURE_LIBRARY_WINDOW) {
-            Material *selected_material = &game_state->materials[selected_entity->material_index];
+            Material *selected_material;
+            bool32 material_exists = hash_table_find_pointer(game_state->material_table,
+                                                             make_string(selected_entity->material_name),
+                                                             &selected_material);
+            assert(material_exists);
             draw_texture_library(game_state, controller_state, selected_material);
         }
     } else {

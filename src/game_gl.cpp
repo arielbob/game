@@ -93,9 +93,11 @@
 //                     also in the entity window.
 // TODO: material creation
 //       - TODO (done): add an add button next to material on the entity window
-//       - TODO: use hash tables for storing materials
+//       - TODO (done): use hash tables for storing materials
 //       - TODO: create new material when add button is pressed
 // TODO: material deletion
+// TODO: handle entities with no material (just make them black or something)
+//       - this would happen if you were to delete a material that an entity was using
 // TODO: texture creation
 //       - we should be able do this in a way where we don't need to have an entity selected to add/remove textures
 // TODO: texture deletion
@@ -1843,7 +1845,7 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
     for (int32 i = 0; i < game_state->num_point_lights; i++) {
         Point_Light_Entity *entity = &game_state->point_lights[i];
         String mesh_name = make_string(game_state->meshes[entity->mesh_index].name);
-        Material material = game_state->materials[entity->material_index];
+        Material material = get_material(game_state, entity->material_name);
 
         gl_draw_solid_mesh(gl_state, render_state, 
                            mesh_name, material,
@@ -1885,7 +1887,7 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
     for (int32 i = 0; i < game_state->num_entities; i++) {
         Normal_Entity *entity = &game_state->entities[i];
         String mesh_name = make_string(game_state->meshes[entity->mesh_index].name);
-        Material material = game_state->materials[entity->material_index];
+        Material material = get_material(game_state, entity->material_name);
 
         gl_draw_mesh(gl_state, render_state,
                      mesh_name, material,

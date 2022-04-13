@@ -17,7 +17,7 @@
 #define MAX_FONTS 64
 
 //#define MATERIAL_NAME_MAX_SIZE 128
-#define MATERIAL_STRING_MAX_SIZE 16
+#define MATERIAL_STRING_MAX_SIZE 64
 
 struct Display_Output {
     int32 width;
@@ -141,15 +141,13 @@ struct Game_State {
     int32 num_meshes;
     Mesh meshes[MAX_MESHES];
 
-    int32 num_materials;
-    Material materials[MAX_MATERIALS];
-
     int32 num_entities;
     Normal_Entity entities[MAX_ENTITIES];
 
     int32 num_point_lights;
     Point_Light_Entity point_lights[MAX_POINT_LIGHTS];
 
+    Hash_Table<String, Material> material_table;
     Hash_Table<String, File_Data> font_file_table;
     Hash_Table<String, Font> font_table;
     Hash_Table<String, Texture> texture_table;

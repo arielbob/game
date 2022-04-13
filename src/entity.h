@@ -14,7 +14,7 @@ enum Entity_Type {
     Entity_Type type;                           \
     Transform transform;                        \
     int32 mesh_index;                           \
-    int32 material_index;
+    String_Buffer material_name;
 
 struct Entity {
     ENTITY_HEADER
