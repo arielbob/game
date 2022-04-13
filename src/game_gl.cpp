@@ -98,21 +98,13 @@
 // TODO (done): switch to material and texture IDs instead material and texture names as hash table keys
 //       - this is because names can change and it's annoying to constantly have to delete a hash table entry
 //         and add it again just because the name changed.
-// TODO: make textbox use the string pool allocator and use UI states so we don't have to handle making the
-//       string buffer ourselves
-//       - this also allows us to validate the text box without having to create a temp buffer ourselves
-//         (we would just validate the String_Buffer from the text box's state)
-//       - use this in the material name textbox, since right now the material name can be empty
-//       - this is kind of unnecessary since we use material and texture IDs now, materials and textures can have
-//         an empty name
-//       - actually, it is not unnecessary. materials and textures should not be allowed to have blank names,
-//         since when an entity doesn't have a material or a material doesn't have a texture, the corresponding
-//         name box is empty, which is useful to know what entities don't have a material or what materials
-//         don't have a texture assigned.
-// TODO: material name/texture strings validation
-//       check for duplicates and empties. it matters that we don't have duplicates since texture names are used
-//       as keys in the opengl code. we don't store material structs in the opengl code, but it's better to be
-//       consistent.
+
+// TODO: mesh library
+//       - TODO (done): use a hash table to store meshes
+//       - TODO: change the mesh name text into a button
+// TODO: mesh adding
+//       - TODO: will have to have a better way of handling read_and_load_mesh failing (we don't want to just crash
+//               on an assert)
 
 // TODO: material deletion
 // TODO: handle entities with no material (just make them black or something)
@@ -130,6 +122,25 @@
 // TODO: slider UI element
 // TODO: level saving/loading
 //       in level loading, we should ensure that duplicates of mesh, texture, and material names do not exist.
+// NOTE: we should not add functions to get materials or textures by their name, since, at least right now, their
+//       names are NOT unique.
+
+// TODO: make textbox use the string pool allocator and use UI states so we don't have to handle making the
+//       string buffer ourselves
+//       - this also allows us to validate the text box without having to create a temp buffer ourselves
+//         (we would just validate the String_Buffer from the text box's state)
+//       - use this in the material name textbox, since right now the material name can be empty
+//       - this is kind of unnecessary since we use material and texture IDs now, materials and textures can have
+//         an empty name
+//       - actually, it is not unnecessary. materials and textures should not be allowed to have blank names,
+//         since when an entity doesn't have a material or a material doesn't have a texture, the corresponding
+//         name box is empty, which is useful to know what entities don't have a material or what materials
+//         don't have a texture assigned.
+//       - this isn't really that important right now, i don't think
+// TODO: material name/texture strings validation
+//       check for duplicates and empties. it matters that we don't have duplicates since texture names are used
+//       as keys in the opengl code. we don't store material structs in the opengl code, but it's better to be
+//       consistent.
 
 // TODO: be able to add and delete materials, textures, meshes
 // TODO (done): make free list struct (start with using this for storing fixed length strings that could be deleted).
@@ -198,6 +209,24 @@ This uses a left-handed coordinate system: positive x is right, positive y is up
 Use your left hand to figure out the direction of the cross product of two vectors.
 In 2D, (0, 0) is at the bottom left, positive x is right, positive y is up.
  */
+
+#if 0
+int32 gl_get_mesh_id(GL_State *gl_state, char *mesh_name) {
+    Hash_Table<int32, GL_Mesh> *mesh_table = &gl_state->mesh_table;
+    for (int32 i = 0; i < mesh_table->max_entries; i++) {
+        Hash_Table_Entry<int32, GL_Mesh> *entry = &mesh_table->entries[i];
+        if (!entry->is_occupied) continue;
+
+        GL_Mesh *mesh = &entry->value;
+
+        if (string_equals(make_string(mesh->name), make_string(mesh_name))) {
+            return entry->key;
+        }
+    }
+
+    return -1;
+}
+#endif
 
 GL_Mesh make_gl_mesh(uint32 vao, uint32 vbo, uint32 num_triangles) {
     GL_Mesh gl_mesh = { vao, vbo };
@@ -408,7 +437,7 @@ void gl_init_font(GL_State *gl_state, Font *font) {
     hash_table_add(&gl_state->font_texture_table, make_string(font->name), baked_texture_id);
 }
 
-GL_Mesh gl_load_mesh(GL_State *gl_state, Mesh mesh) {
+GL_Mesh gl_load_mesh(GL_State *gl_state, Mesh mesh, int32 mesh_id) {
     uint32 vao, vbo, ebo;
     
     glGenVertexArrays(1, &vao);
@@ -442,6 +471,8 @@ GL_Mesh gl_load_mesh(GL_State *gl_state, Mesh mesh) {
     glBindVertexArray(0);
 
     GL_Mesh gl_mesh = { vao, vbo, mesh.num_triangles };
+    hash_table_add(&gl_state->mesh_table, mesh_id, gl_mesh);
+
     return gl_mesh;
 }
 
@@ -468,24 +499,28 @@ void gl_use_font_texture(GL_State *gl_state, String font_texture_name) {
     glBindTexture(GL_TEXTURE_2D, texture_id);
 }
 
-GL_Mesh gl_use_mesh(GL_State *gl_state, String mesh_name) {
+GL_Mesh gl_use_mesh(GL_State *gl_state, int32 mesh_id) {
     GL_Mesh gl_mesh;
-    uint32 mesh_exists = hash_table_find(gl_state->mesh_table, mesh_name, &gl_mesh);
+    uint32 mesh_exists = hash_table_find(gl_state->mesh_table, mesh_id, &gl_mesh);
     assert(mesh_exists);
     glBindVertexArray(gl_mesh.vao);
     return gl_mesh;
 }
 
-inline GL_Mesh gl_use_mesh(GL_State *gl_state, char *mesh_name) {
-    return gl_use_mesh(gl_state, make_string(mesh_name));
+GL_Mesh gl_use_rendering_mesh(GL_State *gl_state, int32 mesh_id) {
+    GL_Mesh gl_mesh;
+    uint32 mesh_exists = hash_table_find(gl_state->rendering_mesh_table, mesh_id, &gl_mesh);
+    assert(mesh_exists);
+    glBindVertexArray(gl_mesh.vao);
+    return gl_mesh;
 }
 
 void gl_draw_solid_mesh(GL_State *gl_state, Render_State *render_state,
-                        String mesh_name,
+                        int32 mesh_id,
                         Material material,
                         Transform transform) {
     uint32 shader_id = gl_use_shader(gl_state, "solid");
-    GL_Mesh gl_mesh = gl_use_mesh(gl_state, mesh_name);
+    GL_Mesh gl_mesh = gl_use_mesh(gl_state, mesh_id);
 
     if (!material.use_color_override && (material.texture_id < 0)) assert(!"No texture name provided.");
     if (!material.use_color_override) gl_use_texture(gl_state, material.texture_id);
@@ -503,10 +538,10 @@ void gl_draw_solid_mesh(GL_State *gl_state, Render_State *render_state,
 }
 
 void gl_draw_solid_color_mesh(GL_State *gl_state, Render_State *render_state,
-                              char *mesh_name, Vec4 color,
+                              int32 mesh_id, Vec4 color,
                               Transform transform) {
     uint32 shader_id = gl_use_shader(gl_state, "solid");
-    GL_Mesh gl_mesh = gl_use_mesh(gl_state, mesh_name);
+    GL_Mesh gl_mesh = gl_use_mesh(gl_state, mesh_id);
 
     Mat4 model_matrix = get_model_matrix(transform);
     gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
@@ -521,12 +556,12 @@ void gl_draw_solid_color_mesh(GL_State *gl_state, Render_State *render_state,
 }
 
 void gl_draw_mesh(GL_State *gl_state, Render_State *render_state,
-                  String mesh_name,
+                  int32 mesh_id,
                   Material material,
                   Transform transform) {
     uint32 shader_id = gl_use_shader(gl_state, "basic_3d");
 
-    GL_Mesh gl_mesh = gl_use_mesh(gl_state, mesh_name);
+    GL_Mesh gl_mesh = gl_use_mesh(gl_state, mesh_id);
 
     if (!material.use_color_override && (material.texture_id < 0)) assert(!"No texture name provided.");
     if (!material.use_color_override) gl_use_texture(gl_state, material.texture_id);
@@ -551,12 +586,12 @@ void gl_draw_mesh(GL_State *gl_state, Render_State *render_state,
 }
 
 void gl_draw_textured_mesh(GL_State *gl_state, Render_State *render_state,
-                           char *mesh_name, int32 texture_id, Transform transform) {
+                           int32 mesh_id, int32 texture_id, Transform transform) {
     uint32 shader_id = gl_use_shader(gl_state, "basic_3d_textured");
     gl_use_texture(gl_state, texture_id);
 
     GL_Mesh gl_mesh;
-    uint32 mesh_exists = hash_table_find(gl_state->mesh_table, make_string(mesh_name), &gl_mesh);
+    uint32 mesh_exists = hash_table_find(gl_state->mesh_table, mesh_id, &gl_mesh);
     assert(mesh_exists);
     glBindVertexArray(gl_mesh.vao);
 
@@ -572,14 +607,14 @@ void gl_draw_textured_mesh(GL_State *gl_state, Render_State *render_state,
 }
 
 void gl_draw_wireframe(GL_State *gl_state, Render_State *render_state,
-                       String mesh_name, Transform transform) {
+                       int32 mesh_id, Transform transform) {
     uint32 shader_id;
     uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("debug_wireframe"), &shader_id);
     assert(shader_exists);
     glUseProgram(shader_id);
 
     GL_Mesh gl_mesh;
-    uint32 mesh_exists = hash_table_find(gl_state->mesh_table, mesh_name, &gl_mesh);
+    uint32 mesh_exists = hash_table_find(gl_state->mesh_table, mesh_id, &gl_mesh);
     assert(mesh_exists);
     glBindVertexArray(gl_mesh.vao);
 
@@ -624,10 +659,7 @@ void gl_draw_text(GL_State *gl_state, Render_State *render_state,
     assert(shader_exists);
     glUseProgram(text_shader_id);
 
-    GL_Mesh glyph_mesh;
-    uint32 mesh_exists = hash_table_find(gl_state->mesh_table, make_string("glyph_quad"), &glyph_mesh);
-    assert(mesh_exists);
-    glBindVertexArray(glyph_mesh.vao);
+    GL_Mesh glyph_mesh = gl_use_rendering_mesh(gl_state, gl_state->glyph_quad_mesh_id);
 
     uint32 font_texture_id;
     uint32 font_texture_exists = hash_table_find(gl_state->font_texture_table, make_string(font->name),
@@ -680,7 +712,7 @@ void gl_draw_text(GL_State *gl_state, Render_State *render_state,
                   real32 x_pos_pixels, real32 y_pos_pixels,
                   String_Buffer buffer, Vec4 color) {
     uint32 text_shader_id = gl_use_shader(gl_state, "text");
-    GL_Mesh glyph_mesh = gl_use_mesh(gl_state, "glyph_quad");
+    GL_Mesh glyph_mesh = gl_use_rendering_mesh(gl_state, gl_state->glyph_quad_mesh_id);
     gl_use_font_texture(gl_state, make_string(font->name));
 
     gl_set_uniform_mat4(text_shader_id, "cpv_matrix", &render_state->ortho_clip_matrix);
@@ -781,11 +813,19 @@ void generate_circle_vertices(real32 *buffer, int32 num_vertices, real32 radius)
     }
 }
 
+int32 gl_add_rendering_mesh(GL_State *gl_state, GL_Mesh gl_mesh) {
+    int32 mesh_id = gl_state->rendering_mesh_table.total_added_ever;
+    hash_table_add(&gl_state->rendering_mesh_table, mesh_id, gl_mesh);
+    return mesh_id;
+}
+
 void gl_init(GL_State *gl_state, Display_Output display_output) {
     gl_state->shader_ids_table = make_hash_table<String, uint32>((Allocator *) &memory.hash_table_stack,
                                                                  HASH_TABLE_SIZE, &string_equals);
-    gl_state->mesh_table = make_hash_table<String, GL_Mesh>((Allocator *) &memory.hash_table_stack,
-                                                            HASH_TABLE_SIZE, &string_equals);
+    gl_state->rendering_mesh_table = make_hash_table<int32, GL_Mesh>((Allocator *) &memory.hash_table_stack,
+                                                                     HASH_TABLE_SIZE, &int32_equals);
+    gl_state->mesh_table = make_hash_table<int32, GL_Mesh>((Allocator *) &memory.hash_table_stack,
+                                                            HASH_TABLE_SIZE, &int32_equals);
     gl_state->texture_table = make_hash_table<int32, GL_Texture>((Allocator *) &memory.hash_table_stack,
                                                                   HASH_TABLE_SIZE, &int32_equals);
     gl_state->font_texture_table = make_hash_table<String, uint32>((Allocator *) &memory.hash_table_stack,
@@ -812,7 +852,7 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
     glEnableVertexAttribArray(0);
     
     glBindVertexArray(0);
-    hash_table_add(&gl_state->mesh_table, make_string("triangle"), make_gl_mesh(vao, vbo, 1));
+    gl_state->triangle_mesh_id = gl_add_rendering_mesh(gl_state, make_gl_mesh(vao, vbo, 1));
 
     // NOTE: quad mesh
     // we store them separately like this because we use glBufferSubData to send the vertex positions
@@ -858,7 +898,7 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
     glEnableVertexAttribArray(1);
     
     glBindVertexArray(0);
-    hash_table_add(&gl_state->mesh_table, make_string("quad"), make_gl_mesh(vao, vbo, 2));
+    gl_state->quad_mesh_id = gl_add_rendering_mesh(gl_state, make_gl_mesh(vao, vbo, 2));
 
     // NOTE: framebuffer mesh
     real32 framebuffer_mesh_data[] = {
@@ -889,7 +929,7 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
     glEnableVertexAttribArray(1);
     
     glBindVertexArray(0);
-    hash_table_add(&gl_state->mesh_table, make_string("framebuffer_quad"), make_gl_mesh(vao, vbo, 2));
+    gl_state->framebuffer_quad_mesh_id = gl_add_rendering_mesh(gl_state, make_gl_mesh(vao, vbo, 2));
 
     // NOTE: glyph quad
     glGenVertexArrays(1, &vao);
@@ -913,7 +953,7 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
     glEnableVertexAttribArray(1);
     
     glBindVertexArray(0);
-    hash_table_add(&gl_state->mesh_table, make_string("glyph_quad"), make_gl_mesh(vao, vbo, 2));
+    gl_state->glyph_quad_mesh_id = gl_add_rendering_mesh(gl_state, make_gl_mesh(vao, vbo, 2));
 
     // NOTE: line mesh
     real32 line_vertices[] = {
@@ -933,7 +973,7 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
     glEnableVertexAttribArray(0);
     
     glBindVertexArray(0);
-    hash_table_add(&gl_state->mesh_table, make_string("line"), make_gl_mesh(vao, vbo, 0));
+    gl_state->line_mesh_id = gl_add_rendering_mesh(gl_state, make_gl_mesh(vao, vbo, 0));
 
     real32 circle_vertices[32*3];
     generate_circle_vertices(circle_vertices, 32, 1.0f);
@@ -949,7 +989,7 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
     glEnableVertexAttribArray(0);
     
     glBindVertexArray(0);
-    hash_table_add(&gl_state->mesh_table, make_string("circle"), make_gl_mesh(vao, vbo, 0));
+    gl_state->circle_mesh_id = gl_add_rendering_mesh(gl_state, make_gl_mesh(vao, vbo, 0));
 
     // NOTE: shaders
     gl_load_shader(gl_state,
@@ -1014,11 +1054,8 @@ void gl_draw_triangle_p(GL_State *gl_state,
     uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("basic"), &basic_shader_id);
     assert(shader_exists);
     glUseProgram(basic_shader_id);
-
-    GL_Mesh triangle_mesh;
-    bool32 mesh_exists = hash_table_find(gl_state->mesh_table, make_string("triangle"), &triangle_mesh);
-    assert(mesh_exists);
-    glBindVertexArray(triangle_mesh.vao);
+    
+    GL_Mesh triangle_mesh = gl_use_rendering_mesh(gl_state, gl_state->triangle_mesh_id);
 
     Vec2 clip_space_position = make_vec2(position.x * 2.0f - 1.0f,
                                          position.y * -2.0f + 1.0f);
@@ -1059,10 +1096,7 @@ void gl_draw_line_p(GL_State *gl_state,
     assert(shader_exists);
     glUseProgram(basic_shader_id);
 
-    GL_Mesh line_mesh;
-    uint32 mesh_exists = hash_table_find(gl_state->mesh_table, make_string("line"), &line_mesh);
-    assert(mesh_exists);
-    glBindVertexArray(line_mesh.vao);
+    GL_Mesh line_mesh = gl_use_rendering_mesh(gl_state, gl_state->line_mesh_id);
 
     Vec2 clip_space_start = make_vec2(start.x * 2.0f - 1.0f,
                                       start.y * -2.0f + 1.0f);
@@ -1091,10 +1125,7 @@ void gl_draw_line(GL_State *gl_state,
     assert(shader_exists);
     glUseProgram(basic_shader_id);
 
-    GL_Mesh line_mesh;
-    uint32 vao_exists = hash_table_find(gl_state->mesh_table, make_string("line"), &line_mesh);
-    assert(vao_exists);
-    glBindVertexArray(line_mesh.vao);
+    GL_Mesh line_mesh = gl_use_rendering_mesh(gl_state, gl_state->line_mesh_id);
 
     Vec2 clip_space_start = make_vec2(start_pixels.x / display_output.width * 2.0f - 1.0f,
                                       start_pixels.y / display_output.height * -2.0f + 1.0f);
@@ -1132,10 +1163,7 @@ void gl_draw_quad_p(GL_State *gl_state,
     assert(shader_exists);
     glUseProgram(basic_shader_id);
 
-    GL_Mesh square_mesh;
-    uint32 mesh_exists = hash_table_find(gl_state->mesh_table, make_string("square"), &square_mesh);
-    assert(mesh_exists);
-    glBindVertexArray(square_mesh.vao);
+    GL_Mesh square_mesh = gl_use_rendering_mesh(gl_state, gl_state->quad_mesh_id);
 
     Vec2 clip_space_position = make_vec2(x * 2.0f - 1.0f,
                                          y * -2.0f + 1.0f);
@@ -1161,7 +1189,7 @@ void gl_draw_quad(GL_State *gl_state,
                   real32 width_pixels, real32 height_pixels,
                   int32 texture_id) {
     uint32 basic_shader_id = gl_use_shader(gl_state, "basic2");
-    GL_Mesh quad_mesh = gl_use_mesh(gl_state, "quad");
+    GL_Mesh quad_mesh = gl_use_rendering_mesh(gl_state, gl_state->quad_mesh_id);
     gl_use_texture(gl_state, texture_id);
 
     real32 quad_vertices[8] = {
@@ -1186,7 +1214,7 @@ void gl_draw_quad(GL_State *gl_state,
                   real32 width_pixels, real32 height_pixels,
                   Vec4 color) {
     uint32 basic_shader_id = gl_use_shader(gl_state, "basic2");
-    GL_Mesh quad_mesh = gl_use_mesh(gl_state, "quad");
+    GL_Mesh quad_mesh = gl_use_rendering_mesh(gl_state, gl_state->quad_mesh_id);
     
     real32 quad_vertices[8] = {
         x_pos_pixels, y_pos_pixels + height_pixels,               // bottom left
@@ -1479,7 +1507,7 @@ void gl_draw_ui_text_box(GL_State *gl_state, Game_State *game_state,
     //       text box's bounds.
     glScissor((int32) (text_box.x + style.padding_x),
               (int32) (display_output.height - text_box.y - text_box.height - style.padding_y),
-              (int32) text_box.width, (int32) display_output.height);
+              (int32) (text_box.width - style.padding_x * 2), (int32) display_output.height);
 
     real32 adjusted_text_height = font.height_pixels - font.scale_for_pixel_height * (font.ascent + font.descent);
     real32 text_y = text_box.y + text_box.height - style.padding_y;
@@ -1659,10 +1687,7 @@ void gl_draw_circle(GL_State *gl_state, Render_State *render_state, Transform tr
     assert(shader_exists);
     glUseProgram(shader_id);
 
-    GL_Mesh circle_mesh;
-    uint32 vao_exists = hash_table_find(gl_state->mesh_table, make_string("circle"), &circle_mesh);
-    assert(vao_exists);
-    glBindVertexArray(circle_mesh.vao);
+    GL_Mesh circle_mesh = gl_use_rendering_mesh(gl_state, gl_state->circle_mesh_id);
 
     Mat4 model_matrix = get_model_matrix(transform);
     gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
@@ -1724,13 +1749,13 @@ void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Editor_State 
         z_handle_color = z_handle_hover;
     }
 
-    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.arrow_mesh_name, x_handle_color, x_transform);
-    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.arrow_mesh_name, y_handle_color, y_transform);
-    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.arrow_mesh_name, z_handle_color, z_transform);
+    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.arrow_mesh_id, x_handle_color, x_transform);
+    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.arrow_mesh_id, y_handle_color, y_transform);
+    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.arrow_mesh_id, z_handle_color, z_transform);
 
     Transform sphere_mask_transform = gizmo.transform;
     glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.sphere_mesh_name,
+    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.sphere_mesh_id,
                              make_vec4(0.0f, 0.0f, 0.0f, 1.0f), sphere_mask_transform);
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
@@ -1751,9 +1776,9 @@ void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Editor_State 
     y_transform.scale += offset;
     z_transform.scale += 2.0f * offset;
 
-    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.ring_mesh_name, x_handle_color, x_transform);
-    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.ring_mesh_name, y_handle_color, y_transform);
-    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.ring_mesh_name, z_handle_color, z_transform);
+    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.ring_mesh_id, x_handle_color, x_transform);
+    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.ring_mesh_id, y_handle_color, y_transform);
+    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.ring_mesh_id, z_handle_color, z_transform);
 }
 
 void gl_draw_framebuffer(GL_State *gl_state, GL_Framebuffer framebuffer) {
@@ -1761,10 +1786,7 @@ void gl_draw_framebuffer(GL_State *gl_state, GL_Framebuffer framebuffer) {
 
     glBindTexture(GL_TEXTURE_2D, framebuffer.color_buffer_texture);
 
-    GL_Mesh gl_mesh;
-    uint32 mesh_exists = hash_table_find(gl_state->mesh_table, make_string("framebuffer_quad"), &gl_mesh);
-    assert(mesh_exists);
-    glBindVertexArray(gl_mesh.vao);
+    GL_Mesh gl_mesh = gl_use_rendering_mesh(gl_state, gl_state->framebuffer_quad_mesh_id);
 
     glDrawArrays(GL_TRIANGLES, 0, 6);
 
@@ -1778,12 +1800,16 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
     Render_State *render_state = &game_state->render_state;
 
     // load meshes
-    for (int32 i = 0; i < game_state->num_meshes; i++) {
-        Mesh *mesh = &game_state->meshes[i];
+    Hash_Table<int32, Mesh> *game_mesh_table = &game_state->mesh_table;
+    for (int32 i = 0; i < game_mesh_table->max_entries; i++) {
+        Hash_Table_Entry<int32, Mesh> *game_mesh_entry = &game_mesh_table->entries[i];
+        if (!game_mesh_entry->is_occupied) continue;
+
+        Mesh *mesh = &game_mesh_entry->value;
+
         if (!mesh->is_loaded) {
-            if (!hash_table_exists(gl_state->mesh_table, make_string(mesh->name))) {
-                GL_Mesh gl_mesh = gl_load_mesh(gl_state, *mesh);
-                hash_table_add(&gl_state->mesh_table, make_string(mesh->name), gl_mesh);
+            if (!hash_table_exists(gl_state->mesh_table, game_mesh_entry->key)) {
+                gl_load_mesh(gl_state, *mesh, game_mesh_entry->key);
             } else {
                 debug_print("%s already loaded.\n", mesh->name);
             }
@@ -1851,17 +1877,17 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
     // point lights
     for (int32 i = 0; i < game_state->num_point_lights; i++) {
         Point_Light_Entity *entity = &game_state->point_lights[i];
-        String mesh_name = make_string(game_state->meshes[entity->mesh_index].name);
+        int32 mesh_id = entity->mesh_id;
         Material material = get_material(game_state, entity->material_id);
 
         gl_draw_solid_mesh(gl_state, render_state, 
-                           mesh_name, material,
+                           mesh_id, material,
                            entity->transform);
 
         if (editor_state->show_wireframe &&
             editor_state->selected_entity_type == ENTITY_POINT_LIGHT &&
             editor_state->selected_entity_index == i) {
-            gl_draw_wireframe(gl_state, render_state, mesh_name, entity->transform);
+            gl_draw_wireframe(gl_state, render_state, mesh_id, entity->transform);
         }
     }
 
@@ -1893,17 +1919,17 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
     // entities
     for (int32 i = 0; i < game_state->num_entities; i++) {
         Normal_Entity *entity = &game_state->entities[i];
-        String mesh_name = make_string(game_state->meshes[entity->mesh_index].name);
+        int32 mesh_id = entity->mesh_id;
         Material material = get_material(game_state, entity->material_id);
 
         gl_draw_mesh(gl_state, render_state,
-                     mesh_name, material,
+                     mesh_id, material,
                      entity->transform);
 
         if (editor_state->show_wireframe &&
             editor_state->selected_entity_type == ENTITY_NORMAL &&
             editor_state->selected_entity_index == i) {
-            gl_draw_wireframe(gl_state, render_state, mesh_name, entity->transform);
+            gl_draw_wireframe(gl_state, render_state, mesh_id, entity->transform);
         }
     }
 

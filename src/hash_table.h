@@ -132,6 +132,29 @@ bool32 hash_table_exists(Hash_Table<Key_Type, Value_Type> hash_table, Key_Type k
     return false;
 }
 
+// NOTE: hash_table_get() will assert if the key does not exist in the table.
+//       hash_table_find() will not assert if the key does not exist, but instead returns a boolean of
+//       whether or not the key was found in the table.
+template <class Key_Type, class Value_Type>
+Value_Type hash_table_get(Hash_Table<Key_Type, Value_Type> hash_table, Key_Type key) {
+    uint32 hash = get_hash(key, hash_table.max_entries);
+
+    int32 num_checked = 0;
+    while (num_checked < hash_table.max_entries) {
+        Hash_Table_Entry<Key_Type, Value_Type> entry = hash_table.entries[hash];
+        if (entry.is_occupied && hash_table.key_equals(key, entry.key)) {
+            return entry.value;
+        }
+
+        hash++;
+        hash %= hash_table.max_entries;
+        num_checked++;
+    }
+
+    assert("!Key does not exist in table.");
+    return {};
+}
+
 template <class Key_Type, class Value_Type>
 bool32 hash_table_find(Hash_Table<Key_Type, Value_Type> hash_table, Key_Type key, Value_Type *value_result) {
     uint32 hash = get_hash(key, hash_table.max_entries);

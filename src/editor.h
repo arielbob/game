@@ -18,9 +18,14 @@ enum Transform_Mode {
 
 struct Gizmo {
     Transform transform;
+    int32 arrow_mesh_id;
+    int32 ring_mesh_id;
+    int32 sphere_mesh_id;
+#if 0
     char *arrow_mesh_name;
     char *ring_mesh_name;
     char *sphere_mesh_name;
+#endif
 };
 
 #define MATERIAL_LIBRARY_WINDOW 0x1

@@ -138,15 +138,13 @@ struct Game_State {
     bool32 is_naming_mesh;
     Mesh mesh_to_add;
     
-    int32 num_meshes;
-    Mesh meshes[MAX_MESHES];
-
     int32 num_entities;
     Normal_Entity entities[MAX_ENTITIES];
 
     int32 num_point_lights;
     Point_Light_Entity point_lights[MAX_POINT_LIGHTS];
 
+    Hash_Table<int32, Mesh> mesh_table;
     Hash_Table<int32, Material> material_table;
     Hash_Table<int32, Texture> texture_table;
 
@@ -160,10 +158,10 @@ inline bool32 was_clicked(Controller_Button_State button_state);
 inline bool32 being_held(Controller_Button_State button_state);
 inline bool32 just_pressed(Controller_Button_State button_state);
 inline bool32 just_lifted(Controller_Button_State button_state);
-int32 get_mesh_index(Game_State *game_state, char *mesh_name_to_find);
 Entity *get_selected_entity(Game_State *game_state);
 Font get_font(Game_State *game_state, char *font_name);
 int32 add_material(Game_State *game_state, Material material);
 Texture get_texture(Game_State *game_state, int32 texture_id);
+Mesh get_mesh(Game_State *game_state, int32 mesh_id);
 
 #endif

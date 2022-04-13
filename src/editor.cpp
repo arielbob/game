@@ -326,8 +326,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
 
     Allocator *allocator = (Allocator *) &memory.frame_arena;
 
-    char *mesh_name = to_char_array(allocator, game_state->meshes[entity->mesh_index].name);
-    //char *material_name = to_char_array(allocator, entity->material_name);
+    Mesh mesh = get_mesh(game_state, entity->mesh_id);
     Material *material;
     bool32 material_exists = hash_table_find_pointer(game_state->material_table,
                                                      entity->material_id,
@@ -372,6 +371,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                        "Entity Properties", title_font_name, text_style);
     y += title_row_height;
         
+    char *mesh_name = to_char_array(allocator, mesh.name);
     draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags | SIDE_BOTTOM, row_id, row_index++);
     draw_v_centered_text(game_state, ui_manager, x + padding_left, y, row_height,
                          "Mesh Name", font_name_bold, text_style);
@@ -579,7 +579,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         if (material->texture_id >= 0) {
             Texture texture = get_texture(game_state, material->texture_id);
             texture_name = to_char_array(allocator, texture.name);
-            }
+        }
         draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags,
                  row_id, row_index++);
         draw_v_centered_text(game_state, ui_manager, x + padding_left, y, row_height,
@@ -761,7 +761,7 @@ int32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, real32 *t_res
 int32 pick_entity(Game_State *game_state, Ray cursor_ray, Entity *entity_result, int32 *index_result) {
     Editor_State *editor_state = &game_state->editor_state;
 
-    Mesh *meshes = game_state->meshes;
+    Hash_Table<int32, Mesh> mesh_table = game_state->mesh_table;
     Normal_Entity *entities = game_state->entities;
     Point_Light_Entity *point_lights = game_state->point_lights;
 
@@ -772,7 +772,7 @@ int32 pick_entity(Game_State *game_state, Ray cursor_ray, Entity *entity_result,
     for (int32 i = 0; i < game_state->num_entities; i++) {
         real32 t;
         Normal_Entity *entity = &entities[i];
-        Mesh mesh = meshes[entity->mesh_index];
+        Mesh mesh = hash_table_get(mesh_table, entity->mesh_id);
         if (ray_intersects_mesh(cursor_ray, mesh, entity->transform, &t) && (t < t_min)) {
             t_min = t;
             entity_index = i;
@@ -783,7 +783,7 @@ int32 pick_entity(Game_State *game_state, Ray cursor_ray, Entity *entity_result,
     for (int32 i = 0; i < game_state->num_point_lights; i++) {
         real32 t;
         Point_Light_Entity *entity = &point_lights[i];
-        Mesh mesh = meshes[entity->mesh_index];
+        Mesh mesh = hash_table_get(mesh_table, entity->mesh_id);
         if (ray_intersects_mesh(cursor_ray, mesh, entity->transform, &t) && (t < t_min)) {
             t_min = t;
             entity_index = i;
@@ -857,9 +857,8 @@ Gizmo_Handle pick_gizmo(Game_State *game_state, Ray cursor_ray,
 
     // check ray against translation arrows
     Gizmo_Handle gizmo_translation_handles[3] = { GIZMO_TRANSLATE_X, GIZMO_TRANSLATE_Y, GIZMO_TRANSLATE_Z };
-    int32 gizmo_arrow_mesh_index = get_mesh_index(game_state, gizmo.arrow_mesh_name);
-    assert(gizmo_arrow_mesh_index >= 0);
-    Mesh arrow_mesh = game_state->meshes[gizmo_arrow_mesh_index];
+    assert(gizmo.arrow_mesh_id >= 0);
+    Mesh arrow_mesh = get_mesh(game_state, gizmo.arrow_mesh_id);
 
     real32 t_min = FLT_MAX;
     for (int32 i = 0; i < 3; i++) {
@@ -874,9 +873,8 @@ Gizmo_Handle pick_gizmo(Game_State *game_state, Ray cursor_ray,
 
     // check ray against rotation rings
     Gizmo_Handle gizmo_rotation_handles[3] = { GIZMO_ROTATE_X, GIZMO_ROTATE_Y, GIZMO_ROTATE_Z };
-    int32 gizmo_ring_mesh_index = get_mesh_index(game_state, gizmo.ring_mesh_name);
-    assert(gizmo_ring_mesh_index >= 0);
-    Mesh ring_mesh = game_state->meshes[gizmo_ring_mesh_index];
+    assert(gizmo.ring_mesh_id >= 0);
+    Mesh ring_mesh = get_mesh(game_state, gizmo.ring_mesh_id);
 
     for (int32 i = 0; i < 3; i++) {
         Transform gizmo_handle_transform = gizmo_handle_transforms[i];

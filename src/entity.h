@@ -13,7 +13,7 @@ enum Entity_Type {
 #define ENTITY_HEADER                           \
     Entity_Type type;                           \
     Transform transform;                        \
-    int32 mesh_index;                           \
+    int32 mesh_id;                              \
     int32 material_id;
 
 struct Entity {

@@ -149,13 +149,30 @@ struct GL_Point_Light {
 
 struct GL_State {
     Hash_Table<String, uint32> shader_ids_table;
-    Hash_Table<String, GL_Mesh> mesh_table;
+
+    // NOTE: we use separate tables for meshes only used by the OpenGL code and the meshes added by the game
+    //       this is because there is a 1:1 correspondence between the keys in game_state.mesh_table and
+    //       gl_state.mesh_table. if we were to combine the two, the IDs could collide, since we're just
+    //       making IDs based off of a running count kept by the table you're adding to.
+    Hash_Table<int32, GL_Mesh> rendering_mesh_table;
+    Hash_Table<int32, GL_Mesh> mesh_table;
+
     Hash_Table<String, uint32> font_texture_table;
     Hash_Table<int32, GL_Texture> texture_table;
     
     // TODO: will have to delete these and remake them on window resize
     GL_Framebuffer gizmo_framebuffer;
     uint32 global_ubo;
+
+    // TODO: maybe figure out a better way of doing this.
+    //       we switched to using IDs instead of strings, but the downside is that we can't just search
+    //       tables with a string anymore.
+    int32 triangle_mesh_id;
+    int32 quad_mesh_id;
+    int32 framebuffer_quad_mesh_id;
+    int32 glyph_quad_mesh_id;
+    int32 line_mesh_id;
+    int32 circle_mesh_id;
 };
 
 #endif

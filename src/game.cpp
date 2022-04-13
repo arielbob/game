@@ -74,56 +74,6 @@ Audio_Source make_audio_source(uint32 total_samples, uint32 current_sample,
     return audio_source;
 }
 
-int32 get_mesh_index(Game_State *game_state, char *mesh_name_to_find) {
-    int32 num_meshes = game_state->num_meshes;
-    Mesh *meshes = game_state->meshes;
-
-    String mesh_name_to_find_string = make_string(mesh_name_to_find);
-    for (int32 i = 0; i < num_meshes; i++) {
-        String mesh_name = make_string(meshes[i].name);
-        if (string_equals(mesh_name, mesh_name_to_find_string)) {
-            return i;
-        }
-    }
-
-    return -1;
-}
-
-int32 get_texture_id(Game_State *game_state, char *texture_name) {
-    Hash_Table<int32, Texture> *texture_table = &game_state->texture_table;
-    for (int32 i = 0; i < texture_table->max_entries; i++) {
-        Hash_Table_Entry<int32, Texture> *entry = &texture_table->entries[i];
-        if (!entry->is_occupied) continue;
-
-        Texture *texture = &entry->value;
-
-        if (string_equals(make_string(texture->name), make_string(texture_name))) {
-            return entry->key;
-        }
-    }
-
-    return -1;
-}
-
-//int32 get_material_key_by_name(Game_)
-
-/*
-int32 get_material_index(Game_State *game_state, char *material_name_to_find) {
-    int32 num_materials = game_state->num_materials;
-    Material *materials = game_state->materials;
-
-    String material_name_to_find_string = make_string(material_name_to_find);
-    for (int32 i = 0; i < num_materials; i++) {
-        String material_name = make_string(materials[i].name);
-        if (string_equals(material_name, material_name_to_find_string)) {
-            return i;
-        }
-    }
-
-    return -1;
-}
-*/
-
 bool32 int32_equals(int32 a, int32 b) {
     return a == b;
 }
@@ -159,6 +109,19 @@ Material *get_material_pointer(Game_State *game_state, int32 material_id) {
     return material;
 }
 
+inline bool32 mesh_exists(Game_State *game_state, int32 mesh_id) {
+    return hash_table_exists(game_state->mesh_table, mesh_id);
+}
+
+Mesh get_mesh(Game_State *game_state, int32 mesh_id) {
+    Mesh mesh;
+    bool32 mesh_exists = hash_table_find(game_state->mesh_table,
+                                         mesh_id,
+                                         &mesh);
+    assert(mesh_exists);
+    return mesh;
+}
+
 Texture get_texture(Game_State *game_state, int32 texture_id) {
     Texture texture;
     bool32 texture_exists = hash_table_find(game_state->texture_table,
@@ -169,16 +132,14 @@ Texture get_texture(Game_State *game_state, int32 texture_id) {
 }
 
 Normal_Entity make_entity(Game_State *game_state,
-                          char *mesh_name,
+                          int32 mesh_id,
                           int32 material_id,
                           Transform transform) {
-    int32 mesh_index = get_mesh_index(game_state, mesh_name);
-    assert(mesh_index >= 0);
-
+    assert(mesh_exists(game_state, mesh_id));
     assert(material_exists(game_state, material_id));
     
     Normal_Entity entity = { ENTITY_NORMAL, transform,
-                             mesh_index, material_id };
+                             mesh_id, material_id };
     return entity;
 }
 
@@ -190,23 +151,23 @@ Texture make_texture(Game_State *game_state, String_Buffer texture_name, String_
 }
 
 Point_Light_Entity make_point_light_entity(Game_State *game_state,
-                                           char *mesh_name,
+                                           int32 mesh_id,
                                            int32 material_id,
                                            Vec3 light_color,
                                            real32 d_min, real32 d_max,
                                            Transform transform) {
-    int32 mesh_index = get_mesh_index(game_state, mesh_name);
-
+    assert(mesh_exists(game_state, mesh_id));
     assert(material_exists(game_state, material_id));
     Point_Light_Entity entity = { ENTITY_POINT_LIGHT, transform,
-                                  mesh_index, material_id,
+                                  mesh_id, material_id,
                                   light_color, d_min, d_max };
     return entity;
 }
 
-void add_mesh(Game_State *game_state, Mesh mesh) {
-    assert(game_state->num_meshes < MAX_MESHES);
-    game_state->meshes[game_state->num_meshes++] = mesh;
+int32 add_mesh(Game_State *game_state, Mesh mesh) {
+    int32 mesh_id = game_state->mesh_table.total_added_ever;
+    hash_table_add(&game_state->mesh_table, mesh_id, mesh);
+    return mesh_id;
 }
 
 void add_entity(Game_State *game_state, Normal_Entity entity) {
@@ -286,6 +247,9 @@ void init_game(Game_State *game_state,
     game_state->font_file_table = make_hash_table<String, File_Data>((Allocator *) &memory.hash_table_stack,
                                                                      HASH_TABLE_SIZE,
                                                                      &string_equals);
+    game_state->mesh_table = make_hash_table<int32, Mesh>((Allocator *) &memory.hash_table_stack,
+                                                                  HASH_TABLE_SIZE,
+                                                                  &int32_equals);
     game_state->material_table = make_hash_table<int32, Material>((Allocator *) &memory.hash_table_stack,
                                                                    HASH_TABLE_SIZE,
                                                                    &int32_equals);
@@ -300,27 +264,27 @@ void init_game(Game_State *game_state,
     Mesh mesh;
     mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena, "blender/cube.mesh",
                               make_string_buffer(mesh_name_allocator, "cube", MESH_NAME_MAX_SIZE));
-    add_mesh(game_state, mesh);
+    int32 cube_mesh_id = add_mesh(game_state, mesh);
 
     mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena, "blender/suzanne2.mesh",
                               make_string_buffer(mesh_name_allocator, "suzanne", MESH_NAME_MAX_SIZE));
-    add_mesh(game_state, mesh);
+    int32 suzanne_mesh_id = add_mesh(game_state, mesh);
 
     mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena, "blender/gizmo_arrow.mesh",
                               make_string_buffer(mesh_name_allocator, "gizmo_arrow", MESH_NAME_MAX_SIZE));
-    add_mesh(game_state, mesh);
+    int32 gizmo_arrow_mesh_id = add_mesh(game_state, mesh);
 
     mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena, "blender/gizmo_ring.mesh",
                               make_string_buffer(mesh_name_allocator, "gizmo_ring", MESH_NAME_MAX_SIZE));
-    add_mesh(game_state, mesh);
+    int32 gizmo_ring_mesh_id = add_mesh(game_state, mesh);
 
     mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena, "blender/gizmo_sphere.mesh",
                               make_string_buffer(mesh_name_allocator, "gizmo_sphere", MESH_NAME_MAX_SIZE));
-    add_mesh(game_state, mesh);
+    int32 gizmo_sphere_mesh_id = add_mesh(game_state, mesh);
 
     mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena, "blender/sphere.mesh",
                               make_string_buffer(mesh_name_allocator, "sphere", MESH_NAME_MAX_SIZE));
-    add_mesh(game_state, mesh);
+    int32 sphere_mesh_id = add_mesh(game_state, mesh);
 
     // init fonts
     Font font;
@@ -351,9 +315,9 @@ void init_game(Game_State *game_state,
     int32 white_texture_id = add_texture(game_state, texture);
 
     // init editor_state
-    editor_state->gizmo.arrow_mesh_name = "gizmo_arrow";
-    editor_state->gizmo.ring_mesh_name = "gizmo_ring";
-    editor_state->gizmo.sphere_mesh_name = "gizmo_sphere";
+    editor_state->gizmo.arrow_mesh_id = gizmo_arrow_mesh_id;
+    editor_state->gizmo.ring_mesh_id = gizmo_ring_mesh_id;
+    editor_state->gizmo.sphere_mesh_id = gizmo_sphere_mesh_id;
     editor_state->selected_entity_index = -1;
     editor_state->show_wireframe = true;
     editor_state->open_window_flags = 0;
@@ -408,28 +372,28 @@ void init_game(Game_State *game_state,
     transform.scale = make_vec3(1.0f, 1.0f, 1.0f);
     transform.position = make_vec3(2.0f, 1.0f, 0.0f);
     transform.rotation = make_quaternion(45.0f, y_axis);
-    entity = make_entity(game_state, "suzanne", shiny_monkey_material_id, transform);
+    entity = make_entity(game_state, suzanne_mesh_id, shiny_monkey_material_id, transform);
     add_entity(game_state, entity);
 
     transform = {};
     transform.scale = make_vec3(5.0f, 0.1f, 5.0f);
     transform.position = make_vec3(0.0f, 0.0f, 0.0f);
     transform.rotation = make_quaternion();
-    entity = make_entity(game_state, "cube", plane_material_id, transform);
+    entity = make_entity(game_state, cube_mesh_id, plane_material_id, transform);
     add_entity(game_state, entity);
 
     transform = {};
     transform.scale = make_vec3(1.0f, 1.0f, 1.0f);
     transform.position = make_vec3(0.0f, 1.0f, 0.0f);
     transform.rotation = make_quaternion(45.0f, y_axis);
-    entity = make_entity(game_state, "gizmo_arrow", arrow_material_id, transform);
+    entity = make_entity(game_state, gizmo_arrow_mesh_id, arrow_material_id, transform);
     add_entity(game_state, entity);
 
     transform = {};
     transform.scale = make_vec3(0.5f, 0.5f, 0.5f);
     transform.position = make_vec3(-1.5f, 1.5f, -1.0f);
     transform.rotation = make_quaternion();
-    entity = make_entity(game_state, "sphere", diffuse_sphere_material_id, transform);
+    entity = make_entity(game_state, sphere_mesh_id, diffuse_sphere_material_id, transform);
     add_entity(game_state, entity);
 
     Vec3 light_color;
@@ -440,7 +404,7 @@ void init_game(Game_State *game_state,
     transform.position = make_vec3(0.8f, 1.8f, -2.3f);
     transform.rotation = make_quaternion();
     light_color = make_vec3(0.8f, 0.8f, 0.8f);
-    point_light_entity = make_point_light_entity(game_state, "cube", white_light_material_id,
+    point_light_entity = make_point_light_entity(game_state, cube_mesh_id, white_light_material_id,
                                                  light_color,
                                                  0.0f, 3.0f,
                                                  transform);
@@ -451,7 +415,7 @@ void init_game(Game_State *game_state,
     transform.position = make_vec3(-1.0f, 1.5f, 0.0f);
     transform.rotation = make_quaternion();
     light_color = make_vec3(0.0f, 0.0f, 1.0f);
-    point_light_entity = make_point_light_entity(game_state, "cube", blue_light_material_id,
+    point_light_entity = make_point_light_entity(game_state, cube_mesh_id, blue_light_material_id,
                                                  light_color,
                                                  0.0f, 5.0f,
                                                  transform);
