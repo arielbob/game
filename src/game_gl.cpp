@@ -80,24 +80,28 @@
 // TODO (done): material editing in editor
 // TODO (done): list existing materials and be able to change an entity's active material
 
-// TODO: texture library
+// TODO (done): basic texture library
 //       - TODO (done): show a box when the texture button is clicked
 //       - TODO (done): use hash table to store textures in game state
 //       - TODO (done): move texture adding to game_state
 //       - TODO (done): modify image_button to also be able to have text
-//       - TODO: draw image boxes for all the textures
+//       - TODO (done): draw image boxes for all the textures
+//       - TODO (done): change material texture using texture library
+// TODO: material creation
+// TODO: material deletion
+// TODO: texture creation
+//       - we should be able do this in a way where we don't need to have an entity selected to add/remove textures
+// TODO: texture deletion
+// TODO: material name/texture strings validation
+//       check for duplicates and empties. it matters that we don't have duplicates since texture names are used
+//       as keys in the opengl code. we don't store material structs in the opengl code, but it's better to be
+//       consistent.
 // TODO: make textbox use the string pool allocator and use UI states so we don't have to handle making the
 //       string buffer ourselves
 //       - this also allows us to validate the text box without having to create a temp buffer ourselves
 //         (we would just validate the String_Buffer from the text box's state)
 //       - use this in the material name textbox, since right now the material name can be empty
-// TODO: material creation/deletion
-// TODO: texture creation/deletion
-//       - we should be able do this in a way where we don't need to have an entity selected to add/remove textures
-// TODO: material name/texture strings validation
-//       check for duplicates and empties. it matters that we don't have duplicates since texture names are used
-//       as keys in the opengl code. we don't store material structs in the opengl code, but it's better to be
-//       consistent.
+
 // TODO: mesh library
 // TODO: unload textures and fonts in OpenGL code if the texture no longer exists in the game state
 

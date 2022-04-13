@@ -553,15 +553,6 @@ void update(Game_State *game_state,
     Editor_State *editor_state = &game_state->editor_state;
     Render_State *render_state = &game_state->render_state;
 
-    UI_Image_Button_Style image_button_style = default_image_button_style;
-    image_button_style.image_constraint_flags = CONSTRAINT_FILL_BUTTON_WIDTH | CONSTRAINT_KEEP_IMAGE_PROPORTIONS;
-    do_image_button(ui_manager, controller_state,
-                    0.0f, 0.0f,
-                    100.0f, 120.0f,
-                    image_button_style, default_text_style,
-                    "debug", "text", "courier18b",
-                    "test_image_button");
-
     if (just_pressed(controller_state->key_tab) && !has_focus(ui_manager)) {
         editor_state->use_freecam = !editor_state->use_freecam;
         platform_set_cursor_visible(!editor_state->use_freecam);

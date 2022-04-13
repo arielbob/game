@@ -7,7 +7,6 @@
 #define SIDE_TOP    0x4
 #define SIDE_BOTTOM 0x8
 
-
 #define ROW_HEIGHT 30.0f
 #define SMALL_ROW_HEIGHT 20.0f
 
@@ -112,7 +111,7 @@ void draw_labeled_text(Game_State *game_state, UI_Manager *ui_manager,
                          text, text_font, text_style);
 }
 
-void draw_texture_library(Game_State *game_state, Controller_State *controller_state, Entity *selected_entity) {
+void draw_texture_library(Game_State *game_state, Controller_State *controller_state, Material *selected_material) {
     Render_State *render_state = &game_state->render_state;
     UI_Manager *ui_manager = &game_state->ui_manager;
     Editor_State *editor_state = &game_state->editor_state;
@@ -125,9 +124,9 @@ void draw_texture_library(Game_State *game_state, Controller_State *controller_s
     real32 x_gap = 10.0f;
     real32 y_gap = 10.0f;
 
-    int32 num_items_per_row = 1;
-    real32 item_width = 500.0f;
-    real32 item_height = 20.0f;
+    int32 num_items_per_row = 5;
+    real32 item_width = 100.0f;
+    real32 item_height = 120.0f;
 
     real32 window_width = padding_x * 2 + x_gap * (num_items_per_row - 1) + num_items_per_row*item_width;
 
@@ -172,16 +171,45 @@ void draw_texture_library(Game_State *game_state, Controller_State *controller_s
 
     Allocator *allocator = (Allocator *) &memory.frame_arena;
 
+    x += padding_x;
+    y += padding_y;
 
+    UI_Image_Button_Style image_button_style = default_image_button_style;
+    image_button_style.image_constraint_flags = CONSTRAINT_FILL_BUTTON_WIDTH | CONSTRAINT_KEEP_IMAGE_PROPORTIONS;
 
+    Hash_Table<String, Texture> *texture_table = &game_state->texture_table;
+    char *button_id_string = "texture_library_item";
+    Texture *picked_texture = NULL;
+    for (int32 i = 0; i < texture_table->max_entries; i++) {
+        Hash_Table_Entry<String, Texture> *entry = &texture_table->entries[i];
+        if (!entry->is_occupied) continue;
 
+        Texture *texture = &entry->value;
+        
+        char *texture_name = to_char_array(allocator, texture->name);
+        bool32 pressed = do_image_button(ui_manager, controller_state,
+                                         x, y,
+                                         item_width, item_height,
+                                         image_button_style, default_text_style,
+                                         texture_name, texture_name, font_name_bold,
+                                         button_id_string, i);
 
+        if (pressed) picked_texture = texture;
+        x += item_width + x_gap;
+        if (x + item_width > initial_x + window_width) {
+            x = initial_x + padding_x;
+            y += item_height + y_gap;
+        }
+    }
+    
+    if (picked_texture) {
+        if (is_empty(selected_material->texture_name) ||
+            !string_equals(make_string(picked_texture->name), make_string(selected_material->texture_name))) {
+            selected_material->texture_name = picked_texture->name;
+        }
 
-
-
-
-
-
+        editor_state->open_window_flags = 0;
+    }
 
     pop_layer(ui_manager);
 }
@@ -249,6 +277,7 @@ void draw_material_library(Game_State *game_state, Controller_State *controller_
 
     x += padding_x;
     y += padding_y;
+
     Material *materials = game_state->materials;
     int32 pressed_index = -1;
     
@@ -615,7 +644,8 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
         if (editor_state->open_window_flags & MATERIAL_LIBRARY_WINDOW) {
             draw_material_library(game_state, controller_state, selected_entity);
         } else if (editor_state->open_window_flags & TEXTURE_LIBRARY_WINDOW) {
-            draw_texture_library(game_state, controller_state, selected_entity);
+            Material *selected_material = &game_state->materials[selected_entity->material_index];
+            draw_texture_library(game_state, controller_state, selected_material);
         }
     } else {
         reset_entity_editors(editor_state);
