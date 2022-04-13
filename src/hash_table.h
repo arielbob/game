@@ -3,9 +3,11 @@
 
 #include "string.h"
 
-#define HASH_TABLE_BUCKETS 64
-//#define HASH_TABLE_SIZE 256
-#define HASH_TABLE_SIZE 16
+#define HASH_TABLE_SIZE 64
+
+int32 get_hash(int32 id, uint32 bucket_size) {
+    return id % bucket_size;
+}
 
 template <class Key_Type, class Value_Type>
 struct Hash_Table_Entry {
@@ -17,6 +19,7 @@ struct Hash_Table_Entry {
 template <class Key_Type, class Value_Type>
 struct Hash_Table {
     Hash_Table_Entry<Key_Type, Value_Type> *entries;
+    int32 total_added_ever;
     int32 num_entries;
     int32 max_entries;
     Allocator *allocator;
@@ -32,6 +35,7 @@ Hash_Table<Key_Type, Value_Type> make_hash_table(Allocator *allocator,
     uint32 entry_size = sizeof(Hash_Table_Entry<Key_Type, Value_Type>);
     hash_table.entries = ((Hash_Table_Entry<Key_Type, Value_Type> *)
                           allocate(allocator, entry_size * max_entries));
+    hash_table.total_added_ever = 0;
     hash_table.num_entries = 0;
     hash_table.max_entries = max_entries;
     hash_table.allocator = allocator;
@@ -57,6 +61,7 @@ void hash_table_add(Hash_Table<Key_Type, Value_Type> *hash_table, Key_Type key, 
             Hash_Table_Entry<Key_Type, Value_Type> new_entry = { true, key, value };
             hash_table->entries[hash] = new_entry;
             hash_table->num_entries++;
+            hash_table->total_added_ever++;
             return;
         }
     }

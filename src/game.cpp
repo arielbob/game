@@ -89,6 +89,24 @@ int32 get_mesh_index(Game_State *game_state, char *mesh_name_to_find) {
     return -1;
 }
 
+int32 get_texture_id(Game_State *game_state, char *texture_name) {
+    Hash_Table<int32, Texture> *texture_table = &game_state->texture_table;
+    for (int32 i = 0; i < texture_table->max_entries; i++) {
+        Hash_Table_Entry<int32, Texture> *entry = &texture_table->entries[i];
+        if (!entry->is_occupied) continue;
+
+        Texture *texture = &entry->value;
+
+        if (string_equals(make_string(texture->name), make_string(texture_name))) {
+            return entry->key;
+        }
+    }
+
+    return -1;
+}
+
+//int32 get_material_key_by_name(Game_)
+
 /*
 int32 get_material_index(Game_State *game_state, char *material_name_to_find) {
     int32 num_materials = game_state->num_materials;
@@ -106,49 +124,61 @@ int32 get_material_index(Game_State *game_state, char *material_name_to_find) {
 }
 */
 
+bool32 int32_equals(int32 a, int32 b) {
+    return a == b;
+}
+
 Material make_material(String_Buffer material_name,
-                       String_Buffer texture_name,
+                       int32 texture_id,
                        real32 specular_exponent,
                        Vec4 color_override, bool32 use_color_override) {
-    Material material = { material_name, texture_name,
+    Material material = { material_name, texture_id,
                           specular_exponent, color_override, use_color_override };
     return material;
 }
 
-bool32 material_exists(Game_State *game_state, String_Buffer material_name) {
-    return hash_table_exists(game_state->material_table, make_string(material_name));
+bool32 material_exists(Game_State *game_state, int32 material_id) {
+    return hash_table_exists(game_state->material_table, material_id);
 }
 
-Material get_material(Game_State *game_state, String_Buffer material_name) {
+Material get_material(Game_State *game_state, int32 material_id) {
     Material material;
     bool32 material_exists = hash_table_find(game_state->material_table,
-                                             make_string(material_name),
+                                             material_id,
                                              &material);
     assert(material_exists);
     return material;
 }
 
-Material *get_material_pointer(Game_State *game_state, String_Buffer material_name) {
+Material *get_material_pointer(Game_State *game_state, int32 material_id) {
     Material *material;
     bool32 material_exists = hash_table_find_pointer(game_state->material_table,
-                                                     make_string(material_name),
+                                                     material_id,
                                                      &material);
     assert(material_exists);
     return material;
 }
 
+Texture get_texture(Game_State *game_state, int32 texture_id) {
+    Texture texture;
+    bool32 texture_exists = hash_table_find(game_state->texture_table,
+                                            texture_id,
+                                            &texture);
+    assert(texture_exists);
+    return texture;
+}
+
 Normal_Entity make_entity(Game_State *game_state,
                           char *mesh_name,
-                          String_Buffer material_name,
+                          int32 material_id,
                           Transform transform) {
     int32 mesh_index = get_mesh_index(game_state, mesh_name);
     assert(mesh_index >= 0);
 
-    // TODO: should be able to pass in an empty String_Buffer (thus removing the need for this assert)
-    assert(material_exists(game_state, material_name));
+    assert(material_exists(game_state, material_id));
     
     Normal_Entity entity = { ENTITY_NORMAL, transform,
-                             mesh_index, material_name };
+                             mesh_index, material_id };
     return entity;
 }
 
@@ -161,15 +191,15 @@ Texture make_texture(Game_State *game_state, String_Buffer texture_name, String_
 
 Point_Light_Entity make_point_light_entity(Game_State *game_state,
                                            char *mesh_name,
-                                           String_Buffer material_name,
+                                           int32 material_id,
                                            Vec3 light_color,
                                            real32 d_min, real32 d_max,
                                            Transform transform) {
     int32 mesh_index = get_mesh_index(game_state, mesh_name);
 
-    assert(material_exists(game_state, material_name));
+    assert(material_exists(game_state, material_id));
     Point_Light_Entity entity = { ENTITY_POINT_LIGHT, transform,
-                                  mesh_index, material_name,
+                                  mesh_index, material_id,
                                   light_color, d_min, d_max };
     return entity;
 }
@@ -189,18 +219,20 @@ void add_point_light_entity(Game_State *game_state, Point_Light_Entity entity) {
     game_state->point_lights[game_state->num_point_lights++] = entity;
 }
 
-void add_material(Game_State *game_state, Material material) {
-    //assert(game_state->num_materials < MAX_MATERIALS);
-    //game_state->materials[game_state->num_materials++] = material;
-    hash_table_add(&game_state->material_table, make_string(material.name), material);
+int32 add_material(Game_State *game_state, Material material) {
+    int32 material_id = game_state->material_table.total_added_ever;
+    hash_table_add(&game_state->material_table, material_id, material);
+    return material_id;
 }
 
 void add_font(Game_State *game_state, Font font) {
     hash_table_add(&game_state->font_table, make_string(font.name), font);
 }
 
-void add_texture(Game_State *game_state, Texture texture) {
-    hash_table_add(&game_state->texture_table, make_string(texture.name), texture);
+int32 add_texture(Game_State *game_state, Texture texture) {
+    int32 texture_id = game_state->texture_table.total_added_ever;
+    hash_table_add(&game_state->texture_table, texture_id, texture);
+    return texture_id;
 }
 
 Font get_font(Game_State *game_state, char *font_name) {
@@ -254,12 +286,12 @@ void init_game(Game_State *game_state,
     game_state->font_file_table = make_hash_table<String, File_Data>((Allocator *) &memory.hash_table_stack,
                                                                      HASH_TABLE_SIZE,
                                                                      &string_equals);
-    game_state->material_table = make_hash_table<String, Material>((Allocator *) &memory.hash_table_stack,
+    game_state->material_table = make_hash_table<int32, Material>((Allocator *) &memory.hash_table_stack,
                                                                    HASH_TABLE_SIZE,
-                                                                   &string_equals);
-    game_state->texture_table = make_hash_table<String, Texture>((Allocator *) &memory.hash_table_stack,
+                                                                   &int32_equals);
+    game_state->texture_table = make_hash_table<int32, Texture>((Allocator *) &memory.hash_table_stack,
                                                                  HASH_TABLE_SIZE,
-                                                                 &string_equals);
+                                                                 &int32_equals);
 
     init_camera(camera, display_output);
 
@@ -312,11 +344,11 @@ void init_game(Game_State *game_state,
     texture = make_texture(game_state,
                            make_string_buffer(string64_allocator, "debug", 64),
                            make_string_buffer(filename_allocator, "src/textures/debug_texture.bmp", MAX_PATH));
-    add_texture(game_state, texture);
+    int32 debug_texture_id = add_texture(game_state, texture);
     texture = make_texture(game_state,
                            make_string_buffer(string64_allocator, "white", 64),
                            make_string_buffer(filename_allocator, "src/textures/white.bmp", MAX_PATH));
-    add_texture(game_state, texture);
+    int32 white_texture_id = add_texture(game_state, texture);
 
     // init editor_state
     editor_state->gizmo.arrow_mesh_name = "gizmo_arrow";
@@ -340,41 +372,34 @@ void init_game(Game_State *game_state,
     // add materials
     Material shiny_monkey = make_material(make_string_buffer(string64_allocator,
                                                              "shiny_monkey", MATERIAL_STRING_MAX_SIZE),
-                                          make_string_buffer(string64_allocator,
-                                                             "debug", MATERIAL_STRING_MAX_SIZE),
+                                          debug_texture_id,
                                           100.0f, make_vec4(0.6f, 0.6f, 0.6f, 1.0f), true);
-    add_material(game_state, shiny_monkey);
+    int32 shiny_monkey_material_id = add_material(game_state, shiny_monkey);
 
     Material plane_material = make_material(make_string_buffer(string64_allocator,
                                                                "diffuse_plane", MATERIAL_STRING_MAX_SIZE),
-                                            make_string_buffer(string64_allocator, MATERIAL_STRING_MAX_SIZE),
-                                            1.0f, make_vec4(0.9f, 0.9f, 0.9f, 1.0f), true);
-    add_material(game_state, plane_material);
+                                            -1, 1.0f, make_vec4(0.9f, 0.9f, 0.9f, 1.0f), true);
+    int32 plane_material_id = add_material(game_state, plane_material);
 
     Material arrow_material = make_material(make_string_buffer(string64_allocator,
                                                                "arrow_material", MATERIAL_STRING_MAX_SIZE),
-                                            make_string_buffer(string64_allocator, MATERIAL_STRING_MAX_SIZE),
-                                            100.0f, make_vec4(1.0f, 0.0f, 0.0f, 1.0f), true);
-    add_material(game_state, arrow_material);
+                                            -1, 100.0f, make_vec4(1.0f, 0.0f, 0.0f, 1.0f), true);
+    int32 arrow_material_id = add_material(game_state, arrow_material);
 
     Material white_light_material = make_material(make_string_buffer(string64_allocator,
                                                                      "white_light", MATERIAL_STRING_MAX_SIZE),
-                                                  make_string_buffer(string64_allocator,
-                                                                     MATERIAL_STRING_MAX_SIZE),
-                                                  0.0f, make_vec4(1.0f, 1.0f, 1.0f, 1.0f), true);
-    add_material(game_state, white_light_material);
+                                                  -1, 0.0f, make_vec4(1.0f, 1.0f, 1.0f, 1.0f), true);
+    int32 white_light_material_id = add_material(game_state, white_light_material);
+
     Material blue_light_material = make_material(make_string_buffer(string64_allocator,
                                                                     "blue_light", MATERIAL_STRING_MAX_SIZE),
-                                                 make_string_buffer(string64_allocator,
-                                                                    MATERIAL_STRING_MAX_SIZE),
-                                                 0.0f, make_vec4(0.0f, 0.0f, 1.0f, 1.0f), true);
-    add_material(game_state, blue_light_material);
+                                                 -1, 0.0f, make_vec4(0.0f, 0.0f, 1.0f, 1.0f), true);
+    int32 blue_light_material_id = add_material(game_state, blue_light_material);
+
     Material diffuse_sphere_material = make_material(make_string_buffer(string64_allocator,
                                                                         "diffuse_sphere", MATERIAL_STRING_MAX_SIZE),
-                                                     make_string_buffer(string64_allocator,
-                                                                        MATERIAL_STRING_MAX_SIZE),
-                                                     5.0f, rgb_to_vec4(176, 176, 176), true);
-    add_material(game_state, diffuse_sphere_material);
+                                                     -1, 5.0f, rgb_to_vec4(176, 176, 176), true);
+    int32 diffuse_sphere_material_id = add_material(game_state, diffuse_sphere_material);
 
     // add entities
     Transform transform = {};
@@ -383,36 +408,28 @@ void init_game(Game_State *game_state,
     transform.scale = make_vec3(1.0f, 1.0f, 1.0f);
     transform.position = make_vec3(2.0f, 1.0f, 0.0f);
     transform.rotation = make_quaternion(45.0f, y_axis);
-    entity = make_entity(game_state, "suzanne",
-                         make_string_buffer(string64_allocator, "shiny_monkey", MATERIAL_STRING_MAX_SIZE),
-                         transform);
+    entity = make_entity(game_state, "suzanne", shiny_monkey_material_id, transform);
     add_entity(game_state, entity);
 
     transform = {};
     transform.scale = make_vec3(5.0f, 0.1f, 5.0f);
     transform.position = make_vec3(0.0f, 0.0f, 0.0f);
     transform.rotation = make_quaternion();
-    entity = make_entity(game_state, "cube",
-                         make_string_buffer(string64_allocator, "diffuse_plane", MATERIAL_STRING_MAX_SIZE),
-                         transform);
+    entity = make_entity(game_state, "cube", plane_material_id, transform);
     add_entity(game_state, entity);
 
     transform = {};
     transform.scale = make_vec3(1.0f, 1.0f, 1.0f);
     transform.position = make_vec3(0.0f, 1.0f, 0.0f);
     transform.rotation = make_quaternion(45.0f, y_axis);
-    entity = make_entity(game_state, "gizmo_arrow",
-                         make_string_buffer(string64_allocator, "arrow_material", MATERIAL_STRING_MAX_SIZE),
-                         transform);
+    entity = make_entity(game_state, "gizmo_arrow", arrow_material_id, transform);
     add_entity(game_state, entity);
 
     transform = {};
     transform.scale = make_vec3(0.5f, 0.5f, 0.5f);
     transform.position = make_vec3(-1.5f, 1.5f, -1.0f);
     transform.rotation = make_quaternion();
-    entity = make_entity(game_state, "sphere",
-                         make_string_buffer(string64_allocator, "diffuse_sphere", MATERIAL_STRING_MAX_SIZE),
-                         transform);
+    entity = make_entity(game_state, "sphere", diffuse_sphere_material_id, transform);
     add_entity(game_state, entity);
 
     Vec3 light_color;
@@ -423,9 +440,7 @@ void init_game(Game_State *game_state,
     transform.position = make_vec3(0.8f, 1.8f, -2.3f);
     transform.rotation = make_quaternion();
     light_color = make_vec3(0.8f, 0.8f, 0.8f);
-    point_light_entity = make_point_light_entity(game_state, "cube",
-                                                 make_string_buffer(string64_allocator, "white_light",
-                                                                    MATERIAL_STRING_MAX_SIZE),
+    point_light_entity = make_point_light_entity(game_state, "cube", white_light_material_id,
                                                  light_color,
                                                  0.0f, 3.0f,
                                                  transform);
@@ -436,9 +451,7 @@ void init_game(Game_State *game_state,
     transform.position = make_vec3(-1.0f, 1.5f, 0.0f);
     transform.rotation = make_quaternion();
     light_color = make_vec3(0.0f, 0.0f, 1.0f);
-    point_light_entity = make_point_light_entity(game_state, "cube",
-                                                 make_string_buffer(string64_allocator, "blue_light",
-                                                                    MATERIAL_STRING_MAX_SIZE),
+    point_light_entity = make_point_light_entity(game_state, "cube", blue_light_material_id,
                                                  light_color,
                                                  0.0f, 5.0f,
                                                  transform);

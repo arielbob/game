@@ -147,10 +147,11 @@ struct Game_State {
     int32 num_point_lights;
     Point_Light_Entity point_lights[MAX_POINT_LIGHTS];
 
-    Hash_Table<String, Material> material_table;
+    Hash_Table<int32, Material> material_table;
+    Hash_Table<int32, Texture> texture_table;
+
     Hash_Table<String, File_Data> font_file_table;
     Hash_Table<String, Font> font_table;
-    Hash_Table<String, Texture> texture_table;
 
     char text_buffer[256] = {}; // debugging
 };
@@ -162,5 +163,7 @@ inline bool32 just_lifted(Controller_Button_State button_state);
 int32 get_mesh_index(Game_State *game_state, char *mesh_name_to_find);
 Entity *get_selected_entity(Game_State *game_state);
 Font get_font(Game_State *game_state, char *font_name);
+int32 add_material(Game_State *game_state, Material material);
+Texture get_texture(Game_State *game_state, int32 texture_id);
 
 #endif

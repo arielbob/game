@@ -14,7 +14,7 @@ enum Entity_Type {
     Entity_Type type;                           \
     Transform transform;                        \
     int32 mesh_index;                           \
-    String_Buffer material_name;
+    int32 material_id;
 
 struct Entity {
     ENTITY_HEADER
@@ -40,7 +40,7 @@ struct Texture {
 
 struct Material {
     String_Buffer name;
-    String_Buffer texture_name;
+    int32 texture_id;
     real32 gloss;
     Vec4 color_override;
     bool32 use_color_override;

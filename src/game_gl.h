@@ -125,7 +125,8 @@ struct GL_Font {
 };
 
 struct GL_Texture {
-    uint32 id;
+    // NOTE: this is the OpenGL id for the texture; it is NOT the same as the id used in game_state.texture_table
+    uint32 id; 
     int32 width;
     int32 height;
     int32 num_channels;
@@ -150,7 +151,7 @@ struct GL_State {
     Hash_Table<String, uint32> shader_ids_table;
     Hash_Table<String, GL_Mesh> mesh_table;
     Hash_Table<String, uint32> font_texture_table;
-    Hash_Table<String, GL_Texture> texture_table;
+    Hash_Table<int32, GL_Texture> texture_table;
     
     // TODO: will have to delete these and remake them on window resize
     GL_Framebuffer gizmo_framebuffer;

@@ -91,28 +91,39 @@
 //                   - actually, i don't think there's really a point to a standalone material library. you
 //                     usually want to look at materials on an entity, so it makes sense that material adding is
 //                     also in the entity window.
-// TODO: material creation
+// TODO (done): material creation
 //       - TODO (done): add an add button next to material on the entity window
 //       - TODO (done): use hash tables for storing materials
-//       - TODO: create new material when add button is pressed
+//       - TODO (done): create new material when add button is pressed
+// TODO (done): switch to material and texture IDs instead material and texture names as hash table keys
+//       - this is because names can change and it's annoying to constantly have to delete a hash table entry
+//         and add it again just because the name changed.
+// TODO: make textbox use the string pool allocator and use UI states so we don't have to handle making the
+//       string buffer ourselves
+//       - this also allows us to validate the text box without having to create a temp buffer ourselves
+//         (we would just validate the String_Buffer from the text box's state)
+//       - use this in the material name textbox, since right now the material name can be empty
+//       - this is kind of unnecessary since we use material and texture IDs now, materials and textures can have
+//         an empty name
+//       - actually, it is not unnecessary. materials and textures should not be allowed to have blank names,
+//         since when an entity doesn't have a material or a material doesn't have a texture, the corresponding
+//         name box is empty, which is useful to know what entities don't have a material or what materials
+//         don't have a texture assigned.
+// TODO: material name/texture strings validation
+//       check for duplicates and empties. it matters that we don't have duplicates since texture names are used
+//       as keys in the opengl code. we don't store material structs in the opengl code, but it's better to be
+//       consistent.
+
 // TODO: material deletion
 // TODO: handle entities with no material (just make them black or something)
 //       - this would happen if you were to delete a material that an entity was using
 // TODO: texture creation
 //       - we should be able do this in a way where we don't need to have an entity selected to add/remove textures
 // TODO: texture deletion
-// TODO: material name/texture strings validation
-//       check for duplicates and empties. it matters that we don't have duplicates since texture names are used
-//       as keys in the opengl code. we don't store material structs in the opengl code, but it's better to be
-//       consistent.
-// TODO: make textbox use the string pool allocator and use UI states so we don't have to handle making the
-//       string buffer ourselves
-//       - this also allows us to validate the text box without having to create a temp buffer ourselves
-//         (we would just validate the String_Buffer from the text box's state)
-//       - use this in the material name textbox, since right now the material name can be empty
+// TODO: delete textures and fonts in OpenGL state if the texture or font no longer exists in the game state
 
 // TODO: mesh library
-// TODO: unload textures and fonts in OpenGL code if the texture no longer exists in the game state
+// TODO: scrollable UI region (mainly for material and texture libraries)
 
 // TODO: click slider for manual value entry
 // TODO: color selector
@@ -312,7 +323,7 @@ void gl_load_shader(GL_State *gl_state,
 }
 
 void gl_load_texture(GL_State *gl_state,
-                     char *texture_filename, char *texture_name) {
+                     char *texture_filename, int32 texture_id_key) {
     Marker m = begin_region();
     File_Data texture_file_data = platform_open_and_read_file((Allocator *) &memory.global_stack,
                                                               texture_filename);
@@ -338,10 +349,10 @@ void gl_load_texture(GL_State *gl_state,
     end_region(m);
 
     GL_Texture gl_texture = { texture_id, width, height, num_channels };
-    hash_table_add(&gl_state->texture_table, make_string(texture_name), gl_texture);
+    hash_table_add(&gl_state->texture_table, texture_id_key, gl_texture);
 }
 
-void gl_load_texture(GL_State *gl_state, Texture texture) {
+void gl_load_texture(GL_State *gl_state, Texture texture, int32 texture_id_key) {
     Marker m = begin_region();
     Allocator *temp_allocator = (Allocator *) &memory.global_stack;
     char *temp_texture_filename = to_char_array(temp_allocator, texture.filename);
@@ -369,7 +380,7 @@ void gl_load_texture(GL_State *gl_state, Texture texture) {
     end_region(m);
 
     GL_Texture gl_texture = { texture_id, width, height, num_channels };
-    hash_table_add(&gl_state->texture_table, make_string(texture.name), gl_texture);    
+    hash_table_add(&gl_state->texture_table, texture_id_key, gl_texture);    
 }
 
 // TODO: use the better stb_truetype packing procedures
@@ -442,10 +453,10 @@ uint32 gl_use_shader(GL_State *gl_state, char *shader_name) {
     return shader_id;
 }
 
-void gl_use_texture(GL_State *gl_state, String texture_name) {
+void gl_use_texture(GL_State *gl_state, int32 texture_id) {
     // TODO: will have to add parameter to specify which texture slot to use
     GL_Texture texture;
-    uint32 texture_exists = hash_table_find(gl_state->texture_table, texture_name, &texture);
+    uint32 texture_exists = hash_table_find(gl_state->texture_table, texture_id, &texture);
     assert(texture_exists);
     glBindTexture(GL_TEXTURE_2D, texture.id); 
 }
@@ -455,10 +466,6 @@ void gl_use_font_texture(GL_State *gl_state, String font_texture_name) {
     uint32 texture_exists = hash_table_find(gl_state->font_texture_table, font_texture_name, &texture_id);
     assert(texture_exists);
     glBindTexture(GL_TEXTURE_2D, texture_id);
-}
-
-inline void gl_use_texture(GL_State *gl_state, char *texture_name) {
-    return gl_use_texture(gl_state, make_string(texture_name));
 }
 
 GL_Mesh gl_use_mesh(GL_State *gl_state, String mesh_name) {
@@ -480,8 +487,8 @@ void gl_draw_solid_mesh(GL_State *gl_state, Render_State *render_state,
     uint32 shader_id = gl_use_shader(gl_state, "solid");
     GL_Mesh gl_mesh = gl_use_mesh(gl_state, mesh_name);
 
-    if (!material.use_color_override && is_empty(material.texture_name)) assert(!"No texture name provided.");
-    if (!material.use_color_override) gl_use_texture(gl_state, make_string(material.texture_name));
+    if (!material.use_color_override && (material.texture_id < 0)) assert(!"No texture name provided.");
+    if (!material.use_color_override) gl_use_texture(gl_state, material.texture_id);
 
     Mat4 model_matrix = get_model_matrix(transform);
     gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
@@ -521,8 +528,8 @@ void gl_draw_mesh(GL_State *gl_state, Render_State *render_state,
 
     GL_Mesh gl_mesh = gl_use_mesh(gl_state, mesh_name);
 
-    if (!material.use_color_override && is_empty(material.texture_name)) assert(!"No texture name provided.");
-    if (!material.use_color_override) gl_use_texture(gl_state, make_string(material.texture_name));
+    if (!material.use_color_override && (material.texture_id < 0)) assert(!"No texture name provided.");
+    if (!material.use_color_override) gl_use_texture(gl_state, material.texture_id);
 
     Mat4 model_matrix = get_model_matrix(transform);
     gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
@@ -544,9 +551,9 @@ void gl_draw_mesh(GL_State *gl_state, Render_State *render_state,
 }
 
 void gl_draw_textured_mesh(GL_State *gl_state, Render_State *render_state,
-                           char *mesh_name, char *texture_name, Transform transform) {
+                           char *mesh_name, int32 texture_id, Transform transform) {
     uint32 shader_id = gl_use_shader(gl_state, "basic_3d_textured");
-    gl_use_texture(gl_state, texture_name);
+    gl_use_texture(gl_state, texture_id);
 
     GL_Mesh gl_mesh;
     uint32 mesh_exists = hash_table_find(gl_state->mesh_table, make_string(mesh_name), &gl_mesh);
@@ -779,8 +786,8 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
                                                                  HASH_TABLE_SIZE, &string_equals);
     gl_state->mesh_table = make_hash_table<String, GL_Mesh>((Allocator *) &memory.hash_table_stack,
                                                             HASH_TABLE_SIZE, &string_equals);
-    gl_state->texture_table = make_hash_table<String, GL_Texture>((Allocator *) &memory.hash_table_stack,
-                                                                  HASH_TABLE_SIZE, &string_equals);
+    gl_state->texture_table = make_hash_table<int32, GL_Texture>((Allocator *) &memory.hash_table_stack,
+                                                                  HASH_TABLE_SIZE, &int32_equals);
     gl_state->font_texture_table = make_hash_table<String, uint32>((Allocator *) &memory.hash_table_stack,
                                                                    HASH_TABLE_SIZE, &string_equals);
 
@@ -1152,10 +1159,10 @@ void gl_draw_quad(GL_State *gl_state,
                   Render_State *render_state,
                   real32 x_pos_pixels, real32 y_pos_pixels,
                   real32 width_pixels, real32 height_pixels,
-                  char *texture_name) {
+                  int32 texture_id) {
     uint32 basic_shader_id = gl_use_shader(gl_state, "basic2");
     GL_Mesh quad_mesh = gl_use_mesh(gl_state, "quad");
-    gl_use_texture(gl_state, texture_name);
+    gl_use_texture(gl_state, texture_id);
 
     real32 quad_vertices[8] = {
         x_pos_pixels, y_pos_pixels + height_pixels,               // bottom left
@@ -1373,7 +1380,7 @@ void gl_draw_ui_image_button(GL_State *gl_state, Game_State *game_state,
                  button.width, button.height, color);
 
     GL_Texture texture;
-    uint32 texture_exists = hash_table_find(gl_state->texture_table, make_string(button.texture_name), &texture);
+    uint32 texture_exists = hash_table_find(gl_state->texture_table, button.texture_id, &texture);
     assert(texture_exists);
 
     real32 width_to_height_ratio = (real32) texture.width / texture.height;
@@ -1395,7 +1402,7 @@ void gl_draw_ui_image_button(GL_State *gl_state, Game_State *game_state,
     }
 
     gl_draw_quad(gl_state, render_state, button.x + style.padding_x, button.y + style.padding_y,
-                 image_width, image_height, button.texture_name);
+                 image_width, image_height, button.texture_id);
 
     if (button.has_text) {
         real32 footer_height = button.height - image_height - style.padding_y;
@@ -1807,21 +1814,21 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
     // load textures
     // TODO: we can break out of this loop early if we've already checked texture_table->num_entries
     //       (this can also be done for the font_table)
-    Hash_Table<String, Texture> *texture_table = &game_state->texture_table;
-    for (int32 i = 0; i < texture_table->max_entries; i++) {
-        Hash_Table_Entry<String, Texture> *entry = &texture_table->entries[i];
-        if (!entry->is_occupied) continue;
+    Hash_Table<int32, Texture> *game_texture_table = &game_state->texture_table;
+    for (int32 i = 0; i < game_texture_table->max_entries; i++) {
+        Hash_Table_Entry<int32, Texture> *game_texture_entry = &game_texture_table->entries[i];
+        if (!game_texture_entry->is_occupied) continue;
 
-        Texture *texture = &entry->value;
+        Texture *game_texture = &game_texture_entry->value;
 
-        if (!texture->is_loaded) {
-            if (!hash_table_exists(gl_state->texture_table, make_string(texture->name))) {
-                gl_load_texture(gl_state, *texture);
+        if (!game_texture->is_loaded) {
+            if (!hash_table_exists(gl_state->texture_table, game_texture_entry->key)) {
+                gl_load_texture(gl_state, *game_texture, game_texture_entry->key);
             } else {
-                debug_print("%s already loaded.\n", texture->name);
+                debug_print("%s already loaded.\n", game_texture->name);
             }
 
-            texture->is_loaded = true;
+            game_texture->is_loaded = true;
         }
     }
 
@@ -1845,7 +1852,7 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
     for (int32 i = 0; i < game_state->num_point_lights; i++) {
         Point_Light_Entity *entity = &game_state->point_lights[i];
         String mesh_name = make_string(game_state->meshes[entity->mesh_index].name);
-        Material material = get_material(game_state, entity->material_name);
+        Material material = get_material(game_state, entity->material_id);
 
         gl_draw_solid_mesh(gl_state, render_state, 
                            mesh_name, material,
@@ -1887,7 +1894,7 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
     for (int32 i = 0; i < game_state->num_entities; i++) {
         Normal_Entity *entity = &game_state->entities[i];
         String mesh_name = make_string(game_state->meshes[entity->mesh_index].name);
-        Material material = get_material(game_state, entity->material_name);
+        Material material = get_material(game_state, entity->material_id);
 
         gl_draw_mesh(gl_state, render_state,
                      mesh_name, material,

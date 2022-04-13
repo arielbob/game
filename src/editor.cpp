@@ -177,24 +177,23 @@ void draw_texture_library(Game_State *game_state, Controller_State *controller_s
     UI_Image_Button_Style image_button_style = default_image_button_style;
     image_button_style.image_constraint_flags = CONSTRAINT_FILL_BUTTON_WIDTH | CONSTRAINT_KEEP_IMAGE_PROPORTIONS;
 
-    Hash_Table<String, Texture> *texture_table = &game_state->texture_table;
+    Hash_Table<int32, Texture> *texture_table = &game_state->texture_table;
     char *button_id_string = "texture_library_item";
-    Texture *picked_texture = NULL;
+    int32 picked_texture_id = -1;
     for (int32 i = 0; i < texture_table->max_entries; i++) {
-        Hash_Table_Entry<String, Texture> *entry = &texture_table->entries[i];
+        Hash_Table_Entry<int32, Texture> *entry = &texture_table->entries[i];
         if (!entry->is_occupied) continue;
 
         Texture *texture = &entry->value;
-        
         char *texture_name = to_char_array(allocator, texture->name);
         bool32 pressed = do_image_button(ui_manager, controller_state,
                                          x, y,
                                          item_width, item_height,
                                          image_button_style, default_text_style,
-                                         texture_name, texture_name, font_name_bold,
+                                         entry->key, texture_name, font_name_bold,
                                          button_id_string, i);
 
-        if (pressed) picked_texture = texture;
+        if (pressed) picked_texture_id = entry->key;
         x += item_width + x_gap;
         if (x + item_width > initial_x + window_width) {
             x = initial_x + padding_x;
@@ -202,10 +201,10 @@ void draw_texture_library(Game_State *game_state, Controller_State *controller_s
         }
     }
     
-    if (picked_texture) {
-        if (is_empty(selected_material->texture_name) ||
-            !string_equals(make_string(picked_texture->name), make_string(selected_material->texture_name))) {
-            copy_string(&selected_material->texture_name, &picked_texture->name);
+    if (picked_texture_id >= 0) {
+        if (selected_material->texture_id < 0 ||
+            picked_texture_id != selected_material->texture_id) {
+            selected_material->texture_id = picked_texture_id;
         }
 
         editor_state->open_window_flags = 0;
@@ -278,11 +277,11 @@ void draw_material_library(Game_State *game_state, Controller_State *controller_
     x += padding_x;
     y += padding_y;
 
-    Hash_Table<String, Material> *material_table = &game_state->material_table;
+    Hash_Table<int32, Material> *material_table = &game_state->material_table;
     char *button_id_string = "material_library_item";
-    Material *picked_material = NULL;
+    int32 picked_material_id = -1;
     for (int32 i = 0; i < material_table->max_entries; i++) {
-        Hash_Table_Entry<String, Material> *entry = &material_table->entries[i];
+        Hash_Table_Entry<int32, Material> *entry = &material_table->entries[i];
         if (!entry->is_occupied) continue;
 
         Material *material = &entry->value;
@@ -294,7 +293,7 @@ void draw_material_library(Game_State *game_state, Controller_State *controller_
                                         font_name_bold,
                                         button_id_string, i);
 
-        if (pressed) picked_material = material;
+        if (pressed) picked_material_id = entry->key;
         x += item_width + x_gap;
         if (x + item_width > initial_x + window_width) {
             x = initial_x + padding_x;
@@ -302,9 +301,9 @@ void draw_material_library(Game_State *game_state, Controller_State *controller_
         }
     }
     
-    if (picked_material) {
-        if (!string_equals(make_string(picked_material->name), make_string(entity->material_name))) {
-            copy_string(&entity->material_name, &picked_material->name);
+    if (picked_material_id >= 0) {
+        if (picked_material_id != entity->material_id) {
+            entity->material_id = picked_material_id;
         }
 
         editor_state->open_window_flags = 0;
@@ -331,7 +330,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     //char *material_name = to_char_array(allocator, entity->material_name);
     Material *material;
     bool32 material_exists = hash_table_find_pointer(game_state->material_table,
-                                                     make_string(entity->material_name),
+                                                     entity->material_id,
                                                      &material);
     assert(material_exists);
     Transform transform = entity->transform;
@@ -499,12 +498,37 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                                  "+", font_name_bold, "add_material");
     x += add_material_button_width + padding_left;
 
-#if 0
     if (add_material_pressed) {
-        Material new_material = {};
-        add_material(game_state, 
-    }
+        Pool_Allocator *string64_pool = &memory.string64_pool;
+#if 0
+        char *material_name_base = "Material";
+        int32 next_attempt = 0;
+        // NOTE: string_format does include the null terminator while String_Buffers don't, so we're
+        //       technically getting only a maximum of 63 characters here, but that's fine.
+        
+        char *name_attempt = string_format((Allocator *) string64_pool, 64,
+                                           next_attempt > 0 ? "Material" : "Material %d",
+                                           next_attempt);
+        while (hash_table_exists(game_state->material_table, make_string(name_attempt))) {
+            pool_remove(string64_pool, name_attempt);
+            next_attempt++;
+            name_attempt = string_format((Allocator *) string64_pool, 64,
+                                         next_attempt > 0 ? "Material" : "Material %d",
+                                         next_attempt);
+        }
 #endif
+
+        Material new_material = { 
+            make_string_buffer((Allocator *) string64_pool, "New Material", MATERIAL_STRING_MAX_SIZE),
+            -1,
+            50.0f,
+            make_vec4(0.0f, 0.0f, 0.0f, 1.0f),
+            true
+        };
+
+        int32 material_id = add_material(game_state, new_material);
+        entity->material_id = material_id;
+    }
 
     real32 edit_material_button_width = row_width - (x - initial_x) - padding_right;
     bool32 edit_material_pressed = do_text_button(ui_manager, controller_state,
@@ -551,7 +575,11 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
 
         y += row_height;
 
-        char *texture_name = to_char_array(allocator, material->texture_name);
+        char *texture_name = "";
+        if (material->texture_id >= 0) {
+            Texture texture = get_texture(game_state, material->texture_id);
+            texture_name = to_char_array(allocator, texture.name);
+            }
         draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags,
                  row_id, row_index++);
         draw_v_centered_text(game_state, ui_manager, x + padding_left, y, row_height,
@@ -607,13 +635,13 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                                               button_style, default_text_style,
                                                               material->use_color_override ? "true" : "false",
                                                               font_name_bold,
-                                                              is_empty(material->texture_name),
+                                                              material->texture_id < 0,
                                                               "material_toggle_use_color_override");
         y += row_height;
         
         if (toggle_color_override_pressed) {
             material->use_color_override = !material->use_color_override;
-            if (is_empty(material->texture_name) && !material->use_color_override) {
+            if (material->texture_id < 0 && !material->use_color_override) {
                 material->use_color_override = true;
             }
         }
@@ -675,7 +703,7 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
         } else if (editor_state->open_window_flags & TEXTURE_LIBRARY_WINDOW) {
             Material *selected_material;
             bool32 material_exists = hash_table_find_pointer(game_state->material_table,
-                                                             make_string(selected_entity->material_name),
+                                                             selected_entity->material_id,
                                                              &selected_material);
             assert(material_exists);
             draw_texture_library(game_state, controller_state, selected_material);

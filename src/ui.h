@@ -148,14 +148,14 @@ struct UI_Image_Button {
     UI_Text_Style text_style;
 
     bool32 has_text;
-    char *texture_name;
+    int32 texture_id;
     char *text;
     char *font;
 };
 
 UI_Image_Button make_ui_image_button(real32 x, real32 y, real32 width, real32 height,
                                      UI_Image_Button_Style style,
-                                     char *texture_name, char *id, int32 index = 0) {
+                                     int32 texture_id, char *id, int32 index = 0) {
     UI_Image_Button button = {};
 
     button.type = UI_IMAGE_BUTTON;
@@ -164,7 +164,7 @@ UI_Image_Button make_ui_image_button(real32 x, real32 y, real32 width, real32 he
     button.width = width;
     button.height = height;
     button.style = style;
-    button.texture_name = texture_name;
+    button.texture_id = texture_id;
 
     UI_id button_id = { UI_IMAGE_BUTTON, id, index };
     button.id = button_id;
@@ -175,7 +175,7 @@ UI_Image_Button make_ui_image_button(real32 x, real32 y, real32 width, real32 he
 UI_Image_Button make_ui_image_button(real32 x, real32 y, real32 width, real32 height,
                                      UI_Image_Button_Style style,
                                      UI_Text_Style text_style,
-                                     char *texture_name, char *text, char *font,
+                                     int32 texture_id, char *text, char *font,
                                      char *id, int32 index = 0) {
     UI_Image_Button button = {};
 
@@ -187,7 +187,7 @@ UI_Image_Button make_ui_image_button(real32 x, real32 y, real32 width, real32 he
     button.style = style;
     button.text_style = text_style;
     button.has_text = true;
-    button.texture_name = texture_name;
+    button.texture_id = texture_id;
     button.text = text;
     button.font = font;
 

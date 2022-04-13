@@ -413,11 +413,11 @@ bool32 do_image_button(UI_Manager *manager, Controller_State *controller_state,
                        real32 width, real32 height,
                        UI_Image_Button_Style style,
                        UI_Text_Style text_style,
-                       char *texture_name, char *text, char *font,
+                       int32 texture_id, char *text, char *font,
                        char *id_string, int32 index = 0) {
     UI_Image_Button button = make_ui_image_button(x_px, y_px, width, height,
                                                   style, text_style,
-                                                  texture_name, text, font,
+                                                  texture_id, text, font,
                                                   id_string, index);
 
     bool32 was_clicked = false;
