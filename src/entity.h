@@ -32,6 +32,12 @@ struct Point_Light_Entity {
     real32 d_max;
 };
 
+struct Texture {
+    String_Buffer name;
+    String_Buffer filename;
+    bool32 is_loaded;
+};
+
 struct Material {
     String_Buffer name;
     String_Buffer texture_name;

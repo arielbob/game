@@ -82,6 +82,9 @@
 
 // TODO: texture library
 //       - TODO (done): show a box when the texture button is clicked
+//       - TODO (done): use hash table to store textures in game state
+//       - TODO (done): move texture adding to game_state
+//       - TODO: draw image boxes for all the textures
 // TODO: make textbox use the string pool allocator and use UI states so we don't have to handle making the
 //       string buffer ourselves
 //       - this also allows us to validate the text box without having to create a temp buffer ourselves
@@ -95,6 +98,7 @@
 //       as keys in the opengl code. we don't store material structs in the opengl code, but it's better to be
 //       consistent.
 // TODO: mesh library
+// TODO: unload textures and fonts in OpenGL code if the texture no longer exists in the game state
 
 // TODO: click slider for manual value entry
 // TODO: color selector
@@ -321,6 +325,37 @@ void gl_load_texture(GL_State *gl_state,
 
     GL_Texture gl_texture = { texture_id, width, height, num_channels };
     hash_table_add(&gl_state->texture_table, make_string(texture_name), gl_texture);
+}
+
+void gl_load_texture(GL_State *gl_state, Texture texture) {
+    Marker m = begin_region();
+    Allocator *temp_allocator = (Allocator *) &memory.global_stack;
+    char *temp_texture_filename = to_char_array(temp_allocator, texture.filename);
+    File_Data texture_file_data = platform_open_and_read_file(temp_allocator,
+                                                              temp_texture_filename);
+
+    int32 width, height, num_channels;
+    stbi_set_flip_vertically_on_load(true);
+    uint8 *data = stbi_load_from_memory((uint8 *) texture_file_data.contents, texture_file_data.size,
+                                        &width, &height, &num_channels, 0);
+    assert(data);
+    
+    uint32 texture_id;
+    glGenTextures(1, &texture_id);
+
+    // TODO: we may want to be able to modify these parameters
+    glBindTexture(GL_TEXTURE_2D, texture_id);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    end_region(m);
+
+    GL_Texture gl_texture = { texture_id, width, height, num_channels };
+    hash_table_add(&gl_state->texture_table, make_string(texture.name), gl_texture);    
 }
 
 // TODO: use the better stb_truetype packing procedures
@@ -936,9 +971,6 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
     glUniformBlockBinding(shader_id, uniform_block_index, 0);
     glUseProgram(0);
     error = glGetError();
-
-    // NOTE: textures
-    gl_load_texture(gl_state, "src/textures/debug_texture.bmp", "debug");
 
     // NOTE: disable culling for now, just for easier debugging...
 #if 0
@@ -1672,6 +1704,7 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
                Display_Output display_output, Win32_Sound_Output *win32_sound_output) {
     Render_State *render_state = &game_state->render_state;
 
+    // load meshes
     for (int32 i = 0; i < game_state->num_meshes; i++) {
         Mesh *mesh = &game_state->meshes[i];
         if (!mesh->is_loaded) {
@@ -1686,9 +1719,7 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
         }
     }
 
-    // TODO: replace hash table linked lists with array implementation.
-    //       this current implementation will probably be very slow if font table is large, but it works for now.
-
+    // load fonts
     Hash_Table<String, Font> *font_table = &game_state->font_table;
     for (int32 i = 0; i < font_table->max_entries; i++) {
         Hash_Table_Entry<String, Font> *entry = &font_table->entries[i];
@@ -1696,7 +1727,6 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
 
         Font *font = &entry->value;
 
-        // TODO: test this
         if (!font->is_baked) {
             if (!hash_table_exists(gl_state->font_texture_table, make_string(font->name))) {
                 gl_init_font(gl_state, font);
@@ -1708,25 +1738,26 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
         }
     }
 
-#if 0
-    Hash_Table<String, Font> *font_table = &game_state->font_table;
-    for (int32 i = 0; i < HASH_TABLE_BUCKETS; i++) {
-        Hash_Table_Bucket_Node<Font> *current = font_table->buckets[i].start;
-        while (current) {
-            Font *font = &current->value;
-            if (!font->is_baked) {
-                if (!hash_table_exists(gl_state->font_texture_table, make_string(font->name))) {
-                    gl_init_font(gl_state, font);
-                } else {
-                    debug_print("%s already loaded.\n", font->name);
-                }
+    // load textures
+    // TODO: we can break out of this loop early if we've already checked texture_table->num_entries
+    //       (this can also be done for the font_table)
+    Hash_Table<String, Texture> *texture_table = &game_state->texture_table;
+    for (int32 i = 0; i < texture_table->max_entries; i++) {
+        Hash_Table_Entry<String, Texture> *entry = &texture_table->entries[i];
+        if (!entry->is_occupied) continue;
 
-                font->is_baked = true;
+        Texture *texture = &entry->value;
+
+        if (!texture->is_loaded) {
+            if (!hash_table_exists(gl_state->texture_table, make_string(texture->name))) {
+                gl_load_texture(gl_state, *texture);
+            } else {
+                debug_print("%s already loaded.\n", texture->name);
             }
-            current = current->next;
+
+            texture->is_loaded = true;
         }
     }
-#endif
 
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);

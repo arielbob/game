@@ -52,6 +52,7 @@ struct Memory {
     // probably be replaced
     Stack_Allocator hash_table_stack;
     Pool_Allocator string64_pool;
+    Pool_Allocator filename_pool;
 };
 
 void *allocate(Allocator *allocator, uint32 size, bool32 zero_memory = true);

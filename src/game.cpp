@@ -126,6 +126,13 @@ Normal_Entity make_entity(Game_State *game_state,
     return entity;
 }
 
+Texture make_texture(Game_State *game_state, String_Buffer texture_name, String_Buffer filename) {
+    Texture texture = {};
+    texture.name = texture_name;
+    texture.filename = filename;
+    return texture;
+}
+
 Point_Light_Entity make_point_light_entity(Game_State *game_state,
                                            char *mesh_name,
                                            char *material_name,
@@ -162,6 +169,10 @@ void add_material(Game_State *game_state, Material material) {
 
 void add_font(Game_State *game_state, Font font) {
     hash_table_add(&game_state->font_table, make_string(font.name), font);
+}
+
+void add_texture(Game_State *game_state, Texture texture) {
+    hash_table_add(&game_state->texture_table, make_string(texture.name), texture);
 }
 
 Font get_font(Game_State *game_state, char *font_name) {
@@ -208,12 +219,16 @@ void init_game(Game_State *game_state,
     Camera *camera = &game_state->render_state.camera;
     Display_Output *display_output = &game_state->render_state.display_output;
 
+    // init tables
     game_state->font_table = make_hash_table<String, Font>((Allocator *) &memory.hash_table_stack,
                                                            HASH_TABLE_SIZE,
                                                            &string_equals);
     game_state->font_file_table = make_hash_table<String, File_Data>((Allocator *) &memory.hash_table_stack,
                                                                      HASH_TABLE_SIZE,
                                                                      &string_equals);
+    game_state->texture_table = make_hash_table<String, Texture>((Allocator *) &memory.hash_table_stack,
+                                                                 HASH_TABLE_SIZE,
+                                                                 &string_equals);
 
     init_camera(camera, display_output);
 
@@ -258,6 +273,15 @@ void init_game(Game_State *game_state,
     add_font(game_state, font);
     font = load_font(game_state, "c:/windows/fonts/lucon.ttf", "lucidaconsole18", 18.0f, 512, 512);
     add_font(game_state, font);
+
+    // init textures
+    Allocator *string64_allocator = (Allocator *) &memory.string64_pool;
+    Allocator *filename_allocator = (Allocator *) &memory.filename_pool;
+    Texture texture;
+    texture = make_texture(game_state,
+                           make_string_buffer(string64_allocator, "debug", 64),
+                           make_string_buffer(filename_allocator, "src/textures/debug_texture.bmp", MAX_PATH));
+    add_texture(game_state, texture);
 
     // init editor_state
     editor_state->gizmo.arrow_mesh_name = "gizmo_arrow";
