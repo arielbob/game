@@ -32,9 +32,10 @@ UI_Slider_Style default_slider_style = { rgb_to_vec4(33, 62, 69),
                                          rgb_to_vec4(186, 45, 47) };
 
 UI_Image_Button_Style default_image_button_style = { 5.0f, 5.0f,
-                                                    rgb_to_vec4(33, 62, 69),
-                                                    rgb_to_vec4(47, 84, 102),
-                                                    rgb_to_vec4(19, 37, 46) };
+                                                     CONSTRAINT_FILL_BUTTON_WIDTH | CONSTRAINT_FILL_BUTTON_HEIGHT,
+                                                     rgb_to_vec4(33, 62, 69),
+                                                     rgb_to_vec4(47, 84, 102),
+                                                     rgb_to_vec4(19, 37, 46) };
 
 UI_Color_Button_Style default_color_button_style = { 5.0f, 5.0f,
                                                      rgb_to_vec4(33, 62, 69),
@@ -71,6 +72,24 @@ void *allocate(UI_Push_Buffer *push_buffer, uint32 size, uint32 alignment_bytes 
     push_buffer->used += size;
 
     return start_byte;
+}
+
+inline real32 get_adjusted_font_height(Font font) {
+    return font.height_pixels - font.scale_for_pixel_height * (font.ascent + font.descent);
+}
+
+inline real32 get_center_x_offset(real32 container_width, real32 element_width) {
+    return (container_width / 2.0f - element_width / 2.0f);
+}
+
+// this is different from get_center_y_offset because text is drawn from the bottom left corner and goes up
+// i.e. it's drawn going up from its baseline, instead of like for quads from the top left going down
+inline real32 get_center_baseline_offset(real32 container_height, real32 text_height) {
+    return (0.5f * (container_height + text_height));
+}
+
+inline real32 get_center_y_offset(real32 height, real32 box_height) {
+    return (height / 2.0f) - (box_height / 2.0f);
 }
     
 void clear_push_buffer(UI_Push_Buffer *buffer) {
@@ -393,11 +412,13 @@ bool32 do_image_button(UI_Manager *manager, Controller_State *controller_state,
                        real32 x_px, real32 y_px,
                        real32 width, real32 height,
                        UI_Image_Button_Style style,
-                       char *texture_name,
+                       UI_Text_Style text_style,
+                       char *texture_name, char *text, char *font,
                        char *id_string, int32 index = 0) {
     UI_Image_Button button = make_ui_image_button(x_px, y_px, width, height,
-                                                  style,
-                                                  texture_name, id_string, index);
+                                                  style, text_style,
+                                                  texture_name, text, font,
+                                                  id_string, index);
 
     bool32 was_clicked = false;
 

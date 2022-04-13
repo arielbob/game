@@ -41,10 +41,6 @@ void reset_entity_editors(Editor_State *editor_state) {
     editor_state->editing_selected_entity_material = false;
 }
 
-inline real32 get_center_y_offset(real32 height, real32 box_height) {
-    return (height / 2.0f) - (box_height / 2.0f);
-}
-
 void draw_row(UI_Manager *ui_manager, Controller_State *controller_state,
               real32 x, real32 y,
               real32 row_width, real32 row_height,

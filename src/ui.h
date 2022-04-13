@@ -16,6 +16,10 @@ enum UI_Type {
 #define TEXT_ALIGN_X 0x1
 #define TEXT_ALIGN_Y 0x2
 
+#define CONSTRAINT_FILL_BUTTON_WIDTH      0x1
+#define CONSTRAINT_FILL_BUTTON_HEIGHT     0x2
+#define CONSTRAINT_KEEP_IMAGE_PROPORTIONS 0x4
+
 #define UI_HEADER                               \
     UI_id id;                                   \
     UI_Type type;
@@ -124,6 +128,8 @@ struct UI_Image_Button_Style {
     real32 padding_x;
     real32 padding_y;
 
+    uint32 image_constraint_flags;
+
     Vec4 normal_color;
     Vec4 hot_color;
     Vec4 active_color;
@@ -139,8 +145,12 @@ struct UI_Image_Button {
     real32 height;
 
     UI_Image_Button_Style style;
+    UI_Text_Style text_style;
 
+    bool32 has_text;
     char *texture_name;
+    char *text;
+    char *font;
 };
 
 UI_Image_Button make_ui_image_button(real32 x, real32 y, real32 width, real32 height,
@@ -155,6 +165,31 @@ UI_Image_Button make_ui_image_button(real32 x, real32 y, real32 width, real32 he
     button.height = height;
     button.style = style;
     button.texture_name = texture_name;
+
+    UI_id button_id = { UI_IMAGE_BUTTON, id, index };
+    button.id = button_id;
+
+    return button;
+}
+
+UI_Image_Button make_ui_image_button(real32 x, real32 y, real32 width, real32 height,
+                                     UI_Image_Button_Style style,
+                                     UI_Text_Style text_style,
+                                     char *texture_name, char *text, char *font,
+                                     char *id, int32 index = 0) {
+    UI_Image_Button button = {};
+
+    button.type = UI_IMAGE_BUTTON;
+    button.x = x;
+    button.y = y;
+    button.width = width;
+    button.height = height;
+    button.style = style;
+    button.text_style = text_style;
+    button.has_text = true;
+    button.texture_name = texture_name;
+    button.text = text;
+    button.font = font;
 
     UI_id button_id = { UI_IMAGE_BUTTON, id, index };
     button.id = button_id;

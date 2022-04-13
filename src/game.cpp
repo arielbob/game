@@ -553,6 +553,15 @@ void update(Game_State *game_state,
     Editor_State *editor_state = &game_state->editor_state;
     Render_State *render_state = &game_state->render_state;
 
+    UI_Image_Button_Style image_button_style = default_image_button_style;
+    image_button_style.image_constraint_flags = CONSTRAINT_FILL_BUTTON_WIDTH | CONSTRAINT_KEEP_IMAGE_PROPORTIONS;
+    do_image_button(ui_manager, controller_state,
+                    0.0f, 0.0f,
+                    100.0f, 120.0f,
+                    image_button_style, default_text_style,
+                    "debug", "text", "courier18b",
+                    "test_image_button");
+
     if (just_pressed(controller_state->key_tab) && !has_focus(ui_manager)) {
         editor_state->use_freecam = !editor_state->use_freecam;
         platform_set_cursor_visible(!editor_state->use_freecam);
@@ -772,27 +781,6 @@ void update(Game_State *game_state,
                     image_button_style, "debug", "debug_image_button");
 #endif
     
-    UI_Slider_Style slider_style = {
-        rgb_to_vec4(33, 62, 69),
-        rgb_to_vec4(47, 84, 102),
-        rgb_to_vec4(19, 37, 46),
-
-        rgb_to_vec4(116, 116, 138),
-        rgb_to_vec4(158, 158, 186),
-        rgb_to_vec4(186, 45, 47)
-    };
-
-    static real32 value = 50.0f;
-    buf = (char *) arena_push(&memory.frame_arena, 16);
-    string_format(buf, 32, "%f", value);
-    value = do_slider(ui_manager, controller_state,
-                      0, 0,
-                      200.0f, 50.0f,
-                      buf, "times24",
-                      0.0f, 100.0f, value,
-                      slider_style, default_text_style,
-                      "test_slider");
-              
     buf = (char *) arena_push(&memory.frame_arena, 128);
     string_format(buf, 128, "hot: %s\nactive: %s",
                   (char *) ui_manager->hot.string_ptr,

@@ -84,6 +84,7 @@
 //       - TODO (done): show a box when the texture button is clicked
 //       - TODO (done): use hash table to store textures in game state
 //       - TODO (done): move texture adding to game_state
+//       - TODO (done): modify image_button to also be able to have text
 //       - TODO: draw image boxes for all the textures
 // TODO: make textbox use the string pool allocator and use UI states so we don't have to handle making the
 //       string buffer ourselves
@@ -1312,7 +1313,7 @@ void gl_draw_ui_text_button(GL_State *gl_state, Game_State *game_state,
     gl_draw_quad(gl_state, &game_state->render_state, button.x, button.y,
                  button.width, button.height, color);
 
-    real32 adjusted_text_height = font.height_pixels - font.scale_for_pixel_height * (font.ascent + font.descent);
+    real32 adjusted_text_height = get_adjusted_font_height(font);
 
     // center text
     real32 text_width = get_width(font, button.text);
@@ -1320,10 +1321,10 @@ void gl_draw_ui_text_button(GL_State *gl_state, Game_State *game_state,
     real32 y_offset = 0;
 
     if (style.text_align_flags & TEXT_ALIGN_X) {
-        x_offset = button.width / 2.0f - text_width / 2.0f;
+        x_offset = get_center_x_offset(button.width, text_width);
     }
     if (style.text_align_flags & TEXT_ALIGN_Y) {
-        y_offset = 0.5f * (button.height + adjusted_text_height);
+        y_offset = get_center_baseline_offset(button.height, adjusted_text_height);
     }
     
     UI_Text_Style text_style = button.text_style;
@@ -1339,9 +1340,10 @@ void gl_draw_ui_text_button(GL_State *gl_state, Game_State *game_state,
                  button.text, text_style.color);
 }
 
-void gl_draw_ui_image_button(GL_State *gl_state, Render_State *render_state,
+void gl_draw_ui_image_button(GL_State *gl_state, Game_State *game_state,
                              UI_Manager *ui_manager,
                              UI_Image_Button button) {
+    Render_State *render_state = &game_state->render_state;
     UI_Image_Button_Style style = button.style;
     Vec4 color;
 
@@ -1356,8 +1358,59 @@ void gl_draw_ui_image_button(GL_State *gl_state, Render_State *render_state,
 
     gl_draw_quad(gl_state, render_state, button.x, button.y,
                  button.width, button.height, color);
+
+    GL_Texture texture;
+    uint32 texture_exists = hash_table_find(gl_state->texture_table, make_string(button.texture_name), &texture);
+    assert(texture_exists);
+
+    real32 width_to_height_ratio = (real32) texture.width / texture.height;
+
+    uint32 image_constraint_flags = style.image_constraint_flags;
+    real32 image_width = (real32) texture.width;
+    real32 image_height = (real32) texture.height;
+    if (image_constraint_flags & CONSTRAINT_FILL_BUTTON_WIDTH) {
+        image_width = button.width - style.padding_x * 2;
+        if (image_constraint_flags & CONSTRAINT_KEEP_IMAGE_PROPORTIONS) {
+            image_height = image_width / width_to_height_ratio;
+        }
+    }
+    if (image_constraint_flags & CONSTRAINT_FILL_BUTTON_HEIGHT) {
+        image_height = button.height - style.padding_y * 2;
+        if (image_constraint_flags & CONSTRAINT_KEEP_IMAGE_PROPORTIONS) {
+            image_width = image_height * width_to_height_ratio;
+        }
+    }
+
     gl_draw_quad(gl_state, render_state, button.x + style.padding_x, button.y + style.padding_y,
-                 button.width - style.padding_x*2, button.height - style.padding_y*2, button.texture_name);
+                 image_width, image_height, button.texture_name);
+
+    if (button.has_text) {
+        real32 footer_height = button.height - image_height - style.padding_y;
+        assert(footer_height >= 0);
+
+        Font font = get_font(game_state, button.font);
+        real32 adjusted_text_height = get_adjusted_font_height(font);
+
+        // center text
+        real32 text_width = get_width(font, button.text);
+        real32 x_offset = get_center_x_offset(button.width, text_width);
+        real32 y_offset = get_center_baseline_offset(footer_height, adjusted_text_height);
+    
+        UI_Text_Style text_style = button.text_style;
+
+        real32 text_x = button.x;
+        real32 text_y = button.y + style.padding_y + image_height;
+        
+        if (text_style.use_offset_shadow) {
+            gl_draw_text(gl_state, &game_state->render_state, &font,
+                         text_x + x_offset, text_y + y_offset + TEXT_SHADOW_OFFSET,
+                         button.text, text_style.offset_shadow_color);
+        }
+
+        gl_draw_text(gl_state, &game_state->render_state, &font,
+                     text_x + x_offset, text_y + y_offset,
+                     button.text, text_style.color);        
+    }
 }
 
 void gl_draw_ui_color_button(GL_State *gl_state, Render_State *render_state,
@@ -1545,7 +1598,7 @@ void gl_draw_ui(GL_State *gl_state, Game_State *game_state,
             } break;
             case UI_IMAGE_BUTTON: {
                 UI_Image_Button *ui_image_button = (UI_Image_Button *) element;
-                gl_draw_ui_image_button(gl_state, render_state, ui_manager, *ui_image_button);
+                gl_draw_ui_image_button(gl_state, game_state, ui_manager, *ui_image_button);
                 address += sizeof(UI_Image_Button);
             } break;
             case UI_COLOR_BUTTON: {
