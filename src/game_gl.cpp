@@ -99,9 +99,10 @@
 //       - this is because names can change and it's annoying to constantly have to delete a hash table entry
 //         and add it again just because the name changed.
 
-// TODO: mesh library
+// TODO (done): mesh library
 //       - TODO (done): use a hash table to store meshes
 //       - TODO (done): change the mesh name text into a button
+//       - TODO (done): display mesh library box
 // TODO: mesh adding
 //       - TODO: will have to have a better way of handling read_and_load_mesh failing (we don't want to just crash
 //               on an assert)

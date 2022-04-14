@@ -30,6 +30,7 @@ struct Gizmo {
 
 #define MATERIAL_LIBRARY_WINDOW 0x1
 #define TEXTURE_LIBRARY_WINDOW  0x2
+#define MESH_LIBRARY_WINDOW     0x4
 
 struct Editor_State {
     Transform_Mode transform_mode;
