@@ -164,5 +164,6 @@ int32 add_material(Game_State *game_state, Material material);
 Texture get_texture(Game_State *game_state, int32 texture_id);
 Mesh get_mesh(Game_State *game_state, int32 mesh_id);
 Mesh *get_mesh_pointer(Game_State *game_state, int32 mesh_id);
+int32 add_mesh(Game_State *game_state, Mesh mesh);
 
 #endif

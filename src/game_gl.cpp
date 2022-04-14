@@ -105,14 +105,24 @@
 //       - TODO (done): display mesh library box
 // TODO (done): fix annoying UI padding and border stuff
 // TODO (done): light properties in editor
-// TODO: mesh adding
+// TODO (done): basic mesh adding
 //       - TODO (done): put add button next to mesh button
 //       - TODO (done): put edit button next to mesh button for editing mesh name
-//       - TODO: open file dialog when add mesh is pressed
-//       - TODO: load and add mesh when a file is picked
-//       - TODO: will have to have a better way of handling read_and_load_mesh failing (we don't want to just crash
-//               on an assert)
+//       - TODO (done): copy-paste file dialog code from game.cpp
+//       - TODO (done): load and add mesh when a file is picked
+
+// TODO: mesh deleting
+// NOTE: i think it's fine if we just load all the meshes into an arena, even if they get deleted.
+//       meshes will not be deleted when you're actually playing the game. we can just clear the arena and then
+//       load all the meshes required for a certain level.
+
 // TODO: color selector
+// TODO: in-game console for outputting messages
+// TODO: level saving/loading
+//       in level loading, we should ensure that duplicates of mesh, texture, and material names do not exist.
+// NOTE: we should not add functions to get materials or textures by their name, since, at least right now, their
+//       names are NOT unique.
+// TODO: error handling for mesh loading (should use in-game console when that's implemented)
 
 // TODO: scale gizmo
 // TODO: material deletion
@@ -128,10 +138,6 @@
 
 // TODO: click slider for manual value entry
 // TODO: slider UI element
-// TODO: level saving/loading
-//       in level loading, we should ensure that duplicates of mesh, texture, and material names do not exist.
-// NOTE: we should not add functions to get materials or textures by their name, since, at least right now, their
-//       names are NOT unique.
 
 // TODO: make textbox use the string pool allocator and use UI states so we don't have to handle making the
 //       string buffer ourselves
@@ -175,7 +181,6 @@
 // TODO: nicer UI (start with window to display selected entity properties)
 // TODO: maybe make game_state and controller_state global variables
 // TODO: directional light (sun light)
-// TODO: in-game console for outputting messages
 
 // TODO: maybe use a push buffer for entities? and use an Entity_Type enum to differentiate between entities?
 //       the upside is that we don't waste space when the amount of one entity type far exceeds another entity

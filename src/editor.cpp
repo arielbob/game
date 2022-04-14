@@ -581,6 +581,20 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         Pool_Allocator *string64_pool = &memory.string64_pool;
 
         // TODO: open file dialog and stuff
+
+        Marker m = begin_region();
+        char *filename = (char *) region_push(&memory.global_stack, PLATFORM_MAX_PATH);
+        
+        if (platform_open_file_dialog(filename, PLATFORM_MAX_PATH)) {
+            String_Buffer new_mesh_name_buffer = make_string_buffer((Allocator *) string64_pool, 64);
+            Mesh new_mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena, filename,
+                                           new_mesh_name_buffer);
+            int32 mesh_id = add_mesh(game_state, new_mesh);
+            entity->mesh_id = mesh_id;
+            editor_state->editing_selected_entity_mesh = true;
+        }
+
+        end_region(m);
 /*
         Mesh new_mesh = { 
             make_string_buffer((Allocator *) string64_pool, "New Mesh", MATERIAL_STRING_MAX_SIZE),
@@ -590,8 +604,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
             true
         };
 
-        int32 mesh_id = add_mesh(game_state, new_mesh);
-        entity->mesh_id = mesh_id;
+        
 */
     }
 
