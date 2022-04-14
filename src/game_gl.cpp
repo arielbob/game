@@ -101,7 +101,7 @@
 
 // TODO: mesh library
 //       - TODO (done): use a hash table to store meshes
-//       - TODO: change the mesh name text into a button
+//       - TODO (done): change the mesh name text into a button
 // TODO: mesh adding
 //       - TODO: will have to have a better way of handling read_and_load_mesh failing (we don't want to just crash
 //               on an assert)
@@ -1806,7 +1806,8 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
         if (!game_mesh_entry->is_occupied) continue;
 
         Mesh *mesh = &game_mesh_entry->value;
-
+        
+        // TODO: test this
         if (!mesh->is_loaded) {
             if (!hash_table_exists(gl_state->mesh_table, game_mesh_entry->key)) {
                 gl_load_mesh(gl_state, *mesh, game_mesh_entry->key);

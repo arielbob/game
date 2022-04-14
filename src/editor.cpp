@@ -375,8 +375,13 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags | SIDE_BOTTOM, row_id, row_index++);
     draw_v_centered_text(game_state, ui_manager, x + padding_left, y, row_height,
                          "Mesh Name", font_name_bold, text_style);
-    draw_v_centered_text(game_state, ui_manager, x + right_column_offset, y, row_height,
-                         mesh_name, font_name, text_style);
+    do_text_button(ui_manager, controller_state,
+                   x + right_column_offset,
+                   y + get_center_y_offset(row_height, inset_row_height),
+                   200.0f, inset_row_height,
+                   button_style, default_text_style,
+                   to_char_array(allocator, mesh.name),
+                   font_name_bold, "choose_mesh");
     y += row_height;
 
     char *buf;
