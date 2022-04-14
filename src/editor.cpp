@@ -40,41 +40,120 @@ bool32 selected_entity_changed(Editor_State *editor_state) {
 
 void reset_entity_editors(Editor_State *editor_state) {
     editor_state->open_window_flags = 0;
-    editor_state->editing_selected_entity_material = false;
+    //editor_state->editing_selected_entity_material = false;
+}
+
+void draw_row_line(UI_Manager *ui_manager, Controller_State *controller_state,
+                   real32 x, real32 *y,
+                   real32 row_width, bool32 draw_outside_row=true) {
+    Vec4 line_color = make_vec4(0.3f, 0.3f, 0.3f, 1.0f);
+    UI_Box_Style line_box_style = { line_color };
+    real32 line_thickness = 1.0f;
+    char *box_id = "row_line";
+    if (draw_outside_row) {
+        x -= 1.0f;
+        row_width += 2.0f;
+    }
+    do_box(ui_manager, controller_state, x, *y, row_width, line_thickness,
+           line_box_style, box_id);
+    *y += 1;
 }
 
 void draw_row(UI_Manager *ui_manager, Controller_State *controller_state,
               real32 x, real32 y,
               real32 row_width, real32 row_height,
               Vec4 color, uint8 side_flags,
+              bool32 inside_border,
               char *row_id, int32 index) {
     UI_Box_Style box_style = { color };
 
     do_box(ui_manager, controller_state, x, y, row_width, row_height,
-           box_style, row_id, index); 
+           box_style, row_id, index);
 
+    // we use boxes instead of lines here because our GL code for drawing lines is really finnicky when
+    // trying to draw pixel-perfect horizontal or vertical lines
     Vec4 line_color = make_vec4(0.3f, 0.3f, 0.3f, 1.0f);
-    
-    UI_Line_Style line_style = { line_color, 1.0f };
+    UI_Box_Style line_box_style = { line_color };
+
+    // we draw lines on the inside of the box, so we don't change the expected dimensions of the row
+    real32 line_thickness = 1.0f;
+    char *border_id = "row_border";
     if (side_flags & SIDE_LEFT) {
-        do_line(ui_manager, { x, y - 1 }, { x, y + row_height },
-                line_style,
-                row_id);
+        real32 box_x = x;
+        if (!inside_border) box_x -= 1;
+        do_box(ui_manager, controller_state, box_x, y, line_thickness, row_height,
+               line_box_style, border_id);
     }
     if (side_flags & SIDE_BOTTOM) {
-        do_line(ui_manager, { x, y + row_height }, { x + row_width, y + row_height },
-                line_style,
-                row_id);
+        real32 box_x = x;
+        real32 box_y = y + row_height - 1;
+        real32 box_width = row_width;
+        if (!inside_border) {
+            box_y += 1;
+            if (side_flags & SIDE_LEFT) {
+                box_x -= 1;
+                box_width += 1;
+            }
+            if (side_flags & SIDE_RIGHT) {
+                box_width += 1;
+            }
+        } 
+        do_box(ui_manager, controller_state, box_x, box_y, box_width, line_thickness,
+               line_box_style, border_id);
     }
     if (side_flags & SIDE_TOP) {
-        do_line(ui_manager, { x, y }, { x + row_width, y },
-                line_style,
-                row_id);
+        real32 box_x = x;
+        real32 box_y = y;
+        real32 box_width = row_width;
+        if (!inside_border) {
+            box_y -= 1;
+            if (side_flags & SIDE_LEFT) {
+                box_x -= 1;
+                box_width += 1;
+            }
+            if (side_flags & SIDE_RIGHT) {
+                box_width += 1;
+            }
+        } 
+        do_box(ui_manager, controller_state, box_x, box_y, box_width, line_thickness,
+               line_box_style, border_id);
     }
     if (side_flags & SIDE_RIGHT) {
-        do_line(ui_manager, { x + row_width, y }, { x + row_width, y + row_height },
-                line_style,
-                row_id);
+        real32 box_x = x + row_width - 1;
+        if (!inside_border) box_x += 1;
+        do_box(ui_manager, controller_state, box_x, y, line_thickness, row_height,
+               line_box_style, border_id);
+    }
+}
+
+inline void draw_row(UI_Manager *ui_manager, Controller_State *controller_state,
+                     real32 x, real32 y,
+                     real32 row_width, real32 row_height,
+                     Vec4 color, uint8 side_flags,
+                     char *row_id, int32 index) {
+    return draw_row(ui_manager, controller_state,
+                    x, y,
+                    row_width, row_height,
+                    color, side_flags,
+                    false,
+                    row_id, index);
+}
+
+inline void draw_row_padding(UI_Manager *ui_manager, Controller_State *controller_state,
+                             real32 x, real32 *y,
+                             real32 row_width,
+                             real32 padding,
+                             Vec4 color, uint8 side_flags,
+                             int32 index) {
+    draw_row(ui_manager, controller_state,
+             x, *y,
+             row_width, padding,
+             color, side_flags,
+             "row_padding", index);
+    *y += padding;
+    if (side_flags & SIDE_BOTTOM) {
+        // beacuse we're drawing the border on the outside, we need to offset by the border thickness (1)
+        *y += 1;
     }
 }
 
@@ -423,7 +502,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
 
     Allocator *allocator = (Allocator *) &memory.frame_arena;
 
-    Mesh mesh = get_mesh(game_state, entity->mesh_id);
+    Mesh *mesh = get_mesh_pointer(game_state, entity->mesh_id);
     Material *material;
     bool32 material_exists = hash_table_find_pointer(game_state->material_table,
                                                      entity->material_id,
@@ -435,16 +514,17 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     
     UI_Text_Style text_style = default_text_style;
     
-    real32 padding_left = 5.0f;
+    real32 padding_left = 6.0f;
     real32 padding_right = padding_left;
     real32 padding_top = padding_left;
     real32 padding_bottom = padding_left;
+    real32 padding_y = padding_top;
     real32 right_column_offset = padding_left + 200.0f;
     real32 small_spacing = 20.0f;
 
-    real32 row_height = ROW_HEIGHT;
+    real32 initial_row_height = 22.0f;
+    real32 row_height = initial_row_height;
     real32 small_row_height = SMALL_ROW_HEIGHT;
-    real32 inset_row_height = small_row_height;
     real32 row_width = 500.0f;
 
     Vec4 title_row_color = make_vec4(0.05f, 0.2f, 0.5f, 1.0f);
@@ -460,32 +540,105 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     char *row_id = "mesh_properties_line";
 
     draw_row(ui_manager, controller_state, x, y, row_width, title_row_height, title_row_color,
-             side_flags | SIDE_TOP | SIDE_BOTTOM, row_id, row_index++);
+             side_flags | SIDE_TOP, row_id, row_index++);
     draw_centered_text(game_state, ui_manager, x, y, row_width, title_row_height,
                        "Entity Properties", editor_font_name_bold, text_style);
     y += title_row_height;
+    draw_row_line(ui_manager, controller_state, x, &y, row_width);
         
-    char *mesh_name = to_char_array(allocator, mesh.name);
-    draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags | SIDE_BOTTOM, row_id, row_index++);
+    real32 choose_mesh_button_width = 200.0f;
+    real32 add_mesh_button_width = 30.0f;
+    choose_mesh_button_width -= add_mesh_button_width;
+
+    char *mesh_name = to_char_array(allocator, mesh->name);
+    draw_row_padding(ui_manager, controller_state, x, &y, row_width, padding_top, row_color, side_flags,
+                     row_index++);
+    draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags,
+             row_id, row_index++);
     draw_v_centered_text(game_state, ui_manager, x + padding_left, y, row_height,
-                         "Mesh Name", editor_font_name_bold, text_style);
+                         "Mesh", editor_font_name_bold, text_style);
+    x += right_column_offset;
     bool32 choose_mesh_pressed = do_text_button(ui_manager, controller_state,
-                                                x + right_column_offset,
-                                                y + get_center_y_offset(row_height, inset_row_height),
-                                                200.0f, inset_row_height,
+                                                x, y,
+                                                choose_mesh_button_width, row_height,
                                                 button_style, default_text_style,
-                                                to_char_array(allocator, mesh.name),
+                                                to_char_array(allocator, mesh->name),
                                                 editor_font_name_bold, "choose_mesh");
-    y += row_height;
 
     if (!editor_state->open_window_flags && choose_mesh_pressed) {
         editor_state->open_window_flags |= MESH_LIBRARY_WINDOW;
     }
+    x += choose_mesh_button_width + padding_left;
+
+    bool32 add_mesh_pressed = do_text_button(ui_manager, controller_state,
+                                             x, y,
+                                             add_mesh_button_width, row_height,
+                                             button_style, default_text_style,
+                                             "+", editor_font_name_bold, "add_mesh");
+    x += add_mesh_button_width + padding_left;
+
+    if (add_mesh_pressed) {
+        Pool_Allocator *string64_pool = &memory.string64_pool;
+
+        // TODO: open file dialog and stuff
+/*
+        Mesh new_mesh = { 
+            make_string_buffer((Allocator *) string64_pool, "New Mesh", MATERIAL_STRING_MAX_SIZE),
+            -1,
+            50.0f,
+            make_vec4(0.0f, 0.0f, 0.0f, 1.0f),
+            true
+        };
+
+        int32 mesh_id = add_mesh(game_state, new_mesh);
+        entity->mesh_id = mesh_id;
+*/
+    }
+
+    real32 edit_mesh_button_width = row_width - (x - initial_x) - padding_right;
+    bool32 edit_mesh_pressed = do_text_button(ui_manager, controller_state,
+                                              x, y,
+                                              edit_mesh_button_width, row_height,
+                                              button_style, default_text_style,
+                                              "Edit", editor_font_name_bold,
+                                              false,
+                                              "edit_mesh");
+
+    if (edit_mesh_pressed) {
+        editor_state->editing_selected_entity_mesh = !editor_state->editing_selected_entity_mesh;
+    }
+
+    y += row_height;
+    x = initial_x;
+    if (editor_state->editing_selected_entity_mesh) {
+        draw_row_padding(ui_manager, controller_state, x, &y, row_width, padding_y, row_color, side_flags,
+            row_index++);
+        UI_Text_Box_Style text_box_style = default_text_box_style;
+        real32 edit_box_width = choose_mesh_button_width + padding_left + add_mesh_button_width;
+
+        draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags,
+                 row_id, row_index++);
+        draw_v_centered_text(game_state, ui_manager, x + padding_left, y, row_height,
+                             "Mesh Name", editor_font_name_bold, default_text_style);
+        do_text_box(ui_manager, controller_state,
+                    x + right_column_offset,
+                    y,
+                    edit_box_width, row_height,
+                    &mesh->name, editor_font_name_bold,
+                    text_box_style, default_text_style,
+                    "mesh_name_text_box");
+        y += row_height;
+        
+    }
+    draw_row_padding(ui_manager, controller_state, x, &y, row_width, padding_y, row_color,
+                     side_flags | SIDE_BOTTOM, row_index++);
+
+    x = initial_x;
 
     char *buf;
     int32 buffer_size = 16;
     
-    // position
+    // POSITION
     draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags, row_id, row_index++);
     draw_v_centered_text(game_state, ui_manager, x+padding_left, y, small_row_height,
                          "Position", editor_font_name_bold, text_style);
@@ -501,14 +654,16 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                       editor_font_name_bold, "y", editor_font_name, buf, text_style);
     y += small_row_height;
     // z
-    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags | SIDE_BOTTOM,
+    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags,
              row_id, row_index++);
     buf = string_format(allocator, buffer_size, "%f", transform.position.z);
     draw_labeled_text(game_state, ui_manager, x + right_column_offset, y, small_row_height,
                       editor_font_name_bold, "z", editor_font_name, buf, text_style);
     y += small_row_height;    
 
-    // rotation
+    draw_row_line(ui_manager, controller_state, x, &y, row_width);
+
+    // ROTATION
     draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags, row_id, row_index++);
     draw_v_centered_text(game_state, ui_manager, x+padding_left, y, small_row_height,
                          "Rotation", editor_font_name_bold, text_style);
@@ -530,14 +685,16 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                       editor_font_name_bold, "y", editor_font_name, buf, text_style);
     y += small_row_height;
     // z
-    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags | SIDE_BOTTOM,
+    draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags,
              row_id, row_index++);
     buf = string_format(allocator, buffer_size, "%f", transform.rotation.v.z);
     draw_labeled_text(game_state, ui_manager, x + right_column_offset, y, small_row_height,
                       editor_font_name_bold, "z", editor_font_name, buf, text_style);
     y += small_row_height;
 
-    // scale
+    draw_row_line(ui_manager, controller_state, x, &y, row_width);
+
+    // SCALE
     draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags, row_id, row_index++);
     draw_v_centered_text(game_state, ui_manager, x+padding_left, y, small_row_height,
                          "Scale", editor_font_name_bold, text_style);
@@ -560,14 +717,11 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                       editor_font_name_bold, "z", editor_font_name, buf, text_style);
     y += small_row_height;
 
-    // material info
-    row_height = 28.0f;
-    inset_row_height = row_height - padding_bottom;
+    draw_row_line(ui_manager, controller_state, x, &y, row_width);
 
-    // some padding
-    draw_row(ui_manager, controller_state, x, y, row_width, padding_top / 2.0f, row_color, side_flags,
-             row_id, row_index++);
-    y += padding_top / 2.0f;
+    // MATERIAL
+    draw_row_padding(ui_manager, controller_state, x, &y, row_width, padding_bottom, row_color,
+                     side_flags, row_index++);
 
     draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags,
              row_id, row_index++);
@@ -579,11 +733,11 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     real32 choose_material_button_width = 200.0f;
     real32 add_material_button_width = 30.0f;
     choose_material_button_width -= add_material_button_width;
+
     x += right_column_offset;
     bool32 choose_material_pressed = do_text_button(ui_manager, controller_state,
-                                                    x,
-                                                    y + get_center_y_offset(row_height, inset_row_height),
-                                                    choose_material_button_width, inset_row_height,
+                                                    x, y,
+                                                    choose_material_button_width, row_height,
                                                     button_style, default_text_style,
                                                     to_char_array(allocator, material->name),
                                                     editor_font_name_bold, "choose_material");
@@ -594,32 +748,14 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     x += choose_material_button_width + padding_left;
 
     bool32 add_material_pressed = do_text_button(ui_manager, controller_state,
-                                                 x,
-                                                 y + get_center_y_offset(row_height, inset_row_height),
-                                                 add_material_button_width, inset_row_height,
+                                                 x, y,
+                                                 add_material_button_width, row_height,
                                                  button_style, default_text_style,
                                                  "+", editor_font_name_bold, "add_material");
     x += add_material_button_width + padding_left;
 
     if (add_material_pressed) {
         Pool_Allocator *string64_pool = &memory.string64_pool;
-#if 0
-        char *material_name_base = "Material";
-        int32 next_attempt = 0;
-        // NOTE: string_format does include the null terminator while String_Buffers don't, so we're
-        //       technically getting only a maximum of 63 characters here, but that's fine.
-        
-        char *name_attempt = string_format((Allocator *) string64_pool, 64,
-                                           next_attempt > 0 ? "Material" : "Material %d",
-                                           next_attempt);
-        while (hash_table_exists(game_state->material_table, make_string(name_attempt))) {
-            pool_remove(string64_pool, name_attempt);
-            next_attempt++;
-            name_attempt = string_format((Allocator *) string64_pool, 64,
-                                         next_attempt > 0 ? "Material" : "Material %d",
-                                         next_attempt);
-        }
-#endif
 
         Material new_material = { 
             make_string_buffer((Allocator *) string64_pool, "New Material", MATERIAL_STRING_MAX_SIZE),
@@ -631,13 +767,13 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
 
         int32 material_id = add_material(game_state, new_material);
         entity->material_id = material_id;
+        editor_state->editing_selected_entity_material = true;
     }
 
     real32 edit_material_button_width = row_width - (x - initial_x) - padding_right;
     bool32 edit_material_pressed = do_text_button(ui_manager, controller_state,
-                                                  x,
-                                                  y + get_center_y_offset(row_height, inset_row_height),
-                                                  edit_material_button_width, inset_row_height,
+                                                  x, y,
+                                                  edit_material_button_width, row_height,
                                                   button_style, default_text_style,
                                                   "Edit", editor_font_name_bold,
                                                   false,
@@ -647,37 +783,34 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     x = initial_x;
     y += row_height;
 
-    if (!editor_state->editing_selected_entity_material) {
-        if (!editor_state->editing_selected_entity_material) {
-            side_flags |= SIDE_BOTTOM;
-        }
-
-        draw_row(ui_manager, controller_state, x, y, row_width, padding_top / 2.0f + 1.0f, row_color, side_flags,
-                 row_id, row_index++);
-    }
-
     if (edit_material_pressed) {
         editor_state->editing_selected_entity_material = !editor_state->editing_selected_entity_material;
     }
 
     if (editor_state->editing_selected_entity_material) {
+        draw_row_padding(ui_manager, controller_state, x, &y, row_width, padding_y, row_color,
+                         side_flags, row_index++);
+
         UI_Text_Box_Style text_box_style = default_text_box_style;
         real32 edit_box_width = choose_material_button_width + padding_left + add_material_button_width;
 
+        // MATERIAL NAME
         draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags,
                  row_id, row_index++);
         draw_v_centered_text(game_state, ui_manager, x + padding_left, y, row_height,
                              "Material Name", editor_font_name_bold, default_text_style);
         do_text_box(ui_manager, controller_state,
-                    x + right_column_offset,
-                    y + get_center_y_offset(row_height, inset_row_height),
-                    edit_box_width, inset_row_height,
+                    x + right_column_offset, y,
+                    edit_box_width, row_height,
                     &material->name, editor_font_name_bold,
                     text_box_style, default_text_style,
                     "material_name_text_box");
 
         y += row_height;
+        draw_row_padding(ui_manager, controller_state, x, &y, row_width, padding_y, row_color,
+                         side_flags, row_index++);
 
+        // TEXTURE
         char *texture_name = "";
         if (material->texture_id >= 0) {
             Texture texture = get_texture(game_state, material->texture_id);
@@ -688,9 +821,8 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         draw_v_centered_text(game_state, ui_manager, x + padding_left, y, row_height,
                              "Texture", editor_font_name_bold, text_style);
         bool32 choose_texture_pressed = do_text_button(ui_manager, controller_state,
-                                                       x + right_column_offset,
-                                                       y + get_center_y_offset(row_height, inset_row_height),
-                                                       edit_box_width, inset_row_height,
+                                                       x + right_column_offset, y,
+                                                       edit_box_width, row_height,
                                                        button_style, default_text_style,
                                                        texture_name, editor_font_name_bold, "choose_texture");
         if (!editor_state->open_window_flags && choose_texture_pressed) {
@@ -698,43 +830,50 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         }
 
         y += row_height;
+        draw_row_padding(ui_manager, controller_state, x, &y, row_width, padding_y, row_color,
+                         side_flags, row_index++);
 
+        // GLOSS
         draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags,
                  row_id, row_index++);
         buf = string_format(allocator, buffer_size, "%f", material->gloss);
         draw_v_centered_text(game_state, ui_manager, x + padding_left, y, row_height,
                              "Gloss", editor_font_name_bold, text_style);
         material->gloss = do_slider(ui_manager, controller_state,
-                                    x+right_column_offset,
-                                    y + get_center_y_offset(row_height, inset_row_height),
-                                    edit_box_width, inset_row_height,
+                                    x+right_column_offset, y,
+                                    edit_box_width, row_height,
                                     buf, editor_font_name_bold,
                                     0.0f, 100.0f, material->gloss,
                                     default_slider_style, default_text_style,
                                     "edit_material_gloss_slider");
         y += row_height;
+        draw_row_padding(ui_manager, controller_state, x, &y, row_width, padding_y, row_color,
+                         side_flags, row_index++);
 
+        // COLOR OVERRIDE
         draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags,
                  row_id, row_index++);
         buf = string_format(allocator, buffer_size, "%f", material->gloss);
         draw_v_centered_text(game_state, ui_manager, x + padding_left, y, row_height,
                              "Color Override", editor_font_name_bold, text_style);
         do_color_button(ui_manager, controller_state,
-                        x + right_column_offset, y + get_center_y_offset(row_height, inset_row_height),
-                        inset_row_height, inset_row_height,
+                        x + right_column_offset, y,
+                        row_height, row_height,
                         default_color_button_style,
                         material->color_override,
                         "material_color_override");
         y += row_height;
+        draw_row_padding(ui_manager, controller_state, x, &y, row_width, padding_y, row_color,
+                         side_flags, row_index++);
 
+        // USE COLOR OVERRIDE
         draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags,
                  row_id, row_index++);
         draw_v_centered_text(game_state, ui_manager, x + padding_left, y, row_height,
                              "Use Color Override", editor_font_name_bold, text_style);
         bool32 toggle_color_override_pressed = do_text_button(ui_manager, controller_state,
-                                                              x + right_column_offset,
-                                                              y + get_center_y_offset(row_height, inset_row_height),
-                                                              100.0f, inset_row_height,
+                                                              x + right_column_offset, y,
+                                                              100.0f, row_height,
                                                               button_style, default_text_style,
                                                               material->use_color_override ? "true" : "false",
                                                               editor_font_name_bold,
@@ -748,12 +887,10 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                 material->use_color_override = true;
             }
         }
-
-        // some more padding
-        draw_row(ui_manager, controller_state, x, y, row_width, padding_bottom / 2.0f + 1.0f, row_color,
-                 side_flags | SIDE_BOTTOM,
-                 row_id, row_index++);
     }
+
+    draw_row_padding(ui_manager, controller_state, x, &y, row_width, padding_y, row_color,
+                     side_flags | SIDE_BOTTOM, row_index++);
 }
 
 void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) {

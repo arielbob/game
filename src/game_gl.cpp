@@ -104,9 +104,12 @@
 //       - TODO (done): change the mesh name text into a button
 //       - TODO (done): display mesh library box
 // TODO: mesh adding
+//       - TODO: put add button next to mesh button
+//       - TODO: put edit button next to mesh button for editing mesh name
 //       - TODO: will have to have a better way of handling read_and_load_mesh failing (we don't want to just crash
 //               on an assert)
 
+// TODO: scale gizmo
 // TODO: material deletion
 // TODO: handle entities with no material (just make them black or something)
 //       - this would happen if you were to delete a material that an entity was using

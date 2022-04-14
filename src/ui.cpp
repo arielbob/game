@@ -742,6 +742,7 @@ void do_line(UI_Manager *manager,
                                  id_string, index);
 
     // right now, we only draw lines on top of other UI elements, so we don't check if the mouse is over
+    // we don't even draw lines in the UI anymore; they're too finnicky
 
     ui_add_line(manager, line);
 }

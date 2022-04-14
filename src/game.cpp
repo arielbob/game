@@ -122,6 +122,15 @@ Mesh get_mesh(Game_State *game_state, int32 mesh_id) {
     return mesh;
 }
 
+Mesh *get_mesh_pointer(Game_State *game_state, int32 mesh_id) {
+    Mesh *mesh;
+    bool32 mesh_exists = hash_table_find_pointer(game_state->mesh_table,
+                                                 mesh_id,
+                                                 &mesh);
+    assert(mesh_exists);
+    return mesh;
+}
+
 Texture get_texture(Game_State *game_state, int32 texture_id) {
     Texture texture;
     bool32 texture_exists = hash_table_find(game_state->texture_table,
@@ -794,7 +803,15 @@ void update(Game_State *game_state,
     do_image_button(ui_manager, controller_state, 0, 0, 200.0f, 200.0f,
                     image_button_style, "debug", "debug_image_button");
 #endif
-    
+
+#if 0
+    UI_Box_Style test_box_style = { make_vec4(1.0f, 0.0f, 0.0f, 1.0f) };
+    do_box(ui_manager, controller_state,
+           0.0f, 0.0f,
+           100.0f, 24.0f,
+           test_box_style, "test_box");
+#endif
+
     buf = (char *) arena_push(&memory.frame_arena, 128);
     string_format(buf, 128, "hot: %s\nactive: %s",
                   (char *) ui_manager->hot.string_ptr,

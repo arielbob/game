@@ -6,7 +6,7 @@
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #define max(a, b) ((a) > (b) ? (a) : (b))
 
-#define EPSILON 1e-7
+#define EPSILON 1e-9
 
 struct Vec2 {
     union {
