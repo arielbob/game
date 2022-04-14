@@ -580,8 +580,6 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     if (add_mesh_pressed) {
         Pool_Allocator *string64_pool = &memory.string64_pool;
 
-        // TODO: open file dialog and stuff
-
         Marker m = begin_region();
         char *filename = (char *) region_push(&memory.global_stack, PLATFORM_MAX_PATH);
         
@@ -594,18 +592,9 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
             editor_state->editing_selected_entity_mesh = true;
         }
 
-        end_region(m);
-/*
-        Mesh new_mesh = { 
-            make_string_buffer((Allocator *) string64_pool, "New Mesh", MATERIAL_STRING_MAX_SIZE),
-            -1,
-            50.0f,
-            make_vec4(0.0f, 0.0f, 0.0f, 1.0f),
-            true
-        };
+        // TODO: error handling (after in-game console implementation)
 
-        
-*/
+        end_region(m);
     }
 
     real32 edit_mesh_button_width = row_width - (x - initial_x) - padding_right;
@@ -969,16 +958,19 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
 
     real32 y = 0.0f;
     real32 button_gap = 1.0f;
-    
+    real32 sidebar_button_width = 200.0f;
+
     real32 button_height = 25.0f;
     char *button_font_name = editor_font_name_bold;
     // wireframe toggle
-    real32 wireframe_button_width = 200.0f;
+    real32 wireframe_button_width = sidebar_button_width;
     bool32 toggle_show_wireframe_clicked = do_text_button(ui_manager, controller_state,
-                                                          render_state->display_output.width - wireframe_button_width, y,
+                                                          render_state->display_output.width - sidebar_button_width,
+                                                          y,
                                                           wireframe_button_width, button_height,
                                                           default_text_button_style, default_text_style,
-                                                          editor_state->show_wireframe ? "Hide Wireframe" : "Show Wireframe",
+                                                          editor_state->show_wireframe ?
+                                                          "Hide Wireframe" : "Show Wireframe",
                                                           button_font_name, "toggle_wireframe");
     if (toggle_show_wireframe_clicked) {
         editor_state->show_wireframe = !editor_state->show_wireframe;
@@ -986,10 +978,9 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
     y += button_height + button_gap;
 
     // transform mode toggle
-    real32 toggle_global_button_width = 200.0f;
     bool32 toggle_global_clicked = do_text_button(ui_manager, controller_state,
-                                                  render_state->display_output.width - toggle_global_button_width, y,
-                                                  toggle_global_button_width, button_height,
+                                                  render_state->display_output.width - sidebar_button_width, y,
+                                                  sidebar_button_width, button_height,
                                                   default_text_button_style, default_text_style,
                                                   editor_state->transform_mode == TRANSFORM_GLOBAL ?
                                                   "Use Local Transform" : "Use Global Transform",
@@ -1003,6 +994,15 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
     }
     y += button_height + button_gap;
     
+    // save level button
+    bool32 save_button_clicked = do_text_button(ui_manager, controller_state,
+                                                  render_state->display_output.width - sidebar_button_width, y,
+                                                  sidebar_button_width, button_height,
+                                                  default_text_button_style, default_text_style,
+                                                  "Save Level",
+                                                  button_font_name, "save_level");
+    y += button_height + button_gap;
+
     if (editor_state->selected_entity_index >= 0) {
         Entity *selected_entity = get_selected_entity(game_state);
         draw_entity_box(game_state, controller_state, selected_entity);
