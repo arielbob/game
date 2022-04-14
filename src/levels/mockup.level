@@ -1,0 +1,43 @@
+;; we want quotes, since filenames can have spaces in them
+;; eventually entities will be able to have multiple textures
+;; we put the entity properties on different lines just so that it's cleaner
+
+;; color_override is in gamma space
+
+;; level info
+name test
+
+;; meshes
+mesh suzanne2 "blender/suzanne.mesh"
+mesh cube "blender/cube.mesh"
+
+;; textures
+texture debug "src/textures/debug_texture.bmp"
+texture white "src/textures/white.bmp"
+
+;; materials
+material shiny_monkey
+texture debug
+gloss 100.0
+color_override 0.7 0.7 0.7
+use_color_override 1
+
+material white_light
+gloss 0.0
+color_override 1.0 1.0 1.0
+;; use_color_override is default false, since no texture is provided
+
+;; entities
+entity
+mesh suzanne2
+material shiny_monkey
+position 0.0 0.0 0.0
+rotation 1.0 0.0 0.0 0.0
+scale 1.0 1.0 1.0
+
+light_entity
+mesh cube
+material white_light
+light_color 0.5 0.5 0.5
+falloff_start 0.0
+falloff_distance 3.0

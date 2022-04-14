@@ -814,31 +814,64 @@ bool32 platform_write_file(char *filename, void *buffer, uint32 num_bytes_to_wri
     DWORD path_length_without_null = GetFullPathNameA(filename, MAX_PATH, path_result, NULL);
     assert(path_length_without_null > 0 && path_length_without_null < MAX_PATH);
 
-    DWORD create_file_flags = CREATE_NEW;
+    TCHAR temp_path[MAX_PATH];
+    TCHAR temp_filename[MAX_PATH];
+
+    DWORD get_temp_path_result = GetTempPathA(MAX_PATH, temp_path);
+    if (!get_temp_path_result) {
+        debug_print("Could not find temporary file path\n");
+        return false;
+    }
+
+    if (get_temp_path_result > MAX_PATH) {
+        debug_print("Temporary file path too large.\n");
+        return false;
+    }
+
+    uint32 get_temp_file_name_result = GetTempFileNameA(temp_path, "tmp", 0, temp_filename);
+    if (!get_temp_file_name_result) {
+        debug_print("Could not generate temporary filename\n");
+        return false;
+    }
+
+    HANDLE temp_file_handle = CreateFile((LPTSTR) temp_filename,
+                                         GENERIC_WRITE,        
+                                         0,                    
+                                         NULL,                 
+                                         CREATE_ALWAYS,        
+                                         FILE_ATTRIBUTE_NORMAL,
+                                         NULL);
+    if (temp_file_handle == INVALID_HANDLE_VALUE) {
+        debug_print("Could not create temporary file for writing.\n");
+        return false;
+    }
+
+    // write temp file
+    DWORD temp_num_bytes_written;
+    bool32 temp_write_file_result = WriteFile(temp_file_handle,
+                                              buffer,
+                                              num_bytes_to_write, &temp_num_bytes_written,
+                                              NULL);
+    if (!temp_write_file_result) {
+        debug_print("Could not write to temporary file.\n");
+        return false;
+    }
+    CloseHandle(temp_file_handle);
+
+    DWORD move_file_flags = MOVEFILE_COPY_ALLOWED;
     if (overwrite) {
-        create_file_flags = CREATE_ALWAYS;
+        move_file_flags |= MOVEFILE_REPLACE_EXISTING;
     }
-    HANDLE file_handle = CreateFile(path_result, GENERIC_WRITE, 0, NULL,
-                                    create_file_flags,
-                                    FILE_ATTRIBUTE_NORMAL, NULL);
-    if (file_handle == INVALID_HANDLE_VALUE) {
-        debug_print("Could not open or create file for writing.\n");
+
+    // move temp file to destination file
+    bool32 move_file_result = MoveFileEx(temp_filename,
+                                         path_result,
+                                         move_file_flags);
+    if (!move_file_result) {
+        debug_print("Could not write to destination file.\n");
         return false;
     }
 
-    DWORD num_bytes_written;
-    bool32 write_file_result = WriteFile(file_handle, buffer, num_bytes_to_write, &num_bytes_written, NULL);
-    if (!write_file_result) {
-        debug_print("Could not write file.\n");
-        return false;
-    }
-
-    if (num_bytes_to_write != num_bytes_written) {
-        debug_print("Could not write all bytes\n");
-        return false;
-    }
-
-    CloseHandle(file_handle);
     return true;
 }
 

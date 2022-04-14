@@ -117,8 +117,8 @@
 //       - TODO (done): add save level button
 //       - TODO (done): add windows code for opening save file dialog
 //       - TODO (done): add basic windows code for file writing
-//       - TODO: use temp files for writing files
-//       - TODO: save a test file using save file dialog
+//       - TODO (done): save a test file using save file dialog
+//       - TODO (done): use temp files for writing files
 //       - TODO: write procedure to export level data to level file format
 
 // TODO: some type of messaging system that isn't in the game console, like toasts kind of (messages that appear
@@ -231,6 +231,8 @@
 // TODO: create an entity list
 // TODO: create a mesh list
 // TODO: replace entity and mesh arrays in game_state with free lists
+// TODO: unicode support in win32 code
+// TODO: unicode support with text drawing?
 
 /*
 you select an entity
