@@ -22,7 +22,7 @@ uint32 string_length(char* str) {
 
 struct String {
     char *contents;
-    uint32 length;
+    int32 length;
 };
 
 struct String_Buffer {
@@ -33,7 +33,7 @@ struct String_Buffer {
 
 struct String_Iterator {
     String string;
-    uint32 index;
+    int32 index;
 };
 
 inline bool32 is_empty(String_Buffer string) {
@@ -76,6 +76,14 @@ void copy_string(String *dest, String src, uint32 max_size) {
 }
 */
 
+String_Buffer make_string_buffer(char *buffer, uint32 size_of_buffer) {
+    String_Buffer result;
+    result.contents = buffer;
+    result.current_length = 0;
+    result.size = size_of_buffer;
+    return result;
+}
+
 String_Buffer make_string_buffer(Allocator *allocator, uint32 size) {
     String_Buffer buffer;
     char *contents = (char *) allocate(allocator, size);
@@ -86,6 +94,7 @@ String_Buffer make_string_buffer(Allocator *allocator, uint32 size) {
 }
 
 // NOTE: size does NOT include a null-terminator, since String does not include a null-terminator in contents.
+// NOTE: creates a String_Buffer with initial contents
 String_Buffer make_string_buffer(Allocator *allocator, char *string, uint32 size) {
     String_Buffer buffer;
 
@@ -157,7 +166,7 @@ bool32 string_equals(String a, String b) {
     if (a.length != b.length) {
         return false;
     } else {
-        for (uint32 i = 0; i < a.length; i++) {
+        for (int32 i = 0; i < a.length; i++) {
             if (a.contents[i] != b.contents[i]) {
                 return false;
             }
@@ -172,19 +181,26 @@ void append_string(String *result, String a, String b, uint32 max_size) {
     assert(final_length <= max_size);
 
     uint32 current_index = 0;
-    for (uint32 i = 0; i < a.length; i++) {
+    for (int32 i = 0; i < a.length; i++) {
         result->contents[current_index++] = a.contents[i];
     }
-    for (uint32 i = 0; i < b.length; i++) {
+    for (int32 i = 0; i < b.length; i++) {
         result->contents[current_index++] = b.contents[i];
     }
 
     result->length = final_length;
 }
 
-void to_char_array(String string, char *buffer, uint32 buffer_size) {
+void append_string(String_Buffer *buffer, String to_append) {
+    assert(buffer->current_length + to_append.length <= buffer->size);
+
+    memcpy(&buffer->contents[buffer->current_length], to_append.contents, to_append.length);
+    buffer->current_length += to_append.length;
+}
+
+void to_char_array(String string, char *buffer, int32 buffer_size) {
     assert(buffer_size >= string.length + 1);
-    for (uint32 i = 0; i < string.length; i++) {
+    for (int32 i = 0; i < string.length; i++) {
         buffer[i] = string.contents[i];
     }
     

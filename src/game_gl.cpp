@@ -116,8 +116,17 @@
 //       - TODO (done): figure out file format
 //       - TODO (done): add save level button
 //       - TODO (done): add windows code for opening save file dialog
+//       - TODO (done): add basic windows code for file writing
+//       - TODO: use temp files for writing files
 //       - TODO: save a test file using save file dialog
 //       - TODO: write procedure to export level data to level file format
+
+// TODO: some type of messaging system that isn't in the game console, like toasts kind of (messages that appear
+//       then disappear after a few seconds). this would be nice for some type of feedback like for file saving.
+// TODO: dialog prompts.. (just use windows for this maybe?)
+// TODO: prompt to save open level if opening a new one
+// TODO: save as button for saving a duplicate of a level
+// TODO: save without dialog if a saved level is opened
 
 // TODO: add icons to some of the buttons for better recognition of buttons
 
@@ -163,6 +172,8 @@
 // - create a string buffer of the size passed in
 // - when the textbox loses focus or enter is pressed while it's active, it returns the text that was entered
 // - or a struct that contains a boolean of whether or not a value was returned at all
+
+// TODO: update string procedures to use memcpy (memcpy is probably optimized)
 
 // TODO: material name/texture strings validation
 //       check for duplicates and empties. it matters that we don't have duplicates since texture names are used

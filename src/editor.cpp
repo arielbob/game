@@ -1007,7 +1007,11 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
         Marker m = begin_region();
         char *filename = (char *) region_push(&memory.global_stack, PLATFORM_MAX_PATH);
 
-        platform_open_save_file_dialog(filename, PLATFORM_MAX_PATH);
+        platform_open_save_file_dialog(filename, "Levels (*.level)", "level", PLATFORM_MAX_PATH);
+
+        char test_string[] = "Hello, world!";
+        bool32 write_result = platform_write_file(filename, test_string, sizeof(test_string), true);
+        assert(write_result);
 
         end_region(m);
     }

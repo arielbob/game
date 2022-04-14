@@ -770,27 +770,78 @@ bool32 platform_open_file_dialog(char *filepath, uint32 size) {
     return result;
 }
 
-bool32 platform_open_save_file_dialog(char *filepath, uint32 size) {
-    OPENFILENAME ofn = {};       // common dialog box structure
+// NOTE: this only supports a single file extension
+bool32 platform_open_save_file_dialog(char *filepath, char *filetype_name, char *file_extension_no_dot, uint32 size) {
+    assert(filetype_name);
+    assert(file_extension_no_dot);
 
-    // Initialize OPENFILENAME
+    OPENFILENAME ofn = {};
+
+    String filetype_name_string = make_string(filetype_name);
+    String file_extension_no_dot_string = make_string(file_extension_no_dot);
+
+    char filter_buffer[64];
+    // NOTE: we do it this way since string_format is messed up when the string contains null
+    //       characters that aren't at the end (the format string uses \0 as a separator).
+    String_Buffer working_buffer = make_string_buffer(filter_buffer, sizeof(filter_buffer));
+    append_string(&working_buffer, filetype_name_string);
+    append_string(&working_buffer, make_string("\0", 1));
+    append_string(&working_buffer, make_string("*.", 2));
+    append_string(&working_buffer, file_extension_no_dot_string);
+    append_string(&working_buffer, make_string("\0\0", 2));
+
     ofn.lStructSize = sizeof(ofn);
     ofn.hwndOwner = window;
     ofn.lpstrFile = filepath;
-    // Set lpstrFile[0] to '\0' so that GetOpenFileName does not 
-    // use the contents of szFile to initialize itself.
     ofn.lpstrFile[0] = '\0';
     ofn.nMaxFile = size;
-    ofn.lpstrFilter = "*.level\0";
+    ofn.lpstrFilter = working_buffer.contents;
     ofn.nFilterIndex = 1;
     ofn.lpstrFileTitle = NULL;
     ofn.nMaxFileTitle = 0;
     ofn.lpstrInitialDir = NULL;
+    // appends the file_extension to the returned filepath
+    ofn.lpstrDefExt = file_extension_no_dot;
     ofn.Flags = OFN_OVERWRITEPROMPT | OFN_NOCHANGEDIR;
 
     bool32 result = GetSaveFileName(&ofn);
+
     return result;
 }
+
+bool32 platform_write_file(char *filename, void *buffer, uint32 num_bytes_to_write, bool32 overwrite) {
+    char path_result[MAX_PATH];
+    DWORD path_length_without_null = GetFullPathNameA(filename, MAX_PATH, path_result, NULL);
+    assert(path_length_without_null > 0 && path_length_without_null < MAX_PATH);
+
+    DWORD create_file_flags = CREATE_NEW;
+    if (overwrite) {
+        create_file_flags = CREATE_ALWAYS;
+    }
+    HANDLE file_handle = CreateFile(path_result, GENERIC_WRITE, 0, NULL,
+                                    create_file_flags,
+                                    FILE_ATTRIBUTE_NORMAL, NULL);
+    if (file_handle == INVALID_HANDLE_VALUE) {
+        debug_print("Could not open or create file for writing.\n");
+        return false;
+    }
+
+    DWORD num_bytes_written;
+    bool32 write_file_result = WriteFile(file_handle, buffer, num_bytes_to_write, &num_bytes_written, NULL);
+    if (!write_file_result) {
+        debug_print("Could not write file.\n");
+        return false;
+    }
+
+    if (num_bytes_to_write != num_bytes_written) {
+        debug_print("Could not write all bytes\n");
+        return false;
+    }
+
+    CloseHandle(file_handle);
+    return true;
+}
+
 
 int WinMain(HINSTANCE hInstance,
             HINSTANCE hPrevInstance,
