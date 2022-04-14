@@ -770,6 +770,28 @@ bool32 platform_open_file_dialog(char *filepath, uint32 size) {
     return result;
 }
 
+bool32 platform_open_save_file_dialog(char *filepath, uint32 size) {
+    OPENFILENAME ofn = {};       // common dialog box structure
+
+    // Initialize OPENFILENAME
+    ofn.lStructSize = sizeof(ofn);
+    ofn.hwndOwner = window;
+    ofn.lpstrFile = filepath;
+    // Set lpstrFile[0] to '\0' so that GetOpenFileName does not 
+    // use the contents of szFile to initialize itself.
+    ofn.lpstrFile[0] = '\0';
+    ofn.nMaxFile = size;
+    ofn.lpstrFilter = "*.level\0";
+    ofn.nFilterIndex = 1;
+    ofn.lpstrFileTitle = NULL;
+    ofn.nMaxFileTitle = 0;
+    ofn.lpstrInitialDir = NULL;
+    ofn.Flags = OFN_OVERWRITEPROMPT | OFN_NOCHANGEDIR;
+
+    bool32 result = GetSaveFileName(&ofn);
+    return result;
+}
+
 int WinMain(HINSTANCE hInstance,
             HINSTANCE hPrevInstance,
             LPSTR lpCmdLine,

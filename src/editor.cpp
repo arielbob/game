@@ -995,13 +995,22 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
     y += button_height + button_gap;
     
     // save level button
-    bool32 save_button_clicked = do_text_button(ui_manager, controller_state,
+    bool32 save_level_clicked = do_text_button(ui_manager, controller_state,
                                                   render_state->display_output.width - sidebar_button_width, y,
                                                   sidebar_button_width, button_height,
                                                   default_text_button_style, default_text_style,
                                                   "Save Level",
                                                   button_font_name, "save_level");
     y += button_height + button_gap;
+
+    if (save_level_clicked) {
+        Marker m = begin_region();
+        char *filename = (char *) region_push(&memory.global_stack, PLATFORM_MAX_PATH);
+
+        platform_open_save_file_dialog(filename, PLATFORM_MAX_PATH);
+
+        end_region(m);
+    }
 
     if (editor_state->selected_entity_index >= 0) {
         Entity *selected_entity = get_selected_entity(game_state);

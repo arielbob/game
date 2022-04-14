@@ -4,6 +4,9 @@
 
 ;; color_override is in gamma space
 
+;; level info
+name test
+
 ;; meshes
 mesh suzanne2 "blender/suzanne.mesh"
 mesh cube "blender/cube.mesh"

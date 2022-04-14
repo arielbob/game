@@ -115,7 +115,7 @@
 //       in level loading, we should ensure that duplicates of mesh, texture, and material names do not exist.
 //       - TODO (done): figure out file format
 //       - TODO (done): add save level button
-//       - TODO: add windows code for opening save file dialog
+//       - TODO (done): add windows code for opening save file dialog
 //       - TODO: save a test file using save file dialog
 //       - TODO: write procedure to export level data to level file format
 
