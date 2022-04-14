@@ -103,11 +103,16 @@
 //       - TODO (done): use a hash table to store meshes
 //       - TODO (done): change the mesh name text into a button
 //       - TODO (done): display mesh library box
+// TODO (done): fix annoying UI padding and border stuff
+// TODO (done): light properties in editor
 // TODO: mesh adding
-//       - TODO: put add button next to mesh button
-//       - TODO: put edit button next to mesh button for editing mesh name
+//       - TODO (done): put add button next to mesh button
+//       - TODO (done): put edit button next to mesh button for editing mesh name
+//       - TODO: open file dialog when add mesh is pressed
+//       - TODO: load and add mesh when a file is picked
 //       - TODO: will have to have a better way of handling read_and_load_mesh failing (we don't want to just crash
 //               on an assert)
+// TODO: color selector
 
 // TODO: scale gizmo
 // TODO: material deletion
@@ -122,7 +127,6 @@
 // TODO: scrollable UI region (mainly for material and texture libraries)
 
 // TODO: click slider for manual value entry
-// TODO: color selector
 // TODO: slider UI element
 // TODO: level saving/loading
 //       in level loading, we should ensure that duplicates of mesh, texture, and material names do not exist.
@@ -141,6 +145,11 @@
 //         name box is empty, which is useful to know what entities don't have a material or what materials
 //         don't have a texture assigned.
 //       - this isn't really that important right now, i don't think
+// - textbox is created
+// - create a string buffer of the size passed in
+// - when the textbox loses focus or enter is pressed while it's active, it returns the text that was entered
+// - or a struct that contains a boolean of whether or not a value was returned at all
+
 // TODO: material name/texture strings validation
 //       check for duplicates and empties. it matters that we don't have duplicates since texture names are used
 //       as keys in the opengl code. we don't store material structs in the opengl code, but it's better to be

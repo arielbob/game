@@ -787,12 +787,12 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         editor_state->editing_selected_entity_material = !editor_state->editing_selected_entity_material;
     }
 
+    real32 edit_box_width = choose_material_button_width + padding_left + add_material_button_width;
     if (editor_state->editing_selected_entity_material) {
         draw_row_padding(ui_manager, controller_state, x, &y, row_width, padding_y, row_color,
                          side_flags, row_index++);
 
         UI_Text_Box_Style text_box_style = default_text_box_style;
-        real32 edit_box_width = choose_material_button_width + padding_left + add_material_button_width;
 
         // MATERIAL NAME
         draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags,
@@ -891,6 +891,62 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
 
     draw_row_padding(ui_manager, controller_state, x, &y, row_width, padding_y, row_color,
                      side_flags | SIDE_BOTTOM, row_index++);
+
+    if (entity->type == ENTITY_POINT_LIGHT) {
+        draw_row_padding(ui_manager, controller_state, x, &y, row_width, padding_y, row_color,
+                         side_flags, row_index++);
+        Point_Light_Entity *point_light = (Point_Light_Entity *) entity;
+
+        // LIGHT COLOR
+        draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags,
+                 row_id, row_index++);
+        draw_v_centered_text(game_state, ui_manager, x + padding_left, y, row_height,
+                             "Light Color", editor_font_name_bold, text_style);
+        do_color_button(ui_manager, controller_state,
+                        x + right_column_offset, y,
+                        row_height, row_height,
+                        default_color_button_style,
+                        make_vec4(point_light->light_color, 1.0f),
+                        "point_light_color");
+        
+        y += row_height;
+
+        // LIGHT MIN DISTANCE
+        draw_row_padding(ui_manager, controller_state, x, &y, row_width, padding_y, row_color,
+                         side_flags, row_index++);
+        draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags,
+                 row_id, row_index++);
+        buf = string_format(allocator, buffer_size, "%f", point_light->d_min);
+        draw_v_centered_text(game_state, ui_manager, x + padding_left, y, row_height,
+                             "Falloff Start", editor_font_name_bold, text_style);
+        point_light->d_min = do_slider(ui_manager, controller_state,
+                                    x+right_column_offset, y,
+                                    edit_box_width, row_height,
+                                    buf, editor_font_name_bold,
+                                    0.0f, 100.0f, point_light->d_min,
+                                    default_slider_style, default_text_style,
+                                    "edit_material_gloss_slider");
+        y += row_height;
+        draw_row_padding(ui_manager, controller_state, x, &y, row_width, padding_y, row_color,
+                         side_flags, row_index++);
+
+        // LIGHT MAX DISTANCE
+        draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags,
+                 row_id, row_index++);
+        buf = string_format(allocator, buffer_size, "%f", point_light->d_max);
+        draw_v_centered_text(game_state, ui_manager, x + padding_left, y, row_height,
+                             "Falloff Distance", editor_font_name_bold, text_style);
+        point_light->d_max = do_slider(ui_manager, controller_state,
+                                       x+right_column_offset, y,
+                                       edit_box_width, row_height,
+                                       buf, editor_font_name_bold,
+                                       0.0f, 100.0f, point_light->d_max,
+                                       default_slider_style, default_text_style,
+                                       "edit_material_gloss_slider");
+        y += row_height;
+        draw_row_padding(ui_manager, controller_state, x, &y, row_width, padding_y, row_color,
+                         side_flags | SIDE_BOTTOM, row_index++);
+    }
 }
 
 void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) {
