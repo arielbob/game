@@ -5,7 +5,9 @@ void export_level(Allocator *allocator, Game_State *game_state, char *filename) 
     Editor_State *editor_state = &game_state->editor_state;
     
     append_string(&working_buffer, "level_name ");
+    append_string(&working_buffer, "\"");
     append_string(&working_buffer, editor_state->level_name);
+    append_string(&working_buffer, "\"");
     append_string(&working_buffer, "\n");
     
     bool32 write_result = platform_write_file(filename, working_buffer.contents, working_buffer.current_length, true);
