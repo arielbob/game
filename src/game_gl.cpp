@@ -119,7 +119,8 @@
 //       - TODO (done): add basic windows code for file writing
 //       - TODO (done): save a test file using save file dialog
 //       - TODO (done): use temp files for writing files
-//       - TODO: write something into the file
+//       - TODO (done): add level name textbox
+//       - TODO: write some game data into the file
 //       - TODO: write procedure to export level data to level file format
 
 // TODO: some type of messaging system that isn't in the game console, like toasts kind of (messages that appear

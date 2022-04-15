@@ -62,7 +62,7 @@ void draw_row_line(UI_Manager *ui_manager, Controller_State *controller_state,
 void draw_row(UI_Manager *ui_manager, Controller_State *controller_state,
               real32 x, real32 y,
               real32 row_width, real32 row_height,
-              Vec4 color, uint8 side_flags,
+              Vec4 color, uint32 side_flags,
               bool32 inside_border,
               char *row_id, int32 index) {
     UI_Box_Style box_style = { color };
@@ -129,7 +129,7 @@ void draw_row(UI_Manager *ui_manager, Controller_State *controller_state,
 inline void draw_row(UI_Manager *ui_manager, Controller_State *controller_state,
                      real32 x, real32 y,
                      real32 row_width, real32 row_height,
-                     Vec4 color, uint8 side_flags,
+                     Vec4 color, uint32 side_flags,
                      char *row_id, int32 index) {
     return draw_row(ui_manager, controller_state,
                     x, y,
@@ -143,7 +143,7 @@ inline void draw_row_padding(UI_Manager *ui_manager, Controller_State *controlle
                              real32 x, real32 *y,
                              real32 row_width,
                              real32 padding,
-                             Vec4 color, uint8 side_flags,
+                             Vec4 color, uint32 side_flags,
                              int32 index) {
     draw_row(ui_manager, controller_state,
              x, *y,
@@ -151,8 +151,12 @@ inline void draw_row_padding(UI_Manager *ui_manager, Controller_State *controlle
              color, side_flags,
              "row_padding", index);
     *y += padding;
+    // NOTE: we're assuming we're drawing the ui from top to bottom and that if there's a border above a
+    //       padding row, there won't be another row above it. if there were a row above this type of
+    //       padding row, the border would overlap that box, since we don't change y if there's a top
+    //       border.
     if (side_flags & SIDE_BOTTOM) {
-        // beacuse we're drawing the border on the outside, we need to offset by the border thickness (1)
+        // because we're drawing the border on the outside, we need to offset by the border thickness (1)
         *y += 1;
     }
 }
@@ -535,7 +539,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     real32 y = box_y;
 
     real32 title_row_height = 30.0f;
-    uint8 side_flags = SIDE_LEFT | SIDE_RIGHT;
+    uint32 side_flags = SIDE_LEFT | SIDE_RIGHT;
 
     char *row_id = "mesh_properties_line";
 
@@ -951,6 +955,72 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     }
 }
 
+void draw_level_box(Game_State *game_state, Controller_State *controller_state,
+                    real32 x, real32 y) {
+    UI_Manager *ui_manager = &game_state->ui_manager;
+    
+    int32 row_index = 0;
+    char *row_id = "level_box_row";
+    real32 row_width = 198.0f;
+    Vec4 row_color = make_vec4(0.1f, 0.1f, 0.1f, 0.9f);
+
+    real32 row_height = 22.0f;
+    uint32 side_flags = SIDE_LEFT | SIDE_RIGHT;
+    real32 padding_x = 6.0f;
+    real32 padding_y = 6.0f;
+    draw_row_padding(ui_manager, controller_state, x, &y, row_width, padding_y, row_color, side_flags | SIDE_TOP, row_index);
+
+    Font font = get_font(game_state, editor_font_name_bold);
+    
+    // level name text
+    real32 label_row_height = 18.0f;
+    draw_row(ui_manager, controller_state, x, y, row_width, label_row_height, row_color, side_flags, row_id, row_index++);
+    do_text(ui_manager, x + padding_x, y + get_center_baseline_offset(label_row_height, get_adjusted_font_height(font)),
+            "Level Name", editor_font_name_bold, default_text_style, "level_name_text_box_label");
+    y += label_row_height;
+
+    // level name text box
+    draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags, row_id, row_index++);
+    do_text_box(ui_manager, controller_state,
+                x + padding_x,
+                y,
+                row_width - padding_x*2, row_height,
+                &game_state->editor_state.level_name, editor_font_name_bold,
+                default_text_box_style, default_text_style,
+                "level_name_text_box");
+    y += row_height;
+    draw_row_padding(ui_manager, controller_state, x, &y, row_width, padding_y, row_color, side_flags, row_index);
+
+    
+    
+    // save level button
+    real32 button_height = 25.0f;
+    draw_row(ui_manager, controller_state, x, y, row_width, button_height, row_color, side_flags, row_id, row_index++);
+    bool32 save_level_clicked = do_text_button(ui_manager, controller_state,
+                                               x + padding_x, y,
+                                               120.0f, button_height,
+                                               default_text_button_style, default_text_style,
+                                               "Save Level",
+                                               editor_font_name_bold, "save_level");
+    y += button_height;
+
+    if (save_level_clicked) {
+        Marker m = begin_region();
+        char *filename = (char *) region_push(&memory.global_stack, PLATFORM_MAX_PATH);
+
+        bool32 has_filename = platform_open_save_file_dialog(filename, "Levels (*.level)", "level", PLATFORM_MAX_PATH);
+
+        if (has_filename) {
+            export_level((Allocator *) &memory.global_stack, game_state, filename);
+        }
+        
+        end_region(m);
+    }
+    
+    draw_row_padding(ui_manager, controller_state, x, &y, row_width, padding_y, row_color, side_flags | SIDE_BOTTOM, row_index);
+        
+}
+
 void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) {
     Editor_State *editor_state = &game_state->editor_state;
     UI_Manager *ui_manager = &game_state->ui_manager;
@@ -993,26 +1063,11 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
         }
     }
     y += button_height + button_gap;
+
+    y += 1;
+    draw_level_box(game_state, controller_state, render_state->display_output.width - 198.0f - 1.0f, y);
     
-    // save level button
-    bool32 save_level_clicked = do_text_button(ui_manager, controller_state,
-                                               render_state->display_output.width - sidebar_button_width, y,
-                                               sidebar_button_width, button_height,
-                                               default_text_button_style, default_text_style,
-                                               "Save Level",
-                                               button_font_name, "save_level");
-    y += button_height + button_gap;
-
-    if (save_level_clicked) {
-        Marker m = begin_region();
-        char *filename = (char *) region_push(&memory.global_stack, PLATFORM_MAX_PATH);
-
-        platform_open_save_file_dialog(filename, "Levels (*.level)", "level", PLATFORM_MAX_PATH);
-
-        export_level(game_state, filename);
-        
-        end_region(m);
-    }
+    
 
     if (editor_state->selected_entity_index >= 0) {
         Entity *selected_entity = get_selected_entity(game_state);

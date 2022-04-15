@@ -150,7 +150,7 @@ struct Game_State {
 
     Hash_Table<String, File_Data> font_file_table;
     Hash_Table<String, Font> font_table;
-
+    
     char text_buffer[256] = {}; // debugging
 };
 

@@ -645,7 +645,7 @@ void fill_sound_buffer(Win32_Sound_Output *win32_sound_output,
 }
 
 bool32 win32_init_memory() {
-    uint32 global_stack_size = MEGABYTES(8);
+    uint32 global_stack_size = MEGABYTES(64);
     uint32 hash_table_stack_size = MEGABYTES(8);
     uint32 game_data_arena_size = GIGABYTES(1);
     uint32 font_arena_size = MEGABYTES(64);

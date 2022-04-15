@@ -248,7 +248,7 @@ void init_game(Game_State *game_state,
 
     Camera *camera = &game_state->render_state.camera;
     Display_Output *display_output = &game_state->render_state.display_output;
-
+    
     // init tables
     game_state->font_table = make_hash_table<String, Font>((Allocator *) &memory.hash_table_stack,
                                                            HASH_TABLE_SIZE,
@@ -330,7 +330,8 @@ void init_game(Game_State *game_state,
     editor_state->selected_entity_index = -1;
     editor_state->show_wireframe = true;
     editor_state->open_window_flags = 0;
-
+    editor_state->level_name = make_string_buffer((Allocator *) &memory.string64_pool, 64);
+    
     // init ui state
     UI_Manager *ui_manager = &game_state->ui_manager;
     UI_Push_Buffer ui_push_buffer = {};
