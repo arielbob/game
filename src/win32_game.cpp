@@ -44,6 +44,7 @@ global_variable Memory memory;
 #include "mesh.cpp"
 #include "font.cpp"
 #include "ui.cpp"
+#include "level.cpp"
 #include "editor.cpp"
 #include "game.cpp"
 

@@ -5,7 +5,7 @@
 ;; color_override is in gamma space
 
 ;; level info
-name test
+level_name "test"
 
 ;; meshes
 mesh suzanne2 "blender/suzanne.mesh"

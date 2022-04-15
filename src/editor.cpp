@@ -996,11 +996,11 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
     
     // save level button
     bool32 save_level_clicked = do_text_button(ui_manager, controller_state,
-                                                  render_state->display_output.width - sidebar_button_width, y,
-                                                  sidebar_button_width, button_height,
-                                                  default_text_button_style, default_text_style,
-                                                  "Save Level",
-                                                  button_font_name, "save_level");
+                                               render_state->display_output.width - sidebar_button_width, y,
+                                               sidebar_button_width, button_height,
+                                               default_text_button_style, default_text_style,
+                                               "Save Level",
+                                               button_font_name, "save_level");
     y += button_height + button_gap;
 
     if (save_level_clicked) {
@@ -1009,10 +1009,8 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
 
         platform_open_save_file_dialog(filename, "Levels (*.level)", "level", PLATFORM_MAX_PATH);
 
-        char test_string[] = "Hello, world!";
-        bool32 write_result = platform_write_file(filename, test_string, sizeof(test_string), true);
-        assert(write_result);
-
+        export_level(game_state, filename);
+        
         end_region(m);
     }
 
