@@ -198,12 +198,14 @@ void append_string(String_Buffer *buffer, String to_append) {
     buffer->current_length += to_append.length;
 }
 
-void append_string(String_Buffer *buffer, char *to_append_c_str) {
+inline void append_string(String_Buffer *buffer, char *to_append_c_str) {
     String to_append = make_string(to_append_c_str);
-    assert(buffer->current_length + to_append.length <= buffer->size);
+    append_string(buffer, to_append);
+}
 
-    memcpy(&buffer->contents[buffer->current_length], to_append.contents, to_append.length);
-    buffer->current_length += to_append.length;
+inline void append_string(String_Buffer *buffer, String_Buffer to_append_buffer) {
+    String to_append = make_string(to_append_buffer);
+    append_string(buffer, to_append);
 }
 
 void to_char_array(String string, char *buffer, int32 buffer_size) {

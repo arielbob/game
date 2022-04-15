@@ -958,6 +958,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
 void draw_level_box(Game_State *game_state, Controller_State *controller_state,
                     real32 x, real32 y) {
     UI_Manager *ui_manager = &game_state->ui_manager;
+    Editor_State *editor_state = &game_state->editor_state;
     
     int32 row_index = 0;
     char *row_id = "level_box_row";
@@ -985,14 +986,12 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
                 x + padding_x,
                 y,
                 row_width - padding_x*2, row_height,
-                &game_state->editor_state.level_name, editor_font_name_bold,
+                &editor_state->level_name, editor_font_name_bold,
                 default_text_box_style, default_text_style,
                 "level_name_text_box");
     y += row_height;
     draw_row_padding(ui_manager, controller_state, x, &y, row_width, padding_y, row_color, side_flags, row_index);
 
-    
-    
     // save level button
     real32 button_height = 25.0f;
     draw_row(ui_manager, controller_state, x, y, row_width, button_height, row_color, side_flags, row_id, row_index++);
@@ -1001,10 +1000,14 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
                                                120.0f, button_height,
                                                default_text_button_style, default_text_style,
                                                "Save Level",
-                                               editor_font_name_bold, "save_level");
+                                               editor_font_name_bold,
+                                               is_empty(editor_state->level_name),
+                                               "save_level");
     y += button_height;
 
     if (save_level_clicked) {
+        assert(!is_empty(editor_state->level_name));
+        
         Marker m = begin_region();
         char *filename = (char *) region_push(&memory.global_stack, PLATFORM_MAX_PATH);
 
@@ -1064,7 +1067,7 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
     }
     y += button_height + button_gap;
 
-    y += 1;
+    y += 5;
     draw_level_box(game_state, controller_state, render_state->display_output.width - 198.0f - 1.0f, y);
     
     
