@@ -126,7 +126,7 @@
 //       - TODO (done): write meshes to level file
 //       - TODO (done): add win32 procedure to convert full paths to relative paths and use this for meshes
 //       - TODO (done): write textures to level file
-//       - TODO: write materials to level file
+//       - TODO (done): write materials to level file
 //       - TODO: write procedure to export level data to level file format
 
 // TODO: texture creation
@@ -136,6 +136,10 @@
 // TODO: prompt to save open level if opening a new one
 // TODO: save as button for saving a duplicate of a level
 // TODO: save without dialog if a saved level is opened
+// TODO: material name/texture strings validation
+//       check for duplicates and empties. it matters that we don't have duplicates since texture names are used
+//       as keys in the opengl code. we don't store material structs in the opengl code, but it's better to be
+//       consistent. show a message using the messaging system.
 
 // TODO: add icons to some of the buttons for better recognition of buttons
 
@@ -181,11 +185,6 @@
 // - or a struct that contains a boolean of whether or not a value was returned at all
 
 // TODO: update string procedures to use memcpy (memcpy is probably optimized)
-
-// TODO: material name/texture strings validation
-//       check for duplicates and empties. it matters that we don't have duplicates since texture names are used
-//       as keys in the opengl code. we don't store material structs in the opengl code, but it's better to be
-//       consistent.
 
 // TODO: be able to add and delete materials, textures, meshes
 // TODO (done): make free list struct (start with using this for storing fixed length strings that could be deleted).

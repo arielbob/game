@@ -132,6 +132,7 @@ Mesh *get_mesh_pointer(Game_State *game_state, int32 mesh_id) {
 }
 
 Texture get_texture(Game_State *game_state, int32 texture_id) {
+    assert(texture_id >= 0);
     Texture texture;
     bool32 texture_exists = hash_table_find(game_state->texture_table,
                                             texture_id,

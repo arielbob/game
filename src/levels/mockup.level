@@ -16,21 +16,21 @@ texture "debug" "src/textures/debug_texture.bmp"
 texture "white" "src/textures/white.bmp"
 
 ;; materials
-material shiny_monkey
-texture debug
+material "shiny_monkey"
+texture "debug"
 gloss 100.0
 color_override 0.7 0.7 0.7
 use_color_override 1
 
-material white_light
+material "white_light"
 gloss 0.0
 color_override 1.0 1.0 1.0
-;; use_color_override is default false, since no texture is provided
+;; use_color_override is default true, since no texture is provided
 
 ;; entities
 entity
-mesh suzanne2
-material shiny_monkey
+mesh "suzanne2"
+material "shiny_monkey"
 position 0.0 0.0 0.0
 rotation 1.0 0.0 0.0 0.0
 scale 1.0 1.0 1.0

@@ -12,3 +12,36 @@ mesh "sphere" "blender/sphere.mesh"
 ;; textures
 texture "debug" "src/textures/debug_texture.png"
 texture "white" "src/textures/white.bmp"
+
+;; materials
+material "shiny_monkey"
+texture "debug"
+gloss 100.000000
+color_override 0.600000 0.600000 0.600000
+use_color_override 1
+
+material "diffuse_plane"
+gloss 1.000000
+color_override 0.900000 0.900000 0.900000
+use_color_override 1
+
+material "arrow_material"
+gloss 100.000000
+color_override 1.000000 0.000000 0.000000
+use_color_override 1
+
+material "white_light"
+gloss 0.000000
+color_override 1.000000 1.000000 1.000000
+use_color_override 1
+
+material "blue_light"
+gloss 0.000000
+color_override 0.000000 0.000000 1.000000
+use_color_override 1
+
+material "diffuse_sphere"
+gloss 5.000000
+color_override 0.690196 0.690196 0.690196
+use_color_override 1
+
