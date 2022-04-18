@@ -1150,16 +1150,16 @@ int32 pick_entity(Game_State *game_state, Ray cursor_ray, Entity *entity_result,
     Editor_State *editor_state = &game_state->editor_state;
 
     Hash_Table<int32, Mesh> mesh_table = game_state->mesh_table;
-    Normal_Entity *entities = game_state->entities;
+    Normal_Entity *normal_entities = game_state->normal_entities;
     Point_Light_Entity *point_lights = game_state->point_lights;
 
     Entity *picked_entity = NULL;
     int32 entity_index = -1;
 
     real32 t_min = FLT_MAX;
-    for (int32 i = 0; i < game_state->num_entities; i++) {
+    for (int32 i = 0; i < game_state->num_normal_entities; i++) {
         real32 t;
-        Normal_Entity *entity = &entities[i];
+        Normal_Entity *entity = &normal_entities[i];
         Mesh mesh = hash_table_get(mesh_table, entity->mesh_id);
         if (ray_intersects_mesh(cursor_ray, mesh, entity->transform, &t) && (t < t_min)) {
             t_min = t;

@@ -145,13 +145,13 @@ void export_level(Allocator *allocator, Game_State *game_state, char *filename) 
     append_string(&working_buffer, "entities {\n");
 
     // NORMAL ENTITIES
-    for (int32 i = 0; i < game_state->num_entities; i++) {
-        Normal_Entity *entity = &game_state->entities[i];
+    for (int32 i = 0; i < game_state->num_normal_entities; i++) {
+        Normal_Entity *entity = &game_state->normal_entities[i];
 
         append_string(&working_buffer, "type normal\n");
         append_default_entity_info(game_state, &working_buffer, (Entity *) entity);
 
-        if (i < game_state->num_entities - 1) append_string(&working_buffer, "\n");
+        if (i < game_state->num_normal_entities - 1) append_string(&working_buffer, "\n");
     }
 
     if (game_state->num_point_lights > 0) append_string(&working_buffer, "\n");

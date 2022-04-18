@@ -181,8 +181,8 @@ int32 add_mesh(Game_State *game_state, Mesh mesh) {
 }
 
 void add_entity(Game_State *game_state, Normal_Entity entity) {
-    assert(game_state->num_entities < MAX_ENTITIES);
-    game_state->entities[game_state->num_entities++] = entity;
+    assert(game_state->num_normal_entities < MAX_ENTITIES);
+    game_state->normal_entities[game_state->num_normal_entities++] = entity;
 }
 
 void add_point_light_entity(Game_State *game_state, Point_Light_Entity entity) {
@@ -556,11 +556,14 @@ Entity *get_selected_entity(Game_State *game_state) {
     switch (editor_state->selected_entity_type) {
         case ENTITY_NORMAL:
         {
-            entity = (Entity *) &game_state->entities[index];
+            entity = (Entity *) &game_state->normal_entities[index];
         } break;
         case ENTITY_POINT_LIGHT:
         {
             entity = (Entity *) &game_state->point_lights[index];
+        } break;
+        default: {
+            assert (!"Unhandled entity type.");
         } break;
     }
 
@@ -626,83 +629,6 @@ void update(Game_State *game_state,
 
     editor_state->last_cursor_ray = editor_state->cursor_ray;
     editor_state->cursor_ray.direction = normalize(truncate_v4_to_v3(cursor_world_space) - camera.position);
-#endif
-
-#if 0
-    //game_state->left_mouse_is_down = controller_state->left_mouse.is_down;
-    bool32 btn1_clicked = do_text_button(ui_manager, controller_state,
-                                         20.0f, 50.0f, 100.0f, 30.0f,
-                                         "load mesh", "times24", "load_mesh");
-    bool32 btn2_clicked = do_text_button(ui_manager, controller_state,
-                                         50.0f, 360.0f, 200.0f, 30.0f,
-                                         "toggle music", "times24", "toggle_music");
-
-    // TODO: GetOpenFileName blocks, so we should do the open file dialog stuff on a separate thread.
-    //       https://docs.microsoft.com/en-us/windows/win32/procthread/processes-and-threads
-    if (btn1_clicked) {
-        char *filepath = (char *) arena_push(&memory.string_arena, PLATFORM_MAX_PATH);
-        char *mesh_name_buffer = (char *) arena_push(&memory.string_arena, MESH_NAME_MAX_SIZE);
-
-        if (platform_open_file_dialog(filepath, PLATFORM_MAX_PATH)) {
-            //Marker m = begin_region(memory);
-            //File_Data file_data = platform_open_and_read_file((Allocator *) &memory.global_stack, filepath);
-            //end_region(m);
-
-            // TODO: prompt user to enter name for mesh; just using filepath name for now
-            Mesh mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena, filepath,
-                                           mesh_name_buffer, MESH_NAME_MAX_SIZE);
-            game_state->is_naming_mesh = true;
-            game_state->mesh_to_add = mesh;
-
-            // add_mesh(game_state, mesh);
-
-#if 0
-            Transform transform = {};
-            transform.scale = make_vec3(1.0f, 1.0f, 1.0f);
-            Entity entity = make_entity(mesh.name, transform);
-            add_entity(game_state, entity);
-#endif
-        }
-    }
-
-    if (game_state->is_naming_mesh) {
-        UI_Text_Box_Style style = {
-            "times24",
-            500.0f, 30.0f,
-            5.0f, 5.0f,
-        };
-
-        do_text_box(ui_manager, controller_state,
-                    251.0f, 360.0f,
-                    game_state->mesh_to_add.name, game_state->mesh_to_add.name_size,
-                    style, "mesh_name_text_box");
-        bool32 submit_clicked = do_text_button(ui_manager, controller_state,
-                                               765.0f, 360.0f, 200.0f, 30.0f,
-                                               "submit", "times24", "mesh_name_text_box_submit");
-        if (submit_clicked) {
-            game_state->is_naming_mesh = false;
-            add_mesh(game_state, game_state->mesh_to_add);
-        }
-        // TODO: add a cancel button that cancels this operation and deallocates the mesh strings and mesh data
-        // TODO: we may want to think of a better API for strings, since it's kind of painful right now
-    }
-
-    if (btn2_clicked) {
-        game_state->is_playing_music = !game_state->is_playing_music;
-    }
-#endif
-
-#if 0
-    UI_Text_Box_Style style = {
-        "times24",
-        500.0f, 30.0f,
-        5.0f, 5.0f,
-    };
-
-    do_text_box(ui_manager, controller_state,
-                251.0f, 360.0f,
-                game_state->text_buffer, 256,
-                style, "mesh_name_text_box");
 #endif
     
     // mesh picking

@@ -135,12 +135,8 @@ struct Game_State {
     UI_Manager ui_manager;
     char current_char; // debugging
 
-    bool32 is_naming_mesh;
-    Mesh mesh_to_add;
-    
-    int32 num_entities;
-    // TODO: rename this to normal_entities
-    Normal_Entity entities[MAX_ENTITIES];
+    int32 num_normal_entities;
+    Normal_Entity normal_entities[MAX_ENTITIES];
 
     int32 num_point_lights;
     Point_Light_Entity point_lights[MAX_POINT_LIGHTS];

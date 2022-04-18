@@ -1967,8 +1967,8 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
     // entities
-    for (int32 i = 0; i < game_state->num_entities; i++) {
-        Normal_Entity *entity = &game_state->entities[i];
+    for (int32 i = 0; i < game_state->num_normal_entities; i++) {
+        Normal_Entity *entity = &game_state->normal_entities[i];
         int32 mesh_id = entity->mesh_id;
         Material material = get_material(game_state, entity->material_id);
 
