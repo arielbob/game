@@ -123,7 +123,7 @@
 //       - TODO (done): write some game data into the file (just write the level name)
 //       - TODO (done): add filename to mesh struct
 //       - TODO (done): write meshes to level file
-//       - TODO: add win32 procedure to convert full paths to relative paths and use this for meshes
+//       - TODO (done): add win32 procedure to convert full paths to relative paths and use this for meshes
 //       - TODO: write textures to level file
 //       - TODO: write procedure to export level data to level file format
 

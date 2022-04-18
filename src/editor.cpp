@@ -586,12 +586,15 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         Allocator *filename_allocator = (Allocator *) &memory.filename_pool;
 
         Marker m = begin_region();
-        char *filename = (char *) region_push(PLATFORM_MAX_PATH);
+        char *absolute_filename = (char *) region_push(PLATFORM_MAX_PATH);
         
-        if (platform_open_file_dialog(filename, PLATFORM_MAX_PATH)) {
+        if (platform_open_file_dialog(absolute_filename, PLATFORM_MAX_PATH)) {
             String_Buffer new_mesh_name_buffer = make_string_buffer(string64_allocator, 64);
+            
+            char *relative_filename = (char *) region_push(PLATFORM_MAX_PATH);
+            platform_get_relative_path(absolute_filename, relative_filename, PLATFORM_MAX_PATH);
             String_Buffer new_mesh_filename_buffer = make_string_buffer(filename_allocator,
-                                                                        filename, PLATFORM_MAX_PATH);
+                                                                        relative_filename, PLATFORM_MAX_PATH);
 
             Mesh new_mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena,
                                                new_mesh_filename_buffer,

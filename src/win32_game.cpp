@@ -5,6 +5,7 @@
 #define OEMRESOURCE
 
 #include <windows.h>
+#include <shlwapi.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <gl/gl.h>
@@ -204,6 +205,29 @@ char *string_format(Allocator *allocator, int32 n, char *format, ...) {
     assert(num_chars_outputted > 0 && num_chars_outputted < n);
 
     return buf;
+}
+
+void platform_get_relative_path(char *absolute_path,
+                                char *relative_path_buffer, int32 relative_path_buffer_size) {
+    assert(relative_path_buffer_size >= MAX_PATH);
+
+    char current_directory[MAX_PATH];
+    // NOTE: this should be the root directory and should not change. if for some reason files can't be found
+    //       then it could be the case that some other procedure modified the current directory.
+    DWORD get_current_directory_result = GetCurrentDirectoryA(MAX_PATH, current_directory);
+    // we do < MAX_PATH, since the return value on success, which is the amount of characters written,
+    // does not include the null terminator.
+    assert(get_current_directory_result > 0 && get_current_directory_result < MAX_PATH);
+
+    // NOTE: PathRelativePathToA fails if the two paths do not share a common prefix. for example, two
+    //       absolute paths on different drives, for example, one has the prefix C:/ and the other D:/, would
+    //       fail.
+    bool32 path_relative_path_to_result = PathRelativePathToA(relative_path_buffer,
+                                                              current_directory,
+                                                              FILE_ATTRIBUTE_DIRECTORY,
+                                                              absolute_path,
+                                                              FILE_ATTRIBUTE_NORMAL);
+    assert(path_relative_path_to_result);
 }
 
 // NOTE: we create a file handle so that we deny other processes from writing to it before we're done with it.
