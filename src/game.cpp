@@ -248,6 +248,10 @@ void init_game(Game_State *game_state,
 
     Camera *camera = &game_state->render_state.camera;
     Display_Output *display_output = &game_state->render_state.display_output;
+
+    // string pool allocators
+    Allocator *string64_allocator = (Allocator *) &memory.string64_pool;
+    Allocator *filename_allocator = (Allocator *) &memory.filename_pool;
     
     // init tables
     game_state->font_table = make_hash_table<String, Font>((Allocator *) &memory.hash_table_stack,
@@ -271,27 +275,33 @@ void init_game(Game_State *game_state,
     // add meshes
     Allocator *mesh_name_allocator = (Allocator *) &memory.string_arena;
     Mesh mesh;
-    mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena, "blender/cube.mesh",
+    mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena,
+                              make_string_buffer(filename_allocator, "blender/cube.mesh", PLATFORM_MAX_PATH),
                               make_string_buffer(mesh_name_allocator, "cube", MESH_NAME_MAX_SIZE));
     int32 cube_mesh_id = add_mesh(game_state, mesh);
 
-    mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena, "blender/suzanne2.mesh",
+    mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena,
+                              make_string_buffer(filename_allocator, "blender/suzanne2.mesh", PLATFORM_MAX_PATH),
                               make_string_buffer(mesh_name_allocator, "suzanne", MESH_NAME_MAX_SIZE));
     int32 suzanne_mesh_id = add_mesh(game_state, mesh);
 
-    mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena, "blender/gizmo_arrow.mesh",
+    mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena,
+                              make_string_buffer(filename_allocator, "blender/gizmo_arrow.mesh", PLATFORM_MAX_PATH),
                               make_string_buffer(mesh_name_allocator, "gizmo_arrow", MESH_NAME_MAX_SIZE));
     int32 gizmo_arrow_mesh_id = add_mesh(game_state, mesh);
 
-    mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena, "blender/gizmo_ring.mesh",
+    mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena,
+                              make_string_buffer(filename_allocator, "blender/gizmo_ring.mesh", PLATFORM_MAX_PATH),
                               make_string_buffer(mesh_name_allocator, "gizmo_ring", MESH_NAME_MAX_SIZE));
     int32 gizmo_ring_mesh_id = add_mesh(game_state, mesh);
 
-    mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena, "blender/gizmo_sphere.mesh",
+    mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena,
+                              make_string_buffer(filename_allocator, "blender/gizmo_sphere.mesh", PLATFORM_MAX_PATH),
                               make_string_buffer(mesh_name_allocator, "gizmo_sphere", MESH_NAME_MAX_SIZE));
     int32 gizmo_sphere_mesh_id = add_mesh(game_state, mesh);
 
-    mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena, "blender/sphere.mesh",
+    mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena, 
+                              make_string_buffer(filename_allocator, "blender/sphere.mesh", PLATFORM_MAX_PATH),
                               make_string_buffer(mesh_name_allocator, "sphere", MESH_NAME_MAX_SIZE));
     int32 sphere_mesh_id = add_mesh(game_state, mesh);
 
@@ -311,8 +321,6 @@ void init_game(Game_State *game_state,
     add_font(game_state, font);
 
     // init textures
-    Allocator *string64_allocator = (Allocator *) &memory.string64_pool;
-    Allocator *filename_allocator = (Allocator *) &memory.filename_pool;
     Texture texture;
     texture = make_texture(game_state,
                            make_string_buffer(string64_allocator, "debug", 64),

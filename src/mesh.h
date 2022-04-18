@@ -11,6 +11,7 @@
 //       our mesh loading filetype and loading to acommodate these different types.
 struct Mesh {
     String_Buffer name;
+    String_Buffer filename;
 
     real32 *data;
     uint32 num_vertices;

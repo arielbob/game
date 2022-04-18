@@ -76,7 +76,7 @@ void copy_string(String *dest, String src, uint32 max_size) {
 }
 */
 
-String_Buffer make_string_buffer(char *buffer, uint32 size_of_buffer) {
+String_Buffer make_empty_string_buffer(char *buffer, uint32 size_of_buffer) {
     String_Buffer result;
     result.contents = buffer;
     result.current_length = 0;
@@ -94,7 +94,7 @@ String_Buffer make_string_buffer(Allocator *allocator, uint32 size) {
 }
 
 // NOTE: size does NOT include a null-terminator, since String does not include a null-terminator in contents.
-// NOTE: creates a String_Buffer with initial contents
+// NOTE: creates a String_Buffer with initial contents (this does a copy)
 String_Buffer make_string_buffer(Allocator *allocator, char *string, uint32 size) {
     String_Buffer buffer;
 

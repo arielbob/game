@@ -1,1 +1,11 @@
+;; level info
 level_name "test"
+
+;; meshes
+mesh "cube" "blender/cube.mesh"
+mesh "suzanne" "blender/suzanne2.mesh"
+mesh "gizmo_arrow" "blender/gizmo_arrow.mesh"
+mesh "gizmo_ring" "blender/gizmo_ring.mesh"
+mesh "gizmo_sphere" "blender/gizmo_sphere.mesh"
+mesh "sphere" "blender/sphere.mesh"
+mesh "torus" "C:\Users\bobac\source\02-10-2022\blender\torus.mesh"

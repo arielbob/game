@@ -500,13 +500,17 @@ Vec3 get_vertex_from_index(Mesh *mesh, uint32 index) {
 
 // TODO: we may want to just get rid of the mesh_name_size parameter, and have it just be set to
 //       MESH_NAME_MAX_SIZE.
-Mesh read_and_load_mesh(Allocator *allocator, char *filename,
+Mesh read_and_load_mesh(Allocator *allocator,
+                        String_Buffer filename_buffer,
                         String_Buffer name_buffer) {
     Marker m = begin_region();
 
-    File_Data mesh_file = platform_open_and_read_file((Allocator *) &memory.global_stack,
-                                                      filename);
+    Allocator *global_stack = (Allocator *) &memory.global_stack;
+    char *filename = to_char_array(global_stack, filename_buffer);
+    File_Data mesh_file = platform_open_and_read_file(global_stack, filename);
+
     Mesh mesh = load_mesh(mesh_file, allocator);
+    mesh.filename = filename_buffer;
     mesh.name = name_buffer;
     
     end_region(m);

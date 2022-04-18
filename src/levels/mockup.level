@@ -8,8 +8,8 @@
 level_name "test"
 
 ;; meshes
-mesh suzanne2 "blender/suzanne.mesh"
-mesh cube "blender/cube.mesh"
+mesh "suzanne2" "blender/suzanne.mesh"
+mesh "cube" "blender/cube.mesh"
 
 ;; textures
 texture debug "src/textures/debug_texture.bmp"

@@ -582,15 +582,20 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     x += add_mesh_button_width + padding_left;
 
     if (add_mesh_pressed) {
-        Pool_Allocator *string64_pool = &memory.string64_pool;
+        Allocator *string64_allocator = (Allocator *) &memory.string64_pool;
+        Allocator *filename_allocator = (Allocator *) &memory.filename_pool;
 
         Marker m = begin_region();
-        char *filename = (char *) region_push(&memory.global_stack, PLATFORM_MAX_PATH);
+        char *filename = (char *) region_push(PLATFORM_MAX_PATH);
         
         if (platform_open_file_dialog(filename, PLATFORM_MAX_PATH)) {
-            String_Buffer new_mesh_name_buffer = make_string_buffer((Allocator *) string64_pool, 64);
-            Mesh new_mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena, filename,
-                                           new_mesh_name_buffer);
+            String_Buffer new_mesh_name_buffer = make_string_buffer(string64_allocator, 64);
+            String_Buffer new_mesh_filename_buffer = make_string_buffer(filename_allocator,
+                                                                        filename, PLATFORM_MAX_PATH);
+
+            Mesh new_mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena,
+                                               new_mesh_filename_buffer,
+                                               new_mesh_name_buffer);
             int32 mesh_id = add_mesh(game_state, new_mesh);
             entity->mesh_id = mesh_id;
             editor_state->editing_selected_entity_mesh = true;

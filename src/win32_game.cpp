@@ -784,7 +784,7 @@ bool32 platform_open_save_file_dialog(char *filepath, char *filetype_name, char 
     char filter_buffer[64];
     // NOTE: we do it this way since string_format is messed up when the string contains null
     //       characters that aren't at the end (the format string uses \0 as a separator).
-    String_Buffer working_buffer = make_string_buffer(filter_buffer, sizeof(filter_buffer));
+    String_Buffer working_buffer = make_empty_string_buffer(filter_buffer, sizeof(filter_buffer));
     append_string(&working_buffer, filetype_name_string);
     append_string(&working_buffer, make_string("\0", 1));
     append_string(&working_buffer, make_string("*.", 2));
