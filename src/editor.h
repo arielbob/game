@@ -54,8 +54,6 @@ struct Editor_State {
     uint32 open_window_flags;
     bool32 editing_selected_entity_material;
     bool32 editing_selected_entity_mesh;
-
-    String_Buffer level_name; // TODO: move this somewhere else like a level struct
 };
 
 #endif

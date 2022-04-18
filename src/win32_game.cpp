@@ -679,6 +679,11 @@ bool32 win32_init_memory() {
     uint32 string64_pool_size = MEGABYTES(64);
     uint32 filename_pool_size = MEGABYTES(8);
 
+    // level memory
+    uint32 level_mesh_arena_size = MEGABYTES(64);
+    uint32 level_string64_pool_size = MEGABYTES(64);
+    uint32 level_filename_pool_size = MEGABYTES(64);
+
     uint32 total_memory_size = (global_stack_size +
                                 hash_table_stack_size +
                                 game_data_arena_size +
@@ -687,7 +692,10 @@ bool32 win32_init_memory() {
                                 string_arena_size +
                                 frame_arena_size +
                                 string64_pool_size +
-                                filename_pool_size);
+                                filename_pool_size +
+                                level_mesh_arena_size +
+                                level_string64_pool_size +
+                                level_filename_pool_size);
     void *memory_base = VirtualAlloc(0, total_memory_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
     if (memory_base) {
@@ -727,6 +735,15 @@ bool32 win32_init_memory() {
         Pool_Allocator filename_pool = make_pool_allocator(base, MAX_PATH, filename_pool_size);
         memory.filename_pool = filename_pool;
         base = (uint8 *) base + filename_pool_size;
+
+        memory.level_mesh_arena = make_arena_allocator(base, level_mesh_arena_size);
+        base = (uint8 *) base + level_mesh_arena_size;
+
+        memory.level_string64_pool = make_pool_allocator(base, 64, level_string64_pool_size);
+        base = (uint8 *) base + level_string64_pool_size;
+
+        memory.level_filename_pool = make_pool_allocator(base, MAX_PATH, level_filename_pool_size);
+        base = (uint8 *) base + level_filename_pool_size;
 
         memory.is_initted = true;
 

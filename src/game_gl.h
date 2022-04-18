@@ -156,6 +156,8 @@ struct GL_State {
     //       making IDs based off of a running count kept by the table you're adding to.
     Hash_Table<int32, GL_Mesh> rendering_mesh_table;
     Hash_Table<int32, GL_Mesh> mesh_table;
+    // for game's common meshes
+    Hash_Table<int32, GL_Mesh> common_mesh_table;
 
     Hash_Table<String, uint32> font_texture_table;
     Hash_Table<int32, GL_Texture> texture_table;

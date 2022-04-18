@@ -260,7 +260,7 @@ void draw_mesh_library(Game_State *game_state, Controller_State *controller_stat
     UI_Image_Button_Style image_button_style = default_image_button_style;
     image_button_style.image_constraint_flags = CONSTRAINT_FILL_BUTTON_WIDTH | CONSTRAINT_KEEP_IMAGE_PROPORTIONS;
 
-    Hash_Table<int32, Mesh> *mesh_table = &game_state->mesh_table;
+    Hash_Table<int32, Mesh> *mesh_table = &game_state->current_level.mesh_table;
     char *button_id_string = "mesh_library_item";
     int32 picked_mesh_id = -1;
     for (int32 i = 0; i < mesh_table->max_entries; i++) {
@@ -360,7 +360,7 @@ void draw_texture_library(Game_State *game_state, Controller_State *controller_s
     UI_Image_Button_Style image_button_style = default_image_button_style;
     image_button_style.image_constraint_flags = CONSTRAINT_FILL_BUTTON_WIDTH | CONSTRAINT_KEEP_IMAGE_PROPORTIONS;
 
-    Hash_Table<int32, Texture> *texture_table = &game_state->texture_table;
+    Hash_Table<int32, Texture> *texture_table = &game_state->current_level.texture_table;
     char *button_id_string = "texture_library_item";
     int32 picked_texture_id = -1;
     for (int32 i = 0; i < texture_table->max_entries; i++) {
@@ -457,7 +457,7 @@ void draw_material_library(Game_State *game_state, Controller_State *controller_
     x += padding_x;
     y += padding_y;
 
-    Hash_Table<int32, Material> *material_table = &game_state->material_table;
+    Hash_Table<int32, Material> *material_table = &game_state->current_level.material_table;
     char *button_id_string = "material_library_item";
     int32 picked_material_id = -1;
     for (int32 i = 0; i < material_table->max_entries; i++) {
@@ -506,9 +506,10 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
 
     Allocator *allocator = (Allocator *) &memory.frame_arena;
 
-    Mesh *mesh = get_mesh_pointer(game_state, entity->mesh_id);
+    Level *level = &game_state->current_level;
+    Mesh *mesh = get_mesh_pointer(level, entity->mesh_id);
     Material *material;
-    bool32 material_exists = hash_table_find_pointer(game_state->material_table,
+    bool32 material_exists = hash_table_find_pointer(game_state->current_level.material_table,
                                                      entity->material_id,
                                                      &material);
     assert(material_exists);
@@ -599,7 +600,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
             Mesh new_mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena,
                                                new_mesh_filename_buffer,
                                                new_mesh_name_buffer);
-            int32 mesh_id = add_mesh(game_state, new_mesh);
+            int32 mesh_id = level_add_mesh(level, new_mesh);
             entity->mesh_id = mesh_id;
             editor_state->editing_selected_entity_mesh = true;
         }
@@ -779,7 +780,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
             true
         };
 
-        int32 material_id = add_material(game_state, new_material);
+        int32 material_id = level_add_material(level, new_material);
         entity->material_id = material_id;
         editor_state->editing_selected_entity_material = true;
     }
@@ -827,7 +828,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         // TEXTURE
         char *texture_name = "";
         if (material->texture_id >= 0) {
-            Texture texture = get_texture(game_state, material->texture_id);
+            Texture texture = get_texture(level, material->texture_id);
             texture_name = to_char_array(allocator, texture.name);
         }
         draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags,
@@ -994,7 +995,7 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
                 x + padding_x,
                 y,
                 row_width - padding_x*2, row_height,
-                &editor_state->level_name, editor_font_name_bold,
+                &game_state->current_level.name, editor_font_name_bold,
                 default_text_box_style, default_text_style,
                 "level_name_text_box");
     y += row_height;
@@ -1009,12 +1010,12 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
                                                default_text_button_style, default_text_style,
                                                "Save Level",
                                                editor_font_name_bold,
-                                               is_empty(editor_state->level_name),
+                                               is_empty(game_state->current_level.name),
                                                "save_level");
     y += button_height;
 
     if (save_level_clicked) {
-        assert(!is_empty(editor_state->level_name));
+        assert(!is_empty(game_state->current_level.name));
         
         Marker m = begin_region();
         char *filename = (char *) region_push(&memory.global_stack, PLATFORM_MAX_PATH);
@@ -1022,7 +1023,7 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
         bool32 has_filename = platform_open_save_file_dialog(filename, "Levels (*.level)", "level", PLATFORM_MAX_PATH);
 
         if (has_filename) {
-            export_level((Allocator *) &memory.global_stack, game_state, filename);
+            export_level((Allocator *) &memory.global_stack, &game_state->current_level, filename);
         }
         
         end_region(m);
@@ -1088,7 +1089,7 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
             draw_material_library(game_state, controller_state, selected_entity);
         } else if (editor_state->open_window_flags & TEXTURE_LIBRARY_WINDOW) {
             Material *selected_material;
-            bool32 material_exists = hash_table_find_pointer(game_state->material_table,
+            bool32 material_exists = hash_table_find_pointer(game_state->current_level.material_table,
                                                              selected_entity->material_id,
                                                              &selected_material);
             assert(material_exists);
@@ -1149,15 +1150,17 @@ int32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, real32 *t_res
 int32 pick_entity(Game_State *game_state, Ray cursor_ray, Entity *entity_result, int32 *index_result) {
     Editor_State *editor_state = &game_state->editor_state;
 
-    Hash_Table<int32, Mesh> mesh_table = game_state->mesh_table;
-    Normal_Entity *normal_entities = game_state->normal_entities;
-    Point_Light_Entity *point_lights = game_state->point_lights;
+    Level *level = &game_state->current_level;
+
+    Hash_Table<int32, Mesh> mesh_table = level->mesh_table;
+    Normal_Entity *normal_entities = level->normal_entities;
+    Point_Light_Entity *point_lights = level->point_lights;
 
     Entity *picked_entity = NULL;
     int32 entity_index = -1;
 
     real32 t_min = FLT_MAX;
-    for (int32 i = 0; i < game_state->num_normal_entities; i++) {
+    for (int32 i = 0; i < level->num_normal_entities; i++) {
         real32 t;
         Normal_Entity *entity = &normal_entities[i];
         Mesh mesh = hash_table_get(mesh_table, entity->mesh_id);
@@ -1168,7 +1171,7 @@ int32 pick_entity(Game_State *game_state, Ray cursor_ray, Entity *entity_result,
         }
     }
 
-    for (int32 i = 0; i < game_state->num_point_lights; i++) {
+    for (int32 i = 0; i < level->num_point_lights; i++) {
         real32 t;
         Point_Light_Entity *entity = &point_lights[i];
         Mesh mesh = hash_table_get(mesh_table, entity->mesh_id);
@@ -1246,7 +1249,7 @@ Gizmo_Handle pick_gizmo(Game_State *game_state, Ray cursor_ray,
     // check ray against translation arrows
     Gizmo_Handle gizmo_translation_handles[3] = { GIZMO_TRANSLATE_X, GIZMO_TRANSLATE_Y, GIZMO_TRANSLATE_Z };
     assert(gizmo.arrow_mesh_id >= 0);
-    Mesh arrow_mesh = get_mesh(game_state, gizmo.arrow_mesh_id);
+    Mesh arrow_mesh = get_common_mesh(game_state, gizmo.arrow_mesh_id);
 
     real32 t_min = FLT_MAX;
     for (int32 i = 0; i < 3; i++) {
@@ -1262,7 +1265,7 @@ Gizmo_Handle pick_gizmo(Game_State *game_state, Ray cursor_ray,
     // check ray against rotation rings
     Gizmo_Handle gizmo_rotation_handles[3] = { GIZMO_ROTATE_X, GIZMO_ROTATE_Y, GIZMO_ROTATE_Z };
     assert(gizmo.ring_mesh_id >= 0);
-    Mesh ring_mesh = get_mesh(game_state, gizmo.ring_mesh_id);
+    Mesh ring_mesh = get_common_mesh(game_state, gizmo.ring_mesh_id);
 
     for (int32 i = 0; i < 3; i++) {
         Transform gizmo_handle_transform = gizmo_handle_transforms[i];

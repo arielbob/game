@@ -131,11 +131,15 @@
 // TODO: level loading
 //       in level loading, we should ensure that duplicates of mesh, texture, and material names do not exist.
 //       - TODO (done): add hash table resetting procedure
+//       - TODO (done): add common mesh table to game_state (to hold things like the gizmo meshes)
+//       - TODO (done): switch to using a level struct to hold level data
+//       - TODO: clear and reset the current level
 //       - TODO: add procedure to parse and load level file
 //       - TODO: prompt to save open level if opening a new one
 //       - TODO: save as button for saving a duplicate of a level
 //       - TODO: save without dialog if a saved level is opened
 
+// TODO: allocate Game_State in game_data_arena instead of having it on the stack
 // TODO: add camera state to level
 //       - would have to add way to set initial camera state, since camera can move
 
@@ -489,7 +493,7 @@ void gl_init_font(GL_State *gl_state, Font *font) {
     hash_table_add(&gl_state->font_texture_table, make_string(font->name), baked_texture_id);
 }
 
-GL_Mesh gl_load_mesh(GL_State *gl_state, Mesh mesh, int32 mesh_id) {
+GL_Mesh gl_load_mesh(GL_State *gl_state, Mesh mesh) {
     uint32 vao, vbo, ebo;
     
     glGenVertexArrays(1, &vao);
@@ -523,7 +527,6 @@ GL_Mesh gl_load_mesh(GL_State *gl_state, Mesh mesh, int32 mesh_id) {
     glBindVertexArray(0);
 
     GL_Mesh gl_mesh = { vao, vbo, mesh.num_triangles };
-    hash_table_add(&gl_state->mesh_table, mesh_id, gl_mesh);
 
     return gl_mesh;
 }
@@ -554,6 +557,14 @@ void gl_use_font_texture(GL_State *gl_state, String font_texture_name) {
 GL_Mesh gl_use_mesh(GL_State *gl_state, int32 mesh_id) {
     GL_Mesh gl_mesh;
     uint32 mesh_exists = hash_table_find(gl_state->mesh_table, mesh_id, &gl_mesh);
+    assert(mesh_exists);
+    glBindVertexArray(gl_mesh.vao);
+    return gl_mesh;
+}
+
+GL_Mesh gl_use_common_mesh(GL_State *gl_state, int32 mesh_id) {
+    GL_Mesh gl_mesh;
+    uint32 mesh_exists = hash_table_find(gl_state->common_mesh_table, mesh_id, &gl_mesh);
     assert(mesh_exists);
     glBindVertexArray(gl_mesh.vao);
     return gl_mesh;
@@ -594,6 +605,24 @@ void gl_draw_solid_color_mesh(GL_State *gl_state, Render_State *render_state,
                               Transform transform) {
     uint32 shader_id = gl_use_shader(gl_state, "solid");
     GL_Mesh gl_mesh = gl_use_mesh(gl_state, mesh_id);
+
+    Mat4 model_matrix = get_model_matrix(transform);
+    gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
+    gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->cpv_matrix);
+    gl_set_uniform_vec4(shader_id, "color", &color);
+    gl_set_uniform_int(shader_id, "use_color_override", true);
+    
+    glDrawElements(GL_TRIANGLES, gl_mesh.num_triangles * 3, GL_UNSIGNED_INT, 0);
+
+    glUseProgram(0);
+    glBindVertexArray(0);
+}
+
+void gl_draw_solid_color_mesh(GL_State *gl_state, Render_State *render_state,
+                              GL_Mesh gl_mesh, Vec4 color,
+                              Transform transform) {
+    uint32 shader_id = gl_use_shader(gl_state, "solid");
+    glBindVertexArray(gl_mesh.vao);
 
     Mat4 model_matrix = get_model_matrix(transform);
     gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
@@ -878,6 +907,8 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
                                                                      HASH_TABLE_SIZE, &int32_equals);
     gl_state->mesh_table = make_hash_table<int32, GL_Mesh>((Allocator *) &memory.hash_table_stack,
                                                             HASH_TABLE_SIZE, &int32_equals);
+    gl_state->common_mesh_table = make_hash_table<int32, GL_Mesh>((Allocator *) &memory.hash_table_stack,
+                                                           HASH_TABLE_SIZE, &int32_equals);
     gl_state->texture_table = make_hash_table<int32, GL_Texture>((Allocator *) &memory.hash_table_stack,
                                                                   HASH_TABLE_SIZE, &int32_equals);
     gl_state->font_texture_table = make_hash_table<String, uint32>((Allocator *) &memory.hash_table_stack,
@@ -1781,7 +1812,6 @@ void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Editor_State 
         z_transform.rotation = gizmo.transform.rotation*make_quaternion(-90.0f, y_axis);
     }
 
-
     Vec4 x_handle_hover = make_vec4(1.0f, 0.8f, 0.8f, 1.0f);
     Vec4 y_handle_hover = make_vec4(0.8f, 1.0f, 0.8f, 1.0f);
     Vec4 z_handle_hover = make_vec4(0.8f, 0.8f, 1.0f, 1.0f);
@@ -1801,13 +1831,23 @@ void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Editor_State 
         z_handle_color = z_handle_hover;
     }
 
-    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.arrow_mesh_id, x_handle_color, x_transform);
-    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.arrow_mesh_id, y_handle_color, y_transform);
-    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.arrow_mesh_id, z_handle_color, z_transform);
+    GL_Mesh arrow_mesh;
+    uint32 mesh_exists = hash_table_find(gl_state->common_mesh_table, gizmo.arrow_mesh_id, &arrow_mesh);
+    assert(mesh_exists);
+    GL_Mesh sphere_mask_mesh;
+    mesh_exists = hash_table_find(gl_state->common_mesh_table, gizmo.sphere_mesh_id, &sphere_mask_mesh);
+    assert(mesh_exists);
+    GL_Mesh ring_mesh;
+    mesh_exists = hash_table_find(gl_state->common_mesh_table, gizmo.ring_mesh_id, &ring_mesh);
+    assert(mesh_exists);
+
+    gl_draw_solid_color_mesh(gl_state, render_state, arrow_mesh, x_handle_color, x_transform);
+    gl_draw_solid_color_mesh(gl_state, render_state, arrow_mesh, y_handle_color, y_transform);
+    gl_draw_solid_color_mesh(gl_state, render_state, arrow_mesh, z_handle_color, z_transform);
 
     Transform sphere_mask_transform = gizmo.transform;
     glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.sphere_mesh_id,
+    gl_draw_solid_color_mesh(gl_state, render_state, sphere_mask_mesh,
                              make_vec4(0.0f, 0.0f, 0.0f, 1.0f), sphere_mask_transform);
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
@@ -1828,9 +1868,9 @@ void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Editor_State 
     y_transform.scale += offset;
     z_transform.scale += 2.0f * offset;
 
-    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.ring_mesh_id, x_handle_color, x_transform);
-    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.ring_mesh_id, y_handle_color, y_transform);
-    gl_draw_solid_color_mesh(gl_state, render_state, gizmo.ring_mesh_id, z_handle_color, z_transform);
+    gl_draw_solid_color_mesh(gl_state, render_state, ring_mesh, x_handle_color, x_transform);
+    gl_draw_solid_color_mesh(gl_state, render_state, ring_mesh, y_handle_color, y_transform);
+    gl_draw_solid_color_mesh(gl_state, render_state, ring_mesh, z_handle_color, z_transform);
 }
 
 void gl_draw_framebuffer(GL_State *gl_state, GL_Framebuffer framebuffer) {
@@ -1851,8 +1891,31 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
                Display_Output display_output, Win32_Sound_Output *win32_sound_output) {
     Render_State *render_state = &game_state->render_state;
 
+    Level *level = &game_state->current_level;
+
+    // load common meshes
+    Hash_Table<int32, Mesh> *game_common_mesh_table = &game_state->common_mesh_table;
+    for (int32 i = 0; i < game_common_mesh_table->max_entries; i++) {
+        Hash_Table_Entry<int32, Mesh> *game_mesh_entry = &game_common_mesh_table->entries[i];
+        if (!game_mesh_entry->is_occupied) continue;
+
+        Mesh *mesh = &game_mesh_entry->value;
+        
+        if (!mesh->is_loaded) {
+            if (!hash_table_exists(gl_state->common_mesh_table, game_mesh_entry->key)) {
+                GL_Mesh gl_mesh = gl_load_mesh(gl_state, *mesh);
+                hash_table_add(&gl_state->common_mesh_table, game_mesh_entry->key, gl_mesh);
+            } else {
+                debug_print("%s already loaded.\n", mesh->name);
+            }
+
+            mesh->is_loaded = true;
+        }
+    }
+
+
     // load meshes
-    Hash_Table<int32, Mesh> *game_mesh_table = &game_state->mesh_table;
+    Hash_Table<int32, Mesh> *game_mesh_table = &level->mesh_table;
     for (int32 i = 0; i < game_mesh_table->max_entries; i++) {
         Hash_Table_Entry<int32, Mesh> *game_mesh_entry = &game_mesh_table->entries[i];
         if (!game_mesh_entry->is_occupied) continue;
@@ -1862,7 +1925,8 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
         // TODO: test this
         if (!mesh->is_loaded) {
             if (!hash_table_exists(gl_state->mesh_table, game_mesh_entry->key)) {
-                gl_load_mesh(gl_state, *mesh, game_mesh_entry->key);
+                GL_Mesh gl_mesh = gl_load_mesh(gl_state, *mesh);
+                hash_table_add(&gl_state->mesh_table, game_mesh_entry->key, gl_mesh);
             } else {
                 debug_print("%s already loaded.\n", mesh->name);
             }
@@ -1893,7 +1957,7 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
     // load textures
     // TODO: we can break out of this loop early if we've already checked texture_table->num_entries
     //       (this can also be done for the font_table)
-    Hash_Table<int32, Texture> *game_texture_table = &game_state->texture_table;
+    Hash_Table<int32, Texture> *game_texture_table = &level->texture_table;
     for (int32 i = 0; i < game_texture_table->max_entries; i++) {
         Hash_Table_Entry<int32, Texture> *game_texture_entry = &game_texture_table->entries[i];
         if (!game_texture_entry->is_occupied) continue;
@@ -1928,10 +1992,10 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
     Editor_State *editor_state = &game_state->editor_state;
 
     // point lights
-    for (int32 i = 0; i < game_state->num_point_lights; i++) {
-        Point_Light_Entity *entity = &game_state->point_lights[i];
+    for (int32 i = 0; i < level->num_point_lights; i++) {
+        Point_Light_Entity *entity = &level->point_lights[i];
         int32 mesh_id = entity->mesh_id;
-        Material material = get_material(game_state, entity->material_id);
+        Material material = get_material(level, entity->material_id);
 
         gl_draw_solid_mesh(gl_state, render_state, 
                            mesh_id, material,
@@ -1946,20 +2010,20 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
 
     glBindBuffer(GL_UNIFORM_BUFFER, gl_state->global_ubo);
     int64 ubo_offset = 0;
-    glBufferSubData(GL_UNIFORM_BUFFER, (int32 *) ubo_offset, sizeof(int32), &game_state->num_point_lights);
+    glBufferSubData(GL_UNIFORM_BUFFER, (int32 *) ubo_offset, sizeof(int32), &level->num_point_lights);
     // NOTE: not sure why we use 16 here, instead of 32, which is the size of the GL_Point_Light struct.
     //       i think we just use the aligned offset of the first member of the struct, which is a vec4, so we offset
     //       by 16 since it's the closest multiple.
     ubo_offset += 16;
 
-    for (int32 i = 0; i < game_state->num_point_lights; i++) {
+    for (int32 i = 0; i < level->num_point_lights; i++) {
         // TODO: we may just want to replace position and light_color with vec4s in Point_Light_Entity.
         //       although this would be kind of annoying since we would have to modify the Transform struct.
         GL_Point_Light gl_point_light = {
-            make_vec4(game_state->point_lights[i].transform.position, 1.0f),
-            make_vec4(game_state->point_lights[i].light_color, 1.0f),
-            game_state->point_lights[i].falloff_start,
-            game_state->point_lights[i].falloff_end
+            make_vec4(level->point_lights[i].transform.position, 1.0f),
+            make_vec4(level->point_lights[i].light_color, 1.0f),
+            level->point_lights[i].falloff_start,
+            level->point_lights[i].falloff_end
         };
 
         glBufferSubData(GL_UNIFORM_BUFFER, (int32 *) ubo_offset,
@@ -1970,10 +2034,10 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
     // entities
-    for (int32 i = 0; i < game_state->num_normal_entities; i++) {
-        Normal_Entity *entity = &game_state->normal_entities[i];
+    for (int32 i = 0; i < level->num_normal_entities; i++) {
+        Normal_Entity *entity = &level->normal_entities[i];
         int32 mesh_id = entity->mesh_id;
-        Material material = get_material(game_state, entity->material_id);
+        Material material = get_material(level, entity->material_id);
 
         gl_draw_mesh(gl_state, render_state,
                      mesh_id, material,

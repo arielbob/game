@@ -44,8 +44,11 @@ struct Memory {
     Arena_Allocator font_arena;
     Arena_Allocator mesh_arena;
     Arena_Allocator frame_arena;
-    // TODO: we may want to have a free-list version of this for strings that are always the same size,
-    //       such as for filepaths
+
+    Arena_Allocator level_mesh_arena;
+    Pool_Allocator level_string64_pool;
+    Pool_Allocator level_filename_pool;
+
     Arena_Allocator string_arena; 
     Stack_Allocator global_stack;
     // i'm not exactly sure why hash_table_stack is a stack; this can be an arena, but either way, it'll

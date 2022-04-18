@@ -4,7 +4,7 @@
 #include "math.h"
 #include "string.h"
 
-#define MESH_NAME_MAX_SIZE 128
+#define MESH_NAME_MAX_SIZE 64
 
 // TODO: we need more types of Mesh objects. since not all meshes require all the data. for example, a nav mesh
 //       doesn't need UVs. and something like a rock mesh won't need joint data. we will also need to modify
@@ -33,6 +33,7 @@ struct Mesh {
     AABB aabb;
 
     bool32 is_loaded;
+    bool32 should_unload;
 };
 
 #define MAX_TOKEN_TEXT_SIZE 1024

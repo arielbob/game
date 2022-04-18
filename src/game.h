@@ -1,20 +1,21 @@
 #ifndef GAME_H
 #define GAME_H
 
+#define MAX_MESHES 64
+#define MAX_MATERIALS 64
+#define MAX_ENTITIES 64
+#define MAX_POINT_LIGHTS 16
+#define MAX_FONTS 64
+
 #include "platform.h"
 #include "hash_table.h"
 #include "font.h"
 #include "ui.h"
 #include "mesh.h"
 #include "editor.h"
+#include "level.h"
 
 #define MAX_PRESSED_CHARS 256
-
-#define MAX_MESHES 64
-#define MAX_MATERIALS 64
-#define MAX_ENTITIES 64
-#define MAX_POINT_LIGHTS 16
-#define MAX_FONTS 64
 
 //#define MATERIAL_NAME_MAX_SIZE 128
 #define MATERIAL_STRING_MAX_SIZE 64
@@ -135,16 +136,11 @@ struct Game_State {
     UI_Manager ui_manager;
     char current_char; // debugging
 
-    int32 num_normal_entities;
-    Normal_Entity normal_entities[MAX_ENTITIES];
+    bool32 should_clean_and_load_level;
+    String_Buffer level_to_be_loaded;
+    Level current_level;
 
-    int32 num_point_lights;
-    Point_Light_Entity point_lights[MAX_POINT_LIGHTS];
-
-    Hash_Table<int32, Mesh> mesh_table;
-    Hash_Table<int32, Material> material_table;
-    Hash_Table<int32, Texture> texture_table;
-
+    Hash_Table<int32, Mesh> common_mesh_table;
     Hash_Table<String, File_Data> font_file_table;
     Hash_Table<String, Font> font_table;
     
@@ -157,11 +153,12 @@ inline bool32 just_pressed(Controller_Button_State button_state);
 inline bool32 just_lifted(Controller_Button_State button_state);
 Entity *get_selected_entity(Game_State *game_state);
 Font get_font(Game_State *game_state, char *font_name);
-int32 add_material(Game_State *game_state, Material material);
-Texture get_texture(Game_State *game_state, int32 texture_id);
-Mesh get_mesh(Game_State *game_state, int32 mesh_id);
-Mesh *get_mesh_pointer(Game_State *game_state, int32 mesh_id);
-Material get_material(Game_State *game_state, int32 material_id);
-int32 add_mesh(Game_State *game_state, Mesh mesh);
+//int32 add_material(Game_State *game_state, Material material);
+//Texture get_texture(Game_State *game_state, int32 texture_id);
+//Mesh get_mesh(Game_State *game_state, int32 mesh_id);
+//Mesh *get_mesh_pointer(Game_State *game_state, int32 mesh_id);
+//Material get_material(Game_State *game_state, int32 material_id);
+//int32 add_mesh(Game_State *game_state, Mesh mesh);
+Mesh get_common_mesh(Game_State *game_state, int32 mesh_id);
 
 #endif

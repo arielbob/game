@@ -180,12 +180,20 @@ Pool_Allocator make_pool_allocator(void *base, uint32 block_size, uint32 size, u
     pool_allocator.first = base;
     pool_allocator.max_blocks = size / block_size;
 
-    // initialize the free list
+#if 0
     void **current = (void **) pool_allocator.base;
     while ((uint8 *) current < (((uint8 *) base + size) - block_size)) {
         // store a pointer to the next free block, which initially is just a pointer to the next block in memory
         *current = current + block_size;
         current = (void **) ((uint8 *) current +  block_size);
+    }
+#endif
+
+    // initialize the free list
+    void **current = (void **) pool_allocator.base;
+    for (uint32 i = 0; i < pool_allocator.max_blocks - 1; i++) {
+        *current = current + block_size;
+        current = (void **) ((uint8 *) current + block_size);
     }
 
     *current = NULL;

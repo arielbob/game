@@ -5,6 +5,10 @@
 
 #define HASH_TABLE_SIZE 64
 
+bool32 int32_equals(int32 a, int32 b) {
+    return a == b;
+}
+
 int32 get_hash(int32 id, uint32 bucket_size) {
     return id % bucket_size;
 }
