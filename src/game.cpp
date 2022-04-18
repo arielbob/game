@@ -273,7 +273,27 @@ void init_game(Game_State *game_state,
 
     init_camera(camera, display_output);
 
-    // add meshes
+    // init fonts
+    Font font;
+    font = load_font(game_state, "c:/windows/fonts/times.ttf", "times32", 32.0f, 512, 512);
+    add_font(game_state, font);
+    font = load_font(game_state, "c:/windows/fonts/times.ttf", "times24", 24.0f, 512, 512);
+    add_font(game_state, font);
+    font = load_font(game_state, "c:/windows/fonts/courbd.ttf", "courier24b", 24.0f, 512, 512);
+    add_font(game_state, font);
+    font = load_font(game_state, "c:/windows/fonts/cour.ttf", "courier18", 18.0f, 512, 512);
+    add_font(game_state, font);
+    font = load_font(game_state, "c:/windows/fonts/courbd.ttf", "courier18b", 18.0f, 512, 512);
+    add_font(game_state, font);
+    font = load_font(game_state, "c:/windows/fonts/lucon.ttf", "lucidaconsole18", 18.0f, 512, 512);
+    add_font(game_state, font);
+
+#if 0
+    read_and_load_level(game_state,
+                        make_string_buffer(string64_allocator, "src/levels/test.level", PLATFORM_MAX_PATH));
+#endif
+
+    // add fonts
     Allocator *mesh_name_allocator = (Allocator *) &memory.string_arena;
     Mesh mesh;
     mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena,
@@ -305,21 +325,6 @@ void init_game(Game_State *game_state,
                               make_string_buffer(filename_allocator, "blender/sphere.mesh", PLATFORM_MAX_PATH),
                               make_string_buffer(mesh_name_allocator, "sphere", MESH_NAME_MAX_SIZE));
     int32 sphere_mesh_id = add_mesh(game_state, mesh);
-
-    // init fonts
-    Font font;
-    font = load_font(game_state, "c:/windows/fonts/times.ttf", "times32", 32.0f, 512, 512);
-    add_font(game_state, font);
-    font = load_font(game_state, "c:/windows/fonts/times.ttf", "times24", 24.0f, 512, 512);
-    add_font(game_state, font);
-    font = load_font(game_state, "c:/windows/fonts/courbd.ttf", "courier24b", 24.0f, 512, 512);
-    add_font(game_state, font);
-    font = load_font(game_state, "c:/windows/fonts/cour.ttf", "courier18", 18.0f, 512, 512);
-    add_font(game_state, font);
-    font = load_font(game_state, "c:/windows/fonts/courbd.ttf", "courier18b", 18.0f, 512, 512);
-    add_font(game_state, font);
-    font = load_font(game_state, "c:/windows/fonts/lucon.ttf", "lucidaconsole18", 18.0f, 512, 512);
-    add_font(game_state, font);
 
     // init textures
     Texture texture;

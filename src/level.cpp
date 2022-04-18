@@ -196,3 +196,21 @@ void export_level(Allocator *allocator, Game_State *game_state, char *filename) 
     bool32 write_result = platform_write_file(filename, working_buffer.contents, working_buffer.current_length, true);
     assert(write_result);
 }
+
+#if 0
+void read_and_load_level(Game_State *game_state, String_Buffer filename_buffer) {
+    Marker m = begin_region();
+
+    Allocator *global_stack = (Allocator *) &memory.global_stack;
+    char *filename = to_char_array(global_stack, filename_buffer);
+    File_Data mesh_file = platform_open_and_read_file(global_stack, filename);
+
+    Mesh mesh = load_mesh(mesh_file, allocator);
+    mesh.filename = filename_buffer;
+    mesh.name = name_buffer;
+    
+    end_region(m);
+    
+    return mesh;
+}
+#endif

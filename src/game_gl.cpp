@@ -130,11 +130,13 @@
 
 // TODO: level loading
 //       in level loading, we should ensure that duplicates of mesh, texture, and material names do not exist.
-//       - TODO: write procedure to parse and load level file
+//       - TODO: add procedure to parse and load level file
 //       - TODO: prompt to save open level if opening a new one
 //       - TODO: save as button for saving a duplicate of a level
 //       - TODO: save without dialog if a saved level is opened
 
+// TODO: add camera state to level
+//       - would have to add way to set initial camera state, since camera can move
 
 // TODO: texture creation
 // TODO: some type of messaging system that isn't in the game console, like toasts kind of (messages that appear

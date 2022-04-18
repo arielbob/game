@@ -1,6 +1,7 @@
 #include "memory.h"
 #include "mesh.h"
 #include "platform.h"
+#include "parse.h"
 
 /*
   NOTE: FILE FORMAT
@@ -55,109 +56,29 @@
   0 2 3
 */
 
-inline uint32 ascii_to_uint32(char c) {
-    assert(c >= 48 && c <= 57);
-    return c - 48;
+namespace Mesh_Loader {
+    enum Token_Type {
+        END,
+        COMMENT,
+        INTEGER,
+        REAL,
+        LABEL
+    };
+
+    struct Token {
+        Token_Type type;
+        char *text;
+        uint32 length;
+    };
+
+    Token get_token(Tokenizer *tokenizer, char* file_contents);
+    bool32 token_text_equals(Token token, char *str);
+    Mesh load_mesh(File_Data file_data, Allocator *allocator);
 }
 
-inline uint32 string_to_uint32(char *str, uint32 length) {
-    uint32 result = 0;
-    uint32 place_value = 1;
-
-    for (int32 i = (int32) length - 1; i >= 0; i--) {
-        result += place_value * ascii_to_uint32(str[i]);
-        place_value *= 10;
-    }
-
-    return result;
-}
-
-inline real32 string_to_real32(char *str, uint32 length) {
-    real32 result = 0;
-    bool32 has_decimal = false;
-    real32 decimal_denom = 10.0f;
-    bool32 is_negative = false;
-    
-    for (uint32 i = 0; i < length; i++) {
-        char c = str[i];
-
-        if (c == '.') {
-            assert(has_decimal == false);
-            has_decimal = true;
-        } else if (c == '-') {
-            assert(is_negative == false);
-            is_negative = true;
-        } else {
-            if (has_decimal) {
-                result += (real32) ascii_to_uint32(str[i]) / decimal_denom;
-                decimal_denom *= 10;
-            } else {
-                result = result*10 + ascii_to_uint32(str[i]);
-            }            
-        }
-    }
-
-    if (is_negative) {
-        result = -result;
-    }
-
-    return result;
-}
-
-inline bool32 is_digit(char c) {
-    return (c >= 48 && c <= 57);
-}
-
-inline bool32 is_line_end(char *c) {
-    // we don't actually need to check for null-terminator as long as we're checking the charcaters in order,
-    // i.e. if we're looking for \r\n, then the condition should be (*c == 'r') && (*(c+1) == '\n').
-    // this is because it'll short circuit if the first one is the null-terminator, so we don't have to
-    // worry about reading out of bounds.
-    if (*c == '\r' && *(c + 1) == '\n') {
-        return true;
-    } else if (*c == '\n') {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-inline bool32 is_whitespace(char c) {
-    return (c == ' ' || c == '\t' || c == '\n' || c == '\r');
-}
-
-inline bool32 is_letter(char c) {
-    return ((c >= 'A' && c <= 'Z') ||
-            (c >= 'a' && c <= 'z'));
-}
-
-enum Token_Type {
-    END,
-    COMMENT,
-    INTEGER,
-    REAL,
-    LABEL
-};
-
-struct Token {
-    Token_Type type;
-    char *text;
-    uint32 length;
-};
-
-struct Tokenizer {
-    char *current;
-    uint32 index;
-    uint32 size;
-};
-
-inline void increment_tokenizer(Tokenizer *tokenizer, int32 amount = 1) {
-    tokenizer->current += amount;
-    tokenizer->index += amount;
-}
 
 // NOTE: token.text is not null-terminated, but str is expected to be null-terminated
-internal inline bool32 token_text_equals(Token token, char *str) {
+inline bool32 Mesh_Loader::token_text_equals(Token token, char *str) {
     for (uint32 i = 0; i < token.length; i++) {
         if (token.text[i] != str[i]) {
             return false;
@@ -175,17 +96,6 @@ internal inline bool32 token_text_equals(Token token, char *str) {
     }
 }
 
-internal bool32 is_end(Tokenizer *tokenizer) {
-    return (tokenizer->index >= tokenizer->size);
-}
-
-internal void consume_leading_whitespace(Tokenizer *tokenizer) {
-    while(!is_end(tokenizer) &&
-          is_whitespace(*tokenizer->current)) {
-        increment_tokenizer(tokenizer);
-    }
-}
-
 #if 0
 internal void consume_spaces(Tokenizer *tokenizer) {
     while(!is_end(tokenizer) &&
@@ -195,13 +105,13 @@ internal void consume_spaces(Tokenizer *tokenizer) {
 }
 #endif
 
-internal Token get_token(Tokenizer *tokenizer, char* file_contents) {
+Mesh_Loader::Token Mesh_Loader::get_token(Tokenizer *tokenizer, char* file_contents) {
     Token token = {};
 
     consume_leading_whitespace(tokenizer);
 
     if (is_end(tokenizer)) {
-        token.type = END;
+        token.type = Mesh_Loader::END;
         token.text = NULL;
         token.length = 0;
         return token;
@@ -307,7 +217,7 @@ enum Parser_State {
     WAITING_FOR_INDICES
 };
 
-Mesh load_mesh(File_Data file_data, Allocator *allocator) {
+Mesh Mesh_Loader::load_mesh(File_Data file_data, Allocator *allocator) {
     Tokenizer tokenizer = {};
     tokenizer.current = (char *) file_data.contents;
     tokenizer.index = 0;
@@ -509,7 +419,7 @@ Mesh read_and_load_mesh(Allocator *allocator,
     char *filename = to_char_array(global_stack, filename_buffer);
     File_Data mesh_file = platform_open_and_read_file(global_stack, filename);
 
-    Mesh mesh = load_mesh(mesh_file, allocator);
+    Mesh mesh = Mesh_Loader::load_mesh(mesh_file, allocator);
     mesh.filename = filename_buffer;
     mesh.name = name_buffer;
     
