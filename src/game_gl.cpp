@@ -112,8 +112,7 @@
 //       - TODO (done): load and add mesh when a file is picked
 // TODO (done): don't use BMPs for textures; use PNG or something
 
-// TODO: level saving/loading
-//       in level loading, we should ensure that duplicates of mesh, texture, and material names do not exist.
+// TODO (done): level saving
 //       - TODO (done): figure out file format
 //       - TODO (done): add save level button
 //       - TODO (done): add windows code for opening save file dialog
@@ -127,15 +126,20 @@
 //       - TODO (done): add win32 procedure to convert full paths to relative paths and use this for meshes
 //       - TODO (done): write textures to level file
 //       - TODO (done): write materials to level file
-//       - TODO: write procedure to export level data to level file format
+//       - TODO (done): write entities to level file
+
+// TODO: level loading
+//       in level loading, we should ensure that duplicates of mesh, texture, and material names do not exist.
+//       - TODO: write procedure to parse and load level file
+//       - TODO: prompt to save open level if opening a new one
+//       - TODO: save as button for saving a duplicate of a level
+//       - TODO: save without dialog if a saved level is opened
+
 
 // TODO: texture creation
 // TODO: some type of messaging system that isn't in the game console, like toasts kind of (messages that appear
 //       then disappear after a few seconds). this would be nice for some type of feedback like for file saving.
 // TODO: dialog prompts.. (just use windows for this maybe?)
-// TODO: prompt to save open level if opening a new one
-// TODO: save as button for saving a duplicate of a level
-// TODO: save without dialog if a saved level is opened
 // TODO: material name/texture strings validation
 //       check for duplicates and empties. it matters that we don't have duplicates since texture names are used
 //       as keys in the opengl code. we don't store material structs in the opengl code, but it's better to be
@@ -1951,8 +1955,8 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
         GL_Point_Light gl_point_light = {
             make_vec4(game_state->point_lights[i].transform.position, 1.0f),
             make_vec4(game_state->point_lights[i].light_color, 1.0f),
-            game_state->point_lights[i].d_min,
-            game_state->point_lights[i].d_max,
+            game_state->point_lights[i].falloff_start,
+            game_state->point_lights[i].falloff_end
         };
 
         glBufferSubData(GL_UNIFORM_BUFFER, (int32 *) ubo_offset,

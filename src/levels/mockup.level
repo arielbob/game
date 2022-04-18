@@ -4,18 +4,21 @@
 
 ;; color_override is in gamma space
 
-;; level info
+level_info {
 level_name "test"
+}
 
-;; meshes
+meshes {
 mesh "suzanne2" "blender/suzanne.mesh"
 mesh "cube" "blender/cube.mesh"
+}
 
-;; textures
+textures {
 texture "debug" "src/textures/debug_texture.bmp"
 texture "white" "src/textures/white.bmp"
+}
 
-;; materials
+materials {
 material "shiny_monkey"
 texture "debug"
 gloss 100.0
@@ -26,18 +29,23 @@ material "white_light"
 gloss 0.0
 color_override 1.0 1.0 1.0
 ;; use_color_override is default true, since no texture is provided
+}
 
-;; entities
-entity
+entities {
+type normal
 mesh "suzanne2"
 material "shiny_monkey"
 position 0.0 0.0 0.0
 rotation 1.0 0.0 0.0 0.0
 scale 1.0 1.0 1.0
 
-light_entity
-mesh cube
-material white_light
+type point_light
+mesh "cube"
+material "white_light"
+position 0.0 1.0 0.0
+rotation 1.0 0.0 0.0 0.0
+scale 1.0 1.0 1.0
 light_color 0.5 0.5 0.5
 falloff_start 0.0
 falloff_distance 3.0
+}

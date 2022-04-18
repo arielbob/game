@@ -139,6 +139,7 @@ struct Game_State {
     Mesh mesh_to_add;
     
     int32 num_entities;
+    // TODO: rename this to normal_entities
     Normal_Entity entities[MAX_ENTITIES];
 
     int32 num_point_lights;
@@ -164,6 +165,7 @@ int32 add_material(Game_State *game_state, Material material);
 Texture get_texture(Game_State *game_state, int32 texture_id);
 Mesh get_mesh(Game_State *game_state, int32 mesh_id);
 Mesh *get_mesh_pointer(Game_State *game_state, int32 mesh_id);
+Material get_material(Game_State *game_state, int32 material_id);
 int32 add_mesh(Game_State *game_state, Mesh mesh);
 
 #endif

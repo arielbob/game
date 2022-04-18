@@ -28,8 +28,8 @@ struct Point_Light_Entity {
     ENTITY_HEADER
 
     Vec3 light_color;
-    real32 d_min;
-    real32 d_max;
+    real32 falloff_start;
+    real32 falloff_end;
 };
 
 struct Texture {
