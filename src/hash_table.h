@@ -195,4 +195,24 @@ bool32 hash_table_find_pointer(Hash_Table<Key_Type, Value_Type> hash_table, Key_
     return false;
 }
 
+// NOTE: we call this reset since it doesn't go through all the entries and calls deallocate(entry.value).
+//       this procedure assumes the caller is handling the deallocating of any memory that needs to be
+//       deallocated. this is useful for when values are using something like an arena for allocations and
+//       individual entries in the arena cannot be deallocated separately (arenas are always cleared all
+//       at once).
+template <class Key_Type, class Value_Type>
+void hash_table_reset(Hash_Table<Key_Type, Value_Type> *hash_table) {
+    int32 num_checked = 0;
+    for (int32 i = 0; i < hash_table->max_entries && num_checked < hash_table->num_entries; i++) {
+        Hash_Table_Entry<Key_Type, Value_Type> *entry = &hash_table->entries[hash];
+        if (entry->is_occupied) {
+            *entry = {};
+            num_checked++;
+        }
+    }
+
+    hash_table->num_entries = 0;
+    hash_table->total_added_ever = 0;
+}
+
 #endif

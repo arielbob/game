@@ -130,6 +130,7 @@
 
 // TODO: level loading
 //       in level loading, we should ensure that duplicates of mesh, texture, and material names do not exist.
+//       - TODO (done): add hash table resetting procedure
 //       - TODO: add procedure to parse and load level file
 //       - TODO: prompt to save open level if opening a new one
 //       - TODO: save as button for saving a duplicate of a level

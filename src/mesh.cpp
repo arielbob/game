@@ -65,6 +65,18 @@ namespace Mesh_Loader {
         LABEL
     };
 
+    enum Parser_State {
+        WAITING_FOR_NUM_VERTICES,
+        WAITING_FOR_NUM_TRIANGLES,
+        WAITING_FOR_VERTEX_LABEL,
+        WAITING_FOR_VERTEX_COMPONENTS,
+        WAITING_FOR_NORMAL_LABEL,
+        WAITING_FOR_NORMAL_COMPONENTS,
+        WAITING_FOR_UV_LABEL,
+        WAITING_FOR_UV_COMPONENTS,
+        WAITING_FOR_INDICES
+    };
+
     struct Token {
         Token_Type type;
         char *text;
@@ -95,15 +107,6 @@ inline bool32 Mesh_Loader::token_text_equals(Token token, char *str) {
         return false;
     }
 }
-
-#if 0
-internal void consume_spaces(Tokenizer *tokenizer) {
-    while(!is_end(tokenizer) &&
-          (*tokenizer->current == ' ' || *tokenizer->current == '\t')) {
-        increment_tokenizer(tokenizer);
-    }
-}
-#endif
 
 Mesh_Loader::Token Mesh_Loader::get_token(Tokenizer *tokenizer, char* file_contents) {
     Token token = {};
@@ -204,18 +207,6 @@ Mesh_Loader::Token Mesh_Loader::get_token(Tokenizer *tokenizer, char* file_conte
 
     return token;
 }
-
-enum Parser_State {
-    WAITING_FOR_NUM_VERTICES,
-    WAITING_FOR_NUM_TRIANGLES,
-    WAITING_FOR_VERTEX_LABEL,
-    WAITING_FOR_VERTEX_COMPONENTS,
-    WAITING_FOR_NORMAL_LABEL,
-    WAITING_FOR_NORMAL_COMPONENTS,
-    WAITING_FOR_UV_LABEL,
-    WAITING_FOR_UV_COMPONENTS,
-    WAITING_FOR_INDICES
-};
 
 Mesh Mesh_Loader::load_mesh(File_Data file_data, Allocator *allocator) {
     Tokenizer tokenizer = {};

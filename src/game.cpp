@@ -293,7 +293,7 @@ void init_game(Game_State *game_state,
                         make_string_buffer(string64_allocator, "src/levels/test.level", PLATFORM_MAX_PATH));
 #endif
 
-    // add fonts
+    // add meshes
     Allocator *mesh_name_allocator = (Allocator *) &memory.string_arena;
     Mesh mesh;
     mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena,
