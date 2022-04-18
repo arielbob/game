@@ -12,8 +12,8 @@ mesh "suzanne2" "blender/suzanne.mesh"
 mesh "cube" "blender/cube.mesh"
 
 ;; textures
-texture debug "src/textures/debug_texture.bmp"
-texture white "src/textures/white.bmp"
+texture "debug" "src/textures/debug_texture.bmp"
+texture "white" "src/textures/white.bmp"
 
 ;; materials
 material shiny_monkey

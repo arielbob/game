@@ -324,7 +324,7 @@ void init_game(Game_State *game_state,
     Texture texture;
     texture = make_texture(game_state,
                            make_string_buffer(string64_allocator, "debug", 64),
-                           make_string_buffer(filename_allocator, "src/textures/debug_texture.bmp", MAX_PATH));
+                           make_string_buffer(filename_allocator, "src/textures/debug_texture.png", MAX_PATH));
     int32 debug_texture_id = add_texture(game_state, texture);
     texture = make_texture(game_state,
                            make_string_buffer(string64_allocator, "white", 64),

@@ -8,4 +8,7 @@ mesh "gizmo_arrow" "blender/gizmo_arrow.mesh"
 mesh "gizmo_ring" "blender/gizmo_ring.mesh"
 mesh "gizmo_sphere" "blender/gizmo_sphere.mesh"
 mesh "sphere" "blender/sphere.mesh"
-mesh "torus" ".\blender\torus.mesh"
+
+;; textures
+texture "debug" "src/textures/debug_texture.png"
+texture "white" "src/textures/white.bmp"

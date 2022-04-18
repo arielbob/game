@@ -25,6 +25,22 @@ void export_level(Allocator *allocator, Game_State *game_state, char *filename) 
             append_string(&working_buffer, "\n");
         }
     }
+
+    append_string(&working_buffer, "\n;; textures\n");
+    Hash_Table<int32, Texture> texture_table = game_state->texture_table;
+    for (int32 i = 0; i < texture_table.max_entries; i++) {
+        Hash_Table_Entry<int32, Texture> entry = texture_table.entries[i];
+        if (entry.is_occupied) {
+            append_string(&working_buffer, "texture ");
+            append_string(&working_buffer, "\"");
+            append_string(&working_buffer, entry.value.name);
+            append_string(&working_buffer, "\" ");
+            append_string(&working_buffer, "\"");
+            append_string(&working_buffer, entry.value.filename);
+            append_string(&working_buffer, "\"");
+            append_string(&working_buffer, "\n");
+        }
+    }
     
     bool32 write_result = platform_write_file(filename, working_buffer.contents, working_buffer.current_length, true);
     assert(write_result);

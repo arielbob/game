@@ -110,6 +110,7 @@
 //       - TODO (done): put edit button next to mesh button for editing mesh name
 //       - TODO (done): copy-paste file dialog code from game.cpp
 //       - TODO (done): load and add mesh when a file is picked
+// TODO (done): don't use BMPs for textures; use PNG or something
 
 // TODO: level saving/loading
 //       in level loading, we should ensure that duplicates of mesh, texture, and material names do not exist.
@@ -124,9 +125,11 @@
 //       - TODO (done): add filename to mesh struct
 //       - TODO (done): write meshes to level file
 //       - TODO (done): add win32 procedure to convert full paths to relative paths and use this for meshes
-//       - TODO: write textures to level file
+//       - TODO (done): write textures to level file
+//       - TODO: write materials to level file
 //       - TODO: write procedure to export level data to level file format
 
+// TODO: texture creation
 // TODO: some type of messaging system that isn't in the game console, like toasts kind of (messages that appear
 //       then disappear after a few seconds). this would be nice for some type of feedback like for file saving.
 // TODO: dialog prompts.. (just use windows for this maybe?)
@@ -151,8 +154,6 @@
 // TODO: material deletion
 // TODO: handle entities with no material (just make them black or something)
 //       - this would happen if you were to delete a material that an entity was using
-// TODO: texture creation
-//       - we should be able do this in a way where we don't need to have an entity selected to add/remove textures
 // TODO: texture deletion
 // TODO: delete textures and fonts in OpenGL state if the texture or font no longer exists in the game state
 
