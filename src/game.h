@@ -136,8 +136,8 @@ struct Game_State {
     UI_Manager ui_manager;
     char current_char; // debugging
 
-    bool32 should_clean_and_load_level;
-    String_Buffer level_to_be_loaded;
+    bool32 should_clear_level_gpu_data;
+    //String_Buffer level_to_be_loaded;
     Level current_level;
 
     Hash_Table<int32, Mesh> common_mesh_table;

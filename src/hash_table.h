@@ -208,7 +208,7 @@ template <class Key_Type, class Value_Type>
 void hash_table_reset(Hash_Table<Key_Type, Value_Type> *hash_table) {
     int32 num_checked = 0;
     for (int32 i = 0; i < hash_table->max_entries && num_checked < hash_table->num_entries; i++) {
-        Hash_Table_Entry<Key_Type, Value_Type> *entry = &hash_table->entries[hash];
+        Hash_Table_Entry<Key_Type, Value_Type> *entry = &hash_table->entries[i];
         if (entry->is_occupied) {
             *entry = {};
             num_checked++;

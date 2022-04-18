@@ -180,15 +180,6 @@ Pool_Allocator make_pool_allocator(void *base, uint32 block_size, uint32 size, u
     pool_allocator.first = base;
     pool_allocator.max_blocks = size / block_size;
 
-#if 0
-    void **current = (void **) pool_allocator.base;
-    while ((uint8 *) current < (((uint8 *) base + size) - block_size)) {
-        // store a pointer to the next free block, which initially is just a pointer to the next block in memory
-        *current = current + block_size;
-        current = (void **) ((uint8 *) current +  block_size);
-    }
-#endif
-
     // initialize the free list
     void **current = (void **) pool_allocator.base;
     for (uint32 i = 0; i < pool_allocator.max_blocks - 1; i++) {
@@ -201,6 +192,9 @@ Pool_Allocator make_pool_allocator(void *base, uint32 block_size, uint32 size, u
     return pool_allocator;
 }
 
+#if 0
+// TODO: this procedure may be broken; we initialize the free list like we do in the other make_pool_allocator
+//       procedure.
 Pool_Allocator make_pool_allocator(Allocator *allocator,
                                    uint32 block_size, uint32 max_blocks) {
     uint32 pool_size_bytes = block_size * max_blocks;
@@ -226,6 +220,7 @@ Pool_Allocator make_pool_allocator(Allocator *allocator,
 
     return pool_allocator;
 }
+#endif
 
 void *pool_push(Pool_Allocator *pool, uint32 size, bool32 zero_memory = false) {
     assert(size <= pool->block_size);
@@ -251,6 +246,21 @@ void pool_remove(Pool_Allocator *pool, void *block_address) {
     void **block_pointer = (void **) block_address;
     *block_pointer = pool->first;
     pool->first = block_pointer;
+}
+
+void clear_pool(Pool_Allocator *pool) {
+    pool->first = pool->base;
+
+
+    // initialize the free list
+    void **current = (void **) pool->base;
+    for (uint32 i = 0; i < pool->max_blocks - 1; i++) {
+        *current = current + pool->block_size;
+        current = (void **) ((uint8 *) current + pool->block_size);
+    }
+    
+    *current = NULL;
+
 }
 
 #if 0

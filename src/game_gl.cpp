@@ -133,7 +133,8 @@
 //       - TODO (done): add hash table resetting procedure
 //       - TODO (done): add common mesh table to game_state (to hold things like the gizmo meshes)
 //       - TODO (done): switch to using a level struct to hold level data
-//       - TODO: clear and reset the current level
+//       - TODO (done): add procedure to clear the current level
+//       - TODO (done): unload meshes and textures in opengl when a level is unloaded
 //       - TODO: add procedure to parse and load level file
 //       - TODO: prompt to save open level if opening a new one
 //       - TODO: save as button for saving a duplicate of a level
@@ -268,7 +269,7 @@ In 2D, (0, 0) is at the bottom left, positive x is right, positive y is up.
 
 #if 0
 int32 gl_get_mesh_id(GL_State *gl_state, char *mesh_name) {
-    Hash_Table<int32, GL_Mesh> *mesh_table = &gl_state->mesh_table;
+    Hash_Table<int32, GL_Mesh> *mesh_table = &gl_state->level_mesh_table;
     for (int32 i = 0; i < mesh_table->max_entries; i++) {
         Hash_Table_Entry<int32, GL_Mesh> *entry = &mesh_table->entries[i];
         if (!entry->is_occupied) continue;
@@ -407,8 +408,7 @@ void gl_load_shader(GL_State *gl_state,
     hash_table_add(&gl_state->shader_ids_table, make_string(shader_name), shader_id);
 }
 
-void gl_load_texture(GL_State *gl_state,
-                     char *texture_filename, int32 texture_id_key) {
+GL_Texture gl_load_texture(GL_State *gl_state, char *texture_filename) {
     Marker m = begin_region();
     File_Data texture_file_data = platform_open_and_read_file((Allocator *) &memory.global_stack,
                                                               texture_filename);
@@ -434,10 +434,10 @@ void gl_load_texture(GL_State *gl_state,
     end_region(m);
 
     GL_Texture gl_texture = { texture_id, width, height, num_channels };
-    hash_table_add(&gl_state->texture_table, texture_id_key, gl_texture);
+    return gl_texture;
 }
 
-void gl_load_texture(GL_State *gl_state, Texture texture, int32 texture_id_key) {
+GL_Texture gl_load_texture(GL_State *gl_state, Texture texture) {
     Marker m = begin_region();
     Allocator *temp_allocator = (Allocator *) &memory.global_stack;
     char *temp_texture_filename = to_char_array(temp_allocator, texture.filename);
@@ -465,7 +465,7 @@ void gl_load_texture(GL_State *gl_state, Texture texture, int32 texture_id_key) 
     end_region(m);
 
     GL_Texture gl_texture = { texture_id, width, height, num_channels };
-    hash_table_add(&gl_state->texture_table, texture_id_key, gl_texture);    
+    return gl_texture;
 }
 
 // TODO: use the better stb_truetype packing procedures
@@ -542,7 +542,7 @@ uint32 gl_use_shader(GL_State *gl_state, char *shader_name) {
 void gl_use_texture(GL_State *gl_state, int32 texture_id) {
     // TODO: will have to add parameter to specify which texture slot to use
     GL_Texture texture;
-    uint32 texture_exists = hash_table_find(gl_state->texture_table, texture_id, &texture);
+    uint32 texture_exists = hash_table_find(gl_state->level_texture_table, texture_id, &texture);
     assert(texture_exists);
     glBindTexture(GL_TEXTURE_2D, texture.id); 
 }
@@ -554,9 +554,10 @@ void gl_use_font_texture(GL_State *gl_state, String font_texture_name) {
     glBindTexture(GL_TEXTURE_2D, texture_id);
 }
 
+// TODO: think of a better API for this.. it's unclear which mesh table it's using
 GL_Mesh gl_use_mesh(GL_State *gl_state, int32 mesh_id) {
     GL_Mesh gl_mesh;
-    uint32 mesh_exists = hash_table_find(gl_state->mesh_table, mesh_id, &gl_mesh);
+    uint32 mesh_exists = hash_table_find(gl_state->level_mesh_table, mesh_id, &gl_mesh);
     assert(mesh_exists);
     glBindVertexArray(gl_mesh.vao);
     return gl_mesh;
@@ -671,10 +672,7 @@ void gl_draw_textured_mesh(GL_State *gl_state, Render_State *render_state,
     uint32 shader_id = gl_use_shader(gl_state, "basic_3d_textured");
     gl_use_texture(gl_state, texture_id);
 
-    GL_Mesh gl_mesh;
-    uint32 mesh_exists = hash_table_find(gl_state->mesh_table, mesh_id, &gl_mesh);
-    assert(mesh_exists);
-    glBindVertexArray(gl_mesh.vao);
+    GL_Mesh gl_mesh = gl_use_mesh(gl_state, mesh_id);
 
     Mat4 model_matrix = get_model_matrix(transform);
     gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
@@ -694,10 +692,7 @@ void gl_draw_wireframe(GL_State *gl_state, Render_State *render_state,
     assert(shader_exists);
     glUseProgram(shader_id);
 
-    GL_Mesh gl_mesh;
-    uint32 mesh_exists = hash_table_find(gl_state->mesh_table, mesh_id, &gl_mesh);
-    assert(mesh_exists);
-    glBindVertexArray(gl_mesh.vao);
+    GL_Mesh gl_mesh = gl_use_mesh(gl_state, mesh_id);
 
     Mat4 model_matrix = get_model_matrix(transform);
     gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
@@ -880,6 +875,15 @@ void gl_delete_framebuffer(GL_Framebuffer framebuffer) {
     glDeleteRenderbuffers(1, &framebuffer.render_buffer);
 }
 
+void gl_delete_mesh(GL_Mesh mesh) {
+    glDeleteBuffers(1, &mesh.vbo);
+    glDeleteVertexArrays(1, &mesh.vao);
+}
+
+void gl_delete_texture(GL_Texture texture) {
+    glDeleteTextures(1, &texture.id);
+}
+
 void generate_circle_vertices(real32 *buffer, int32 num_vertices, real32 radius) {
     assert(num_vertices > 0);
     // generate circle vertices on the yz-plane, i.e. x always = 0.
@@ -905,11 +909,11 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
                                                                  HASH_TABLE_SIZE, &string_equals);
     gl_state->rendering_mesh_table = make_hash_table<int32, GL_Mesh>((Allocator *) &memory.hash_table_stack,
                                                                      HASH_TABLE_SIZE, &int32_equals);
-    gl_state->mesh_table = make_hash_table<int32, GL_Mesh>((Allocator *) &memory.hash_table_stack,
-                                                            HASH_TABLE_SIZE, &int32_equals);
     gl_state->common_mesh_table = make_hash_table<int32, GL_Mesh>((Allocator *) &memory.hash_table_stack,
                                                            HASH_TABLE_SIZE, &int32_equals);
-    gl_state->texture_table = make_hash_table<int32, GL_Texture>((Allocator *) &memory.hash_table_stack,
+    gl_state->level_mesh_table = make_hash_table<int32, GL_Mesh>((Allocator *) &memory.hash_table_stack,
+                                                                 HASH_TABLE_SIZE, &int32_equals);
+    gl_state->level_texture_table = make_hash_table<int32, GL_Texture>((Allocator *) &memory.hash_table_stack,
                                                                   HASH_TABLE_SIZE, &int32_equals);
     gl_state->font_texture_table = make_hash_table<String, uint32>((Allocator *) &memory.hash_table_stack,
                                                                    HASH_TABLE_SIZE, &string_equals);
@@ -1491,7 +1495,7 @@ void gl_draw_ui_image_button(GL_State *gl_state, Game_State *game_state,
                  button.width, button.height, color);
 
     GL_Texture texture;
-    uint32 texture_exists = hash_table_find(gl_state->texture_table, button.texture_id, &texture);
+    uint32 texture_exists = hash_table_find(gl_state->level_texture_table, button.texture_id, &texture);
     assert(texture_exists);
 
     real32 width_to_height_ratio = (real32) texture.width / texture.height;
@@ -1886,6 +1890,10 @@ void gl_draw_framebuffer(GL_State *gl_state, GL_Framebuffer framebuffer) {
     glBindVertexArray(0);
 }
 
+void gl_clear_level_data(GL_State *gl_state, Game_State *game_state) {
+    
+}
+
 void gl_render(GL_State *gl_state, Game_State *game_state,
                Controller_State *controller_state,
                Display_Output display_output, Win32_Sound_Output *win32_sound_output) {
@@ -1913,8 +1921,7 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
         }
     }
 
-
-    // load meshes
+    // load level meshes
     Hash_Table<int32, Mesh> *game_mesh_table = &level->mesh_table;
     for (int32 i = 0; i < game_mesh_table->max_entries; i++) {
         Hash_Table_Entry<int32, Mesh> *game_mesh_entry = &game_mesh_table->entries[i];
@@ -1924,9 +1931,9 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
         
         // TODO: test this
         if (!mesh->is_loaded) {
-            if (!hash_table_exists(gl_state->mesh_table, game_mesh_entry->key)) {
+            if (!hash_table_exists(gl_state->level_mesh_table, game_mesh_entry->key)) {
                 GL_Mesh gl_mesh = gl_load_mesh(gl_state, *mesh);
-                hash_table_add(&gl_state->mesh_table, game_mesh_entry->key, gl_mesh);
+                hash_table_add(&gl_state->level_mesh_table, game_mesh_entry->key, gl_mesh);
             } else {
                 debug_print("%s already loaded.\n", mesh->name);
             }
@@ -1965,14 +1972,45 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
         Texture *game_texture = &game_texture_entry->value;
 
         if (!game_texture->is_loaded) {
-            if (!hash_table_exists(gl_state->texture_table, game_texture_entry->key)) {
-                gl_load_texture(gl_state, *game_texture, game_texture_entry->key);
+            if (!hash_table_exists(gl_state->level_texture_table, game_texture_entry->key)) {
+                GL_Texture gl_texture = gl_load_texture(gl_state, *game_texture);
+                hash_table_add(&gl_state->level_texture_table, game_texture_entry->key, gl_texture);
             } else {
                 debug_print("%s already loaded.\n", game_texture->name);
             }
 
             game_texture->is_loaded = true;
         }
+    }
+
+    if (game_state->should_clear_level_gpu_data) {
+        // clear texture table
+        Hash_Table<int32, GL_Texture> *gl_level_texture_table = &gl_state->level_texture_table;
+        for (int32 i = 0; i < gl_level_texture_table->max_entries; i++) {
+            Hash_Table_Entry<int32, GL_Texture> *texture_entry = &gl_level_texture_table->entries[i];
+            if (!texture_entry->is_occupied) continue;
+
+            GL_Texture texture = texture_entry->value;
+            gl_delete_texture(texture);
+            // NOTE: we may want to update level->texture_table here: set is_loaded = false?
+            //       but, this only gets called when the level is gonna get cleared, so, it would be kind of
+            //       pointless.
+        }
+        hash_table_reset(gl_level_texture_table);
+
+        // clear mesh table
+        Hash_Table<int32, GL_Mesh> *gl_level_mesh_table = &gl_state->level_mesh_table;
+        for (int32 i = 0; i < gl_level_mesh_table->max_entries; i++) {
+            Hash_Table_Entry<int32, GL_Mesh> *mesh_entry = &gl_level_mesh_table->entries[i];
+            if (!mesh_entry->is_occupied) continue;
+
+            GL_Mesh mesh = mesh_entry->value;
+            gl_delete_mesh(mesh);
+            // NOTE: same as above note
+        }
+        hash_table_reset(gl_level_mesh_table);
+
+        game_state->should_clear_level_gpu_data = false;
     }
 
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);

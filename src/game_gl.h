@@ -154,13 +154,15 @@ struct GL_State {
     //       this is because there is a 1:1 correspondence between the keys in game_state.mesh_table and
     //       gl_state.mesh_table. if we were to combine the two, the IDs could collide, since we're just
     //       making IDs based off of a running count kept by the table you're adding to.
+    // for GL specific meshes
     Hash_Table<int32, GL_Mesh> rendering_mesh_table;
-    Hash_Table<int32, GL_Mesh> mesh_table;
     // for game's common meshes
     Hash_Table<int32, GL_Mesh> common_mesh_table;
 
     Hash_Table<String, uint32> font_texture_table;
-    Hash_Table<int32, GL_Texture> texture_table;
+
+    Hash_Table<int32, GL_Mesh> level_mesh_table;
+    Hash_Table<int32, GL_Texture> level_texture_table;
     
     // TODO: will have to delete these and remake them on window resize
     GL_Framebuffer gizmo_framebuffer;

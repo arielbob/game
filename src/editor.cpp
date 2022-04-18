@@ -1078,8 +1078,6 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
 
     y += 5;
     draw_level_box(game_state, controller_state, render_state->display_output.width - 198.0f - 1.0f, y);
-    
-    
 
     if (editor_state->selected_entity_index >= 0) {
         Entity *selected_entity = get_selected_entity(game_state);
@@ -1099,6 +1097,20 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
         }
     } else {
         reset_entity_editors(editor_state);
+    }
+
+    y += 120;
+
+    bool32 unload_level_clicked = do_text_button(ui_manager, controller_state,
+                                                render_state->display_output.width - sidebar_button_width, y,
+                                                sidebar_button_width, button_height,
+                                                default_text_button_style, default_text_style,
+                                                "Unload Level",
+                                                button_font_name, "unload_level");
+
+    if (unload_level_clicked) {
+        editor_state->selected_entity_index = -1;
+        unload_level(game_state);
     }
 }
 

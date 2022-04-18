@@ -436,17 +436,21 @@ void load_default_level(Level *level) {
     level_add_point_light_entity(level, point_light_entity);
 }
 
-#if 0
-void reset_level(Level *level) {
+void unload_level(Game_State *game_state) {
+    Level *level = &game_state->current_level;
+    game_state->should_clear_level_gpu_data = true;
+
     level->num_normal_entities = 0;
     level->num_point_lights = 0;
     
     clear_arena(&level->mesh_arena);
+    clear_pool(&level->string64_pool);
+    clear_pool(&level->filename_pool);
     hash_table_reset(&level->mesh_table);
     hash_table_reset(&level->material_table);
     hash_table_reset(&level->texture_table);
 }
-#endif
+
 
 #if 0
 void add_mesh(Level *level, Mesh mesh) {
