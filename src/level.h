@@ -3,6 +3,8 @@
 
 #include "parse.h"
 
+#define LEVEL_NAME_MAX_LENGTH 64
+
 struct Level {
     String_Buffer name;
 
@@ -52,33 +54,39 @@ namespace Level_Loader {
         WAIT_FOR_TEXTURE_NAME_STRING,
         WAIT_FOR_TEXTURE_FILENAME_STRING,
 
-        // TODO: will have to keep track of some extra values if we're waiting for multiple values such as with
-        //       vectors or colors
         WAIT_FOR_MATERIALS_BLOCK_NAME,
         WAIT_FOR_MATERIALS_BLOCK_OPEN,
         WAIT_FOR_MATERIAL_KEYWORD_OR_MATERIALS_BLOCK_CLOSE,
         WAIT_FOR_MATERIAL_NAME_STRING,
-        WAIT_FOR_MATERIAL_PROPERTY_NAME,
-        WAIT_FOR_MATERIAL_VALUE_STRING,
-        WAIT_FOR_MATERIAL_VALUE_REAL,
-        WAIT_FOR_MATERIAL_VALUE_INTEGER,
+        WAIT_FOR_MATERIAL_PROPERTY_NAME_OR_MATERIAL_KEYWORD_OR_MATERIALS_BLOCK_CLOSE,
 
-        // TODO: might need more states for this
+        WAIT_FOR_MATERIAL_TEXTURE_NAME_STRING,
+        WAIT_FOR_MATERIAL_GLOSS_NUMBER,
+        WAIT_FOR_MATERIAL_COLOR_OVERRIDE_VEC3,
+        WAIT_FOR_MATERIAL_USE_COLOR_OVERRIDE_INTEGER,
+
         WAIT_FOR_ENTITIES_BLOCK_NAME,
         WAIT_FOR_ENTITIES_BLOCK_OPEN,
         WAIT_FOR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE,
-        WAIT_FOR_ENTITY_PROPERTY_NAME,
-        WAIT_FOR_ENTITY_VALUE_STRING,
-        WAIT_FOR_ENTITY_VALUE_REAL
+        WAIT_FOR_ENTITY_TYPE_VALUE,
+
+        WAIT_FOR_ENTITY_PROPERTY_NAME_OR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE,
+        WAIT_FOR_ENTITY_MESH_NAME_STRING,
+        WAIT_FOR_ENTITY_MATERIAL_NAME_STRING,
+        WAIT_FOR_ENTITY_POSITION_VEC3,
+        WAIT_FOR_ENTITY_ROTATION_QUATERNION,
+        WAIT_FOR_ENTITY_SCALE_VEC3,
+
+        WAIT_FOR_POINT_LIGHT_ENTITY_LIGHT_COLOR_VEC3,
+        WAIT_FOR_POINT_LIGHT_ENTITY_FALLOFF_START_NUMBER,
+        WAIT_FOR_POINT_LIGHT_ENTITY_FALLOFF_END_NUMBER,
+
+        FINISHED
     };
 
     struct Token {
         Token_Type type;
-        String contents;
-#if 0
-        char *text;
-        int32 length;
-#endif
+        String string;
     };
 
     Token make_token(Token_Type type, char *contents, int32 length);

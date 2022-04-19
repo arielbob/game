@@ -287,7 +287,7 @@ void init_game(Game_State *game_state,
 
     // init level
     Level *current_level = &game_state->current_level;
-    current_level->name = make_string_buffer((Allocator *) &memory.level_string64_pool, 64);
+    current_level->name = make_string_buffer((Allocator *) &memory.level_string64_pool, LEVEL_NAME_MAX_LENGTH);
     current_level->mesh_arena = memory.level_mesh_arena;
     current_level->string64_pool = memory.level_string64_pool;
     current_level->filename_pool = memory.level_filename_pool;

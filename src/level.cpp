@@ -275,6 +275,59 @@ int32 level_add_mesh(Level *level, Mesh mesh) {
     return mesh_id;
 }
 
+// TODO: this assumes that mesh names are unique, which isn't currently being enforced.. so ideally we should just
+//       not name meshes by the same name.. until we add validation to the text boxes and to the level_add_*
+//       procedures.
+int32 get_mesh_id_by_name(Level *level, String mesh_name) {
+    int32 num_checked = 0;
+    Hash_Table<int32, Mesh> mesh_table = level->mesh_table;
+    for (int32 i = 0; (i < mesh_table.max_entries) && (num_checked < mesh_table.num_entries); i++) {
+        Hash_Table_Entry<int32, Mesh> entry = mesh_table.entries[i];
+        if (entry.is_occupied) {
+            if (string_equals(make_string(entry.value.name), mesh_name)) {
+                return entry.key;
+            }
+            num_checked++;
+        }
+    }
+
+    return -1;
+}
+
+// TODO: same TODO as get_mesh_id_by_name
+int32 get_material_id_by_name(Level *level, String material_name) {
+    int32 num_checked = 0;
+    Hash_Table<int32, Material> material_table = level->material_table;
+    for (int32 i = 0; (i < material_table.max_entries) && (num_checked < material_table.num_entries); i++) {
+        Hash_Table_Entry<int32, Material> entry = material_table.entries[i];
+        if (entry.is_occupied) {
+            if (string_equals(make_string(entry.value.name), material_name)) {
+                return entry.key;
+            }
+            num_checked++;
+        }
+    }
+
+    return -1;
+}
+
+// TODO: same as above
+int32 get_texture_id_by_name(Level *level, String texture_name) {
+    int32 num_checked = 0;
+    Hash_Table<int32, Texture> texture_table = level->texture_table;
+    for (int32 i = 0; (i < texture_table.max_entries) && (num_checked < texture_table.num_entries); i++) {
+        Hash_Table_Entry<int32, Texture> entry = texture_table.entries[i];
+        if (entry.is_occupied) {
+            if (string_equals(make_string(entry.value.name), texture_name)) {
+                return entry.key;
+            }
+            num_checked++;
+        }
+    }
+
+    return -1;
+}
+
 void level_add_entity(Level *level, Normal_Entity entity) {
     assert(level->num_normal_entities < MAX_ENTITIES);
     assert(mesh_exists(level, entity.mesh_id));
@@ -340,42 +393,42 @@ void load_default_level(Level *level) {
     // add level textures
     Allocator *string64_allocator = (Allocator *) &level->string64_pool;
     Texture texture;
-    texture = make_texture(make_string_buffer(string64_allocator, "debug", 64),
+    texture = make_texture(make_string_buffer(string64_allocator, "debug", TEXTURE_NAME_MAX_SIZE),
                            make_string_buffer(filename_allocator, "src/textures/debug_texture.png", MAX_PATH));
     int32 debug_texture_id = level_add_texture(level, texture);
-    texture = make_texture(make_string_buffer(string64_allocator, "white", 64),
+    texture = make_texture(make_string_buffer(string64_allocator, "white", TEXTURE_NAME_MAX_SIZE),
                            make_string_buffer(filename_allocator, "src/textures/white.bmp", MAX_PATH));
     int32 white_texture_id = level_add_texture(level, texture);
 
     // add level materials
     Material shiny_monkey = make_material(make_string_buffer(string64_allocator,
-                                                             "shiny_monkey", MATERIAL_STRING_MAX_SIZE),
+                                                             "shiny_monkey", MATERIAL_NAME_MAX_SIZE),
                                           debug_texture_id,
                                           100.0f, make_vec4(0.6f, 0.6f, 0.6f, 1.0f), true);
     int32 shiny_monkey_material_id = level_add_material(level, shiny_monkey);
 
     Material plane_material = make_material(make_string_buffer(string64_allocator,
-                                                               "diffuse_plane", MATERIAL_STRING_MAX_SIZE),
+                                                               "diffuse_plane", MATERIAL_NAME_MAX_SIZE),
                                             -1, 1.0f, make_vec4(0.9f, 0.9f, 0.9f, 1.0f), true);
     int32 plane_material_id = level_add_material(level, plane_material);
 
     Material arrow_material = make_material(make_string_buffer(string64_allocator,
-                                                               "arrow_material", MATERIAL_STRING_MAX_SIZE),
+                                                               "arrow_material", MATERIAL_NAME_MAX_SIZE),
                                             -1, 100.0f, make_vec4(1.0f, 0.0f, 0.0f, 1.0f), true);
     int32 arrow_material_id = level_add_material(level, arrow_material);
 
     Material white_light_material = make_material(make_string_buffer(string64_allocator,
-                                                                     "white_light", MATERIAL_STRING_MAX_SIZE),
+                                                                     "white_light", MATERIAL_NAME_MAX_SIZE),
                                                   -1, 0.0f, make_vec4(1.0f, 1.0f, 1.0f, 1.0f), true);
     int32 white_light_material_id = level_add_material(level, white_light_material);
 
     Material blue_light_material = make_material(make_string_buffer(string64_allocator,
-                                                                    "blue_light", MATERIAL_STRING_MAX_SIZE),
+                                                                    "blue_light", MATERIAL_NAME_MAX_SIZE),
                                                  -1, 0.0f, make_vec4(0.0f, 0.0f, 1.0f, 1.0f), true);
     int32 blue_light_material_id = level_add_material(level, blue_light_material);
 
     Material diffuse_sphere_material = make_material(make_string_buffer(string64_allocator,
-                                                                        "diffuse_sphere", MATERIAL_STRING_MAX_SIZE),
+                                                                        "diffuse_sphere", MATERIAL_NAME_MAX_SIZE),
                                                      -1, 5.0f, rgb_to_vec4(176, 176, 176), true);
     int32 diffuse_sphere_material_id = level_add_material(level, diffuse_sphere_material);
 
@@ -585,19 +638,530 @@ Level_Loader::Token Level_Loader::get_token(Tokenizer *tokenizer, char *file_con
 }
 
 void Level_Loader::load_level(File_Data file_data, Level *level) {
+    Marker m = begin_region();
+
     Tokenizer tokenizer = make_tokenizer(file_data);
 
     Token token;
+    Parser_State state = WAIT_FOR_LEVEL_INFO_BLOCK_NAME;
 
-    //Parser_State state; 
+    Allocator *temp_allocator = (Allocator *) &memory.global_stack;
+
+    // make a temp level so that we can verify the level's fine without modifying level
+    // we then copy all the temp stuff into level.
+    // we shouldn't load the mesh data until after we've verified the file.
+    Level *temp_level = (Level *) region_push(&memory.global_stack, sizeof(Level), true);
+    temp_level->name = make_string_buffer((Allocator *) &memory.global_stack, level->name.size);
+    temp_level->mesh_table = make_hash_table<int32, Mesh>(temp_allocator,
+                                                          level->mesh_table.max_entries,
+                                                          level->mesh_table.key_equals);
+    temp_level->material_table = make_hash_table<int32, Material>(temp_allocator,
+                                                                  level->material_table.max_entries,
+                                                                  level->material_table.key_equals);
+    temp_level->texture_table = make_hash_table<int32, Texture>(temp_allocator,
+                                                                level->texture_table.max_entries,
+                                                                level->texture_table.key_equals);
+
+    Mesh temp_mesh = {};
+    Texture temp_texture = {};
+    Material temp_material = {};
+    bool32 should_add_new_temp_material = false;
+
+    Entity_Type temp_entity_type = ENTITY_NONE;
+    Normal_Entity temp_normal_entity = {};
+    Point_Light_Entity temp_point_light_entity = {};
+    Entity *temp_entity = NULL;
+    bool32 should_add_new_temp_entity = false;
+
+    int32 num_values_read = 0;
+    Vec3 vec3_buffer = {};
+    Quaternion quaternion_buffer = {};
 
     do {
         token = get_token(&tokenizer, (char *) file_data.contents);
 
         if (token.type == COMMENT) continue;
 
-        
+        switch (state) {
+            case WAIT_FOR_LEVEL_INFO_BLOCK_NAME: {
+                if (token.type == KEYWORD &&
+                    string_equals(token.string, "level_info")) {
+                    state = WAIT_FOR_LEVEL_INFO_BLOCK_OPEN;
+                } else {
+                    assert(!"Expected level_info keyword to open block.");
+                }
+            } break;
+            case WAIT_FOR_LEVEL_INFO_BLOCK_OPEN: {
+                if (token.type == OPEN_BRACKET) {
+                    state = WAIT_FOR_LEVEL_NAME_KEYWORD;
+                } else {
+                    assert(!"Expected open bracket.");
+                }
+            } break;
+            case WAIT_FOR_LEVEL_NAME_KEYWORD: {
+                if (token.type == KEYWORD &&
+                    string_equals(token.string, "level_name")) {
+                    state = WAIT_FOR_LEVEL_NAME_STRING;
+                } else {
+                    assert(!"Expected level_name keyword.");
+                }
+            } break;
+            case WAIT_FOR_LEVEL_NAME_STRING: {
+                if (token.type == STRING) {
+                    assert(token.string.length <= level->name.size);
+                    copy_string(&temp_level->name, token.string);
+                    state = WAIT_FOR_LEVEL_INFO_BLOCK_CLOSE;
+                } else {
+                    assert (!"Expected level name string.");
+                }
+            } break;
+            case WAIT_FOR_LEVEL_INFO_BLOCK_CLOSE: {
+                if (token.type == CLOSE_BRACKET) {
+                    state = WAIT_FOR_MESHES_BLOCK_NAME;
+                } else {
+                    assert(!"Expected closing bracket for level_info block.");
+                }
+            } break;
+            case WAIT_FOR_MESHES_BLOCK_NAME: {
+                if (token.type == KEYWORD &&
+                    string_equals(token.string, "meshes")) {
+                    state = WAIT_FOR_MESHES_BLOCK_OPEN;
+                } else {
+                    assert (!"Expected meshes keyword to open block.");
+                }
+            } break;
+            case WAIT_FOR_MESHES_BLOCK_OPEN: {
+                if (token.type == OPEN_BRACKET) {
+                    state = WAIT_FOR_MESH_KEYWORD_OR_MESHES_BLOCK_CLOSE;
+                } else {
+                    assert(!"Expected open bracket.");
+                }
+            } break;
+            case WAIT_FOR_MESH_KEYWORD_OR_MESHES_BLOCK_CLOSE: {
+                if (token.type == KEYWORD &&
+                    string_equals(token.string, "mesh")) {
+                    state = WAIT_FOR_MESH_NAME_STRING;
+                } else if (token.type == CLOSE_BRACKET) {
+                    state = WAIT_FOR_TEXTURES_BLOCK_NAME;
+                } else {
+                    assert(!"Expected mesh keyword or closing bracket.");
+                }
+            } break;
+            case WAIT_FOR_MESH_NAME_STRING: {
+                if (token.type == STRING) {
+                    assert(token.string.length <= MESH_NAME_MAX_SIZE);
+                    
+                    temp_mesh = {};
+                    temp_mesh.name = make_string_buffer(temp_allocator, token.string, token.string.length);
+                    state = WAIT_FOR_MESH_FILENAME_STRING;
+                } else {
+                    assert(!"Expected mesh name string.");
+                }
+            } break;
+            case WAIT_FOR_MESH_FILENAME_STRING: {
+                if (token.type == STRING) {
+                    assert(token.string.length <= PLATFORM_MAX_PATH);
+
+                    temp_mesh.filename = make_string_buffer(temp_allocator, token.string, token.string.length);
+                    level_add_mesh(temp_level, temp_mesh);
+
+                    state = WAIT_FOR_MESH_KEYWORD_OR_MESHES_BLOCK_CLOSE;
+                }
+            } break;
+            case WAIT_FOR_TEXTURES_BLOCK_NAME: {
+                if (token.type == KEYWORD &&
+                    string_equals(token.string, "textures")) {
+                    state = WAIT_FOR_TEXTURES_BLOCK_OPEN;
+                } else {
+                    assert (!"Expected textures keyword to open block.");
+                }
+            } break;
+            case WAIT_FOR_TEXTURES_BLOCK_OPEN: {
+                if (token.type == OPEN_BRACKET) {
+                    state = WAIT_FOR_TEXTURE_KEYWORD_OR_TEXTURES_BLOCK_CLOSE;
+                } else {
+                    assert(!"Expected open bracket.");
+                }
+            } break;
+            case WAIT_FOR_TEXTURE_KEYWORD_OR_TEXTURES_BLOCK_CLOSE: {
+                if (token.type == KEYWORD &&
+                    string_equals(token.string, "texture")) {
+                    state = WAIT_FOR_TEXTURE_NAME_STRING;
+                } else if (token.type == CLOSE_BRACKET) {
+                    state = WAIT_FOR_MATERIALS_BLOCK_NAME;
+                } else {
+                    assert(!"Expected texture keyword or closing bracket.");
+                }
+            } break;
+            case WAIT_FOR_TEXTURE_NAME_STRING: {
+                if (token.type == STRING) {
+                    assert(token.string.length <= TEXTURE_NAME_MAX_SIZE);
+                    
+                    temp_texture = {};
+                    temp_texture.name = make_string_buffer(temp_allocator, token.string, token.string.length);
+                    state = WAIT_FOR_TEXTURE_FILENAME_STRING;
+                } else {
+                    assert(!"Expected texture name string.");
+                }
+            } break;
+            case WAIT_FOR_TEXTURE_FILENAME_STRING: {
+                if (token.type == STRING) {
+                    assert(token.string.length <= PLATFORM_MAX_PATH);
+
+                    temp_texture.filename = make_string_buffer(temp_allocator, token.string, token.string.length);
+                    level_add_texture(temp_level, temp_texture);
+
+                    state = WAIT_FOR_TEXTURE_KEYWORD_OR_TEXTURES_BLOCK_CLOSE;
+                }
+            } break;
+
+            // MATERIALS
+            case WAIT_FOR_MATERIALS_BLOCK_NAME: {
+                if (token.type == KEYWORD &&
+                    string_equals(token.string, "materials")) {
+                    state = WAIT_FOR_MATERIALS_BLOCK_OPEN;
+                } else {
+                    assert (!"Expected materials keyword to open block.");
+                }
+            } break;
+            case WAIT_FOR_MATERIALS_BLOCK_OPEN: {
+                if (token.type == OPEN_BRACKET) {
+                    state = WAIT_FOR_MATERIAL_KEYWORD_OR_MATERIALS_BLOCK_CLOSE;
+                } else {
+                    assert(!"Expected open bracket.");
+                }
+            } break;
+            case WAIT_FOR_MATERIAL_KEYWORD_OR_MATERIALS_BLOCK_CLOSE: {
+                if (token.type == KEYWORD &&
+                    string_equals(token.string, "material")) {
+                    state = WAIT_FOR_MATERIAL_NAME_STRING;
+                } else if (token.type == CLOSE_BRACKET) {
+                    state = WAIT_FOR_ENTITIES_BLOCK_NAME;
+                } else {
+                    assert(!"Expected material keyword or closing bracket.");
+                }
+            } break;
+            case WAIT_FOR_MATERIAL_NAME_STRING: {
+                if (token.type == STRING) {
+                    assert(token.string.length <= MATERIAL_NAME_MAX_SIZE);
+                    
+                    temp_material = {};
+                    temp_material.name = make_string_buffer(temp_allocator, token.string, token.string.length);
+                    should_add_new_temp_material = true;
+
+                    state = WAIT_FOR_MATERIAL_PROPERTY_NAME_OR_MATERIAL_KEYWORD_OR_MATERIALS_BLOCK_CLOSE;
+                } else {
+                    assert(!"Expected material name string.");
+                }
+            } break;
+            case WAIT_FOR_MATERIAL_PROPERTY_NAME_OR_MATERIAL_KEYWORD_OR_MATERIALS_BLOCK_CLOSE: {
+                if (token.type == KEYWORD) {
+                    if (string_equals(token.string, "material")) {
+                        if (should_add_new_temp_material) {
+                            level_add_material(temp_level, temp_material);
+                        }
+                        state = WAIT_FOR_MATERIAL_NAME_STRING;
+                    } else if (string_equals(token.string, "texture")) {
+                        state = WAIT_FOR_MATERIAL_TEXTURE_NAME_STRING;
+                    } else if (string_equals(token.string, "gloss")) {
+                        state = WAIT_FOR_MATERIAL_GLOSS_NUMBER;
+                    } else if (string_equals(token.string, "color_override")) {
+                        state = WAIT_FOR_MATERIAL_COLOR_OVERRIDE_VEC3;
+                        num_values_read = 0;
+                    } else if (string_equals(token.string, "use_color_override")) {
+                        state = WAIT_FOR_MATERIAL_USE_COLOR_OVERRIDE_INTEGER;
+                    } else {
+                        assert(!"Unrecognized material property.");
+                    }
+                } else if (token.type == CLOSE_BRACKET) {
+                    if (should_add_new_temp_material) {
+                        level_add_material(temp_level, temp_material);
+                    }
+                    state = WAIT_FOR_ENTITIES_BLOCK_NAME;
+                } else {
+                    assert(!"Expected a material property name keyword.");
+                }
+            } break;
+            case WAIT_FOR_MATERIAL_TEXTURE_NAME_STRING: {
+                if (token.type == STRING) {
+                    assert(token.string.length <= TEXTURE_NAME_MAX_SIZE);
+
+                    int32 texture_id = get_texture_id_by_name(temp_level, token.string);
+                    assert(texture_id >= 0);
+                    temp_material.texture_id = texture_id;
+
+                    state = WAIT_FOR_MATERIAL_PROPERTY_NAME_OR_MATERIAL_KEYWORD_OR_MATERIALS_BLOCK_CLOSE;
+                } else {
+                    assert(!"Expected a string for material texture name.");
+                }
+            } break;
+            case WAIT_FOR_MATERIAL_GLOSS_NUMBER: {
+                if (token.type == REAL || token.type == INTEGER) {
+                    temp_material.gloss = string_to_real32(token.string.contents, token.string.length);
+                    state = WAIT_FOR_MATERIAL_PROPERTY_NAME_OR_MATERIAL_KEYWORD_OR_MATERIALS_BLOCK_CLOSE;
+                } else {
+                    assert(!"Expected a number for material property gloss.");
+                }
+            } break;
+            case WAIT_FOR_MATERIAL_COLOR_OVERRIDE_VEC3: {
+                if (token.type == REAL || token.type == INTEGER) {
+                    vec3_buffer.values[num_values_read] = string_to_real32(token.string.contents,
+                                                                           token.string.length);
+                    num_values_read++;
+                    if (num_values_read == 3) {
+                        temp_material.color_override = make_vec4(vec3_buffer, 1.0f);
+                        state = WAIT_FOR_MATERIAL_PROPERTY_NAME_OR_MATERIAL_KEYWORD_OR_MATERIALS_BLOCK_CLOSE;
+                    }
+                } else {
+                    assert(!"Expected 3 numbers for material property color_override.");
+                }
+            } break;
+            case WAIT_FOR_MATERIAL_USE_COLOR_OVERRIDE_INTEGER: {
+                if (token.type == INTEGER) {
+                    state = WAIT_FOR_MATERIAL_PROPERTY_NAME_OR_MATERIAL_KEYWORD_OR_MATERIALS_BLOCK_CLOSE;
+                } else {
+                    assert(!"Expected an integer for material property use_color_override.");
+                }
+            } break;
+
+                // ENTITIES
+            case WAIT_FOR_ENTITIES_BLOCK_NAME: {
+                if (token.type == KEYWORD &&
+                    string_equals(token.string, "entities")) {
+                    state = WAIT_FOR_ENTITIES_BLOCK_OPEN;
+                } else {
+                    assert(!"Expected entities keyword for entities block.");
+                }
+            } break;
+            case WAIT_FOR_ENTITIES_BLOCK_OPEN: {
+                if (token.type == OPEN_BRACKET) {
+                    state = WAIT_FOR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE;
+                } else {
+                    assert(!"Expected open bracket for entities block.");
+                }
+            } break;
+            case WAIT_FOR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE: {
+                if (token.type == KEYWORD &&
+                    string_equals(token.string, "type")) {
+                    state = WAIT_FOR_ENTITY_TYPE_VALUE;
+                } else if (token.type == CLOSE_BRACKET) {
+                    state = FINISHED;
+                } else {
+                    assert(!"Expected type keyword or closing bracket for entities block.");
+                }
+            } break;
+            case WAIT_FOR_ENTITY_TYPE_VALUE: {
+                if (token.type == KEYWORD) {
+                    if (string_equals(token.string, "normal")) {
+                        temp_normal_entity = make_entity(-1, -1, make_transform());
+                        temp_entity_type = ENTITY_NORMAL;
+                        temp_entity = (Entity *) &temp_normal_entity;
+                        state = WAIT_FOR_ENTITY_PROPERTY_NAME_OR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE;
+                        should_add_new_temp_entity = true;
+                    } else if (string_equals(token.string, "point_light")) {
+                        temp_point_light_entity = make_point_light_entity(-1, -1,
+                                                                          make_vec3(), 0.0f, 0.0f, make_transform());
+                        temp_entity_type = ENTITY_POINT_LIGHT;
+                        temp_entity = (Entity *) &temp_point_light_entity;
+                        state = WAIT_FOR_ENTITY_PROPERTY_NAME_OR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE;
+                        should_add_new_temp_entity = true;
+                    } else {
+                        assert(!"Unrecognized entity type.");
+                    }
+                } else {
+                    assert(!"Expected entity type value keyword.");
+                }
+            } break;
+
+            case WAIT_FOR_ENTITY_PROPERTY_NAME_OR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE: {
+                if (token.type == KEYWORD) {
+                    if (string_equals(token.string, "type")) {
+                        if (should_add_new_temp_entity) {
+                            switch (temp_entity_type) {
+                                case ENTITY_NORMAL: {
+                                    level_add_entity(temp_level, temp_normal_entity);
+                                } break;
+                                case ENTITY_POINT_LIGHT: {
+                                    level_add_point_light_entity(temp_level, temp_point_light_entity);
+                                } break;
+                                default: {
+                                    assert(!"Unhandled entity type.");
+                                } break;
+                            }
+                        }
+
+                        state = WAIT_FOR_ENTITY_TYPE_VALUE;
+                    } else if (string_equals(token.string, "mesh")) {
+                        state = WAIT_FOR_ENTITY_MESH_NAME_STRING;
+                    } else if (string_equals(token.string, "material")) {
+                        state = WAIT_FOR_ENTITY_MATERIAL_NAME_STRING;
+                    } else if (string_equals(token.string, "position")) {
+                        num_values_read = 0;
+                        state = WAIT_FOR_ENTITY_POSITION_VEC3;
+                    } else if (string_equals(token.string, "rotation")) {
+                        num_values_read = 0;
+                        state = WAIT_FOR_ENTITY_ROTATION_QUATERNION;
+                    } else if (string_equals(token.string, "scale")) {
+                        num_values_read = 0;
+                        state = WAIT_FOR_ENTITY_SCALE_VEC3;
+                    } else if (temp_entity_type == ENTITY_POINT_LIGHT) {
+                        if (string_equals(token.string, "light_color")) {
+                            num_values_read = 0;
+                            state = WAIT_FOR_POINT_LIGHT_ENTITY_LIGHT_COLOR_VEC3;
+                        } else if (string_equals(token.string, "falloff_start")) {
+                            num_values_read = 0;
+                            state = WAIT_FOR_POINT_LIGHT_ENTITY_FALLOFF_START_NUMBER;
+                        } else if (string_equals(token.string, "falloff_end")) {
+                            num_values_read = 0;
+                            state = WAIT_FOR_POINT_LIGHT_ENTITY_FALLOFF_END_NUMBER;
+                        } else {
+                            assert(!"Unrecognized entity property name.");
+                        }
+                    } else {
+                        assert(!"Unrecognized entity property name.");
+                    }
+                } else if (token.type == CLOSE_BRACKET) {
+                    if (should_add_new_temp_entity) {
+                        switch (temp_entity_type) {
+                            case ENTITY_NORMAL: {
+                                level_add_entity(temp_level, temp_normal_entity);
+                            } break;
+                            case ENTITY_POINT_LIGHT: {
+                                level_add_point_light_entity(temp_level, temp_point_light_entity);
+                            } break;
+                            default: {
+                                assert(!"Unhandled entity type.");
+                            } break;
+                        }
+                    }
+                    state = FINISHED;
+                }
+            } break;
+            case WAIT_FOR_ENTITY_MESH_NAME_STRING: {
+                if (token.type == STRING) {
+                    assert(token.string.length <= MESH_NAME_MAX_SIZE);
+
+                    int32 mesh_id = get_mesh_id_by_name(temp_level, token.string);
+                    if (mesh_id >= 0) {
+                        temp_entity->mesh_id = mesh_id;
+                        state = WAIT_FOR_ENTITY_PROPERTY_NAME_OR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE;
+                    } else {
+                        assert(!"Mesh not found.");
+                    }
+                } else {
+                    assert(!"Expected string for entity mesh name.");
+                }
+            } break;
+            case WAIT_FOR_ENTITY_MATERIAL_NAME_STRING: {
+                if (token.type == STRING) {
+                    assert(token.string.length <= MATERIAL_NAME_MAX_SIZE);
+
+                    int32 material_id = get_material_id_by_name(temp_level, token.string);
+                    if (material_id >= 0) {
+                        temp_entity->material_id = material_id;
+                        state = WAIT_FOR_ENTITY_PROPERTY_NAME_OR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE;
+                    } else {
+                        assert(!"Material not found.");
+                    }
+                } else {
+                    assert(!"Expected string for entity material name.");
+                }                
+            } break;
+            case WAIT_FOR_ENTITY_POSITION_VEC3: {
+                if (token.type == REAL || token.type == INTEGER) {
+                    vec3_buffer.values[num_values_read] = string_to_real32(token.string.contents,
+                                                                           token.string.length);
+                    num_values_read++;
+                    if (num_values_read == 3) {
+                        temp_entity->transform.position = vec3_buffer;
+                        state = WAIT_FOR_ENTITY_PROPERTY_NAME_OR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE;
+                    }
+                } else {
+                    assert(!"Expected 3 numbers for entity property position.");
+                }
+            } break;
+            case WAIT_FOR_ENTITY_ROTATION_QUATERNION: {
+                if (token.type == REAL || token.type == INTEGER) {
+                    if (num_values_read == 0) {
+                        quaternion_buffer.w = string_to_real32(token.string.contents, token.string.length);
+                    } else if (num_values_read >= 1 && num_values_read <= 3) {
+                        int32 index = num_values_read - 1;
+                        quaternion_buffer.v[index] = string_to_real32(token.string.contents, token.string.length);
+                    }
+
+                    num_values_read++;
+                    if (num_values_read == 4) {
+                        temp_entity->transform.rotation = quaternion_buffer;
+                        state = WAIT_FOR_ENTITY_PROPERTY_NAME_OR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE;
+                    }
+                } else {
+                    assert(!"Expected 4 numbers (w, x, y, z) for entity property rotation.");
+                }
+            } break;
+            case WAIT_FOR_ENTITY_SCALE_VEC3: {
+                if (token.type == REAL || token.type == INTEGER) {
+                    vec3_buffer.values[num_values_read] = string_to_real32(token.string.contents,
+                                                                           token.string.length);
+                    num_values_read++;
+                    if (num_values_read == 3) {
+                        temp_entity->transform.scale = vec3_buffer;
+                        state = WAIT_FOR_ENTITY_PROPERTY_NAME_OR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE;
+                    }
+                } else {
+                    assert(!"Expected 3 numbers for entity property scale.");
+                }
+            } break;
+
+            case WAIT_FOR_POINT_LIGHT_ENTITY_LIGHT_COLOR_VEC3: {
+                assert(temp_entity_type == ENTITY_POINT_LIGHT);
+                Point_Light_Entity *point_light_entity = (Point_Light_Entity *) temp_entity;
+
+                if (token.type == REAL || token.type == INTEGER) {
+                    vec3_buffer.values[num_values_read] = string_to_real32(token.string.contents,
+                                                                           token.string.length);
+                    num_values_read++;
+                    if (num_values_read == 3) {
+                        point_light_entity->light_color = vec3_buffer;
+                        state = WAIT_FOR_ENTITY_PROPERTY_NAME_OR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE;
+                    }
+                } else {
+                    assert(!"Expected 3 numbers for point light entity property light_color.");
+                }
+            } break;
+            case WAIT_FOR_POINT_LIGHT_ENTITY_FALLOFF_START_NUMBER: {
+                assert(temp_entity_type == ENTITY_POINT_LIGHT);
+                Point_Light_Entity *point_light_entity = (Point_Light_Entity *) temp_entity;
+
+                if (token.type == REAL || token.type == INTEGER) {
+                    point_light_entity->falloff_start = string_to_real32(token.string.contents,
+                                                                         token.string.length);
+                    state = WAIT_FOR_ENTITY_PROPERTY_NAME_OR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE;
+                } else {
+                    assert(!"Expected a number for point light entity property falloff_start.");
+                }
+            } break;
+            case WAIT_FOR_POINT_LIGHT_ENTITY_FALLOFF_END_NUMBER: {
+                assert(temp_entity_type == ENTITY_POINT_LIGHT);
+                Point_Light_Entity *point_light_entity = (Point_Light_Entity *) temp_entity;
+
+                if (token.type == REAL || token.type == INTEGER) {
+                    point_light_entity->falloff_end = string_to_real32(token.string.contents,
+                                                                         token.string.length);
+                    state = WAIT_FOR_ENTITY_PROPERTY_NAME_OR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE;
+                } else {
+                    assert(!"Expected a number for point light entity property falloff_end.");
+                }
+            } break;
+            case FINISHED: {
+                if (token.type != END) assert(!"Unexpected extra tokens.");
+            }
+        }
+
     } while (token.type != END);
+
+    // TODO: copy temp level into level and do all the required allocations for things like meshes
+
+    end_region(m);
 }
 
 void read_and_load_level(Level *level, char *filename) {

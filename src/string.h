@@ -63,6 +63,13 @@ void copy_string(String_Buffer *dest, String_Buffer *src) {
     dest->current_length = src->current_length;
 }
 
+void copy_string(String_Buffer *dest, String src) {
+    assert(dest->size >= src.length);
+
+    memcpy(dest->contents, src.contents, src.length);
+    dest->current_length = src.length;
+}
+
 /*
 // TODO: this may be outdated
 void copy_string(String *dest, String src, uint32 max_size) {
@@ -95,6 +102,7 @@ String_Buffer make_string_buffer(Allocator *allocator, uint32 size) {
 
 // NOTE: size does NOT include a null-terminator, since String does not include a null-terminator in contents.
 // NOTE: creates a String_Buffer with initial contents (this does a copy)
+// NOTE: string is the null-terminated initial contents of the buffer
 String_Buffer make_string_buffer(Allocator *allocator, char *string, uint32 size) {
     String_Buffer buffer;
 
@@ -106,6 +114,19 @@ String_Buffer make_string_buffer(Allocator *allocator, char *string, uint32 size
     buffer.contents = contents;
     buffer.current_length = length;
     buffer.size = size;
+
+    return buffer;
+}
+
+String_Buffer make_string_buffer(Allocator *allocator, String initial_value, int32 size) {
+    assert(initial_value.length <= size);
+    String_Buffer buffer;
+
+    char *contents = (char *) allocate(allocator, size);
+    buffer.contents = contents;
+    buffer.size = size;
+
+    copy_string(&buffer, initial_value);
 
     return buffer;
 }
@@ -174,6 +195,11 @@ bool32 string_equals(String a, String b) {
     }
 
     return true;
+}
+
+// NOTE: b is a null-terminated string
+inline bool32 string_equals(String a, char *b) {
+    return string_equals(a, make_string(b));
 }
 
 void append_string(String *result, String a, String b, uint32 max_size) {

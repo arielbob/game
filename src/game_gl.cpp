@@ -139,7 +139,8 @@
 //       - TODO (done): add procedure to parse and load level file
 //       - TODO (done): tokenize the level file
 //       - TODO (done): add level parser states
-//       - TODO: level parsing
+//       - TODO (done): level parsing
+//       - TODO: copy temp_level from parsing into game_state's current_level
 //       - TODO: don't allow quotes or brackets in any level strings
 //       - TODO: try loading a test level
 //       - TODO: add filters to platform_open_file_dialog
@@ -147,6 +148,7 @@
 //       - TODO: save as button for saving a duplicate of a level
 //       - TODO: save without dialog if a saved level is opened
 
+// TODO: hash table iterators
 // TODO: change mesh parser to use new tokenizer_equals procedures, since we can actually read past bounds, since
 //       file_contents is not null-terminated. when we read the file in, the size is just the size of the file,
 //       which does not necessarily include a null-terminator.

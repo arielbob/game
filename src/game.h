@@ -17,7 +17,11 @@
 
 #define MAX_PRESSED_CHARS 256
 
-//#define MATERIAL_NAME_MAX_SIZE 128
+// NOTE: if we change these numbers, we will need to change some allocators since we use the string64 pool
+//       often for these strings
+#define MESH_NAME_MAX_SIZE       64
+#define TEXTURE_NAME_MAX_SIZE    64
+#define MATERIAL_NAME_MAX_SIZE   64
 #define MATERIAL_STRING_MAX_SIZE 64
 
 struct Display_Output {

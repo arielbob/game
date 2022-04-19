@@ -251,8 +251,6 @@ inline real32& Vec4::operator[](int32 index) {
     return (*this).values[index];
 }
 
-
-
 inline Vec4 make_vec4(real32 x, real32 y, real32 z, real32 w) {
     Vec4 vec4;
     vec4.x = x;
@@ -610,6 +608,14 @@ Quaternion make_quaternion(real32 angle_degs, Vec3 axis) {
     result.w = cosf(angle_rads / 2.0f);
     result.v = sinf(angle_rads / 2.0f)*axis;
     return result;
+}
+
+Transform make_transform() {
+    Transform transform;
+    transform.position = {};
+    transform.rotation = make_quaternion();
+    transform.scale = make_vec3(1.0f, 1.0f, 1.0f);
+    return transform;
 }
 
 real32 magnitude(Quaternion q) {
