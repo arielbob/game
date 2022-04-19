@@ -589,6 +589,8 @@ void Level_Loader::load_level(File_Data file_data, Level *level) {
 
     Token token;
 
+    //Parser_State state; 
+
     do {
         token = get_token(&tokenizer, (char *) file_data.contents);
 

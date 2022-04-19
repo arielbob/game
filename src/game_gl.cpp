@@ -138,6 +138,7 @@
 //       - TODO (done): add open level button
 //       - TODO (done): add procedure to parse and load level file
 //       - TODO (done): tokenize the level file
+//       - TODO (done): add level parser states
 //       - TODO: level parsing
 //       - TODO: don't allow quotes or brackets in any level strings
 //       - TODO: try loading a test level
