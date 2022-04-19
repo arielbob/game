@@ -1,4 +1,4 @@
-level info {
+level_info {
 level_name "test"
 }
 
@@ -6,7 +6,6 @@ meshes {
 mesh "cube" "blender/cube.mesh"
 mesh "suzanne" "blender/suzanne2.mesh"
 mesh "sphere" "blender/sphere.mesh"
-mesh "torus" ".\blender\torus.mesh"
 }
 
 textures {
@@ -19,13 +18,12 @@ material "shiny_monkey"
 texture "debug"
 gloss 100.000000
 color_override 0.600000 0.600000 0.600000
-use_color_override 0
+use_color_override 1
 
 material "diffuse_plane"
-texture "debug"
-gloss 61.194168
+gloss 1.000000
 color_override 0.900000 0.900000 0.900000
-use_color_override 0
+use_color_override 1
 
 material "arrow_material"
 gloss 100.000000
@@ -50,10 +48,10 @@ use_color_override 1
 
 entities {
 type normal
-mesh "torus"
+mesh "suzanne"
 material "shiny_monkey"
-position 1.472951 1.526233 -0.050432
-rotation 0.797582 0.221407 0.540663 -0.150087
+position 2.000000 1.000000 0.000000
+rotation 0.923880 0.000000 0.382683 0.000000
 scale 1.000000 1.000000 1.000000
 
 type normal
@@ -64,10 +62,10 @@ rotation 1.000000 0.000000 0.000000 0.000000
 scale 5.000000 0.100000 5.000000
 
 type normal
-mesh "suzanne"
+mesh "sphere"
 material "diffuse_sphere"
 position -1.500000 1.500000 -1.000000
-rotation 0.928580 0.235327 -0.278190 0.070501
+rotation 1.000000 0.000000 0.000000 0.000000
 scale 0.500000 0.500000 0.500000
 
 type point_light

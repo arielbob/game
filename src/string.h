@@ -13,7 +13,7 @@
 
 uint32 string_length(char* str) {
     if (!str) return 0;
-    uint32 count = 0;
+    int32 count = 0;
     while (*(str++) != '\0') {
         count++;
     }

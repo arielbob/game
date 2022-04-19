@@ -2,6 +2,7 @@
 #include "entity.h"
 #include "game.h"
 #include "level.h"
+#include "parse.h"
 
 Material get_material(Level *level, int32 material_id) {
     Material material;
@@ -106,7 +107,7 @@ void export_level(Allocator *allocator, Level *level, char *filename) {
     uint32 buffer_size = MEGABYTES(8); // should be a fine size
     String_Buffer working_buffer = make_string_buffer(allocator, buffer_size);
 
-    append_string(&working_buffer, "level info {\n");
+    append_string(&working_buffer, "level_info {\n");
     append_string(&working_buffer, "level_name ");
     append_string_add_quotes(&working_buffer, level->name);
     append_string(&working_buffer, "\n");
@@ -452,8 +453,149 @@ void unload_level(Game_State *game_state) {
     hash_table_reset(&level->texture_table);
 }
 
-void load_level(Level *level) {
+inline Level_Loader::Token Level_Loader::make_token(Token_Type type, char *contents, int32 length) {
+    Token token = {
+        type,
+        make_string(contents, length)
+    };
+    return token;
+}
 
+Level_Loader::Token Level_Loader::get_token(Tokenizer *tokenizer, char *file_contents) {
+    Token token = {};
+
+    consume_leading_whitespace(tokenizer);
+
+    if (is_end(tokenizer)) {
+        token = make_token(END, NULL, 0);
+        return token;
+    }
+
+    char c = *tokenizer->current;
+
+    // it's fine to not use tokenizer_equals here since we've already checked for is_end and we're only
+    // comparing against single characters
+    if (is_digit(c) || (c == '-') || (c == '.')) {
+        uint32 start = tokenizer->index;
+        
+        bool32 has_period = false;
+        bool32 is_negative = false;
+        if (c == '.') {
+            has_period = true;
+        } else if (c == '-') {
+            is_negative = true;
+        }
+
+        increment_tokenizer(tokenizer);
+        
+        while (!is_end(tokenizer) && !is_whitespace(tokenizer)) {
+            if (!is_digit(*tokenizer->current) &&
+                *tokenizer->current != '.') {
+                assert(!"Expected digit or period");
+            }
+            
+            if (*tokenizer->current == '.') {
+                if (!has_period) {
+                    has_period = true;
+                } else {
+                    assert(!"More than one period in number");
+                }
+            }
+
+            if (*tokenizer->current == '-') {
+                assert(!"Negatives can only be at the start of a number");
+            }
+
+            increment_tokenizer(tokenizer);
+        }
+        
+        uint32 length = tokenizer->index - start;
+
+        Token_Type type;
+        if (has_period) {
+            type = REAL;
+        } else {
+            type = INTEGER;
+        }
+
+        token = make_token(type, &file_contents[start], length);
+    } else if (tokenizer_equals(tokenizer, ";;")) {
+        increment_tokenizer(tokenizer, 2);
+        int32 start = tokenizer->index;
+        
+        // it is necessary that we check both is_end and is_line_end, since is_line_end will return false
+        // if we hit the end, and so we'll be stuck in an infinite loop.
+        while (!is_end(tokenizer) &&
+               !is_line_end(tokenizer)) {
+            increment_tokenizer(tokenizer);
+        }
+
+        int32 length = tokenizer->index - start;
+        token = make_token(COMMENT, &file_contents[start], length);
+    } else if (is_letter(*tokenizer->current)) {
+        uint32 start = tokenizer->index;
+
+        increment_tokenizer(tokenizer);
+        
+        while (!is_end(tokenizer) &&
+               !is_whitespace(*tokenizer->current)) {
+
+            char current_char = *tokenizer->current;
+            if (!(is_letter(current_char) || current_char == '_')) {
+                assert(!"Keywords can only contain letters and underscores.");
+            }
+
+            increment_tokenizer(tokenizer);
+        }
+
+        int32 length = tokenizer->index - start;
+        token = make_token(KEYWORD, &file_contents[start], length);
+    } else if (*tokenizer->current == '"') {
+        increment_tokenizer(tokenizer);
+        // set start after we increment tokenizer so that we don't include the quote in the token string.
+        int32 start = tokenizer->index;
+
+        while (!is_end(tokenizer) &&
+               !(*tokenizer->current == '"')) {
+            increment_tokenizer(tokenizer);
+        }
+
+        if (*tokenizer->current != '"') {
+            assert(!"Expected a closing quote.");
+        } else {
+            int32 length = tokenizer->index - start;
+            increment_tokenizer(tokenizer);
+            token = make_token(STRING, &file_contents[start], length);
+        }
+    } else if (*tokenizer->current == '{') {
+        int32 start = tokenizer->index;
+        increment_tokenizer(tokenizer);
+        int32 length = tokenizer->index - start;
+        token = make_token(OPEN_BRACKET, &file_contents[start], length);
+    } else if (*tokenizer->current == '}') {
+        int32 start = tokenizer->index;
+        increment_tokenizer(tokenizer);
+        int32 length = tokenizer->index - start;
+        token = make_token(CLOSE_BRACKET, &file_contents[start], length);
+    } else {
+        assert(!"Token type not recognized.");
+    }
+
+    return token;
+}
+
+void Level_Loader::load_level(File_Data file_data, Level *level) {
+    Tokenizer tokenizer = make_tokenizer(file_data);
+
+    Token token;
+
+    do {
+        token = get_token(&tokenizer, (char *) file_data.contents);
+
+        if (token.type == COMMENT) continue;
+
+        
+    } while (token.type != END);
 }
 
 void read_and_load_level(Level *level, char *filename) {
@@ -462,7 +604,7 @@ void read_and_load_level(Level *level, char *filename) {
     Allocator *global_stack = (Allocator *) &memory.global_stack;
     File_Data level_file = platform_open_and_read_file(global_stack, filename);
 
-    load_level(level);
+    Level_Loader::load_level(level_file, level);
 
     end_region(m);
 }

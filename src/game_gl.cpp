@@ -135,13 +135,20 @@
 //       - TODO (done): switch to using a level struct to hold level data
 //       - TODO (done): add procedure to clear the current level
 //       - TODO (done): unload meshes and textures in opengl when a level is unloaded
-//       - TODO: add open level button
-//       - TODO: add procedure to parse and load level file
+//       - TODO (done): add open level button
+//       - TODO (done): add procedure to parse and load level file
+//       - TODO (done): tokenize the level file
+//       - TODO: level parsing
+//       - TODO: don't allow quotes or brackets in any level strings
 //       - TODO: try loading a test level
 //       - TODO: add filters to platform_open_file_dialog
 //       - TODO: prompt to save open level if opening a new one
 //       - TODO: save as button for saving a duplicate of a level
 //       - TODO: save without dialog if a saved level is opened
+
+// TODO: change mesh parser to use new tokenizer_equals procedures, since we can actually read past bounds, since
+//       file_contents is not null-terminated. when we read the file in, the size is just the size of the file,
+//       which does not necessarily include a null-terminator.
 
 // TODO: allocate Game_State in game_data_arena instead of having it on the stack
 // TODO: add camera state to level

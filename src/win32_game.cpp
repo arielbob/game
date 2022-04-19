@@ -314,7 +314,6 @@ File_Data platform_open_and_read_file(Allocator *allocator, char *filename) {
     return file_data;
 }
 
-
 internal bool32 win32_init_opengl(HDC hdc) {
     PIXELFORMATDESCRIPTOR desired_pixel_format = {};
     desired_pixel_format.nSize      = sizeof(PIXELFORMATDESCRIPTOR);

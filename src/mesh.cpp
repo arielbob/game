@@ -80,7 +80,7 @@ namespace Mesh_Loader {
     struct Token {
         Token_Type type;
         char *text;
-        uint32 length;
+        int32 length;
     };
 
     Token get_token(Tokenizer *tokenizer, char* file_contents);
@@ -91,7 +91,10 @@ namespace Mesh_Loader {
 
 // NOTE: token.text is not null-terminated, but str is expected to be null-terminated
 inline bool32 Mesh_Loader::token_text_equals(Token token, char *str) {
-    for (uint32 i = 0; i < token.length; i++) {
+    for (int32 i = 0; i < token.length; i++) {
+        // NOTE: this also handles the case when token.length is larger than the length of the string, since
+        //       we assume the token does not have any null characters. if we hit a null character in str,
+        //       token.text[i] != '\0', so we return false.
         if (token.text[i] != str[i]) {
             return false;
         }
@@ -108,7 +111,7 @@ inline bool32 Mesh_Loader::token_text_equals(Token token, char *str) {
     }
 }
 
-Mesh_Loader::Token Mesh_Loader::get_token(Tokenizer *tokenizer, char* file_contents) {
+Mesh_Loader::Token Mesh_Loader::get_token(Tokenizer *tokenizer, char *file_contents) {
     Token token = {};
 
     consume_leading_whitespace(tokenizer);
@@ -155,7 +158,7 @@ Mesh_Loader::Token Mesh_Loader::get_token(Tokenizer *tokenizer, char* file_conte
                 assert(!"Negatives can only be at the start of a number");
             }
 
-            increment_tokenizer(tokenizer);            
+            increment_tokenizer(tokenizer);
         }
         
         uint32 length = tokenizer->index - start;
