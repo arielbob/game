@@ -1,6 +1,7 @@
 #include "hash_table.h"
 #include "entity.h"
 #include "game.h"
+#include "level.h"
 
 Material get_material(Level *level, int32 material_id) {
     Material material;
@@ -451,27 +452,17 @@ void unload_level(Game_State *game_state) {
     hash_table_reset(&level->texture_table);
 }
 
+void load_level(Level *level) {
 
-#if 0
-void add_mesh(Level *level, Mesh mesh) {
-    
 }
-#endif
 
-#if 0
-void read_and_load_level(Game_State *game_state, String_Buffer filename_buffer) {
+void read_and_load_level(Level *level, char *filename) {
     Marker m = begin_region();
 
     Allocator *global_stack = (Allocator *) &memory.global_stack;
-    char *filename = to_char_array(global_stack, filename_buffer);
-    File_Data mesh_file = platform_open_and_read_file(global_stack, filename);
+    File_Data level_file = platform_open_and_read_file(global_stack, filename);
 
-    Mesh mesh = load_mesh(mesh_file, allocator);
-    mesh.filename = filename_buffer;
-    mesh.name = name_buffer;
-    
+    load_level(level);
+
     end_region(m);
-    
-    return mesh;
 }
-#endif

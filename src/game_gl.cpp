@@ -135,7 +135,10 @@
 //       - TODO (done): switch to using a level struct to hold level data
 //       - TODO (done): add procedure to clear the current level
 //       - TODO (done): unload meshes and textures in opengl when a level is unloaded
+//       - TODO: add open level button
 //       - TODO: add procedure to parse and load level file
+//       - TODO: try loading a test level
+//       - TODO: add filters to platform_open_file_dialog
 //       - TODO: prompt to save open level if opening a new one
 //       - TODO: save as button for saving a duplicate of a level
 //       - TODO: save without dialog if a saved level is opened

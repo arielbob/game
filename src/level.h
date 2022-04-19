@@ -19,4 +19,6 @@ struct Level {
     Hash_Table<int32, Texture> texture_table;
 };
 
+void read_and_load_level(Level *level, char *filename);
+
 #endif

@@ -1030,7 +1030,6 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
     }
     
     draw_row_padding(ui_manager, controller_state, x, &y, row_width, padding_y, row_color, side_flags | SIDE_BOTTOM, row_index);
-        
 }
 
 void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) {
@@ -1099,8 +1098,29 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
         reset_entity_editors(editor_state);
     }
 
-    y += 120;
+    y += 100;
 
+    bool32 open_level_clicked = do_text_button(ui_manager, controller_state,
+                                                 render_state->display_output.width - sidebar_button_width, y,
+                                                 sidebar_button_width, button_height,
+                                                 default_text_button_style, default_text_style,
+                                                 "Open Level",
+                                                 button_font_name, "open_level");
+    if (open_level_clicked) {
+        Allocator *string64_allocator = (Allocator *) &memory.string64_pool;
+        Allocator *filename_allocator = (Allocator *) &memory.filename_pool;
+
+        Marker m = begin_region();
+        char *absolute_filename = (char *) region_push(PLATFORM_MAX_PATH);
+        
+        if (platform_open_file_dialog(absolute_filename, PLATFORM_MAX_PATH)) {
+            read_and_load_level(&game_state->current_level, absolute_filename);
+        }
+
+        end_region(m);
+    }
+
+#if 0
     bool32 unload_level_clicked = do_text_button(ui_manager, controller_state,
                                                 render_state->display_output.width - sidebar_button_width, y,
                                                 sidebar_button_width, button_height,
@@ -1112,6 +1132,7 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
         editor_state->selected_entity_index = -1;
         unload_level(game_state);
     }
+#endif
 }
 
 int32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, real32 *t_result) {
