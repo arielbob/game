@@ -1102,12 +1102,25 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
 
     y += 100;
 
+    bool32 new_level_clicked = do_text_button(ui_manager, controller_state,
+                                              render_state->display_output.width - sidebar_button_width, y,
+                                              sidebar_button_width, button_height,
+                                              default_text_button_style, default_text_style,
+                                              "New Level",
+                                              button_font_name, "new_level");
+    if (new_level_clicked) {
+        unload_level(&game_state->current_level);
+        editor_state->selected_entity_index = -1;
+    }
+
+    y += button_height + 1;
+
     bool32 open_level_clicked = do_text_button(ui_manager, controller_state,
-                                                 render_state->display_output.width - sidebar_button_width, y,
-                                                 sidebar_button_width, button_height,
-                                                 default_text_button_style, default_text_style,
-                                                 "Open Level",
-                                                 button_font_name, "open_level");
+                                               render_state->display_output.width - sidebar_button_width, y,
+                                               sidebar_button_width, button_height,
+                                               default_text_button_style, default_text_style,
+                                               "Open Level",
+                                               button_font_name, "open_level");
     if (open_level_clicked) {
         Marker m = begin_region();
         char *absolute_filename = (char *) region_push(PLATFORM_MAX_PATH);

@@ -145,11 +145,13 @@
 //       - TODO (done): copy temp_level from parsing into game_state's current_level
 //       - TODO (done): try loading a test level
 //       - TODO (done): add filters to platform_open_file_dialog
+//       - TODO (done): add new level button
 //       - TODO: prompt to save open level if opening a new one
 //       - TODO: save as button for saving a duplicate of a level
 //       - TODO: save without dialog if a saved level is opened
 // TODO: go over the level loading code to make sure we don't have any memory leaks; i'm pretty sure we're fine,
 //       but just verify that it looks good.
+// TODO: entity adding
 
 // TODO: don't allow quotes or brackets in any level strings, i.e. in level name, texture name, material name, etc.
 //       (requires text box validation)
