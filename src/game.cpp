@@ -359,9 +359,8 @@ void init_game(Game_State *game_state,
 
     mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena,
                               make_string_buffer(filename_allocator, "blender/cube.mesh", PLATFORM_MAX_PATH),
-                              make_string_buffer(mesh_name_allocator, "cube", MESH_NAME_MAX_SIZE),
-                              true);
-    int32 mesh_primitive_cube_id = add_primitive_mesh(game_state, mesh);
+                              make_string_buffer(mesh_name_allocator, "cube", MESH_NAME_MAX_SIZE));
+    add_primitive_mesh(game_state, mesh);
 
     // init editor_state
     editor_state->gizmo.arrow_mesh_id = gizmo_arrow_mesh_id;

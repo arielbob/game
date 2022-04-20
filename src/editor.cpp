@@ -587,8 +587,11 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                      row_index++);
     draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags,
              row_id, row_index++);
+    char *mesh_label_string = "Mesh";
+    if (entity->mesh_type == Mesh_Type::PRIMITIVE) mesh_label_string = "Mesh (primitive)";
     draw_v_centered_text(game_state, ui_manager, x + padding_left, y, row_height,
-                         "Mesh", editor_font_name_bold, text_style);
+                         mesh_label_string, editor_font_name_bold, text_style);
+
     x += right_column_offset;
     bool32 choose_mesh_pressed = do_text_button(ui_manager, controller_state,
                                                 x, y,
@@ -625,7 +628,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                               edit_mesh_button_width, row_height,
                                               button_style, default_text_style,
                                               "Edit", editor_font_name_bold,
-                                              false,
+                                              entity->mesh_type == Mesh_Type::PRIMITIVE,
                                               "edit_mesh");
 
     if (edit_mesh_pressed) {

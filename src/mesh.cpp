@@ -406,8 +406,7 @@ Vec3 get_vertex_from_index(Mesh *mesh, uint32 index) {
 //       MESH_NAME_MAX_SIZE.
 Mesh read_and_load_mesh(Allocator *allocator,
                         String_Buffer filename_buffer,
-                        String_Buffer name_buffer,
-                        bool32 is_primitive = false) {
+                        String_Buffer name_buffer) {
     Marker m = begin_region();
 
     Allocator *global_stack = (Allocator *) &memory.global_stack;
@@ -417,7 +416,6 @@ Mesh read_and_load_mesh(Allocator *allocator,
     Mesh mesh = Mesh_Loader::load_mesh(mesh_file, allocator);
     mesh.filename = filename_buffer;
     mesh.name = name_buffer;
-    mesh.is_primitive = is_primitive;
     
     end_region(m);
     

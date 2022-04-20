@@ -12,7 +12,6 @@ enum class Mesh_Type { NONE, LEVEL, PRIMITIVE };
 struct Mesh {
     String_Buffer name;
     String_Buffer filename;
-    bool32 is_primitive;
 
     real32 *data;
     uint32 num_vertices;
