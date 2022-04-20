@@ -1,0 +1,90 @@
+level_info {
+level_name "new_test"
+}
+
+meshes {
+mesh "cube" "blender/cube.mesh"
+mesh "suzanne" "blender/suzanne2.mesh"
+mesh "sphere" "blender/sphere.mesh"
+}
+
+textures {
+texture "debug" "src/textures/debug_texture.png"
+texture "white" "src/textures/white.bmp"
+}
+
+materials {
+material "shiny_monkey"
+texture "debug"
+gloss 100.000000
+color_override 0.600000 0.600000 0.600000
+use_color_override 1
+
+material "diffuse_plane"
+gloss 1.000000
+color_override 0.900000 0.900000 0.900000
+use_color_override 1
+
+material "arrow_material"
+gloss 100.000000
+color_override 1.000000 0.000000 0.000000
+use_color_override 1
+
+material "white_light"
+gloss 0.000000
+color_override 1.000000 1.000000 1.000000
+use_color_override 1
+
+material "blue_light"
+gloss 0.000000
+color_override 0.000000 0.000000 1.000000
+use_color_override 1
+
+material "diffuse_sphere"
+gloss 5.000000
+color_override 0.690196 0.690196 0.690196
+use_color_override 1
+}
+
+entities {
+type normal
+mesh "suzanne"
+material "shiny_monkey"
+position 2.000000 1.000000 0.000000
+rotation 0.923880 0.000000 0.382683 0.000000
+scale 1.000000 1.000000 1.000000
+
+type normal
+mesh "cube"
+material "diffuse_plane"
+position 0.000000 0.000000 0.000000
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 5.000000 0.100000 5.000000
+
+type normal
+mesh "sphere"
+material "diffuse_sphere"
+position -1.500000 1.500000 -1.000000
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 0.500000 0.500000 0.500000
+
+type point_light
+mesh "cube"
+material "white_light"
+position 0.800000 1.800000 -2.300000
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 0.100000 0.100000 0.100000
+light_color 0.800000 0.800000 0.800000
+falloff_start 0.000000
+falloff_end 3.000000
+
+type point_light
+mesh "cube"
+material "blue_light"
+position -1.000000 1.500000 0.000000
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 0.100000 0.100000 0.100000
+light_color 0.000000 0.000000 1.000000
+falloff_start 0.000000
+falloff_end 5.000000
+}

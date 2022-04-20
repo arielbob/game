@@ -978,6 +978,8 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
     uint32 side_flags = SIDE_LEFT | SIDE_RIGHT;
     real32 padding_x = 6.0f;
     real32 padding_y = 6.0f;
+    real32 initial_x = x;
+
     draw_row_padding(ui_manager, controller_state, x, &y, row_width, padding_y, row_color, side_flags | SIDE_TOP, row_index);
 
     Font font = get_font(game_state, editor_font_name_bold);
@@ -1003,16 +1005,18 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
 
     // save level button
     real32 button_height = 25.0f;
-    draw_row(ui_manager, controller_state, x, y, row_width, button_height, row_color, side_flags, row_id, row_index++);
+    draw_row(ui_manager, controller_state,
+             x, y, row_width, button_height, row_color, side_flags, row_id, row_index++);
+
+    real32 save_button_width = 50.0f;
     bool32 save_level_clicked = do_text_button(ui_manager, controller_state,
                                                x + padding_x, y,
-                                               120.0f, button_height,
+                                               save_button_width, button_height,
                                                default_text_button_style, default_text_style,
-                                               "Save Level",
+                                               "Save",
                                                editor_font_name_bold,
                                                is_empty(game_state->current_level.name),
                                                "save_level");
-    y += button_height;
 
     if (save_level_clicked) {
         assert(!is_empty(game_state->current_level.name));
@@ -1038,6 +1042,39 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
         
         end_region(m);
     }
+
+    x += save_button_width + 1;
+    real32 save_as_button_width = 110.0f;
+    bool32 save_as_level_clicked = do_text_button(ui_manager, controller_state,
+                                               x + padding_x, y,
+                                                  save_as_button_width, button_height,
+                                               default_text_button_style, default_text_style,
+                                               "Save As...",
+                                               editor_font_name_bold,
+                                               is_empty(game_state->current_level.name),
+                                               "save_as_level");
+
+    if (save_as_level_clicked) {
+        assert(!is_empty(game_state->current_level.name));
+
+        Marker m = begin_region();
+        char *filename = (char *) region_push(PLATFORM_MAX_PATH);
+
+        bool32 has_filename = platform_open_save_file_dialog(filename,
+                                                             LEVEL_FILE_FILTER_TITLE, LEVEL_FILE_FILTER_TYPE,
+                                                             PLATFORM_MAX_PATH);
+
+        if (has_filename) {
+            export_level((Allocator *) &memory.global_stack, &game_state->current_level, filename);
+            copy_string(&editor_state->current_level_filename, make_string(filename));
+            editor_state->is_new_level = false;
+        }
+        
+        end_region(m);
+    }
+    x = initial_x;
+
+    y += button_height;
     
     draw_row_padding(ui_manager, controller_state, x, &y, row_width, padding_y, row_color, side_flags | SIDE_BOTTOM, row_index);
 }

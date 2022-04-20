@@ -128,7 +128,7 @@
 //       - TODO (done): write materials to level file
 //       - TODO (done): write entities to level file
 
-// TODO: level loading
+// TODO (done): level loading
 //       in level loading, we should ensure that duplicates of mesh, texture, and material names do not exist.
 //       - TODO (done): add hash table resetting procedure
 //       - TODO (done): add common mesh table to game_state (to hold things like the gizmo meshes)
@@ -147,11 +147,12 @@
 //       - TODO (done): add filters to platform_open_file_dialog
 //       - TODO (done): add new level button
 //       - TODO (done): save without dialog if a saved level is opened and save with file dialog if new level
-//       - TODO: save as button for saving a duplicate of a level
-//       - TODO: prompt to save level if open pressed when changes have been made
-// TODO: go over the level loading code to make sure we don't have any memory leaks; i'm pretty sure we're fine,
-//       but just verify that it looks good.
+//       - TODO (done): save as button for saving a duplicate of a level
+
 // TODO: entity adding
+// TODO: editor undoing
+
+// TODO: prompt to save level if open pressed when changes have been made
 
 // TODO: don't allow quotes or brackets in any level strings, i.e. in level name, texture name, material name, etc.
 //       (requires text box validation)
@@ -266,7 +267,6 @@
 //       less complex and most likely faster. the downside is that if the amounts of entity types that exist at
 //       a given time differ by a large amount, you'll end up with a lot of unused memory.
 // TODO: interface for loading meshes with file explorer
-// TODO: undoing
 
 // TODO: create an entity list
 // TODO: create a mesh list
