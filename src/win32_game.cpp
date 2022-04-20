@@ -816,6 +816,41 @@ bool32 platform_open_file_dialog(char *filepath, uint32 size) {
     return result;
 }
 
+bool32 platform_open_file_dialog(char *filepath, char *filetype_name, char *file_extension_no_dot, uint32 size) {
+    OPENFILENAME ofn = {};       // common dialog box structure
+
+    String filetype_name_string = make_string(filetype_name);
+    String file_extension_no_dot_string = make_string(file_extension_no_dot);
+
+    char filter_buffer[64];
+    // NOTE: we do it this way since string_format is messed up when the string contains null
+    //       characters that aren't at the end (the format string uses \0 as a separator).
+    String_Buffer working_buffer = make_empty_string_buffer(filter_buffer, sizeof(filter_buffer));
+    append_string(&working_buffer, filetype_name_string);
+    append_string(&working_buffer, make_string("\0", 1));
+    append_string(&working_buffer, make_string("*.", 2));
+    append_string(&working_buffer, file_extension_no_dot_string);
+    append_string(&working_buffer, make_string("\0\0", 2));
+
+    // Initialize OPENFILENAME
+    ofn.lStructSize = sizeof(ofn);
+    ofn.hwndOwner = window;
+    ofn.lpstrFile = filepath;
+    // Set lpstrFile[0] to '\0' so that GetOpenFileName does not 
+    // use the contents of szFile to initialize itself.
+    ofn.lpstrFile[0] = '\0';
+    ofn.nMaxFile = size;
+    ofn.lpstrFilter = working_buffer.contents;
+    ofn.nFilterIndex = 1;
+    ofn.lpstrFileTitle = NULL;
+    ofn.nMaxFileTitle = 0;
+    ofn.lpstrInitialDir = NULL;
+    ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
+
+    bool32 result = GetOpenFileName(&ofn);
+    return result;
+}
+
 // NOTE: this only supports a single file extension
 bool32 platform_open_save_file_dialog(char *filepath, char *filetype_name, char *file_extension_no_dot, uint32 size) {
     assert(filetype_name);

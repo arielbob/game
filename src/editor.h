@@ -1,6 +1,10 @@
 #ifndef EDITOR_H
 #define EDITOR_H
 
+#define LEVEL_FILE_FILTER_TITLE "Levels (*.level)"
+#define LEVEL_FILE_FILTER_TYPE "level"
+
+
 enum Gizmo_Handle {
     GIZMO_HANDLE_NONE,
     GIZMO_TRANSLATE_X,

@@ -26,6 +26,7 @@ void platform_close_file(Platform_File platform_file);
 void platform_zero_memory(void *base, uint32 size);
 File_Data platform_open_and_read_file(Allocator *allocator, char *filename);
 bool32 platform_open_file_dialog(char *filepath, uint32 size);
+bool32 platform_open_file_dialog(char *filepath, char *filetype_name, char *file_extension_no_dot, uint32 size);
 bool32 platform_open_save_file_dialog(char *filepath, char *filetype_name, char *file_extension_no_dot, uint32 size);
 real64 platform_get_wall_clock_time();
 void platform_set_cursor_visible(bool32 is_visible);

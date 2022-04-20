@@ -1020,7 +1020,9 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
         Marker m = begin_region();
         char *filename = (char *) region_push(&memory.global_stack, PLATFORM_MAX_PATH);
 
-        bool32 has_filename = platform_open_save_file_dialog(filename, "Levels (*.level)", "level", PLATFORM_MAX_PATH);
+        bool32 has_filename = platform_open_save_file_dialog(filename,
+                                                             LEVEL_FILE_FILTER_TITLE, LEVEL_FILE_FILTER_TYPE,
+                                                             PLATFORM_MAX_PATH);
 
         if (has_filename) {
             export_level((Allocator *) &memory.global_stack, &game_state->current_level, filename);
@@ -1110,7 +1112,10 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
         Marker m = begin_region();
         char *absolute_filename = (char *) region_push(PLATFORM_MAX_PATH);
         
-        if (platform_open_file_dialog(absolute_filename, PLATFORM_MAX_PATH)) {
+
+        if (platform_open_file_dialog(absolute_filename,
+                                      LEVEL_FILE_FILTER_TITLE, LEVEL_FILE_FILTER_TYPE,
+                                      PLATFORM_MAX_PATH)) {
             bool32 result = read_and_load_level(&game_state->current_level, absolute_filename,
                                                 &memory.level_mesh_arena,
                                                 &memory.level_string64_pool,

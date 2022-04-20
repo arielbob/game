@@ -144,7 +144,7 @@
 //       - TODO (done): load meshes into current_level's mesh_arena
 //       - TODO (done): copy temp_level from parsing into game_state's current_level
 //       - TODO (done): try loading a test level
-//       - TODO: add filters to platform_open_file_dialog
+//       - TODO (done): add filters to platform_open_file_dialog
 //       - TODO: prompt to save open level if opening a new one
 //       - TODO: save as button for saving a duplicate of a level
 //       - TODO: save without dialog if a saved level is opened
