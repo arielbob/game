@@ -49,6 +49,14 @@ struct Material {
     bool32 use_color_override;
 };
 
+Material default_material = {
+    make_empty_string_buffer("", 0),
+    -1,
+    0.5f,
+    make_vec4(0.5f, 0.5f, 0.5f, 1.0f),
+    true
+};
+
 Material make_material(String_Buffer material_name,
                        int32 texture_id,
                        real32 specular_exponent,

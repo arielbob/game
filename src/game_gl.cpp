@@ -150,17 +150,16 @@
 //       - TODO (done): save as button for saving a duplicate of a level
 //       - TODO (done): clean up level box
 
-// TODO: entity adding
+// TODO (done): normal entity adding
 //       - TODO (done): add 'add entity' button
 //       - TODO (done): add primitive mesh table to Game_State
 //       - TODO (done): add a cube mesh primitive to primitive_mesh_table
 //       - TODO (done): try using mesh primitive in default level
 //       - TODO (done): add mesh primitives to level writing
 //                      - just add an entity property like 'mesh_primitive "cube"'
-//       - TODO: mesh library filtering (all, level, primitives)
-//       - TODO: draw filtering buttons in mesh library
-//       - TODO: add mesh primitives to level loading
-//       - TODO: add an entity with a primitive cube mesh by default on button click
+//       - TODO (done): mesh library filtering (all, level, primitives)
+//       - TODO (done): add an entity with a primitive cube mesh by default on button click
+//       - TODO: allow empty materials when saving and loading levels
 
 // TODO: editor undoing
 // TODO: color picker
@@ -2109,7 +2108,13 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
     for (int32 i = 0; i < level->num_point_lights; i++) {
         Point_Light_Entity *entity = &level->point_lights[i];
         int32 mesh_id = entity->mesh_id;
-        Material material = get_material(level, entity->material_id);
+
+        Material material;
+        if (entity->material_id >= 0) {
+            material = get_material(level, entity->material_id);
+        } else {
+            material = default_material;
+        }
 
         gl_draw_solid_mesh(gl_state, render_state,
                            entity->mesh_type,
@@ -2152,7 +2157,13 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
     for (int32 i = 0; i < level->num_normal_entities; i++) {
         Normal_Entity *entity = &level->normal_entities[i];
         int32 mesh_id = entity->mesh_id;
-        Material material = get_material(level, entity->material_id);
+
+        Material material;
+        if (entity->material_id >= 0) {
+            material = get_material(level, entity->material_id);
+        } else {
+            material = default_material;
+        }
 
         gl_draw_mesh(gl_state, render_state,
                      entity->mesh_type,

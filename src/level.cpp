@@ -342,11 +342,13 @@ int32 get_texture_id_by_name(Level *level, String texture_name) {
     return -1;
 }
 
-void level_add_entity(Level *level, Normal_Entity entity) {
+int32 level_add_entity(Level *level, Normal_Entity entity) {
     assert(level->num_normal_entities < MAX_ENTITIES);
     assert(mesh_exists(level, entity.mesh_id));
-    assert(material_exists(level, entity.material_id));
-    level->normal_entities[level->num_normal_entities++] = entity;
+    //assert(material_exists(level, entity.material_id));
+    int32 entity_index = level->num_normal_entities++;
+    level->normal_entities[entity_index] = entity;
+    return entity_index;
 }
 
 void level_add_point_light_entity(Level *level, Point_Light_Entity entity) {
