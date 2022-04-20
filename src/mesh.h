@@ -4,12 +4,15 @@
 #include "math.h"
 #include "string.h"
 
+enum class Mesh_Type { NONE, LEVEL, PRIMITIVE };
+
 // TODO: we need more types of Mesh objects. since not all meshes require all the data. for example, a nav mesh
 //       doesn't need UVs. and something like a rock mesh won't need joint data. we will also need to modify
 //       our mesh loading filetype and loading to acommodate these different types.
 struct Mesh {
     String_Buffer name;
     String_Buffer filename;
+    bool32 is_primitive;
 
     real32 *data;
     uint32 num_vertices;

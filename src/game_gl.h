@@ -158,6 +158,7 @@ struct GL_State {
     Hash_Table<int32, GL_Mesh> rendering_mesh_table;
     // for game's common meshes
     Hash_Table<int32, GL_Mesh> common_mesh_table;
+    Hash_Table<int32, GL_Mesh> primitive_mesh_table;
 
     Hash_Table<String, uint32> font_texture_table;
 

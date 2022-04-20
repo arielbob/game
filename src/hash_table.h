@@ -31,6 +31,52 @@ struct Hash_Table {
 };
 
 template <class Key_Type, class Value_Type>
+struct Hash_Table_Iterator {
+    int32 index;
+    int32 num_checked;
+    Hash_Table<Key_Type, Value_Type> hash_table;
+};
+
+template <class Key_Type, class Value_Type>
+Hash_Table_Iterator<Key_Type, Value_Type> make_hash_table_iterator(Hash_Table<Key_Type, Value_Type> hash_table) {
+    Hash_Table_Iterator<Key_Type, Value_Type> iterator;
+    iterator.hash_table = hash_table;
+    iterator.index = 0;
+    iterator.num_checked = 0;
+    return iterator;
+}
+
+template <class Key_Type, class Value_Type>
+bool32 is_finished(Hash_Table_Iterator<Key_Type, Value_Type> iterator) {
+    Hash_Table<Key_Type, Value_Type> hash_table = iterator.hash_table;
+    return ((iterator.index >= hash_table.max_entries) ||
+            (iterator.num_checked >= hash_table.num_entries));
+}
+
+template <class Key_Type, class Value_Type>
+Hash_Table_Entry<Key_Type, Value_Type> *get_next_entry_pointer(Hash_Table_Iterator<Key_Type, Value_Type> *iterator) {
+    Hash_Table<Key_Type, Value_Type> hash_table = iterator->hash_table;
+    if ((iterator->index >= hash_table.max_entries) || (iterator->num_checked >= hash_table.num_entries)) {
+        return NULL;
+    }
+
+    while ((iterator->index < hash_table.max_entries) &&
+           (iterator->num_checked < hash_table.num_entries)) {
+        Hash_Table_Entry<Key_Type, Value_Type> *entry_pointer = &hash_table.entries[iterator->index];
+        if (entry_pointer->is_occupied) {
+            iterator->num_checked++;
+            iterator->index++;
+
+            return entry_pointer;
+        }
+
+        iterator->index++;
+    }
+
+    return NULL;
+}
+
+template <class Key_Type, class Value_Type>
 Hash_Table<Key_Type, Value_Type> make_hash_table(Allocator *allocator,
                                                  int32 max_entries,
                                                  bool32 (*key_equals) (Key_Type, Key_Type)) {

@@ -34,6 +34,7 @@
 #include "math.h"
 #include "entity.h"
 #include "game.h"
+#include "level.h"
 #include "memory.h"
 #include "platform.h"
 #include "win32_game.h"

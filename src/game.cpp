@@ -138,6 +138,99 @@ Mesh get_common_mesh(Game_State *game_state, int32 mesh_id) {
     return mesh;
 }
 
+int32 add_primitive_mesh(Game_State *game_state, Mesh mesh) {
+    //assert(mesh.is_primitive);
+    int32 mesh_id = game_state->primitive_mesh_table.total_added_ever;
+    hash_table_add(&game_state->primitive_mesh_table, mesh_id, mesh);
+    return mesh_id;
+}
+
+#if 0
+int32 get_primitive_mesh_id_by_name(Game_State *game_state, String mesh_name) {
+    Hash_Table_Iterator<int32, Mesh> iterator = make_hash_table_iterator(game_state->primitive_mesh_table);
+
+    Hash_Table_Entry<int32, Mesh> *entry = get_next_entry_pointer(&iterator);
+    while (entry != NULL) {
+        if (string_equals(make_string(entry->value.name), mesh_name)) {
+            return entry->key;
+        }
+
+        entry = get_next_entry_pointer(&iterator);
+    }
+
+    return -1;
+}
+#endif
+
+// TODO: this assumes that mesh names are unique, which isn't currently being enforced.. so ideally we should just
+//       not name meshes by the same name.. until we add validation to the text boxes and to the level_add_*
+//       procedures.
+int32 get_mesh_id_by_name(Game_State *game_state, Level *level, Mesh_Type mesh_type, String mesh_name) {
+    int32 num_checked = 0;
+
+    Hash_Table<int32, Mesh> mesh_table;
+
+    if (mesh_type == Mesh_Type::LEVEL) {
+        mesh_table = level->mesh_table;
+    } else if (mesh_type == Mesh_Type::PRIMITIVE) {
+        mesh_table = game_state->primitive_mesh_table;
+    } else {
+        assert(!"Unhandled mesh type.");
+        return -1;
+    }
+
+    for (int32 i = 0; (i < mesh_table.max_entries) && (num_checked < mesh_table.num_entries); i++) {
+        Hash_Table_Entry<int32, Mesh> entry = mesh_table.entries[i];
+        if (entry.is_occupied) {
+            if (string_equals(make_string(entry.value.name), mesh_name)) {
+                return entry.key;
+            }
+            num_checked++;
+        }
+    }
+
+    return -1;
+}
+
+
+Mesh get_mesh(Game_State *game_state, Level *level, Mesh_Type mesh_type, int32 mesh_id) {
+    Mesh mesh = {};
+    bool32 mesh_exists = false;
+    switch (mesh_type) {
+        case Mesh_Type::LEVEL: {
+            mesh_exists = hash_table_find(level->mesh_table, mesh_id, &mesh);
+        } break;
+        case Mesh_Type::PRIMITIVE: {
+            mesh_exists = hash_table_find(game_state->primitive_mesh_table, mesh_id, &mesh);
+        } break;
+        default: {
+            assert(!"Unhandled mesh type.");
+        } break;
+    }
+
+    assert(mesh_exists);
+    return mesh;
+}
+
+Mesh *get_mesh_pointer(Game_State *game_state, Level *level, Mesh_Type mesh_type, int32 mesh_id) {
+    Mesh *mesh = NULL;
+    bool32 mesh_exists = false;
+        switch (mesh_type) {
+            case Mesh_Type::LEVEL: {
+                mesh_exists = hash_table_find_pointer(level->mesh_table, mesh_id, &mesh);
+            } break;
+            case Mesh_Type::PRIMITIVE: {
+                mesh_exists = hash_table_find_pointer(game_state->primitive_mesh_table, mesh_id, &mesh);
+            } break;
+            default: {
+                assert(!"Unhandled mesh type.");
+            } break;
+        }
+
+    assert(mesh_exists);
+    return mesh;
+}
+
 #if 0
 void add_entity(Game_State *game_state, Normal_Entity entity) {
     assert(game_state->num_normal_entities < MAX_ENTITIES);
@@ -222,8 +315,11 @@ void init_game(Game_State *game_state,
                                                                      HASH_TABLE_SIZE,
                                                                      &string_equals);
     game_state->common_mesh_table = make_hash_table<int32, Mesh>((Allocator *) &memory.hash_table_stack,
-                                                                  HASH_TABLE_SIZE,
-                                                                  &int32_equals);
+                                                                 HASH_TABLE_SIZE,
+                                                                 &int32_equals);
+    game_state->primitive_mesh_table = make_hash_table<int32, Mesh>((Allocator *) &memory.hash_table_stack,
+                                                                    HASH_TABLE_SIZE,
+                                                                    &int32_equals);
 
     init_camera(camera, display_output);
 
@@ -261,6 +357,12 @@ void init_game(Game_State *game_state,
                               make_string_buffer(mesh_name_allocator, "gizmo_sphere", MESH_NAME_MAX_SIZE));
     int32 gizmo_sphere_mesh_id = add_common_mesh(game_state, mesh);
 
+    mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena,
+                              make_string_buffer(filename_allocator, "blender/cube.mesh", PLATFORM_MAX_PATH),
+                              make_string_buffer(mesh_name_allocator, "cube", MESH_NAME_MAX_SIZE),
+                              true);
+    int32 mesh_primitive_cube_id = add_primitive_mesh(game_state, mesh);
+
     // init editor_state
     editor_state->gizmo.arrow_mesh_id = gizmo_arrow_mesh_id;
     editor_state->gizmo.ring_mesh_id = gizmo_ring_mesh_id;
@@ -288,7 +390,7 @@ void init_game(Game_State *game_state,
     current_level->mesh_arena = &memory.level_mesh_arena;
     current_level->string64_pool = &memory.level_string64_pool;
     current_level->filename_pool = &memory.level_filename_pool;
-    load_default_level(&game_state->current_level);
+    load_default_level(game_state, &game_state->current_level);
 
     game_state->is_initted = true;
 }

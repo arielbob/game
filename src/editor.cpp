@@ -40,7 +40,34 @@ bool32 selected_entity_changed(Editor_State *editor_state) {
 
 void reset_entity_editors(Editor_State *editor_state) {
     editor_state->open_window_flags = 0;
-    //editor_state->editing_selected_entity_material = false;
+}
+
+bool32 editor_add_mesh_press(Allocator *string_allocator, Allocator *filename_allocator,
+                             Level *level, Entity *entity) {
+    Marker m = begin_region();
+    char *absolute_filename = (char *) region_push(PLATFORM_MAX_PATH);
+        
+    if (platform_open_file_dialog(absolute_filename, PLATFORM_MAX_PATH)) {
+        String_Buffer new_mesh_name_buffer = make_string_buffer(string_allocator, 64);
+            
+        char *relative_filename = (char *) region_push(PLATFORM_MAX_PATH);
+        platform_get_relative_path(absolute_filename, relative_filename, PLATFORM_MAX_PATH);
+        String_Buffer new_mesh_filename_buffer = make_string_buffer(filename_allocator,
+                                                                    relative_filename, PLATFORM_MAX_PATH);
+
+        Mesh new_mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena,
+                                           new_mesh_filename_buffer,
+                                           new_mesh_name_buffer);
+        int32 mesh_id = level_add_mesh(level, new_mesh);
+        entity->mesh_id = mesh_id;
+        end_region(m);
+        return true;
+    }
+
+    // TODO: error handling (after in-game console implementation)
+
+    end_region(m);
+    return false;
 }
 
 void draw_row_line(UI_Manager *ui_manager, Controller_State *controller_state,
@@ -507,7 +534,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     Allocator *allocator = (Allocator *) &memory.frame_arena;
 
     Level *level = &game_state->current_level;
-    Mesh *mesh = get_mesh_pointer(level, entity->mesh_id);
+    Mesh *mesh = get_mesh_pointer(game_state, level, entity->mesh_type, entity->mesh_id);
     Material *material;
     bool32 material_exists = hash_table_find_pointer(game_state->current_level.material_table,
                                                      entity->material_id,
@@ -585,29 +612,11 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     if (add_mesh_pressed) {
         Allocator *string64_allocator = (Allocator *) &memory.string64_pool;
         Allocator *filename_allocator = (Allocator *) &memory.filename_pool;
-
-        Marker m = begin_region();
-        char *absolute_filename = (char *) region_push(PLATFORM_MAX_PATH);
-        
-        if (platform_open_file_dialog(absolute_filename, PLATFORM_MAX_PATH)) {
-            String_Buffer new_mesh_name_buffer = make_string_buffer(string64_allocator, 64);
-            
-            char *relative_filename = (char *) region_push(PLATFORM_MAX_PATH);
-            platform_get_relative_path(absolute_filename, relative_filename, PLATFORM_MAX_PATH);
-            String_Buffer new_mesh_filename_buffer = make_string_buffer(filename_allocator,
-                                                                        relative_filename, PLATFORM_MAX_PATH);
-
-            Mesh new_mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena,
-                                               new_mesh_filename_buffer,
-                                               new_mesh_name_buffer);
-            int32 mesh_id = level_add_mesh(level, new_mesh);
-            entity->mesh_id = mesh_id;
+        bool32 mesh_added = editor_add_mesh_press(string64_allocator, filename_allocator,
+                                                  &game_state->current_level, entity);
+        if (mesh_added) {
             editor_state->editing_selected_entity_mesh = true;
         }
-
-        // TODO: error handling (after in-game console implementation)
-
-        end_region(m);
     }
 
     real32 edit_mesh_button_width = row_width - (x - initial_x) - padding_right;
@@ -964,6 +973,175 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     }
 }
 
+#if 0
+void draw_add_entity_box(Game_State *game_state, Controller_State *controller_state,
+                         Level *level, Add_Entity_Box_State *state) {
+    Level *level = &game_state->current_level;
+    Render_State *render_state = &game_state->render_state;
+    UI_Manager *ui_manager = &game_state->ui_manager;
+    Editor_State *editor_state = &game_state->editor_state;
+
+    push_layer(ui_manager);
+
+    real32 padding_x = 6.0f;
+    real32 padding_y = 6.0f;
+
+    real32 x_gap = 10.0f;
+    real32 y_gap = 10.0f;
+
+    real32 title_row_height = 24.0f;
+    Vec4 title_row_color = make_vec4(0.05f, 0.2f, 0.5f, 1.0f);
+    Vec4 row_color = make_vec4(0.1f, 0.1f, 0.1f, 1.0f);
+
+    char *row_id = "add_entity_box_row";
+    int32 row_index = 0;
+    
+    real32 window_width = 400.0f;
+    real32 row_width = window_width;
+
+    real32 initial_x = 0.5f * render_state->display_output.width - 0.5f * window_width;
+    real32 x = initial_x;
+    real32 y = 150.0f;
+
+    draw_row(ui_manager, controller_state, x, y, window_width, title_row_height, title_row_color,
+             SIDE_LEFT | SIDE_RIGHT | SIDE_TOP | SIDE_BOTTOM, row_id, row_index++);
+    draw_centered_text(game_state, ui_manager, x, y, window_width, title_row_height,
+                       "Add Entity", editor_font_name_bold, default_text_style);
+    y += title_row_height;
+
+    real32 right_column_offset = padding_x + 200.0f;
+
+    uint32 side_flags = SIDE_LEFT | SIDE_RIGHT;
+
+    real32 row_height = 22.0f;
+    real32 choose_mesh_button_width = 200.0f;
+    real32 add_mesh_button_width = 30.0f;
+
+    Allocator *allocator = (Allocator *) &memory.global_stack;
+
+    Normal_Entity *entity = &state->entity_to_add;
+
+    // MESH EDITING
+    draw_row_padding(ui_manager, controller_state, x, &y, row_width, padding_y, row_color, side_flags,
+                     row_index++);
+    draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags,
+             row_id, row_index++);
+    draw_v_centered_text(game_state, ui_manager, x + padding_x, y, row_height,
+                         "Mesh", editor_font_name_bold, default_text_style);
+    x += right_column_offset;
+
+    Mesh *mesh;
+    if (entity->mesh_id >= 0) {
+        mesh = get_mesh_pointer(level, entity->mesh_id);
+    }
+
+    bool32 choose_mesh_pressed = do_text_button(ui_manager, controller_state,
+                                                x, y,
+                                                choose_mesh_button_width, row_height,
+                                                default_text_button_style, default_text_style,
+                                                (entity->mesh_id >= 0) ?to_char_array(allocator, mesh->name),
+                                                editor_font_name_bold, "add_entity_choose_mesh");
+
+    if (!editor_state->open_window_flags && choose_mesh_pressed) {
+        editor_state->open_window_flags |= MESH_LIBRARY_WINDOW;
+    }
+    x += choose_mesh_button_width + padding_x;
+
+    bool32 add_mesh_pressed = do_text_button(ui_manager, controller_state,
+                                             x, y,
+                                             add_mesh_button_width, row_height,
+                                             default_text_button_style, default_default_text_style,
+                                             "+", editor_font_name_bold, "add_entity_add_mesh");
+    x += add_mesh_button_width + padding_x;
+
+    if (add_mesh_pressed) {
+        Allocator *string64_allocator = (Allocator *) &memory.string64_pool;
+        Allocator *filename_allocator = (Allocator *) &memory.filename_pool;
+        bool32 mesh_added = editor_add_mesh_press(string64_allocator, filename_allocator,
+                                                  &game_state->current_level, entity);
+        if (mesh_added) {
+            editor_state->editing_selected_entity_mesh = true;
+        }
+    }
+
+    real32 edit_mesh_button_width = row_width - (x - initial_x) - padding_right;
+    bool32 edit_mesh_pressed = do_text_button(ui_manager, controller_state,
+                                              x, y,
+                                              edit_mesh_button_width, row_height,
+                                              button_style, default_text_style,
+                                              "Edit", editor_font_name_bold,
+                                              false,
+                                              "add_entity_edit_mesh");
+
+    if (edit_mesh_pressed) {
+        editor_state->editing_selected_entity_mesh = !editor_state->editing_selected_entity_mesh;
+    }
+
+/*
+    real32 content_height = 500.0f;
+    draw_row(ui_manager, controller_state, x, y, window_width, content_height, row_color,
+             SIDE_LEFT | SIDE_RIGHT | SIDE_BOTTOM, row_id, row_index++);    
+
+    real32 cancel_button_width = 100.0f;
+    bool32 cancel_pressed = do_text_button(ui_manager, controller_state,
+                                           x + padding_x,
+                                           y + content_height - SMALL_ROW_HEIGHT - padding_y - 1,
+                                           cancel_button_width, SMALL_ROW_HEIGHT,
+                                           default_text_button_cancel_style, default_text_style,
+                                           "Cancel",
+                                           editor_font_name_bold,
+                                           "choose_mesh_cancel");
+    if (cancel_pressed) {
+        editor_state->open_window_flags = 0;
+    }
+
+    Allocator *allocator = (Allocator *) &memory.frame_arena;
+
+    x += padding_x;
+    y += padding_y;
+
+    UI_Image_Button_Style image_button_style = default_image_button_style;
+    image_button_style.image_constraint_flags = CONSTRAINT_FILL_BUTTON_WIDTH | CONSTRAINT_KEEP_IMAGE_PROPORTIONS;
+
+    Hash_Table<int32, Mesh> *mesh_table = &game_state->current_level.mesh_table;
+    char *button_id_string = "mesh_library_item";
+    int32 picked_mesh_id = -1;
+    for (int32 i = 0; i < mesh_table->max_entries; i++) {
+        Hash_Table_Entry<int32, Mesh> *entry = &mesh_table->entries[i];
+        if (!entry->is_occupied) continue;
+
+        Mesh *mesh = &entry->value;
+        char *mesh_name = to_char_array(allocator, mesh->name);
+        bool32 pressed = do_text_button(ui_manager, controller_state,
+                                        x, y,
+                                        item_width, item_height,
+                                        default_text_button_style, default_text_style,
+                                        mesh_name,
+                                        editor_font_name_bold,
+                                        button_id_string, i);
+
+        if (pressed) picked_mesh_id = entry->key;
+        x += item_width + x_gap;
+        if (x + item_width > initial_x + window_width) {
+            x = initial_x + padding_x;
+            y += item_height + y_gap;
+        }
+    }
+    
+    if (picked_mesh_id >= 0) {
+        if (selected_entity->mesh_id < 0 ||
+            picked_mesh_id != selected_entity->mesh_id) {
+            selected_entity->mesh_id = picked_mesh_id;
+        }
+
+        editor_state->open_window_flags = 0;
+    }
+*/
+
+    pop_layer(ui_manager);
+}
+#endif
+
 void draw_level_box(Game_State *game_state, Controller_State *controller_state,
                     real32 x, real32 y) {
     UI_Manager *ui_manager = &game_state->ui_manager;
@@ -1019,7 +1197,8 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
         if (platform_open_file_dialog(absolute_filename,
                                       LEVEL_FILE_FILTER_TITLE, LEVEL_FILE_FILTER_TYPE,
                                       PLATFORM_MAX_PATH)) {
-            bool32 result = read_and_load_level(&game_state->current_level, absolute_filename,
+            bool32 result = read_and_load_level(game_state,
+                                                &game_state->current_level, absolute_filename,
                                                 &memory.level_mesh_arena,
                                                 &memory.level_string64_pool,
                                                 &memory.level_filename_pool);
@@ -1082,14 +1261,14 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
                                                                  PLATFORM_MAX_PATH);
 
             if (has_filename) {
-                export_level((Allocator *) &memory.global_stack, &game_state->current_level, filename);
+                export_level((Allocator *) &memory.global_stack, game_state, &game_state->current_level, filename);
                 copy_string(&editor_state->current_level_filename, make_string(filename));
                 editor_state->is_new_level = false;
             }
         } else {
             char *level_filename = to_char_array((Allocator *) &memory.global_stack,
                                                  editor_state->current_level_filename);
-            export_level((Allocator *) &memory.global_stack, &game_state->current_level, level_filename);
+            export_level((Allocator *) &memory.global_stack, game_state, &game_state->current_level, level_filename);
         }
         
         end_region(m);
@@ -1117,7 +1296,7 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
                                                              PLATFORM_MAX_PATH);
 
         if (has_filename) {
-            export_level((Allocator *) &memory.global_stack, &game_state->current_level, filename);
+            export_level((Allocator *) &memory.global_stack, game_state, &game_state->current_level, filename);
             copy_string(&editor_state->current_level_filename, make_string(filename));
             editor_state->is_new_level = false;
         }
@@ -1197,6 +1376,15 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
         reset_entity_editors(editor_state);
     }
 
+    y += 120.0f;
+
+    bool32 add_entity_clicked = do_text_button(ui_manager, controller_state,
+                                               render_state->display_output.width - sidebar_button_width, y,
+                                               sidebar_button_width, button_height,
+                                               default_text_button_style, default_text_style,
+                                               "Add Entity",
+                                               button_font_name, "add_entity");
+
     if (!editor_state->is_new_level) {
         char *filename_buf = to_char_array((Allocator *) &memory.frame_arena, editor_state->current_level_filename);
         char *buf = string_format((Allocator *) &memory.frame_arena, PLATFORM_MAX_PATH + 32,
@@ -1268,7 +1456,7 @@ int32 pick_entity(Game_State *game_state, Ray cursor_ray, Entity *entity_result,
     for (int32 i = 0; i < level->num_normal_entities; i++) {
         real32 t;
         Normal_Entity *entity = &normal_entities[i];
-        Mesh mesh = hash_table_get(mesh_table, entity->mesh_id);
+        Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
         if (ray_intersects_mesh(cursor_ray, mesh, entity->transform, &t) && (t < t_min)) {
             t_min = t;
             entity_index = i;
@@ -1279,7 +1467,7 @@ int32 pick_entity(Game_State *game_state, Ray cursor_ray, Entity *entity_result,
     for (int32 i = 0; i < level->num_point_lights; i++) {
         real32 t;
         Point_Light_Entity *entity = &point_lights[i];
-        Mesh mesh = hash_table_get(mesh_table, entity->mesh_id);
+        Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
         if (ray_intersects_mesh(cursor_ray, mesh, entity->transform, &t) && (t < t_min)) {
             t_min = t;
             entity_index = i;

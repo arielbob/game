@@ -146,6 +146,7 @@ struct Game_State {
     Level current_level;
 
     Hash_Table<int32, Mesh> common_mesh_table;
+    Hash_Table<int32, Mesh> primitive_mesh_table;
     Hash_Table<String, File_Data> font_file_table;
     Hash_Table<String, Font> font_table;
     
@@ -165,5 +166,8 @@ Font get_font(Game_State *game_state, char *font_name);
 //Material get_material(Game_State *game_state, int32 material_id);
 //int32 add_mesh(Game_State *game_state, Mesh mesh);
 Mesh get_common_mesh(Game_State *game_state, int32 mesh_id);
+Mesh get_mesh(Game_State *game_state, Level *level, Mesh_Type mesh_type, int32 mesh_id);
+int32 get_mesh_id_by_name(Game_State *game_state, Level *level, Mesh_Type mesh_type, String mesh_name);
+Mesh *get_mesh_pointer(Game_State *game_state, Level *level, Mesh_Type mesh_type, int32 mesh_id);
 
 #endif

@@ -2,6 +2,11 @@
 #define LEVEL_H
 
 #include "parse.h"
+#include "game.h"
+
+// to fix circular dependency between game and level
+// game.h includes level.h first, but level.h needs the Game_State struct
+struct Game_State;
 
 struct Level {
     String_Buffer name;
@@ -91,10 +96,12 @@ namespace Level_Loader {
 
     Token make_token(Token_Type type, char *contents, int32 length);
     Token get_token(Tokenizer *tokenizer, char *file_contents);
-    bool32 load_temp_level(Allocator *temp_allocator, File_Data file_data, Level *temp_level);
+    bool32 load_temp_level(Allocator *temp_allocator, Game_State *game_state,
+                           File_Data file_data, Level *temp_level);
 };
 
-bool32 read_and_load_level(Level *level, char *filename,
+bool32 read_and_load_level(Game_State *game_state,
+                           Level *level, char *filename,
                            Arena_Allocator *mesh_arena,
                            Pool_Allocator *string64_pool,
                            Pool_Allocator *filename_pool);

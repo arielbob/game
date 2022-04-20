@@ -36,6 +36,14 @@ struct Gizmo {
 #define TEXTURE_LIBRARY_WINDOW  0x2
 #define MESH_LIBRARY_WINDOW     0x4
 
+#if 0
+struct Add_Entity_Box_State {
+    bool32 is_editing_mesh;
+    bool32 is_editing_material;
+    Normal_Entity entity_to_add;
+};
+#endif
+
 struct Editor_State {
     Transform_Mode transform_mode;
 
@@ -61,6 +69,9 @@ struct Editor_State {
 
     bool32 is_new_level;
     String_Buffer current_level_filename;
+
+    //bool32 is_adding_entity;
+    //Add_Entity_Box_State add_entity_box_state;
 };
 
 #endif
