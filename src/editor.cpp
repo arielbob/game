@@ -1016,16 +1016,24 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
 
     if (save_level_clicked) {
         assert(!is_empty(game_state->current_level.name));
-        
+
         Marker m = begin_region();
-        char *filename = (char *) region_push(&memory.global_stack, PLATFORM_MAX_PATH);
+        char *filename = (char *) region_push(PLATFORM_MAX_PATH);
 
-        bool32 has_filename = platform_open_save_file_dialog(filename,
-                                                             LEVEL_FILE_FILTER_TITLE, LEVEL_FILE_FILTER_TYPE,
-                                                             PLATFORM_MAX_PATH);
+        if (editor_state->is_new_level) {
+            bool32 has_filename = platform_open_save_file_dialog(filename,
+                                                                 LEVEL_FILE_FILTER_TITLE, LEVEL_FILE_FILTER_TYPE,
+                                                                 PLATFORM_MAX_PATH);
 
-        if (has_filename) {
-            export_level((Allocator *) &memory.global_stack, &game_state->current_level, filename);
+            if (has_filename) {
+                export_level((Allocator *) &memory.global_stack, &game_state->current_level, filename);
+                copy_string(&editor_state->current_level_filename, make_string(filename));
+                editor_state->is_new_level = false;
+            }
+        } else {
+            char *level_filename = to_char_array((Allocator *) &memory.global_stack,
+                                                 editor_state->current_level_filename);
+            export_level((Allocator *) &memory.global_stack, &game_state->current_level, level_filename);
         }
         
         end_region(m);
@@ -1109,8 +1117,9 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
                                               "New Level",
                                               button_font_name, "new_level");
     if (new_level_clicked) {
-        unload_level(&game_state->current_level);
+        new_level(&game_state->current_level);
         editor_state->selected_entity_index = -1;
+        editor_state->is_new_level = true;
     }
 
     y += button_height + 1;
@@ -1125,7 +1134,6 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
         Marker m = begin_region();
         char *absolute_filename = (char *) region_push(PLATFORM_MAX_PATH);
         
-
         if (platform_open_file_dialog(absolute_filename,
                                       LEVEL_FILE_FILTER_TITLE, LEVEL_FILE_FILTER_TYPE,
                                       PLATFORM_MAX_PATH)) {
@@ -1134,6 +1142,8 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
                                                 &memory.level_string64_pool,
                                                 &memory.level_filename_pool);
             if (result) {
+                editor_state->is_new_level = false;
+                copy_string(&editor_state->current_level_filename, make_string(absolute_filename));
                 editor_state->selected_entity_index = -1;
             }
         }
@@ -1154,6 +1164,15 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
         unload_level(game_state);
     }
 #endif
+
+    if (!editor_state->is_new_level) {
+        char *filename_buf = to_char_array((Allocator *) &memory.frame_arena, editor_state->current_level_filename);
+        char *buf = string_format((Allocator *) &memory.frame_arena, PLATFORM_MAX_PATH + 32,
+                                  "current level: %s", filename_buf);
+        do_text(ui_manager,
+                5.0f, render_state->display_output.height - 9.0f,
+                buf, editor_font_name_bold, default_text_style, "editor_current_level_filename");
+    }
 }
 
 int32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, real32 *t_result) {

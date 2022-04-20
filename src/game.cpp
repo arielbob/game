@@ -268,6 +268,8 @@ void init_game(Game_State *game_state,
     editor_state->selected_entity_index = -1;
     editor_state->show_wireframe = true;
     editor_state->open_window_flags = 0;
+    editor_state->is_new_level = true;
+    editor_state->current_level_filename = make_string_buffer(filename_allocator, PLATFORM_MAX_PATH);
     
     // init ui state
     UI_Manager *ui_manager = &game_state->ui_manager;

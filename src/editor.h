@@ -58,6 +58,9 @@ struct Editor_State {
     uint32 open_window_flags;
     bool32 editing_selected_entity_material;
     bool32 editing_selected_entity_mesh;
+
+    bool32 is_new_level;
+    String_Buffer current_level_filename;
 };
 
 #endif

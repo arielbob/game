@@ -1,0 +1,15 @@
+level_info {
+level_name "empty"
+}
+
+meshes {
+}
+
+textures {
+}
+
+materials {
+}
+
+entities {
+}

@@ -396,12 +396,12 @@ void load_default_level(Level *level) {
                                                            HASH_TABLE_SIZE,
                                                            &int32_equals);
 
-    // add level meshes
     Allocator *mesh_allocator = (Allocator *) level->mesh_arena;
     Allocator *filename_allocator = (Allocator *) level->filename_pool;
     Allocator *mesh_name_allocator = (Allocator *) level->string64_pool;
     Allocator *string64_allocator = (Allocator *) level->string64_pool;
 
+    // add level meshes
     Mesh mesh;
     mesh = read_and_load_mesh(mesh_allocator,
                               make_string_buffer(filename_allocator, "blender/cube.mesh", PLATFORM_MAX_PATH),
@@ -530,6 +530,11 @@ void unload_level(Level *level) {
     hash_table_reset(&level->mesh_table);
     hash_table_reset(&level->material_table);
     hash_table_reset(&level->texture_table);
+}
+
+void new_level(Level *current_level) {
+    unload_level(current_level);
+    current_level->name = make_string_buffer((Allocator *) current_level->string64_pool, LEVEL_NAME_MAX_SIZE);
 }
 
 inline Level_Loader::Token Level_Loader::make_token(Token_Type type, char *contents, int32 length) {
