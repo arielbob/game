@@ -1107,14 +1107,17 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
                                                  "Open Level",
                                                  button_font_name, "open_level");
     if (open_level_clicked) {
-        Allocator *string64_allocator = (Allocator *) &memory.string64_pool;
-        Allocator *filename_allocator = (Allocator *) &memory.filename_pool;
-
         Marker m = begin_region();
         char *absolute_filename = (char *) region_push(PLATFORM_MAX_PATH);
         
         if (platform_open_file_dialog(absolute_filename, PLATFORM_MAX_PATH)) {
-            read_and_load_level(&game_state->current_level, absolute_filename);
+            bool32 result = read_and_load_level(&game_state->current_level, absolute_filename,
+                                                &memory.level_mesh_arena,
+                                                &memory.level_string64_pool,
+                                                &memory.level_filename_pool);
+            if (result) {
+                editor_state->selected_entity_index = -1;
+            }
         }
 
         end_region(m);

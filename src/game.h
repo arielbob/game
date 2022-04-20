@@ -23,6 +23,7 @@
 #define TEXTURE_NAME_MAX_SIZE    64
 #define MATERIAL_NAME_MAX_SIZE   64
 #define MATERIAL_STRING_MAX_SIZE 64
+#define LEVEL_NAME_MAX_SIZE 64
 
 struct Display_Output {
     int32 width;

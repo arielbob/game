@@ -242,11 +242,6 @@ void init_game(Game_State *game_state,
     font = load_font(game_state, "c:/windows/fonts/lucon.ttf", "lucidaconsole18", 18.0f, 512, 512);
     add_font(game_state, font);
 
-#if 0
-    read_and_load_level(game_state,
-                        make_string_buffer(string64_allocator, "src/levels/test.level", PLATFORM_MAX_PATH));
-#endif
-
     // add common meshes
     // NOTE: we just use the string_arena here since we're never going to need to remove these meshes
     Allocator *mesh_name_allocator = (Allocator *) &memory.string_arena;
@@ -287,10 +282,10 @@ void init_game(Game_State *game_state,
 
     // init level
     Level *current_level = &game_state->current_level;
-    current_level->name = make_string_buffer((Allocator *) &memory.level_string64_pool, LEVEL_NAME_MAX_LENGTH);
-    current_level->mesh_arena = memory.level_mesh_arena;
-    current_level->string64_pool = memory.level_string64_pool;
-    current_level->filename_pool = memory.level_filename_pool;
+    current_level->name = make_string_buffer((Allocator *) &memory.level_string64_pool, LEVEL_NAME_MAX_SIZE);
+    current_level->mesh_arena = &memory.level_mesh_arena;
+    current_level->string64_pool = &memory.level_string64_pool;
+    current_level->filename_pool = &memory.level_filename_pool;
     load_default_level(&game_state->current_level);
 
     game_state->is_initted = true;

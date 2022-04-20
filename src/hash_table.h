@@ -30,7 +30,6 @@ struct Hash_Table {
     bool32 (*key_equals) (Key_Type, Key_Type);
 };
 
-// create a UI_Element_Variant struct which is a union of all derived types
 template <class Key_Type, class Value_Type>
 Hash_Table<Key_Type, Value_Type> make_hash_table(Allocator *allocator,
                                                  int32 max_entries,
@@ -46,6 +45,22 @@ Hash_Table<Key_Type, Value_Type> make_hash_table(Allocator *allocator,
     hash_table.key_equals = key_equals;
 
     return hash_table;
+}
+
+// NOTE: creates a new hash table with the entries allocated using the specified allocator.
+//       this just does memcpy of the entries array into a new entries array. it does not copy values at
+//       pointers.
+template <class Key_Type, class Value_Type>
+Hash_Table<Key_Type, Value_Type> copy_hash_table(Allocator *allocator,
+                                                 Hash_Table<Key_Type, Value_Type> src_table) {
+    Hash_Table<Key_Type, Value_Type> new_table = src_table;
+    uint32 entry_size = sizeof(Hash_Table_Entry<Key_Type, Value_Type>);
+    uint32 table_storage_size = entry_size * src_table.max_entries;
+    new_table.entries = (Hash_Table_Entry<Key_Type, Value_Type> *) allocate(allocator, table_storage_size);
+    new_table.allocator = allocator;
+    memcpy((void *) new_table.entries, (void *) src_table.entries, table_storage_size);
+
+    return new_table;
 }
 
 template <class Key_Type, class Value_Type>

@@ -4,6 +4,32 @@
 #include "level.h"
 #include "parse.h"
 
+#if 0
+Level make_level(String_Buffer name,
+                 Allocator *hash_table_allocator,
+                 Arena_Allocator mesh_arena,
+                 Pool_Allocator string64_pool,
+                 Pool_Allocator filename_pool) {
+    Level level = {};
+    level.name = name;
+    level.mesh_arena = mesh_arena;
+    level.string64_pool = string64_pool;
+    level.filename_pool = filename_pool;
+
+    level.mesh_table = make_hash_table<int32, Mesh>(hash_table_allocator,
+                                                    HASH_TABLE_SIZE,
+                                                    &int32_equals);
+    level.material_table = make_hash_table<int32, Material>(hash_table_allocator,
+                                                            HASH_TABLE_SIZE,
+                                                            &int32_equals);
+    level.texture_table = make_hash_table<int32, Texture>(hash_table_allocator,
+                                                          HASH_TABLE_SIZE,
+                                                          &int32_equals);
+
+    return level;
+}
+#endif
+
 Material get_material(Level *level, int32 material_id) {
     Material material;
     bool32 material_exists = hash_table_find(level->material_table,
@@ -371,9 +397,11 @@ void load_default_level(Level *level) {
                                                            &int32_equals);
 
     // add level meshes
-    Allocator *mesh_allocator = (Allocator *) &level->mesh_arena;
-    Allocator *filename_allocator = (Allocator *) &level->filename_pool;
-    Allocator *mesh_name_allocator = (Allocator *) &level->string64_pool;
+    Allocator *mesh_allocator = (Allocator *) level->mesh_arena;
+    Allocator *filename_allocator = (Allocator *) level->filename_pool;
+    Allocator *mesh_name_allocator = (Allocator *) level->string64_pool;
+    Allocator *string64_allocator = (Allocator *) level->string64_pool;
+
     Mesh mesh;
     mesh = read_and_load_mesh(mesh_allocator,
                               make_string_buffer(filename_allocator, "blender/cube.mesh", PLATFORM_MAX_PATH),
@@ -391,7 +419,6 @@ void load_default_level(Level *level) {
     int32 sphere_mesh_id = level_add_mesh(level, mesh);
 
     // add level textures
-    Allocator *string64_allocator = (Allocator *) &level->string64_pool;
     Texture texture;
     texture = make_texture(make_string_buffer(string64_allocator, "debug", TEXTURE_NAME_MAX_SIZE),
                            make_string_buffer(filename_allocator, "src/textures/debug_texture.png", MAX_PATH));
@@ -491,16 +518,15 @@ void load_default_level(Level *level) {
     level_add_point_light_entity(level, point_light_entity);
 }
 
-void unload_level(Game_State *game_state) {
-    Level *level = &game_state->current_level;
-    game_state->should_clear_level_gpu_data = true;
+void unload_level(Level *level) {
+    level->should_clear_gpu_data = true;
 
     level->num_normal_entities = 0;
     level->num_point_lights = 0;
     
-    clear_arena(&level->mesh_arena);
-    clear_pool(&level->string64_pool);
-    clear_pool(&level->filename_pool);
+    clear_arena(level->mesh_arena);
+    clear_pool(level->string64_pool);
+    clear_pool(level->filename_pool);
     hash_table_reset(&level->mesh_table);
     hash_table_reset(&level->material_table);
     hash_table_reset(&level->texture_table);
@@ -637,14 +663,14 @@ Level_Loader::Token Level_Loader::get_token(Tokenizer *tokenizer, char *file_con
     return token;
 }
 
-void Level_Loader::load_level(File_Data file_data, Level *level) {
-    Marker m = begin_region();
-
+// loads barebones level data into level
+bool32 Level_Loader::load_temp_level(Allocator *temp_allocator, File_Data file_data, Level *temp_level) {
     Tokenizer tokenizer = make_tokenizer(file_data);
 
     Token token;
     Parser_State state = WAIT_FOR_LEVEL_INFO_BLOCK_NAME;
 
+#if 0
     Allocator *temp_allocator = (Allocator *) &memory.global_stack;
 
     // make a temp level so that we can verify the level's fine without modifying level
@@ -661,6 +687,7 @@ void Level_Loader::load_level(File_Data file_data, Level *level) {
     temp_level->texture_table = make_hash_table<int32, Texture>(temp_allocator,
                                                                 level->texture_table.max_entries,
                                                                 level->texture_table.key_equals);
+#endif
 
     Mesh temp_mesh = {};
     Texture temp_texture = {};
@@ -708,8 +735,7 @@ void Level_Loader::load_level(File_Data file_data, Level *level) {
             } break;
             case WAIT_FOR_LEVEL_NAME_STRING: {
                 if (token.type == STRING) {
-                    assert(token.string.length <= level->name.size);
-                    copy_string(&temp_level->name, token.string);
+                    temp_level->name = make_string_buffer(temp_allocator, token.string, LEVEL_NAME_MAX_SIZE);
                     state = WAIT_FOR_LEVEL_INFO_BLOCK_CLOSE;
                 } else {
                     assert (!"Expected level name string.");
@@ -847,6 +873,7 @@ void Level_Loader::load_level(File_Data file_data, Level *level) {
                     
                     temp_material = {};
                     temp_material.name = make_string_buffer(temp_allocator, token.string, token.string.length);
+                    temp_material.texture_id = -1;
                     should_add_new_temp_material = true;
 
                     state = WAIT_FOR_MATERIAL_PROPERTY_NAME_OR_MATERIAL_KEYWORD_OR_MATERIALS_BLOCK_CLOSE;
@@ -918,13 +945,16 @@ void Level_Loader::load_level(File_Data file_data, Level *level) {
             } break;
             case WAIT_FOR_MATERIAL_USE_COLOR_OVERRIDE_INTEGER: {
                 if (token.type == INTEGER) {
+                    temp_material.use_color_override = (int32) string_to_uint32(token.string.contents,
+                                                                                token.string.length);
+
                     state = WAIT_FOR_MATERIAL_PROPERTY_NAME_OR_MATERIAL_KEYWORD_OR_MATERIALS_BLOCK_CLOSE;
                 } else {
                     assert(!"Expected an integer for material property use_color_override.");
                 }
             } break;
 
-                // ENTITIES
+            // ENTITIES
             case WAIT_FOR_ENTITIES_BLOCK_NAME: {
                 if (token.type == KEYWORD &&
                     string_equals(token.string, "entities")) {
@@ -1146,7 +1176,7 @@ void Level_Loader::load_level(File_Data file_data, Level *level) {
 
                 if (token.type == REAL || token.type == INTEGER) {
                     point_light_entity->falloff_end = string_to_real32(token.string.contents,
-                                                                         token.string.length);
+                                                                       token.string.length);
                     state = WAIT_FOR_ENTITY_PROPERTY_NAME_OR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE;
                 } else {
                     assert(!"Expected a number for point light entity property falloff_end.");
@@ -1159,18 +1189,122 @@ void Level_Loader::load_level(File_Data file_data, Level *level) {
 
     } while (token.type != END);
 
-    // TODO: copy temp level into level and do all the required allocations for things like meshes
-
-    end_region(m);
+    return true;
 }
 
-void read_and_load_level(Level *level, char *filename) {
+bool32 read_and_load_level(Level *level, char *filename,
+                           Arena_Allocator *mesh_arena,
+                           Pool_Allocator *string64_pool,
+                           Pool_Allocator *filename_pool) {
     Marker m = begin_region();
 
-    Allocator *global_stack = (Allocator *) &memory.global_stack;
-    File_Data level_file = platform_open_and_read_file(global_stack, filename);
+    Allocator *temp_allocator = (Allocator *) &memory.global_stack;
+    File_Data level_file = platform_open_and_read_file(temp_allocator, filename);
 
-    Level_Loader::load_level(level_file, level);
+    Level *temp_level = (Level *) allocate(temp_allocator, sizeof(Level), true);
+    temp_level->mesh_table = make_hash_table<int32, Mesh>(temp_allocator,
+                                                          level->mesh_table.max_entries,
+                                                          level->mesh_table.key_equals);
+    temp_level->material_table = make_hash_table<int32, Material>(temp_allocator,
+                                                                  level->material_table.max_entries,
+                                                                  level->material_table.key_equals);
+    temp_level->texture_table = make_hash_table<int32, Texture>(temp_allocator,
+                                                                level->texture_table.max_entries,
+                                                                level->texture_table.key_equals);
+
+    bool32 load_temp_level_result = Level_Loader::load_temp_level(temp_allocator, level_file, temp_level);
+
+    if (load_temp_level_result) {
+        unload_level(level);
+
+        Allocator *level_mesh_allocator = (Allocator *) mesh_arena;
+        Allocator *level_string64_allocator = (Allocator *) string64_pool;
+        Allocator *level_filename_allocator = (Allocator *) filename_pool;
+
+        *level = *temp_level;
+        // copy strings
+        level->name = make_string_buffer(level_string64_allocator,
+                                         make_string(temp_level->name),
+                                         LEVEL_NAME_MAX_SIZE);
+        // set allocators
+        level->mesh_arena = mesh_arena;
+        level->string64_pool = string64_pool;
+        level->filename_pool = filename_pool;
+
+        // NOTE: copy_hash_table
+        level->mesh_table = copy_hash_table((Allocator *) &memory.hash_table_stack, temp_level->mesh_table);
+        // copy mesh strings and load all the meshes
+        int32 num_checked = 0;
+        Hash_Table<int32, Mesh> temp_mesh_table = temp_level->mesh_table;
+        Hash_Table<int32, Mesh> mesh_table = level->mesh_table;
+        for (int32 i = 0; (i < temp_mesh_table.max_entries) && (num_checked < temp_mesh_table.num_entries); i++) {
+            Hash_Table_Entry<int32, Mesh> entry = temp_mesh_table.entries[i];
+            Mesh temp_mesh = entry.value;
+            if (entry.is_occupied) {
+                String_Buffer mesh_name = make_string_buffer(level_string64_allocator,
+                                                             make_string(temp_mesh.name),
+                                                             MESH_NAME_MAX_SIZE);
+                String_Buffer mesh_filename = make_string_buffer(level_filename_allocator,
+                                                                 make_string(temp_mesh.filename),
+                                                                 PLATFORM_MAX_PATH);
+                Mesh mesh = read_and_load_mesh(level_mesh_allocator, mesh_filename, mesh_name);
+                mesh_table.entries[i].value = mesh;
+
+                num_checked++;
+            }
+        }
+
+        level->texture_table = copy_hash_table((Allocator *) &memory.hash_table_stack, temp_level->texture_table);
+        // copy all the textures
+        num_checked = 0;
+        Hash_Table<int32, Texture> temp_texture_table = temp_level->texture_table;
+        Hash_Table<int32, Texture> texture_table = level->texture_table;
+        for (int32 i = 0;
+             (i < temp_texture_table.max_entries) && (num_checked < temp_texture_table.num_entries);
+             i++) {
+            Hash_Table_Entry<int32, Texture> entry = temp_texture_table.entries[i];
+            Texture temp_texture = entry.value;
+            if (entry.is_occupied) {
+                String_Buffer texture_name = make_string_buffer(level_string64_allocator,
+                                                                make_string(temp_texture.name),
+                                                                TEXTURE_NAME_MAX_SIZE);
+                String_Buffer texture_filename = make_string_buffer(level_filename_allocator,
+                                                                    make_string(temp_texture.filename),
+                                                                    PLATFORM_MAX_PATH);
+
+                Texture *dest_texture = &texture_table.entries[i].value;
+                dest_texture->name = texture_name;
+                dest_texture->filename = texture_filename;
+
+                num_checked++;
+            }
+        }
+
+        level->material_table = copy_hash_table((Allocator *) &memory.hash_table_stack, temp_level->material_table);
+        // copy all the material strings
+        num_checked = 0;
+        Hash_Table<int32, Material> temp_material_table = temp_level->material_table;
+        Hash_Table<int32, Material> material_table = level->material_table;
+        for (int32 i = 0;
+             (i < temp_material_table.max_entries) && (num_checked < temp_material_table.num_entries);
+             i++) {
+            Hash_Table_Entry<int32, Material> entry = temp_material_table.entries[i];
+            Material temp_material = entry.value;
+            if (entry.is_occupied) {
+                String_Buffer material_name = make_string_buffer(level_string64_allocator,
+                                                                 make_string(temp_material.name),
+                                                                 MATERIAL_NAME_MAX_SIZE);
+
+                Material *dest_material = &material_table.entries[i].value;
+                dest_material->name = material_name;
+                num_checked++;
+            }
+        }
+
+        end_region(m);
+        return true;
+    }
 
     end_region(m);
+    return false;
 }

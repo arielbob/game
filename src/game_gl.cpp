@@ -140,13 +140,19 @@
 //       - TODO (done): tokenize the level file
 //       - TODO (done): add level parser states
 //       - TODO (done): level parsing
-//       - TODO: copy temp_level from parsing into game_state's current_level
-//       - TODO: don't allow quotes or brackets in any level strings
-//       - TODO: try loading a test level
+//       - TODO (done): write code for copying level data into another level
+//       - TODO (done): load meshes into current_level's mesh_arena
+//       - TODO (done): copy temp_level from parsing into game_state's current_level
+//       - TODO (done): try loading a test level
 //       - TODO: add filters to platform_open_file_dialog
 //       - TODO: prompt to save open level if opening a new one
 //       - TODO: save as button for saving a duplicate of a level
 //       - TODO: save without dialog if a saved level is opened
+// TODO: go over the level loading code to make sure we don't have any memory leaks; i'm pretty sure we're fine,
+//       but just verify that it looks good.
+
+// TODO: don't allow quotes or brackets in any level strings, i.e. in level name, texture name, material name, etc.
+//       (requires text box validation)
 
 // TODO: hash table iterators
 // TODO: change mesh parser to use new tokenizer_equals procedures, since we can actually read past bounds, since
@@ -178,6 +184,7 @@
 // NOTE: we should not add functions to get materials or textures by their name, since, at least right now, their
 //       names are NOT unique.
 // TODO: error handling for mesh loading (should use in-game console when that's implemented)
+// TODO: error handling for level loading
 
 // TODO: scale gizmo
 // TODO: material deletion
@@ -1903,16 +1910,47 @@ void gl_draw_framebuffer(GL_State *gl_state, GL_Framebuffer framebuffer) {
     glBindVertexArray(0);
 }
 
-void gl_clear_level_data(GL_State *gl_state, Game_State *game_state) {
-    
-}
-
 void gl_render(GL_State *gl_state, Game_State *game_state,
                Controller_State *controller_state,
                Display_Output display_output, Win32_Sound_Output *win32_sound_output) {
     Render_State *render_state = &game_state->render_state;
 
     Level *level = &game_state->current_level;
+
+    // NOTE: we do this before we add any of the data because the way we load levels is we replace all the data
+    //       and set should_clear_gpu_data to true at the same time. we don't want to add the data then clear it
+    //       all. (this is a case for setting is_loaded = false when we clear, since if were to do this the other
+    //       way around, then none of the level data would be on the GPU, since it would load, then unload, then
+    //       never load again since is_loaded = true)
+    if (level->should_clear_gpu_data) {
+        // clear texture table
+        Hash_Table<int32, GL_Texture> *gl_level_texture_table = &gl_state->level_texture_table;
+        for (int32 i = 0; i < gl_level_texture_table->max_entries; i++) {
+            Hash_Table_Entry<int32, GL_Texture> *texture_entry = &gl_level_texture_table->entries[i];
+            if (!texture_entry->is_occupied) continue;
+
+            GL_Texture texture = texture_entry->value;
+            gl_delete_texture(texture);
+            // NOTE: we may want to update level->texture_table here: set is_loaded = false?
+            //       but, this only gets called when the level is gonna get cleared, so, it would be kind of
+            //       pointless.
+        }
+        hash_table_reset(gl_level_texture_table);
+
+        // clear mesh table
+        Hash_Table<int32, GL_Mesh> *gl_level_mesh_table = &gl_state->level_mesh_table;
+        for (int32 i = 0; i < gl_level_mesh_table->max_entries; i++) {
+            Hash_Table_Entry<int32, GL_Mesh> *mesh_entry = &gl_level_mesh_table->entries[i];
+            if (!mesh_entry->is_occupied) continue;
+
+            GL_Mesh mesh = mesh_entry->value;
+            gl_delete_mesh(mesh);
+            // NOTE: same as above note
+        }
+        hash_table_reset(gl_level_mesh_table);
+
+        level->should_clear_gpu_data = false;
+    }
 
     // load common meshes
     Hash_Table<int32, Mesh> *game_common_mesh_table = &game_state->common_mesh_table;
@@ -1994,36 +2032,6 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
 
             game_texture->is_loaded = true;
         }
-    }
-
-    if (game_state->should_clear_level_gpu_data) {
-        // clear texture table
-        Hash_Table<int32, GL_Texture> *gl_level_texture_table = &gl_state->level_texture_table;
-        for (int32 i = 0; i < gl_level_texture_table->max_entries; i++) {
-            Hash_Table_Entry<int32, GL_Texture> *texture_entry = &gl_level_texture_table->entries[i];
-            if (!texture_entry->is_occupied) continue;
-
-            GL_Texture texture = texture_entry->value;
-            gl_delete_texture(texture);
-            // NOTE: we may want to update level->texture_table here: set is_loaded = false?
-            //       but, this only gets called when the level is gonna get cleared, so, it would be kind of
-            //       pointless.
-        }
-        hash_table_reset(gl_level_texture_table);
-
-        // clear mesh table
-        Hash_Table<int32, GL_Mesh> *gl_level_mesh_table = &gl_state->level_mesh_table;
-        for (int32 i = 0; i < gl_level_mesh_table->max_entries; i++) {
-            Hash_Table_Entry<int32, GL_Mesh> *mesh_entry = &gl_level_mesh_table->entries[i];
-            if (!mesh_entry->is_occupied) continue;
-
-            GL_Mesh mesh = mesh_entry->value;
-            gl_delete_mesh(mesh);
-            // NOTE: same as above note
-        }
-        hash_table_reset(gl_level_mesh_table);
-
-        game_state->should_clear_level_gpu_data = false;
     }
 
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);

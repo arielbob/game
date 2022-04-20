@@ -118,6 +118,8 @@ String_Buffer make_string_buffer(Allocator *allocator, char *string, uint32 size
     return buffer;
 }
 
+// TODO: maybe rename this to make_string_buffer_copy, so it's more clear that the contents of initial value are
+//       being copied using the allocator.
 String_Buffer make_string_buffer(Allocator *allocator, String initial_value, int32 size) {
     assert(initial_value.length <= size);
     String_Buffer buffer;

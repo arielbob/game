@@ -3,8 +3,6 @@
 
 #include "parse.h"
 
-#define LEVEL_NAME_MAX_LENGTH 64
-
 struct Level {
     String_Buffer name;
 
@@ -14,13 +12,15 @@ struct Level {
     int32 num_point_lights;
     Point_Light_Entity point_lights[MAX_POINT_LIGHTS];
 
-    Arena_Allocator mesh_arena;
-    Pool_Allocator string64_pool;
-    Pool_Allocator filename_pool;
+    Arena_Allocator *mesh_arena;
+    Pool_Allocator *string64_pool;
+    Pool_Allocator *filename_pool;
 
     Hash_Table<int32, Mesh> mesh_table;
     Hash_Table<int32, Material> material_table;
     Hash_Table<int32, Texture> texture_table;
+    
+    bool32 should_clear_gpu_data;
 };
 
 namespace Level_Loader {
@@ -91,9 +91,12 @@ namespace Level_Loader {
 
     Token make_token(Token_Type type, char *contents, int32 length);
     Token get_token(Tokenizer *tokenizer, char *file_contents);
-    void load_level(File_Data file_data, Level *level);
+    bool32 load_temp_level(Allocator *temp_allocator, File_Data file_data, Level *temp_level);
 };
 
-void read_and_load_level(Level *level, char *filename);
+bool32 read_and_load_level(Level *level, char *filename,
+                           Arena_Allocator *mesh_arena,
+                           Pool_Allocator *string64_pool,
+                           Pool_Allocator *filename_pool);
 
 #endif
