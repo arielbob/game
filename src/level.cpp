@@ -1197,7 +1197,13 @@ bool32 read_and_load_level(Game_State *game_state,
         Allocator *level_string64_allocator = (Allocator *) string64_pool;
         Allocator *level_filename_allocator = (Allocator *) filename_pool;
 
+        // copy all the values to start; we'll overwrite some of them
+        // TODO: honestly, doing this is kind of annoying, since unload_level sets should_clear_gpu_data to
+        //       to true, but temp_level has it set to false. so we have to re-set should_clear_gpu_data to
+        //       true..
         *level = *temp_level;
+        level->should_clear_gpu_data = true;
+
         // copy strings
         level->name = make_string_buffer(level_string64_allocator,
                                          make_string(temp_level->name),

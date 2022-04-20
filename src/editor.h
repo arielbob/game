@@ -64,6 +64,7 @@ struct Editor_State {
 
     bool32 show_wireframe;
     uint32 open_window_flags;
+    Mesh_Type mesh_library_filter;
     bool32 editing_selected_entity_material;
     bool32 editing_selected_entity_mesh;
 

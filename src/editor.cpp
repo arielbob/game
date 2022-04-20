@@ -247,6 +247,9 @@ void draw_mesh_library(Game_State *game_state, Controller_State *controller_stat
     Vec4 title_row_color = make_vec4(0.05f, 0.2f, 0.5f, 1.0f);
     Vec4 row_color = make_vec4(0.1f, 0.1f, 0.1f, 1.0f);
 
+    Font font = get_font(game_state, editor_font_name_bold);
+    real32 button_padding_x = 15.0f;
+
     char *row_id = "mesh_library_row";
     int32 row_index = 0;
 
@@ -284,38 +287,134 @@ void draw_mesh_library(Game_State *game_state, Controller_State *controller_stat
     x += padding_x;
     y += padding_y;
 
+    UI_Text_Button_Style filter_button_style = default_text_button_style;
+    UI_Text_Button_Style level_item_style, primitive_item_style;
+
+    real32 filter_button_width = get_width(font, "All") + button_padding_x*2;
+    real32 filter_button_height = SMALL_ROW_HEIGHT;
+
+    real32 button_gap = 5.0f;
+    bool32 all_filter_pressed = do_text_button(ui_manager, controller_state,
+                                               x, y,
+                                               filter_button_width, filter_button_height,
+                                               filter_button_style, default_text_style,
+                                               "All",
+                                               editor_font_name_bold,
+                                               editor_state->mesh_library_filter == Mesh_Type::NONE,
+                                               "mesh_filter_all");
+    if (all_filter_pressed) editor_state->mesh_library_filter = Mesh_Type::NONE;
+    x += filter_button_width + button_gap;
+
+    filter_button_width = get_width(font, "Level") + button_padding_x*2;
+    filter_button_style.normal_color = rgb_to_vec4(35, 148, 39);
+    filter_button_style.hot_color = rgb_to_vec4(42, 184, 78);
+    filter_button_style.active_color = rgb_to_vec4(14, 87, 33);
+    level_item_style = filter_button_style;
+
+    bool32 level_filter_pressed = do_text_button(ui_manager, controller_state,
+                                                 x, y,
+                                                 filter_button_width, filter_button_height,
+                                                 filter_button_style, default_text_style,
+                                                 "Level",
+                                                 editor_font_name_bold,
+                                                 editor_state->mesh_library_filter == Mesh_Type::LEVEL,
+                                                 "mesh_filter_level");
+    if (level_filter_pressed) editor_state->mesh_library_filter = Mesh_Type::LEVEL;
+    x += filter_button_width + button_gap;
+
+    char *primitives_filter_text = "Primitives";
+    filter_button_width = get_width(font, primitives_filter_text) + button_padding_x*2;
+    filter_button_style.normal_color = rgb_to_vec4(150, 41, 125);
+    filter_button_style.hot_color = rgb_to_vec4(212, 57, 155);
+    filter_button_style.active_color = rgb_to_vec4(71, 14, 50);
+    primitive_item_style = filter_button_style;
+
+    bool32 primitives_pressed = do_text_button(ui_manager, controller_state,
+                                               x, y,
+                                               filter_button_width, filter_button_height,
+                                               filter_button_style, default_text_style,
+                                               primitives_filter_text,
+                                               editor_font_name_bold,
+                                               editor_state->mesh_library_filter == Mesh_Type::PRIMITIVE,
+                                               "mesh_filter_primitives");
+    if (primitives_pressed) editor_state->mesh_library_filter = Mesh_Type::PRIMITIVE;
+    x += filter_button_width;
+
+    y += filter_button_height + x_gap;
+                   
+    x = initial_x + padding_x;
     UI_Image_Button_Style image_button_style = default_image_button_style;
     image_button_style.image_constraint_flags = CONSTRAINT_FILL_BUTTON_WIDTH | CONSTRAINT_KEEP_IMAGE_PROPORTIONS;
 
     Hash_Table<int32, Mesh> *mesh_table = &game_state->current_level.mesh_table;
-    char *button_id_string = "mesh_library_item";
+    Mesh_Type picked_mesh_type = Mesh_Type::NONE;
     int32 picked_mesh_id = -1;
-    for (int32 i = 0; i < mesh_table->max_entries; i++) {
-        Hash_Table_Entry<int32, Mesh> *entry = &mesh_table->entries[i];
-        if (!entry->is_occupied) continue;
 
-        Mesh *mesh = &entry->value;
-        char *mesh_name = to_char_array(allocator, mesh->name);
-        bool32 pressed = do_text_button(ui_manager, controller_state,
-                                        x, y,
-                                        item_width, item_height,
-                                        default_text_button_style, default_text_style,
-                                        mesh_name,
-                                        editor_font_name_bold,
-                                        button_id_string, i);
+    if (editor_state->mesh_library_filter == Mesh_Type::NONE ||
+        editor_state->mesh_library_filter == Mesh_Type::LEVEL) {
+        for (int32 i = 0; i < mesh_table->max_entries; i++) {
+            Hash_Table_Entry<int32, Mesh> *entry = &mesh_table->entries[i];
+            if (!entry->is_occupied) continue;
 
-        if (pressed) picked_mesh_id = entry->key;
-        x += item_width + x_gap;
-        if (x + item_width > initial_x + window_width) {
-            x = initial_x + padding_x;
-            y += item_height + y_gap;
+            Mesh *mesh = &entry->value;
+            char *mesh_name = to_char_array(allocator, mesh->name);
+            bool32 pressed = do_text_button(ui_manager, controller_state,
+                                            x, y,
+                                            item_width, item_height,
+                                            level_item_style, default_text_style,
+                                            mesh_name,
+                                            editor_font_name_bold,
+                                            "mesh_library_level_item", i);
+
+            if (pressed) {
+                picked_mesh_type = Mesh_Type::LEVEL;
+                picked_mesh_id = entry->key;
+            }
+
+            x += item_width + x_gap;
+            if (x + item_width > initial_x + window_width) {
+                x = initial_x + padding_x;
+                y += item_height + y_gap;
+            }
+        }
+    }
+
+    if (editor_state->mesh_library_filter == Mesh_Type::NONE ||
+        editor_state->mesh_library_filter == Mesh_Type::PRIMITIVE) {
+        mesh_table = &game_state->primitive_mesh_table;
+        for (int32 i = 0; i < mesh_table->max_entries; i++) {
+            Hash_Table_Entry<int32, Mesh> *entry = &mesh_table->entries[i];
+            if (!entry->is_occupied) continue;
+
+            Mesh *mesh = &entry->value;
+            char *mesh_name = to_char_array(allocator, mesh->name);
+            bool32 pressed = do_text_button(ui_manager, controller_state,
+                                            x, y,
+                                            item_width, item_height,
+                                            primitive_item_style, default_text_style,
+                                            mesh_name,
+                                            editor_font_name_bold,
+                                            "mesh_library_primitive_item", i);
+
+            if (pressed) {
+                picked_mesh_type = Mesh_Type::PRIMITIVE;
+                picked_mesh_id = entry->key;
+            }
+
+            x += item_width + x_gap;
+            if (x + item_width > initial_x + window_width) {
+                x = initial_x + padding_x;
+                y += item_height + y_gap;
+            }
         }
     }
     
     if (picked_mesh_id >= 0) {
         if (selected_entity->mesh_id < 0 ||
-            picked_mesh_id != selected_entity->mesh_id) {
+            picked_mesh_id != selected_entity->mesh_id ||
+            picked_mesh_type != selected_entity->mesh_type) {
             selected_entity->mesh_id = picked_mesh_id;
+            selected_entity->mesh_type = picked_mesh_type;
         }
 
         editor_state->open_window_flags = 0;

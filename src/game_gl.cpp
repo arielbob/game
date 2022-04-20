@@ -158,6 +158,7 @@
 //       - TODO (done): add mesh primitives to level writing
 //                      - just add an entity property like 'mesh_primitive "cube"'
 //       - TODO: mesh library filtering (all, level, primitives)
+//       - TODO: draw filtering buttons in mesh library
 //       - TODO: add mesh primitives to level loading
 //       - TODO: add an entity with a primitive cube mesh by default on button click
 
