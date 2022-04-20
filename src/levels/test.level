@@ -55,7 +55,7 @@ rotation 0.923880 0.000000 0.382683 0.000000
 scale 1.000000 1.000000 1.000000
 
 type normal
-mesh "cube"
+mesh_primitive "cube"
 material "diffuse_plane"
 position 0.000000 0.000000 0.000000
 rotation 1.000000 0.000000 0.000000 0.000000
@@ -69,7 +69,7 @@ rotation 1.000000 0.000000 0.000000 0.000000
 scale 0.500000 0.500000 0.500000
 
 type point_light
-mesh "cube"
+mesh_primitive "cube"
 material "white_light"
 position 0.800000 1.800000 -2.300000
 rotation 1.000000 0.000000 0.000000 0.000000
@@ -79,7 +79,7 @@ falloff_start 0.000000
 falloff_end 3.000000
 
 type point_light
-mesh "cube"
+mesh_primitive "cube"
 material "blue_light"
 position -1.000000 1.500000 0.000000
 rotation 1.000000 0.000000 0.000000 0.000000

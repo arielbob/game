@@ -91,7 +91,12 @@ void append_string_add_quotes(String_Buffer *buffer, char *string) {
 }
 
 void append_default_entity_info(Game_State *game_state, Level *level, String_Buffer *buffer, Entity *entity) {
-    append_string(buffer, "mesh ");
+    if (entity->mesh_type == Mesh_Type::PRIMITIVE) {
+        append_string(buffer, "mesh_primitive ");
+    } else {
+        append_string(buffer, "mesh ");
+    }
+    
     Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
     append_string_add_quotes(buffer, mesh.name);
     append_string(buffer, "\n");
