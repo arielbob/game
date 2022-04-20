@@ -161,15 +161,22 @@
 //       - TODO (done): add an entity with a primitive cube mesh by default on button click
 //       - TODO (done): allow empty materials when saving and loading levels
 
-// TODO: editor undoing
-// TODO: color picker
+// TODO (done): hash table iterators
 
+// TODO: color selector
+//       - TODO (done): draw rainbow quad
+//       - TODO (done): add a hue slider UI element
+//       - TODO: draw little arrows on the side of the hue slider so that you can move the slider without hiding
+//               the actual color with a line
+//       - TODO: add color picker state - add it to editor_state; we don't need to add any UI state and we're
+//               actually going to need to hold a lot of state for the color picker, so it'll be good for us to
+//               manage it in editor_state.
+// TODO: editor undoing
 // TODO: prompt to save level if open pressed when changes have been made
 
 // TODO: don't allow quotes or brackets in any level strings, i.e. in level name, texture name, material name, etc.
 //       (requires text box validation)
 
-// TODO: hash table iterators
 // TODO: change mesh parser to use new tokenizer_equals procedures, since we can actually read past bounds, since
 //       file_contents is not null-terminated. when we read the file in, the size is just the size of the file,
 //       which does not necessarily include a null-terminator.
@@ -191,19 +198,27 @@
 
 // TODO: add icons to some of the buttons for better recognition of buttons
 
+// TODO: better gizmo controls
+//       - TODO: scale gizmo
+//       - TODO: translation on a plane (little squares on the planes of the gizmo)
+//       - TODO: bigger hitboxes on the controls or just scale the meshes
+
+// TODO: click slider for manual value entry
+// TODO: slideable text boxes (after we do slider manual text entry)
+//       - may just be able to add a parameter to sliders that hide the slider and removes bounds
+// TODO: replace the transform values in the entity box with slideable text boxes
+
 // TODO: mesh deleting
 // NOTE: i think it's fine if we just load all the meshes into an arena, even if they get deleted.
 //       meshes will not be deleted when you're actually playing the game. we can just clear the arena and then
 //       load all the meshes required for a certain level.
 
-// TODO: color selector
 // TODO: in-game console for outputting messages
 // NOTE: we should not add functions to get materials or textures by their name, since, at least right now, their
 //       names are NOT unique.
 // TODO: error handling for mesh loading (should use in-game console when that's implemented)
 // TODO: error handling for level loading
 
-// TODO: scale gizmo
 // TODO: material deletion
 // TODO: handle entities with no material (just make them black or something)
 //       - this would happen if you were to delete a material that an entity was using
@@ -213,7 +228,6 @@
 // TODO: mesh library
 // TODO: scrollable UI region (mainly for material and texture libraries)
 
-// TODO: click slider for manual value entry
 // TODO: slider UI element
 
 // TODO: make textbox use the string pool allocator and use UI states so we don't have to handle making the
@@ -1151,6 +1165,9 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
     gl_load_shader(gl_state,
                    "src/shaders/framebuffer.vs", "src/shaders/framebuffer.fs",
                    "framebuffer");
+    gl_load_shader(gl_state,
+                   "src/shaders/hue_slider.vs", "src/shaders/hue_slider.fs",
+                   "hue_slider");
     gl_state->gizmo_framebuffer = gl_make_framebuffer(display_output.width, display_output.height);
 
     glGenBuffers(1, &gl_state->global_ubo);
@@ -1341,6 +1358,28 @@ void gl_draw_quad(GL_State *gl_state,
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(quad_vertices), quad_vertices);
     gl_set_uniform_mat4(basic_shader_id, "ortho_matrix", &render_state->ortho_clip_matrix);
     gl_set_uniform_int(basic_shader_id, "use_color", false);
+
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    glUseProgram(0);
+    glBindVertexArray(0);
+}
+
+void gl_draw_hue_slider_quad(GL_State *gl_state,
+                             Render_State *render_state,
+                             real32 x_pos_pixels, real32 y_pos_pixels,
+                             real32 width_pixels, real32 height_pixels) {
+    uint32 shader_id = gl_use_shader(gl_state, "hue_slider");
+    GL_Mesh quad_mesh = gl_use_rendering_mesh(gl_state, gl_state->quad_mesh_id);
+
+    real32 quad_vertices[8] = {
+        x_pos_pixels, y_pos_pixels + height_pixels,               // bottom left
+        x_pos_pixels, y_pos_pixels,                               // top left
+        x_pos_pixels + width_pixels, y_pos_pixels,                // top right
+        x_pos_pixels + width_pixels, y_pos_pixels + height_pixels // bottom right
+    };
+    glBindBuffer(GL_ARRAY_BUFFER, quad_mesh.vbo);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(quad_vertices), quad_vertices);
+    gl_set_uniform_mat4(shader_id, "ortho_matrix", &render_state->ortho_clip_matrix);
 
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     glUseProgram(0);
@@ -1742,6 +1781,21 @@ void gl_draw_ui_slider(GL_State *gl_state, Game_State *game_state,
                  slider.text, text_style.color);
 }
 
+void gl_draw_ui_hue_slider(GL_State *gl_state, Render_State *render_state,
+                           UI_Manager *ui_manager, UI_Hue_Slider slider) {
+    gl_draw_hue_slider_quad(gl_state, render_state,
+                            slider.x, slider.y,
+                            slider.width, slider.height);
+
+    real32 line_y = slider.y + (slider.height - ((real32) slider.hue_degrees / 360.0f) * slider.height);
+    real32 line_x = slider.x;
+
+    gl_draw_quad(gl_state, render_state,
+                 line_x, line_y,
+                 slider.width, 1.0f,
+                 make_vec4(1.0f, 1.0f, 1.0f, 1.0f));
+}
+
 void gl_draw_ui_box(GL_State *gl_state, Render_State *render_state,
                     UI_Manager *ui_manager, UI_Box box) {
     UI_Box_Style style = box.style;
@@ -1812,6 +1866,11 @@ void gl_draw_ui(GL_State *gl_state, Game_State *game_state,
                 UI_Line *ui_line = (UI_Line *) element;
                 gl_draw_ui_line(gl_state, display_output, ui_manager, *ui_line);
                 address += sizeof(UI_Line);
+            } break;
+            case UI_HUE_SLIDER: {
+                UI_Hue_Slider *ui_hue_slider = (UI_Hue_Slider *) element;
+                gl_draw_ui_hue_slider(gl_state, render_state, ui_manager, *ui_hue_slider);
+                address += sizeof(UI_Hue_Slider);
             } break;
             default: {
                 assert(!"Unhandled UI element type.");
@@ -2283,6 +2342,15 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
     gl_draw_framebuffer(gl_state, gl_state->gizmo_framebuffer);
 
     gl_draw_ui(gl_state, game_state,  &game_state->ui_manager, display_output);
+
+#if 0
+    real32 hsv_quad_width = 20.0f;
+    real32 hsv_quad_height = 500.0f;
+    gl_draw_hue_slider_quad(gl_state, render_state,
+                     0.5f * (display_output.width - hsv_quad_width),
+                     0.5f * (display_output.height - hsv_quad_height),
+                     hsv_quad_width, hsv_quad_height);
+#endif
 
     glEnable(GL_DEPTH_TEST);
 }

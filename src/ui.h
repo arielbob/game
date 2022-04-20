@@ -10,7 +10,9 @@ enum UI_Type {
     UI_TEXT_BOX,
     UI_SLIDER,
     UI_BOX,
-    UI_LINE
+    UI_LINE,
+    UI_HUE_SLIDER,
+    //UI_COLOR_PICKER
 };
 
 #define TEXT_ALIGN_X 0x1
@@ -350,7 +352,7 @@ UI_Slider make_ui_slider(real32 x, real32 y,
 }
 // end slider
 
-
+// start box
 struct UI_Box_Style {
     Vec4 background_color;
 };
@@ -385,7 +387,9 @@ UI_Box make_ui_box(real32 x, real32 y,
 
     return box;
 }
+// end box
 
+// start line
 struct UI_Line_Style {
     Vec4 color;
     real32 line_width;
@@ -415,12 +419,65 @@ UI_Line make_ui_line(Vec2 start_pixels, Vec2 end_pixels,
 
     return line;
 }
+// end line
 
-struct UI_Push_Buffer {
-    void *base;
-    uint32 size;
-    uint32 used;
+// start hue slider
+struct UI_Hue_Slider {
+    UI_HEADER
+
+    real32 x;
+    real32 y;
+
+    real32 width;
+    real32 height;
+
+    int32 hue_degrees; // between 0 and 360
 };
+
+UI_Hue_Slider make_ui_hue_slider(real32 x, real32 y,
+                                 real32 width, real32 height,
+                                 int32 hue_degrees,
+                                 char *id) {
+    UI_Hue_Slider hue_slider;
+
+    hue_slider.type = UI_HUE_SLIDER;
+    hue_slider.x = x;
+    hue_slider.y = y;
+    hue_slider.width = width;
+    hue_slider.height = height;
+    hue_slider.hue_degrees = hue_degrees;
+
+    UI_id hue_slider_id = { UI_HUE_SLIDER, id, 0 };
+    hue_slider.id = hue_slider_id;
+
+    return hue_slider;
+}
+// end hue slider
+
+// start color picker
+#if 0
+struct UI_Color_Picker {
+    UI_HEADER
+    
+    real32 x;
+    real32 y;
+};
+
+UI_Color_Picker make_ui_color_picker(real32 x, real32 y,
+                                     char *id) {
+    UI_Color_Picker color_picker;
+
+    color_picker.type = UI_COLOR_PICKER;
+    color_picker.x = x;
+    color_picker.y = y;
+
+    UI_id color_picker_id = { UI_COLOR_PICKER, id, 0 };
+    color_picker.id = color_picker_id;
+
+    return color_picker;
+}
+#endif
+// end color picker
 
 // UI element states
 enum UI_Element_State_Type {
@@ -437,6 +494,12 @@ struct UI_State_Variant {
     union {
         UI_Slider_State slider_state;
     };
+};
+
+struct UI_Push_Buffer {
+    void *base;
+    uint32 size;
+    uint32 used;
 };
 
 struct UI_Manager {

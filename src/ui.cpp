@@ -136,6 +136,11 @@ void ui_add_line(UI_Manager *manager, UI_Line line) {
     *element = line;
 }
 
+void ui_add_hue_slider(UI_Manager *manager, UI_Hue_Slider hue_slider) {
+    UI_Hue_Slider *element = (UI_Hue_Slider *) allocate(&manager->push_buffer, sizeof(UI_Hue_Slider));
+    *element = hue_slider;
+}
+
 inline bool32 ui_id_equals(UI_id id1, UI_id id2) {
     return ((id1.string_ptr == id2.string_ptr) && (id1.index == id2.index));
 }
@@ -241,6 +246,9 @@ UI_Element *next_element(UI_Element *current_element, UI_Push_Buffer *push_buffe
         } break;
         case UI_LINE: {
             address += sizeof(UI_Line);
+        } break;
+        case UI_HUE_SLIDER: {
+            address += sizeof(UI_Hue_Slider);
         } break;
         default: {
             assert(!"Unhandled UI element type.");
@@ -737,7 +745,7 @@ void do_line(UI_Manager *manager,
              Vec2 start_pixels, Vec2 end_pixels,
              UI_Line_Style style,
              char *id_string, int32 index = 0) {
-    UI_Line line =  make_ui_line(start_pixels, end_pixels,
+    UI_Line line = make_ui_line(start_pixels, end_pixels,
                                  style,
                                  id_string, index);
 
@@ -745,4 +753,58 @@ void do_line(UI_Manager *manager,
     // we don't even draw lines in the UI anymore; they're too finnicky
 
     ui_add_line(manager, line);
+}
+
+#if 0
+void do_color_picker(UI_Manager *manager,
+                     real32 x, real32 y,
+                     char *id_string) {
+    UI_Color_Picker color_picker = make_ui_color_picker(x, y);
+}
+#endif
+
+int32 do_hue_slider(UI_Manager *manager, Controller_State *controller_state,
+                    real32 x, real32 y,
+                    real32 width, real32 height,
+                    int32 hue_degrees,
+                    char *id_string) {
+    UI_Hue_Slider slider = make_ui_hue_slider(x, y, width, height, hue_degrees, id_string);
+
+    Vec2 current_mouse = controller_state->current_mouse;
+    if (!manager->is_disabled && in_bounds_on_layer(manager, current_mouse, x, x + width, y, y + height)) {
+        set_hot(manager, slider.id);
+
+        if (controller_state->left_mouse.is_down && !controller_state->left_mouse.was_down) {
+            manager->active = slider.id;
+            hue_degrees = (int32) (360.0f - 360.0f * ((current_mouse.y - y) / height));
+            hue_degrees = min(hue_degrees, 360);
+            hue_degrees = max(hue_degrees, 0);
+            manager->active_initial_position = controller_state->current_mouse;
+            //manager->active_initial_time = platform_get_wall_clock_time();
+        }
+
+        if (!controller_state->left_mouse.is_down) {
+            if (ui_id_equals(manager->active, slider.id)) {
+                manager->active = {};
+            }
+        }
+    } else {
+        if (ui_id_equals(manager->hot, slider.id)) {
+            clear_hot(manager);
+        }
+
+        if (ui_id_equals(manager->active, slider.id) && !controller_state->left_mouse.is_down) {
+            manager->active = {};
+        }
+    }
+
+    if (ui_id_equals(manager->active, slider.id) && being_held(controller_state->left_mouse)) {
+        hue_degrees = (int32) (360.0f - 360.0f * ((current_mouse.y - slider.y) / slider.height));
+        hue_degrees = min(hue_degrees, 360);
+        hue_degrees = max(hue_degrees, 0);
+    }
+
+    ui_add_hue_slider(manager, slider);
+
+    return hue_degrees;
 }

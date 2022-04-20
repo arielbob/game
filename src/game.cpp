@@ -723,6 +723,17 @@ void update(Game_State *game_state,
 
     //game_state->current_char = controller_state->pressed_key;
 
+    static int32 hue_degrees = 0;
+    hue_degrees = do_hue_slider(ui_manager, controller_state, 5.0f, 5.0f,
+                                20.0f, 500.0f,
+                                hue_degrees,
+                                "hue_slider_test");
+    buf = (char *) arena_push(&memory.frame_arena, 128);
+    string_format(buf, 128, "hue_slider value: %d",
+                  hue_degrees);
+    do_text(ui_manager, 5.0f, 523.0f, buf, "courier18b", "hue_slider_value_test");
+                  
+
     clear_hot_if_gone(ui_manager);
     delete_state_if_gone(ui_manager);
     
