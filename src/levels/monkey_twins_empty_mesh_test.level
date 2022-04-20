@@ -84,7 +84,6 @@ scale 1.000000 1.000000 1.000000
 
 type normal
 mesh "suzanne"
-material "material "
 position -3.580600 2.257501 2.056933
 rotation 0.857867 -0.137453 -0.488912 -0.078337
 scale 1.000000 1.000000 1.000000

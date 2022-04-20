@@ -101,10 +101,12 @@ void append_default_entity_info(Game_State *game_state, Level *level, String_Buf
     append_string_add_quotes(buffer, mesh.name);
     append_string(buffer, "\n");
 
-    append_string(buffer, "material ");
-    Material material = get_material(level, entity->material_id);
-    append_string_add_quotes(buffer, material.name);
-    append_string(buffer, "\n");
+    if (entity->material_id >= 0) {
+        append_string(buffer, "material ");
+        Material material = get_material(level, entity->material_id);
+        append_string_add_quotes(buffer, material.name);
+        append_string(buffer, "\n");
+    }
 
     int32 temp_buffer_size = 128;
 
@@ -824,7 +826,7 @@ bool32 Level_Loader::load_temp_level(Allocator *temp_allocator, Game_State *game
                     string_equals(token.string, "materials")) {
                     state = WAIT_FOR_MATERIALS_BLOCK_OPEN;
                 } else {
-                    assert (!"Expected materials keyword to open block.");
+                    assert(!"Expected materials keyword to open block.");
                 }
             } break;
             case WAIT_FOR_MATERIALS_BLOCK_OPEN: {

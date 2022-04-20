@@ -159,7 +159,7 @@
 //                      - just add an entity property like 'mesh_primitive "cube"'
 //       - TODO (done): mesh library filtering (all, level, primitives)
 //       - TODO (done): add an entity with a primitive cube mesh by default on button click
-//       - TODO: allow empty materials when saving and loading levels
+//       - TODO (done): allow empty materials when saving and loading levels
 
 // TODO: editor undoing
 // TODO: color picker
