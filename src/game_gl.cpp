@@ -148,8 +148,10 @@
 //       - TODO (done): add new level button
 //       - TODO (done): save without dialog if a saved level is opened and save with file dialog if new level
 //       - TODO (done): save as button for saving a duplicate of a level
+//       - TODO (done): clean up level box
 
 // TODO: entity adding
+//       - TODO: add 'add entity' button
 // TODO: editor undoing
 
 // TODO: prompt to save level if open pressed when changes have been made
@@ -169,11 +171,13 @@
 // TODO: texture creation
 // TODO: some type of messaging system that isn't in the game console, like toasts kind of (messages that appear
 //       then disappear after a few seconds). this would be nice for some type of feedback like for file saving.
+// TODO: we can just add a star to the filename if a change has been made and needs to be saved
 // TODO: dialog prompts.. (just use windows for this maybe?)
 // TODO: material name/texture strings validation
 //       check for duplicates and empties. it matters that we don't have duplicates since texture names are used
 //       as keys in the opengl code. we don't store material structs in the opengl code, but it's better to be
 //       consistent. show a message using the messaging system.
+// TODO: keyboard shortcuts for level save/save as
 
 // TODO: add icons to some of the buttons for better recognition of buttons
 

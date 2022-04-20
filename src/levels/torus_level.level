@@ -23,7 +23,7 @@ use_color_override 1
 
 material "diffuse_plane"
 texture "debug"
-gloss 41.291256
+gloss 97.116493
 color_override 0.900000 0.900000 0.900000
 use_color_override 0
 

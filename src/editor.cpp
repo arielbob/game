@@ -980,10 +980,63 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
     real32 padding_y = 6.0f;
     real32 initial_x = x;
 
+    real32 button_height = 25.0f;
+
     draw_row_padding(ui_manager, controller_state, x, &y, row_width, padding_y, row_color, side_flags | SIDE_TOP, row_index);
+
+    draw_row(ui_manager, controller_state, x, y,
+             row_width, button_height, row_color, side_flags, row_id, row_index++);
 
     Font font = get_font(game_state, editor_font_name_bold);
     
+    x += padding_x;
+    real32 new_level_button_width = 50.0f;
+    bool32 new_level_clicked = do_text_button(ui_manager, controller_state,
+                                              x, y,
+                                              new_level_button_width, button_height,
+                                              default_text_button_style, default_text_style,
+                                              "New",
+                                              editor_font_name_bold, "new_level");
+    if (new_level_clicked) {
+        new_level(&game_state->current_level);
+        editor_state->selected_entity_index = -1;
+        editor_state->is_new_level = true;
+    }
+
+    x += new_level_button_width + 1;
+
+    real32 open_level_button_width = 60.0f;
+    bool32 open_level_clicked = do_text_button(ui_manager, controller_state,
+                                               x, y, 
+                                               open_level_button_width, button_height,
+                                               default_text_button_style, default_text_style,
+                                               "Open",
+                                               editor_font_name_bold, "open_level");
+    if (open_level_clicked) {
+        Marker m = begin_region();
+        char *absolute_filename = (char *) region_push(PLATFORM_MAX_PATH);
+        
+        if (platform_open_file_dialog(absolute_filename,
+                                      LEVEL_FILE_FILTER_TITLE, LEVEL_FILE_FILTER_TYPE,
+                                      PLATFORM_MAX_PATH)) {
+            bool32 result = read_and_load_level(&game_state->current_level, absolute_filename,
+                                                &memory.level_mesh_arena,
+                                                &memory.level_string64_pool,
+                                                &memory.level_filename_pool);
+            if (result) {
+                editor_state->is_new_level = false;
+                copy_string(&editor_state->current_level_filename, make_string(absolute_filename));
+                editor_state->selected_entity_index = -1;
+            }
+        }
+
+        end_region(m);
+    }
+
+    y += button_height;
+    x = initial_x;
+    draw_row_padding(ui_manager, controller_state, x, &y, row_width, padding_y, row_color, side_flags, row_index);
+
     // level name text
     real32 label_row_height = 18.0f;
     draw_row(ui_manager, controller_state, x, y, row_width, label_row_height, row_color, side_flags, row_id, row_index++);
@@ -1004,7 +1057,6 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
     draw_row_padding(ui_manager, controller_state, x, &y, row_width, padding_y, row_color, side_flags, row_index);
 
     // save level button
-    real32 button_height = 25.0f;
     draw_row(ui_manager, controller_state,
              x, y, row_width, button_height, row_color, side_flags, row_id, row_index++);
 
@@ -1144,63 +1196,6 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
     } else {
         reset_entity_editors(editor_state);
     }
-
-    y += 100;
-
-    bool32 new_level_clicked = do_text_button(ui_manager, controller_state,
-                                              render_state->display_output.width - sidebar_button_width, y,
-                                              sidebar_button_width, button_height,
-                                              default_text_button_style, default_text_style,
-                                              "New Level",
-                                              button_font_name, "new_level");
-    if (new_level_clicked) {
-        new_level(&game_state->current_level);
-        editor_state->selected_entity_index = -1;
-        editor_state->is_new_level = true;
-    }
-
-    y += button_height + 1;
-
-    bool32 open_level_clicked = do_text_button(ui_manager, controller_state,
-                                               render_state->display_output.width - sidebar_button_width, y,
-                                               sidebar_button_width, button_height,
-                                               default_text_button_style, default_text_style,
-                                               "Open Level",
-                                               button_font_name, "open_level");
-    if (open_level_clicked) {
-        Marker m = begin_region();
-        char *absolute_filename = (char *) region_push(PLATFORM_MAX_PATH);
-        
-        if (platform_open_file_dialog(absolute_filename,
-                                      LEVEL_FILE_FILTER_TITLE, LEVEL_FILE_FILTER_TYPE,
-                                      PLATFORM_MAX_PATH)) {
-            bool32 result = read_and_load_level(&game_state->current_level, absolute_filename,
-                                                &memory.level_mesh_arena,
-                                                &memory.level_string64_pool,
-                                                &memory.level_filename_pool);
-            if (result) {
-                editor_state->is_new_level = false;
-                copy_string(&editor_state->current_level_filename, make_string(absolute_filename));
-                editor_state->selected_entity_index = -1;
-            }
-        }
-
-        end_region(m);
-    }
-
-#if 0
-    bool32 unload_level_clicked = do_text_button(ui_manager, controller_state,
-                                                render_state->display_output.width - sidebar_button_width, y,
-                                                sidebar_button_width, button_height,
-                                                default_text_button_style, default_text_style,
-                                                "Unload Level",
-                                                button_font_name, "unload_level");
-
-    if (unload_level_clicked) {
-        editor_state->selected_entity_index = -1;
-        unload_level(game_state);
-    }
-#endif
 
     if (!editor_state->is_new_level) {
         char *filename_buf = to_char_array((Allocator *) &memory.frame_arena, editor_state->current_level_filename);
