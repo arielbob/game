@@ -166,11 +166,19 @@
 // TODO: color selector
 //       - TODO (done): draw rainbow quad
 //       - TODO (done): add a hue slider UI element
+//       - TODO (done): draw a quad who's color is based on a hue degree value
+//       - TODO: draw a quad with the hsv gradient
+//       - TODO: add an hsv picker UI element that takes in a hue in degrees and returns the HSV value for
+//               whatever the cursor selected.
 //       - TODO: draw little arrows on the side of the hue slider so that you can move the slider without hiding
-//               the actual color with a line
+//               the actual color with a line - we can just add a hitbox around where the current value is in
+//               do_hue_slider(), and then when we draw it, draw arrows within that hitbox.
 //       - TODO: add color picker state - add it to editor_state; we don't need to add any UI state and we're
 //               actually going to need to hold a lot of state for the color picker, so it'll be good for us to
 //               manage it in editor_state.
+//       - TODO: write procedure for converting HSV to RGB(A?)
+//       - TODO: write procedure to draw a color picker (this should not be a UI element, but instead like the
+//               draw_* procedures in editor.cpp.
 // TODO: editor undoing
 // TODO: prompt to save level if open pressed when changes have been made
 
@@ -1168,6 +1176,9 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
     gl_load_shader(gl_state,
                    "src/shaders/hue_slider.vs", "src/shaders/hue_slider.fs",
                    "hue_slider");
+    gl_load_shader(gl_state,
+                   "src/shaders/hsv.vs", "src/shaders/hsv.fs",
+                   "hsv");
     gl_state->gizmo_framebuffer = gl_make_framebuffer(display_output.width, display_output.height);
 
     glGenBuffers(1, &gl_state->global_ubo);
@@ -1380,6 +1391,30 @@ void gl_draw_hue_slider_quad(GL_State *gl_state,
     glBindBuffer(GL_ARRAY_BUFFER, quad_mesh.vbo);
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(quad_vertices), quad_vertices);
     gl_set_uniform_mat4(shader_id, "ortho_matrix", &render_state->ortho_clip_matrix);
+
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    glUseProgram(0);
+    glBindVertexArray(0);
+}
+
+void gl_draw_hsv_quad(GL_State *gl_state,
+                      Render_State *render_state,
+                      real32 x_pos_pixels, real32 y_pos_pixels,
+                      real32 width_pixels, real32 height_pixels,
+                      int32 hue_degrees) {
+    uint32 shader_id = gl_use_shader(gl_state, "hsv");
+    GL_Mesh quad_mesh = gl_use_rendering_mesh(gl_state, gl_state->quad_mesh_id);
+
+    real32 quad_vertices[8] = {
+        x_pos_pixels, y_pos_pixels + height_pixels,               // bottom left
+        x_pos_pixels, y_pos_pixels,                               // top left
+        x_pos_pixels + width_pixels, y_pos_pixels,                // top right
+        x_pos_pixels + width_pixels, y_pos_pixels + height_pixels // bottom right
+    };
+    glBindBuffer(GL_ARRAY_BUFFER, quad_mesh.vbo);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(quad_vertices), quad_vertices);
+    gl_set_uniform_mat4(shader_id, "ortho_matrix", &render_state->ortho_clip_matrix);
+    gl_set_uniform_int(shader_id, "hue_degrees", hue_degrees);
 
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     glUseProgram(0);
@@ -2351,6 +2386,14 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
                      0.5f * (display_output.height - hsv_quad_height),
                      hsv_quad_width, hsv_quad_height);
 #endif
+
+    real32 hsv_quad_width = 500.0f;
+    real32 hsv_quad_height = 500.0f;
+    gl_draw_hsv_quad(gl_state, render_state,
+                     0.5f * (display_output.width - hsv_quad_width),
+                     0.5f * (display_output.height - hsv_quad_height),
+                     hsv_quad_width, hsv_quad_height,
+                     100);
 
     glEnable(GL_DEPTH_TEST);
 }

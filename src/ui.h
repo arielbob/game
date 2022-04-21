@@ -454,6 +454,10 @@ UI_Hue_Slider make_ui_hue_slider(real32 x, real32 y,
 }
 // end hue slider
 
+// start HSV picker
+
+// end HSV picker
+
 // start color picker
 #if 0
 struct UI_Color_Picker {
