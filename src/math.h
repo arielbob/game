@@ -130,6 +130,7 @@ struct Euler_Transform {
     Vec3 scale;
 };
 
+// TODO: we may want to just have these be uint8's?
 struct RGB_Color {
     int32 r;
     int32 g;

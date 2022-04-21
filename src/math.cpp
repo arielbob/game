@@ -1564,9 +1564,17 @@ Vec3 mix(Vec3 a, Vec3 b, real32 t) {
 
 RGB_Color vec3_to_rgb(Vec3 v) {
     RGB_Color result;
-    result.r = (int) (v.x * 255.0f);
-    result.g = (int) (v.y * 255.0f);
-    result.b = (int) (v.z * 255.0f);
+    result.r = (int32) (v.x * 255.0f);
+    result.g = (int32) (v.y * 255.0f);
+    result.b = (int32) (v.z * 255.0f);
+    return result;
+}
+
+Vec3 rgb_to_vec3(RGB_Color rgb) {
+    Vec3 result;
+    result.x = (real32) rgb.r / 255.0f;
+    result.y = (real32) rgb.g / 255.0f;
+    result.z = (real32) rgb.b / 255.0f;
     return result;
 }
 

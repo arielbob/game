@@ -174,7 +174,7 @@
 //       - TODO (done): draw a circle at the HSV picker's cursor
 //       - TODO (done): write procedure to generate vertices for a filled circle
 //       - TODO (done): add procedure to draw filled circle
-//       - TODO: draw filled circle with the actual selected color at the HSV picker's cursor
+//       - TODO (done): draw filled circle with the actual selected color at the HSV picker's cursor
 //       - TODO: draw little arrows on the side of the hue slider so that you can move the slider without hiding
 //               the actual color with a line - we can just add a hitbox around where the current value is in
 //               do_hue_slider(), and then when we draw it, draw arrows within that hitbox.
@@ -1930,7 +1930,13 @@ void gl_draw_ui_hsv_picker(GL_State *gl_state, Render_State *render_state,
 
     gl_draw_circle(gl_state, render_state,
                    picker.x + picker.state.relative_cursor_x, picker.y + picker.state.relative_cursor_y,
-                   10.0f, make_vec4(1.0f, 1.0f, 1.0f, 1.0f), true);
+                   14.0f, make_vec4(1.0f, 1.0f, 1.0f, 1.0f), true);
+
+    RGB_Color rgb_color = hsv_to_rgb(picker.state.hsv_color);
+    Vec4 color = make_vec4(rgb_to_vec3(rgb_color), 1.0f);
+    gl_draw_circle(gl_state, render_state,
+                   picker.x + picker.state.relative_cursor_x, picker.y + picker.state.relative_cursor_y,
+                   12.0f, color, true);
                    
 
 /*
