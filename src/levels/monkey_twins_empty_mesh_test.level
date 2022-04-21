@@ -5,7 +5,7 @@ level_name "monkey twins"
 meshes {
 mesh "suzanne" "blender/suzanne2.mesh"
 mesh "sphere" "blender/sphere.mesh"
-mesh "" ".\blender\torus.mesh"
+mesh "torus" ".\blender\torus.mesh"
 }
 
 textures {
@@ -27,8 +27,9 @@ color_override 0.900000 0.900000 0.900000
 use_color_override 0
 
 material "arrow_material"
+texture "debug"
 gloss 95.631004
-color_override 1.000000 0.000000 0.000000
+color_override 0.807843 0.647059 0.403922
 use_color_override 1
 
 material "white_light"
@@ -49,8 +50,8 @@ use_color_override 1
 material "matte monkey"
 texture "white"
 gloss 0.485447
-color_override 0.000000 0.000000 0.000000
-use_color_override 0
+color_override 0.858824 0.976471 0.890196
+use_color_override 1
 }
 
 entities {
@@ -69,7 +70,7 @@ rotation 1.000000 0.000000 0.000000 0.000000
 scale 5.000000 0.100000 5.000000
 
 type normal
-mesh ""
+mesh "torus"
 material "arrow_material"
 position -0.247847 0.292015 -0.176115
 rotation 1.000000 0.000000 0.000000 0.000000

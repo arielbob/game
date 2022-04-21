@@ -177,6 +177,16 @@
 //       - TODO (done): draw filled circle with the actual selected color at the HSV picker's cursor
 //       - TODO (done): write procedure to convert RGB to HSV
 //       - TODO (done): add procedure for drawing a basic color picker
+//       - TODO (done): hide color picker on click outside
+//       - TODO: maybe add Context namespace that has things like Game_State and Controller_State in it, so we don't
+//               have to constantly be passing them around
+//               - i'm pretty sure we can still have editor_state and ui_manager be inside game_state, while also
+//                 putting it in a separate member in Context. that way we can easily get it from context.
+//       - TODO: fix bug where if you let go of either the slider or the hsv picker outside of the color picker
+//               bounds, you hide the picker
+//       - TODO: try moving do_color_picker to UI code instead of having it in editor.cpp
+//               - we can still have the editor handle the color picker's state, although we will also need the
+//                 color_picker's state to hold its own UI elements' states as well
 
 //       - TODO: draw little arrows on the side of the hue slider so that you can move the slider without hiding
 //               the actual color with a line - we can just add a hitbox around where the current value is in
@@ -187,10 +197,10 @@
 //       - TODO: write procedure for converting HSV to RGB(A?)
 //       - TODO: write procedure to draw a color picker (this should not be a UI element, but instead like the
 //               draw_* procedures in editor.cpp.
+
+
 // TODO: editor undoing
 // TODO: prompt to save level if open pressed when changes have been made
-// TODO: maybe add Context namespace that has things like Game_State and Controller_State in it, so we don't
-//       have to constantly be passing them around
 
 // TODO: text truncation when its containing box is too small
 // TODO: maybe we don't even need UI state.. we may be able to just hold the State structs ourselves and pass them

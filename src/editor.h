@@ -47,9 +47,9 @@ namespace Editor_Constants {
 
 // TODO: should be able to move the color picker window
 struct Color_Picker_State {
-    Allocator *string_allocator;
+    //Allocator *string_allocator;
     HSV_Picker_State hsv_picker_state;
-    int32 hue_slider_value;
+    //int32 hue_slider_value;
 };
 
 struct Editor_State {
