@@ -4,6 +4,7 @@
 #define LEVEL_FILE_FILTER_TITLE "Levels (*.level)"
 #define LEVEL_FILE_FILTER_TYPE "level"
 
+enum class Editor_Color_Picker { NONE = 0, MATERIAL_COLOR_OVERRIDE };
 
 enum Gizmo_Handle {
     GIZMO_HANDLE_NONE,
@@ -25,24 +26,31 @@ struct Gizmo {
     int32 arrow_mesh_id;
     int32 ring_mesh_id;
     int32 sphere_mesh_id;
-#if 0
-    char *arrow_mesh_name;
-    char *ring_mesh_name;
-    char *sphere_mesh_name;
-#endif
+};
+
+namespace Editor_Constants {
+    Vec4 row_color = make_vec4(0.1f, 0.1f, 0.1f, 0.9f);
+    real32 hsv_picker_width = 200.0f;
+    real32 hsv_picker_height = 200.0f;
+    real32 hue_slider_width = 20.0f;
+    real32 small_padding_x = 6.0f;
+    real32 small_padding_y = 6.0f;
+    real32 color_picker_width = (small_padding_x +
+                                 hsv_picker_width + small_padding_x +
+                                 hue_slider_width + small_padding_x);
+    real32 color_picker_height = 200.0f + small_padding_y*2;
 };
 
 #define MATERIAL_LIBRARY_WINDOW 0x1
 #define TEXTURE_LIBRARY_WINDOW  0x2
 #define MESH_LIBRARY_WINDOW     0x4
 
-#if 0
-struct Add_Entity_Box_State {
-    bool32 is_editing_mesh;
-    bool32 is_editing_material;
-    Normal_Entity entity_to_add;
+// TODO: should be able to move the color picker window
+struct Color_Picker_State {
+    Allocator *string_allocator;
+    HSV_Picker_State hsv_picker_state;
+    int32 hue_slider_value;
 };
-#endif
 
 struct Editor_State {
     Transform_Mode transform_mode;
@@ -71,6 +79,9 @@ struct Editor_State {
     bool32 is_new_level;
     String_Buffer current_level_filename;
 
+    Editor_Color_Picker open_color_picker;
+    Vec2 color_picker_position;
+    Color_Picker_State color_picker_state;
     //bool32 is_adding_entity;
     //Add_Entity_Box_State add_entity_box_state;
 };

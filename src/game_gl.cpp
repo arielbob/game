@@ -175,7 +175,8 @@
 //       - TODO (done): write procedure to generate vertices for a filled circle
 //       - TODO (done): add procedure to draw filled circle
 //       - TODO (done): draw filled circle with the actual selected color at the HSV picker's cursor
-//       - TODO: add procedure for drawing a basic color picker
+//       - TODO (done): write procedure to convert RGB to HSV
+//       - TODO (done): add procedure for drawing a basic color picker
 
 //       - TODO: draw little arrows on the side of the hue slider so that you can move the slider without hiding
 //               the actual color with a line - we can just add a hitbox around where the current value is in
@@ -188,7 +189,10 @@
 //               draw_* procedures in editor.cpp.
 // TODO: editor undoing
 // TODO: prompt to save level if open pressed when changes have been made
+// TODO: maybe add Context namespace that has things like Game_State and Controller_State in it, so we don't
+//       have to constantly be passing them around
 
+// TODO: text truncation when its containing box is too small
 // TODO: maybe we don't even need UI state.. we may be able to just hold the State structs ourselves and pass them
 //       to the do_* procedures and those procedures will return the new State structs.
 // TODO: don't allow quotes or brackets in any level strings, i.e. in level name, texture name, material name, etc.
