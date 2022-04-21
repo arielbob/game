@@ -730,7 +730,6 @@ void update(Game_State *game_state,
     
     static HSV_Color hsv_color = { hue_degrees, 100, 100 };
     static Vec2 initial_position = hsv_to_cursor_position_inside_quad(hsv_color,
-                                                                      hsv_picker_position.x, hsv_picker_position.y,
                                                                       hsv_picker_width, hsv_picker_height);
     static HSV_Picker_State hsv_picker_state = {
         hsv_color,

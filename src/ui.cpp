@@ -820,13 +820,12 @@ int32 do_hue_slider(UI_Manager *manager, Controller_State *controller_state,
 // NOTE: we only use this procedure for initializing the picker's cursor position since HSV_Color uses ints
 //       and as a result the returned cursor position is not very fluid when moving the cursor.
 Vec2 hsv_to_cursor_position_inside_quad(HSV_Color hsv_color,
-                                        real32 x, real32 y,
                                         real32 width, real32 height) {
     real32 x_percentage = (real32) hsv_color.s / 100.0f;
     real32 y_percentage = 1.0f - ((real32) hsv_color.v / 100.0f);
 
-    real32 cursor_x = x + x_percentage*width;
-    real32 cursor_y = y + y_percentage*height;
+    real32 cursor_x = x_percentage*width;
+    real32 cursor_y = y_percentage*height;
 
     return make_vec2(cursor_x, cursor_y);
 }

@@ -172,7 +172,8 @@
 //       - TODO (done): add an hsv picker UI element that takes in a hue in degrees and returns the HSV value for
 //                      whatever the cursor selected.
 //       - TODO (done): draw a circle at the HSV picker's cursor
-//       - TODO: add procedure to draw filled circle
+//       - TODO (done): write procedure to generate vertices for a filled circle
+//       - TODO (done): add procedure to draw filled circle
 //       - TODO: draw filled circle with the actual selected color at the HSV picker's cursor
 //       - TODO: draw little arrows on the side of the hue slider so that you can move the slider without hiding
 //               the actual color with a line - we can just add a hitbox around where the current value is in
@@ -962,17 +963,38 @@ void gl_delete_texture(GL_Texture texture) {
     glDeleteTextures(1, &texture.id);
 }
 
-void generate_circle_vertices(real32 *buffer, int32 num_vertices, real32 radius) {
+void generate_circle_vertices(real32 *buffer, int32 buffer_size,
+                              int32 num_vertices, real32 radius, bool32 include_center = false) {
     assert(num_vertices > 0);
+
+    // num_vertices doesn't initially include the start vertex twice, but we need it at the start and end so that
+    // TRIANGLE_FAN draws the final triangle
+    int32 total_num_vertices = num_vertices + 1;
+    if (include_center) {
+        total_num_vertices++;
+    }
+
+    int32 min_buffer_size = total_num_vertices * 3 * sizeof(real32);
+    assert(buffer_size >= min_buffer_size);
+
+    int32 vertex_offset = 0;
+    if (include_center) {
+        buffer[vertex_offset] = 0.0f;
+        buffer[vertex_offset + 1] = 0.0f;
+        buffer[vertex_offset + 2] = 0.0f;
+        vertex_offset++;
+    }
+    
     // generate circle vertices on the xy-plane
-    for (int32 i = 0; i < num_vertices; i++) {
+    for (int32 i = 0; i < num_vertices + 1; i++) {
         real32 t = (real32) i / num_vertices;
         real32 angle = 2.0f * PI * t;
         real32 x = cosf(angle) * radius;
         real32 y = sinf(angle) * radius;
-        buffer[i * 3] = x,
-        buffer[i * 3 + 1] = y;
-        buffer[i * 3 + 2] = 0.0f;
+        buffer[vertex_offset * 3] = x,
+        buffer[vertex_offset * 3 + 1] = y;
+        buffer[vertex_offset * 3 + 2] = 0.0f;
+        vertex_offset++;
     }
 }
 
@@ -1122,7 +1144,7 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
     glBindVertexArray(0);
     gl_state->glyph_quad_mesh_id = gl_add_rendering_mesh(gl_state, make_gl_mesh(vao, vbo, 2));
 
-    // NOTE: line mesh
+    // line mesh
     real32 line_vertices[] = {
         0.0f, 0.0f, 0.0f,
         1.0f, 1.0f, 0.0f,
@@ -1142,14 +1164,17 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
     glBindVertexArray(0);
     gl_state->line_mesh_id = gl_add_rendering_mesh(gl_state, make_gl_mesh(vao, vbo, 0));
 
-    real32 circle_vertices[32*3];
-    generate_circle_vertices(circle_vertices, 32, 1.0f);
+    // circle mesh
+    // add 2, since we need a space for the center of the circle and another space since the final vertex
+    // is a duplicate of the first.
+    real32 filled_circle_vertices[(NUM_CIRCLE_VERTICES + 2)*3];
+    generate_circle_vertices(filled_circle_vertices, sizeof(filled_circle_vertices), NUM_CIRCLE_VERTICES, 1.0f, true);
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
 
     glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(circle_vertices), circle_vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(filled_circle_vertices), filled_circle_vertices, GL_STATIC_DRAW);
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,
                           3 * sizeof(real32), (void *) 0);
@@ -1478,7 +1503,8 @@ void gl_draw_circle(GL_State *gl_state, Render_State *render_state, Transform tr
     gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->cpv_matrix);
     gl_set_uniform_vec4(shader_id, "color", &color);
 
-    glDrawArrays(GL_LINE_LOOP, 0, 32);
+    // offset by 1 since this only draws an outline
+    glDrawArrays(GL_LINE, 1, NUM_CIRCLE_VERTICES + 1);
 
     glUseProgram(0);
     glBindVertexArray(0);
@@ -1487,7 +1513,8 @@ void gl_draw_circle(GL_State *gl_state, Render_State *render_state, Transform tr
 void gl_draw_circle(GL_State *gl_state, Render_State *render_state,
                     real32 center_x, real32 center_y,
                     real32 radius,
-                    Vec4 color) {
+                    Vec4 color,
+                    bool32 is_filled) {
     // we could instead draw a circle by drawing a quad, then in the fragment shader checking if the fragment
     // is within some radius, but then, we would have to deal with aliasing, i think, and i think this method
     // would be slower as well.
@@ -1509,7 +1536,11 @@ void gl_draw_circle(GL_State *gl_state, Render_State *render_state,
     gl_set_uniform_mat4(shader_id, "ortho_matrix", &render_state->ortho_clip_matrix);
     gl_set_uniform_vec4(shader_id, "color", &color);
 
-    glDrawArrays(GL_LINE_LOOP, 0, 32);
+    if (is_filled) {
+        glDrawArrays(GL_TRIANGLE_FAN, 0, NUM_CIRCLE_VERTICES + 2);
+    } else {
+        glDrawArrays(GL_LINE, 1, NUM_CIRCLE_VERTICES + 1);
+    }
 
     glUseProgram(0);
     glBindVertexArray(0);
@@ -1899,7 +1930,7 @@ void gl_draw_ui_hsv_picker(GL_State *gl_state, Render_State *render_state,
 
     gl_draw_circle(gl_state, render_state,
                    picker.x + picker.state.relative_cursor_x, picker.y + picker.state.relative_cursor_y,
-                   10.0f, make_vec4(1.0f, 1.0f, 1.0f, 1.0f));
+                   10.0f, make_vec4(1.0f, 1.0f, 1.0f, 1.0f), true);
                    
 
 /*
