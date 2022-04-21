@@ -20,11 +20,6 @@ void main() {
     int segment = (hue_degrees / 60) % 6;
     float segment_percentage = mod(hue_degrees, 60) / 60.0f;
 
-    //float segment_percentage = mod(uv.y * 6.0, 1.0);
-    //vec3 color = vec3(uv.y);
-    //vec3 color = vec3(segment_percentage);
-    //int segment = int(uv.y * 6.0);
-    
     vec3 color1 = colors[segment];
     vec3 color2 = colors[(segment + 1) % 6];
     
@@ -33,7 +28,10 @@ void main() {
     //       that the color has hue of 49, but google's color picker says hue is 50. not sure which
     //       one is correct, but i think it's fine.
     vec3 hue = mix(color1, color2, segment_percentage);
-    vec3 color = hue;
+    vec3 white = vec3(1.0, 1.0, 1.0);
+    vec3 black = vec3(0.0);
+    vec3 color = mix(white, hue, uv.x);
+    color = mix(black, color, uv.y);
 
     FragColor = vec4(color, 1.0f);
 }

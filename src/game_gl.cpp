@@ -167,7 +167,7 @@
 //       - TODO (done): draw rainbow quad
 //       - TODO (done): add a hue slider UI element
 //       - TODO (done): draw a quad who's color is based on a hue degree value
-//       - TODO: draw a quad with the hsv gradient
+//       - TODO (done): draw a quad with the hsv gradient
 //       - TODO: add an hsv picker UI element that takes in a hue in degrees and returns the HSV value for
 //               whatever the cursor selected.
 //       - TODO: draw little arrows on the side of the hue slider so that you can move the slider without hiding
@@ -2393,7 +2393,7 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
                      0.5f * (display_output.width - hsv_quad_width),
                      0.5f * (display_output.height - hsv_quad_height),
                      hsv_quad_width, hsv_quad_height,
-                     100);
+                     50);
 
     glEnable(GL_DEPTH_TEST);
 }
