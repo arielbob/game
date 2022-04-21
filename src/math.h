@@ -130,6 +130,12 @@ struct Euler_Transform {
     Vec3 scale;
 };
 
+struct HSV_Color {
+    int32 h;
+    int32 s;
+    int32 v;
+};
+
 inline Vec4 make_vec4(real32 x, real32 y, real32 z, real32 w);
 Vec4 rgba_to_vec4(real32 r, real32 g, real32 b, real32 a);
 Vec4 rgb_to_vec4(real32 r, real32 g, real32 b);

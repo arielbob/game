@@ -12,6 +12,7 @@ enum UI_Type {
     UI_BOX,
     UI_LINE,
     UI_HUE_SLIDER,
+    UI_HSV_PICKER
     //UI_COLOR_PICKER
 };
 
@@ -455,7 +456,36 @@ UI_Hue_Slider make_ui_hue_slider(real32 x, real32 y,
 // end hue slider
 
 // start HSV picker
+struct UI_HSV_Picker {
+    UI_HEADER
 
+    real32 x;
+    real32 y;
+
+    real32 width;
+    real32 height;
+
+    HSV_Color hsv_color;
+};
+
+UI_HSV_Picker make_ui_hsv_picker(real32 x, real32 y,
+                                 real32 width, real32 height,
+                                 HSV_Color hsv_color,
+                                 char *id) {
+    UI_HSV_Picker hsv_picker;
+
+    hsv_picker.type = UI_HSV_PICKER;
+    hsv_picker.x = x;
+    hsv_picker.y = y;
+    hsv_picker.width = width;
+    hsv_picker.height = height;
+    hsv_picker.hsv_color = hsv_color;
+
+    UI_id hsv_picker_id = { UI_HSV_PICKER, id, 0 };
+    hsv_picker.id = hsv_picker_id;
+
+    return hsv_picker;
+}
 // end HSV picker
 
 // start color picker

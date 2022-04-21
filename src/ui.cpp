@@ -141,6 +141,11 @@ void ui_add_hue_slider(UI_Manager *manager, UI_Hue_Slider hue_slider) {
     *element = hue_slider;
 }
 
+void ui_add_hsv_picker(UI_Manager *manager, UI_HSV_Picker hsv_picker) {
+    UI_HSV_Picker *element = (UI_HSV_Picker *) allocate(&manager->push_buffer, sizeof(UI_HSV_Picker));
+    *element = hsv_picker;
+}
+
 inline bool32 ui_id_equals(UI_id id1, UI_id id2) {
     return ((id1.string_ptr == id2.string_ptr) && (id1.index == id2.index));
 }
@@ -249,6 +254,9 @@ UI_Element *next_element(UI_Element *current_element, UI_Push_Buffer *push_buffe
         } break;
         case UI_HUE_SLIDER: {
             address += sizeof(UI_Hue_Slider);
+        } break;
+        case UI_HSV_PICKER: {
+            address += sizeof(UI_HSV_Picker);
         } break;
         default: {
             assert(!"Unhandled UI element type.");
@@ -807,4 +815,62 @@ int32 do_hue_slider(UI_Manager *manager, Controller_State *controller_state,
     ui_add_hue_slider(manager, slider);
 
     return hue_degrees;
+}
+
+HSV_Color get_hsv_inside_quad(Vec2 current_mouse, int32 hue_degrees,
+                              real32 x, real32 y,
+                              real32 width, real32 height) {
+    int32 hue = hue_degrees;
+    real32 x_percentage = (current_mouse.x - x) / width;
+    real32 y_percentage = 1.0f - (current_mouse.y - y) / height; // bottom = 0.0, top = 1.0
+    int32 saturation = (int32) (x_percentage * 100.0f);
+    int32 value = (int32) (y_percentage * 100.0f);
+
+    hue = clamp(hue, 0, 360);
+    saturation = clamp(saturation, 0, 100);
+    value = clamp(value, 0, 100);
+            
+    HSV_Color result = { hue, saturation, value };
+    return result;
+}
+
+HSV_Color do_hsv_picker(UI_Manager *manager, Controller_State *controller_state,
+                        real32 x, real32 y,
+                        real32 width, real32 height,
+                        HSV_Color hsv_color,
+                        char *id_string) {
+    // TODO: is it possible to move this to the end so that we don't have a frame of lag?
+    UI_HSV_Picker picker = make_ui_hsv_picker(x, y, width, height, hsv_color, id_string);
+
+    Vec2 current_mouse = controller_state->current_mouse;
+    if (!manager->is_disabled && in_bounds_on_layer(manager, current_mouse, x, x + width, y, y + height)) {
+        set_hot(manager, picker.id);
+
+        if (controller_state->left_mouse.is_down && !controller_state->left_mouse.was_down) {
+            manager->active = picker.id;
+            hsv_color = get_hsv_inside_quad(current_mouse, hsv_color.h, x, y, width, height);
+        }
+
+        if (!controller_state->left_mouse.is_down) {
+            if (ui_id_equals(manager->active, picker.id)) {
+                manager->active = {};
+            }
+        }
+    } else {
+        if (ui_id_equals(manager->hot, picker.id)) {
+            clear_hot(manager);
+        }
+
+        if (ui_id_equals(manager->active, picker.id) && !controller_state->left_mouse.is_down) {
+            manager->active = {};
+        }
+    }
+
+    if (ui_id_equals(manager->active, picker.id) && being_held(controller_state->left_mouse)) {
+        hsv_color = get_hsv_inside_quad(current_mouse, hsv_color.h, x, y, width, height);
+    }
+
+    ui_add_hsv_picker(manager, picker);
+
+    return hsv_color;
 }

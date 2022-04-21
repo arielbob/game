@@ -724,6 +724,7 @@ void update(Game_State *game_state,
     //game_state->current_char = controller_state->pressed_key;
 
     static int32 hue_degrees = 0;
+    static HSV_Color hsv_color = { hue_degrees, 100, 100 };
     hue_degrees = do_hue_slider(ui_manager, controller_state, 5.0f, 5.0f,
                                 20.0f, 500.0f,
                                 hue_degrees,
@@ -732,7 +733,18 @@ void update(Game_State *game_state,
     string_format(buf, 128, "hue_slider value: %d",
                   hue_degrees);
     do_text(ui_manager, 5.0f, 523.0f, buf, "courier18b", "hue_slider_value_test");
-                  
+    
+    hsv_color.h = hue_degrees;
+    hsv_color = do_hsv_picker(ui_manager, controller_state,
+                              30.0f, 5.0f,
+                              500.0f, 500.0f,
+                              hsv_color,
+                              "hsv_picker_test");
+
+    char *hsv_text = string_format((Allocator *) &memory.frame_arena, 128,
+                                   "HSV: {%d, %d, %d}", hsv_color.h, hsv_color.s, hsv_color.v);
+    do_text(ui_manager, 5.0f, 523.0f + 20.0f, hsv_text, "courier18b", "hsv_picker_value_test");
+
 
     clear_hot_if_gone(ui_manager);
     delete_state_if_gone(ui_manager);

@@ -1541,3 +1541,15 @@ Vec4 rgb_to_vec4(int32 r, int32 g, int32 b) {
     real32 denom = 1.0f / 255.0f;
     return make_vec4(denom*r, denom*g, denom*b, 1.0f);
 }
+
+real32 clamp(real32 value, real32 min, real32 max) {
+    value = min(value, max);
+    value = max(value, min);
+    return value;
+}
+
+int32 clamp(int32 value, int32 min, int32 max) {
+    value = min(value, max);
+    value = max(value, min);
+    return value;
+}

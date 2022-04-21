@@ -168,8 +168,10 @@
 //       - TODO (done): add a hue slider UI element
 //       - TODO (done): draw a quad who's color is based on a hue degree value
 //       - TODO (done): draw a quad with the hsv gradient
-//       - TODO: add an hsv picker UI element that takes in a hue in degrees and returns the HSV value for
-//               whatever the cursor selected.
+//       - TODO (done): write code to convert mouse position to HSV value
+//       - TODO (done): add an hsv picker UI element that takes in a hue in degrees and returns the HSV value for
+//                      whatever the cursor selected.
+//       - TODO: draw a circle at current selected HSV value on the HSV picker
 //       - TODO: draw little arrows on the side of the hue slider so that you can move the slider without hiding
 //               the actual color with a line - we can just add a hitbox around where the current value is in
 //               do_hue_slider(), and then when we draw it, draw arrows within that hitbox.
@@ -1831,6 +1833,24 @@ void gl_draw_ui_hue_slider(GL_State *gl_state, Render_State *render_state,
                  make_vec4(1.0f, 1.0f, 1.0f, 1.0f));
 }
 
+void gl_draw_ui_hsv_picker(GL_State *gl_state, Render_State *render_state,
+                           UI_Manager *ui_manager, UI_HSV_Picker picker) {
+    gl_draw_hsv_quad(gl_state, render_state,
+                     picker.x, picker.y,
+                     picker.width, picker.height,
+                     picker.hsv_color.h);
+
+/*
+    real32 line_y = slider.y + (slider.height - ((real32) slider.hue_degrees / 360.0f) * slider.height);
+    real32 line_x = slider.x;
+
+    gl_draw_quad(gl_state, render_state,
+                 line_x, line_y,
+                 slider.width, 1.0f,
+                 make_vec4(1.0f, 1.0f, 1.0f, 1.0f));
+*/
+}
+
 void gl_draw_ui_box(GL_State *gl_state, Render_State *render_state,
                     UI_Manager *ui_manager, UI_Box box) {
     UI_Box_Style style = box.style;
@@ -1906,6 +1926,11 @@ void gl_draw_ui(GL_State *gl_state, Game_State *game_state,
                 UI_Hue_Slider *ui_hue_slider = (UI_Hue_Slider *) element;
                 gl_draw_ui_hue_slider(gl_state, render_state, ui_manager, *ui_hue_slider);
                 address += sizeof(UI_Hue_Slider);
+            } break;
+            case UI_HSV_PICKER: {
+                UI_HSV_Picker *ui_hsv_picker = (UI_HSV_Picker *) element;
+                gl_draw_ui_hsv_picker(gl_state, render_state, ui_manager, *ui_hsv_picker);
+                address += sizeof(UI_HSV_Picker);
             } break;
             default: {
                 assert(!"Unhandled UI element type.");
@@ -2387,6 +2412,7 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
                      hsv_quad_width, hsv_quad_height);
 #endif
 
+#if 0
     real32 hsv_quad_width = 500.0f;
     real32 hsv_quad_height = 500.0f;
     gl_draw_hsv_quad(gl_state, render_state,
@@ -2394,6 +2420,7 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
                      0.5f * (display_output.height - hsv_quad_height),
                      hsv_quad_width, hsv_quad_height,
                      50);
+#endif
 
     glEnable(GL_DEPTH_TEST);
 }
