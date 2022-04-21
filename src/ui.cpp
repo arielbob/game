@@ -817,6 +817,20 @@ int32 do_hue_slider(UI_Manager *manager, Controller_State *controller_state,
     return hue_degrees;
 }
 
+// NOTE: we only use this procedure for initializing the picker's cursor position since HSV_Color uses ints
+//       and as a result the returned cursor position is not very fluid when moving the cursor.
+Vec2 hsv_to_cursor_position_inside_quad(HSV_Color hsv_color,
+                                        real32 x, real32 y,
+                                        real32 width, real32 height) {
+    real32 x_percentage = (real32) hsv_color.s / 100.0f;
+    real32 y_percentage = 1.0f - ((real32) hsv_color.v / 100.0f);
+
+    real32 cursor_x = x + x_percentage*width;
+    real32 cursor_y = y + y_percentage*height;
+
+    return make_vec2(cursor_x, cursor_y);
+}
+
 HSV_Color get_hsv_inside_quad(Vec2 current_mouse, int32 hue_degrees,
                               real32 x, real32 y,
                               real32 width, real32 height) {
@@ -834,21 +848,30 @@ HSV_Color get_hsv_inside_quad(Vec2 current_mouse, int32 hue_degrees,
     return result;
 }
 
-HSV_Color do_hsv_picker(UI_Manager *manager, Controller_State *controller_state,
-                        real32 x, real32 y,
-                        real32 width, real32 height,
-                        HSV_Color hsv_color,
-                        char *id_string) {
-    // TODO: is it possible to move this to the end so that we don't have a frame of lag?
-    UI_HSV_Picker picker = make_ui_hsv_picker(x, y, width, height, hsv_color, id_string);
-
+HSV_Picker_State do_hsv_picker(UI_Manager *manager, Controller_State *controller_state,
+                               real32 x, real32 y,
+                               real32 width, real32 height,
+                               HSV_Picker_State state,
+                               char *id_string) {
     Vec2 current_mouse = controller_state->current_mouse;
+
+    // TODO: is it possible to move this to the end so that we don't have a frame of lag?
+    UI_HSV_Picker picker = make_ui_hsv_picker(x, y,
+                                              width, height,
+                                              state,
+                                              id_string);
+
+    real32 relative_x = current_mouse.x - x;
+    real32 relative_y = current_mouse.y - y;
+
     if (!manager->is_disabled && in_bounds_on_layer(manager, current_mouse, x, x + width, y, y + height)) {
         set_hot(manager, picker.id);
 
         if (controller_state->left_mouse.is_down && !controller_state->left_mouse.was_down) {
             manager->active = picker.id;
-            hsv_color = get_hsv_inside_quad(current_mouse, hsv_color.h, x, y, width, height);
+            state.hsv_color = get_hsv_inside_quad(current_mouse, state.hsv_color.h, x, y, width, height);
+            state.relative_cursor_x = clamp(relative_x, 0.0f, width);
+            state.relative_cursor_y = clamp(relative_y, 0.0f, height);
         }
 
         if (!controller_state->left_mouse.is_down) {
@@ -867,10 +890,12 @@ HSV_Color do_hsv_picker(UI_Manager *manager, Controller_State *controller_state,
     }
 
     if (ui_id_equals(manager->active, picker.id) && being_held(controller_state->left_mouse)) {
-        hsv_color = get_hsv_inside_quad(current_mouse, hsv_color.h, x, y, width, height);
+        state.hsv_color = get_hsv_inside_quad(current_mouse, state.hsv_color.h, x, y, width, height);
+        state.relative_cursor_x = clamp(relative_x, 0.0f, width);
+        state.relative_cursor_y = clamp(relative_y, 0.0f, height);
     }
 
     ui_add_hsv_picker(manager, picker);
 
-    return hsv_color;
+    return state;
 }

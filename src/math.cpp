@@ -1553,3 +1553,45 @@ int32 clamp(int32 value, int32 min, int32 max) {
     value = max(value, min);
     return value;
 }
+
+real32 mix(real32 a, real32 b, real32 t) {
+    return a*(1.0f - t) + b*t;
+}
+
+Vec3 mix(Vec3 a, Vec3 b, real32 t) {
+    return a*(1.0f - t) + b*t;
+}
+
+RGB_Color vec3_to_rgb(Vec3 v) {
+    RGB_Color result;
+    result.r = (int) (v.x * 255.0f);
+    result.g = (int) (v.y * 255.0f);
+    result.b = (int) (v.z * 255.0f);
+    return result;
+}
+
+RGB_Color hsv_to_rgb(HSV_Color hsv_color) {
+    Vec3 colors[6] = {
+        { 1.0f, 0.0f, 0.0f },
+        { 1.0f, 1.0f, 0.0f },
+        { 0.0f, 1.0f, 0.0f },
+        { 0.0f, 1.0f, 1.0f },
+        { 0.0f, 0.0f, 1.0f },
+        { 1.0f, 0.0f, 1.0f }
+    };
+
+    int segment = (hsv_color.h / 60) % 6;
+    float segment_percentage = (hsv_color.h % 60) / 60.0f;
+
+    Vec3 color1 = colors[segment];
+    Vec3 color2 = colors[(segment + 1) % 6];
+    
+    Vec3 hue = mix(color1, color2, segment_percentage);
+    Vec3 white = make_vec3(1.0f, 1.0f, 1.0f);
+    Vec3 black = make_vec3();
+
+    Vec3 v = mix(white, hue, (real32) hsv_color.s / 100.0f);
+    v = mix(black, v, (real32) hsv_color.v / 100.0f );
+
+    return vec3_to_rgb(v);
+}

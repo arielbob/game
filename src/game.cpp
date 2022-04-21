@@ -724,7 +724,19 @@ void update(Game_State *game_state,
     //game_state->current_char = controller_state->pressed_key;
 
     static int32 hue_degrees = 0;
+    Vec2 hsv_picker_position = make_vec2(30.0f, 5.0f);
+    real32 hsv_picker_width = 500.0f;
+    real32 hsv_picker_height = 500.0f;
+    
     static HSV_Color hsv_color = { hue_degrees, 100, 100 };
+    static Vec2 initial_position = hsv_to_cursor_position_inside_quad(hsv_color,
+                                                                      hsv_picker_position.x, hsv_picker_position.y,
+                                                                      hsv_picker_width, hsv_picker_height);
+    static HSV_Picker_State hsv_picker_state = {
+        hsv_color,
+        initial_position.x,
+        initial_position.y
+    };
     hue_degrees = do_hue_slider(ui_manager, controller_state, 5.0f, 5.0f,
                                 20.0f, 500.0f,
                                 hue_degrees,
@@ -734,15 +746,18 @@ void update(Game_State *game_state,
                   hue_degrees);
     do_text(ui_manager, 5.0f, 523.0f, buf, "courier18b", "hue_slider_value_test");
     
-    hsv_color.h = hue_degrees;
-    hsv_color = do_hsv_picker(ui_manager, controller_state,
-                              30.0f, 5.0f,
-                              500.0f, 500.0f,
-                              hsv_color,
-                              "hsv_picker_test");
+    hsv_picker_state.hsv_color.h = hue_degrees;
+    hsv_picker_state = do_hsv_picker(ui_manager, controller_state,
+                                     hsv_picker_position.x, hsv_picker_position.y,
+                                     hsv_picker_width, hsv_picker_height,
+                                     hsv_picker_state,
+                                     "hsv_picker_test");
 
     char *hsv_text = string_format((Allocator *) &memory.frame_arena, 128,
-                                   "HSV: {%d, %d, %d}", hsv_color.h, hsv_color.s, hsv_color.v);
+                                   "HSV: {%d, %d, %d}",
+                                   hsv_picker_state.hsv_color.h,
+                                   hsv_picker_state.hsv_color.s,
+                                   hsv_picker_state.hsv_color.v);
     do_text(ui_manager, 5.0f, 523.0f + 20.0f, hsv_text, "courier18b", "hsv_picker_value_test");
 
 

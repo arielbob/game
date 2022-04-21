@@ -171,7 +171,9 @@
 //       - TODO (done): write code to convert mouse position to HSV value
 //       - TODO (done): add an hsv picker UI element that takes in a hue in degrees and returns the HSV value for
 //                      whatever the cursor selected.
-//       - TODO: draw a circle at current selected HSV value on the HSV picker
+//       - TODO (done): draw a circle at the HSV picker's cursor
+//       - TODO: add procedure to draw filled circle
+//       - TODO: draw filled circle with the actual selected color at the HSV picker's cursor
 //       - TODO: draw little arrows on the side of the hue slider so that you can move the slider without hiding
 //               the actual color with a line - we can just add a hitbox around where the current value is in
 //               do_hue_slider(), and then when we draw it, draw arrows within that hitbox.
@@ -184,6 +186,8 @@
 // TODO: editor undoing
 // TODO: prompt to save level if open pressed when changes have been made
 
+// TODO: maybe we don't even need UI state.. we may be able to just hold the State structs ourselves and pass them
+//       to the do_* procedures and those procedures will return the new State structs.
 // TODO: don't allow quotes or brackets in any level strings, i.e. in level name, texture name, material name, etc.
 //       (requires text box validation)
 
@@ -960,15 +964,15 @@ void gl_delete_texture(GL_Texture texture) {
 
 void generate_circle_vertices(real32 *buffer, int32 num_vertices, real32 radius) {
     assert(num_vertices > 0);
-    // generate circle vertices on the yz-plane, i.e. x always = 0.
+    // generate circle vertices on the xy-plane
     for (int32 i = 0; i < num_vertices; i++) {
         real32 t = (real32) i / num_vertices;
         real32 angle = 2.0f * PI * t;
         real32 x = cosf(angle) * radius;
         real32 y = sinf(angle) * radius;
-        buffer[i * 3] = 0.0f;
+        buffer[i * 3] = x,
         buffer[i * 3 + 1] = y;
-        buffer[i * 3 + 2] = x;
+        buffer[i * 3 + 2] = 0.0f;
     }
 }
 
@@ -1181,6 +1185,9 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
     gl_load_shader(gl_state,
                    "src/shaders/hsv.vs", "src/shaders/hsv.fs",
                    "hsv");
+    gl_load_shader(gl_state,
+                   "src/shaders/mesh_2d.vs", "src/shaders/mesh_2d.fs",
+                   "mesh_2d");
     gl_state->gizmo_framebuffer = gl_make_framebuffer(display_output.width, display_output.height);
 
     glGenBuffers(1, &gl_state->global_ubo);
@@ -1456,6 +1463,56 @@ void gl_draw_quad(GL_State *gl_state,
                   Vec3 color) {
     gl_draw_quad(gl_state, render_state, x_pos_pixels, y_pos_pixels, width_pixels, height_pixels,
                  make_vec4(color, 1.0f));
+}
+
+void gl_draw_circle(GL_State *gl_state, Render_State *render_state, Transform transform, Vec4 color) {
+    uint32 shader_id;
+    uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("basic_3d"), &shader_id);
+    assert(shader_exists);
+    glUseProgram(shader_id);
+
+    GL_Mesh circle_mesh = gl_use_rendering_mesh(gl_state, gl_state->circle_mesh_id);
+
+    Mat4 model_matrix = get_model_matrix(transform);
+    gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
+    gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->cpv_matrix);
+    gl_set_uniform_vec4(shader_id, "color", &color);
+
+    glDrawArrays(GL_LINE_LOOP, 0, 32);
+
+    glUseProgram(0);
+    glBindVertexArray(0);
+}
+
+void gl_draw_circle(GL_State *gl_state, Render_State *render_state,
+                    real32 center_x, real32 center_y,
+                    real32 radius,
+                    Vec4 color) {
+    // we could instead draw a circle by drawing a quad, then in the fragment shader checking if the fragment
+    // is within some radius, but then, we would have to deal with aliasing, i think, and i think this method
+    // would be slower as well.
+
+    uint32 shader_id;
+    uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("mesh_2d"), &shader_id);
+    assert(shader_exists);
+    glUseProgram(shader_id);
+
+    GL_Mesh circle_mesh = gl_use_rendering_mesh(gl_state, gl_state->circle_mesh_id);
+
+    Transform transform = {
+        make_vec3(center_x, center_y, 0.0f),
+        make_quaternion(),
+        make_vec3(radius, radius, 1.0f)
+    };
+    Mat4 model_matrix = get_model_matrix(transform);
+    gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
+    gl_set_uniform_mat4(shader_id, "ortho_matrix", &render_state->ortho_clip_matrix);
+    gl_set_uniform_vec4(shader_id, "color", &color);
+
+    glDrawArrays(GL_LINE_LOOP, 0, 32);
+
+    glUseProgram(0);
+    glBindVertexArray(0);
 }
 
 void draw_sound_cursor(GL_State *gl_state,
@@ -1838,7 +1895,12 @@ void gl_draw_ui_hsv_picker(GL_State *gl_state, Render_State *render_state,
     gl_draw_hsv_quad(gl_state, render_state,
                      picker.x, picker.y,
                      picker.width, picker.height,
-                     picker.hsv_color.h);
+                     picker.state.hsv_color.h);
+
+    gl_draw_circle(gl_state, render_state,
+                   picker.x + picker.state.relative_cursor_x, picker.y + picker.state.relative_cursor_y,
+                   10.0f, make_vec4(1.0f, 1.0f, 1.0f, 1.0f));
+                   
 
 /*
     real32 line_y = slider.y + (slider.height - ((real32) slider.hue_degrees / 360.0f) * slider.height);
@@ -1937,25 +1999,6 @@ void gl_draw_ui(GL_State *gl_state, Game_State *game_state,
             }
         }
     }
-}
-
-void gl_draw_circle(GL_State *gl_state, Render_State *render_state, Transform transform, Vec4 color) {
-    uint32 shader_id;
-    uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("basic_3d"), &shader_id);
-    assert(shader_exists);
-    glUseProgram(shader_id);
-
-    GL_Mesh circle_mesh = gl_use_rendering_mesh(gl_state, gl_state->circle_mesh_id);
-
-    Mat4 model_matrix = get_model_matrix(transform);
-    gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
-    gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->cpv_matrix);
-    gl_set_uniform_vec4(shader_id, "color", &color);
-
-    glDrawArrays(GL_LINE_LOOP, 0, 32);
-
-    glUseProgram(0);
-    glBindVertexArray(0);
 }
 
 void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Editor_State *editor_state) {

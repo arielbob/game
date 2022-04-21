@@ -456,6 +456,12 @@ UI_Hue_Slider make_ui_hue_slider(real32 x, real32 y,
 // end hue slider
 
 // start HSV picker
+struct HSV_Picker_State {
+    HSV_Color hsv_color;
+    real32 relative_cursor_x;
+    real32 relative_cursor_y;
+};
+
 struct UI_HSV_Picker {
     UI_HEADER
 
@@ -465,12 +471,12 @@ struct UI_HSV_Picker {
     real32 width;
     real32 height;
 
-    HSV_Color hsv_color;
+    HSV_Picker_State state;
 };
 
 UI_HSV_Picker make_ui_hsv_picker(real32 x, real32 y,
                                  real32 width, real32 height,
-                                 HSV_Color hsv_color,
+                                 HSV_Picker_State state,
                                  char *id) {
     UI_HSV_Picker hsv_picker;
 
@@ -479,7 +485,7 @@ UI_HSV_Picker make_ui_hsv_picker(real32 x, real32 y,
     hsv_picker.y = y;
     hsv_picker.width = width;
     hsv_picker.height = height;
-    hsv_picker.hsv_color = hsv_color;
+    hsv_picker.state = state;
 
     UI_id hsv_picker_id = { UI_HSV_PICKER, id, 0 };
     hsv_picker.id = hsv_picker_id;

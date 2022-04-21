@@ -130,6 +130,12 @@ struct Euler_Transform {
     Vec3 scale;
 };
 
+struct RGB_Color {
+    int32 r;
+    int32 g;
+    int32 b;
+};
+
 struct HSV_Color {
     int32 h;
     int32 s;
