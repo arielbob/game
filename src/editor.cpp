@@ -22,8 +22,12 @@ void set_temp_material(Editor_State *editor_state, Material material) {
 }
 #endif
 
-char *editor_font_name = "courier18";
-char *editor_font_name_bold = "courier18b";
+#if 0
+char *editor_font_name = "courier16";
+char *editor_font_name_bold = "courier16b";
+#else
+char *editor_font_name = "calibri14";
+#endif
 
 // for comparing current to new
 bool32 selected_entity_changed(Editor_State *editor_state,
@@ -224,6 +228,10 @@ void draw_labeled_text(Game_State *game_state, UI_Manager *ui_manager,
                          text, text_font, text_style);
 }
 
+void draw_color_picker(Game_State *game_state, Controller_State *controller_state) {
+    
+}
+
 void draw_mesh_library(Game_State *game_state, Controller_State *controller_state, Entity *selected_entity) {
     Render_State *render_state = &game_state->render_state;
     UI_Manager *ui_manager = &game_state->ui_manager;
@@ -247,7 +255,7 @@ void draw_mesh_library(Game_State *game_state, Controller_State *controller_stat
     Vec4 title_row_color = make_vec4(0.05f, 0.2f, 0.5f, 1.0f);
     Vec4 row_color = make_vec4(0.1f, 0.1f, 0.1f, 1.0f);
 
-    Font font = get_font(game_state, editor_font_name_bold);
+    Font font = get_font(game_state, editor_font_name);
     real32 button_padding_x = 15.0f;
 
     char *row_id = "mesh_library_row";
@@ -262,7 +270,7 @@ void draw_mesh_library(Game_State *game_state, Controller_State *controller_stat
     draw_row(ui_manager, controller_state, x, y, window_width, title_row_height, title_row_color,
              SIDE_LEFT | SIDE_RIGHT | SIDE_TOP | SIDE_BOTTOM, row_id, row_index++);
     draw_centered_text(game_state, ui_manager, x, y, window_width, title_row_height,
-                       "Mesh Library", editor_font_name_bold, text_style);
+                       "Mesh Library", editor_font_name, text_style);
     y += title_row_height;
 
     real32 content_height = 500.0f;
@@ -276,7 +284,7 @@ void draw_mesh_library(Game_State *game_state, Controller_State *controller_stat
                                            cancel_button_width, SMALL_ROW_HEIGHT,
                                            default_text_button_cancel_style, default_text_style,
                                            "Cancel",
-                                           editor_font_name_bold,
+                                           editor_font_name,
                                            "choose_mesh_cancel");
     if (cancel_pressed) {
         editor_state->open_window_flags = 0;
@@ -299,7 +307,7 @@ void draw_mesh_library(Game_State *game_state, Controller_State *controller_stat
                                                filter_button_width, filter_button_height,
                                                filter_button_style, default_text_style,
                                                "All",
-                                               editor_font_name_bold,
+                                               editor_font_name,
                                                editor_state->mesh_library_filter == Mesh_Type::NONE,
                                                "mesh_filter_all");
     if (all_filter_pressed) editor_state->mesh_library_filter = Mesh_Type::NONE;
@@ -316,7 +324,7 @@ void draw_mesh_library(Game_State *game_state, Controller_State *controller_stat
                                                  filter_button_width, filter_button_height,
                                                  filter_button_style, default_text_style,
                                                  "Level",
-                                                 editor_font_name_bold,
+                                                 editor_font_name,
                                                  editor_state->mesh_library_filter == Mesh_Type::LEVEL,
                                                  "mesh_filter_level");
     if (level_filter_pressed) editor_state->mesh_library_filter = Mesh_Type::LEVEL;
@@ -334,7 +342,7 @@ void draw_mesh_library(Game_State *game_state, Controller_State *controller_stat
                                                filter_button_width, filter_button_height,
                                                filter_button_style, default_text_style,
                                                primitives_filter_text,
-                                               editor_font_name_bold,
+                                               editor_font_name,
                                                editor_state->mesh_library_filter == Mesh_Type::PRIMITIVE,
                                                "mesh_filter_primitives");
     if (primitives_pressed) editor_state->mesh_library_filter = Mesh_Type::PRIMITIVE;
@@ -363,7 +371,7 @@ void draw_mesh_library(Game_State *game_state, Controller_State *controller_stat
                                             item_width, item_height,
                                             level_item_style, default_text_style,
                                             mesh_name,
-                                            editor_font_name_bold,
+                                            editor_font_name,
                                             "mesh_library_level_item", i);
 
             if (pressed) {
@@ -393,7 +401,7 @@ void draw_mesh_library(Game_State *game_state, Controller_State *controller_stat
                                             item_width, item_height,
                                             primitive_item_style, default_text_style,
                                             mesh_name,
-                                            editor_font_name_bold,
+                                            editor_font_name,
                                             "mesh_library_primitive_item", i);
 
             if (pressed) {
@@ -458,7 +466,7 @@ void draw_texture_library(Game_State *game_state, Controller_State *controller_s
     draw_row(ui_manager, controller_state, x, y, window_width, title_row_height, title_row_color,
              SIDE_LEFT | SIDE_RIGHT | SIDE_TOP | SIDE_BOTTOM, row_id, row_index++);
     draw_centered_text(game_state, ui_manager, x, y, window_width, title_row_height,
-                       "Texture Library", editor_font_name_bold, text_style);
+                       "Texture Library", editor_font_name, text_style);
     y += title_row_height;
 
     real32 content_height = 500.0f;
@@ -472,7 +480,7 @@ void draw_texture_library(Game_State *game_state, Controller_State *controller_s
                                            cancel_button_width, SMALL_ROW_HEIGHT,
                                            default_text_button_cancel_style, default_text_style,
                                            "Cancel",
-                                           editor_font_name_bold,
+                                           editor_font_name,
                                            "choose_texture_cancel");
     if (cancel_pressed) {
         editor_state->open_window_flags = 0;
@@ -499,7 +507,7 @@ void draw_texture_library(Game_State *game_state, Controller_State *controller_s
                                          x, y,
                                          item_width, item_height,
                                          image_button_style, default_text_style,
-                                         entry->key, texture_name, editor_font_name_bold,
+                                         entry->key, texture_name, editor_font_name,
                                          button_id_string, i);
 
         if (pressed) picked_texture_id = entry->key;
@@ -558,7 +566,7 @@ void draw_material_library(Game_State *game_state, Controller_State *controller_
     draw_row(ui_manager, controller_state, x, y, window_width, title_row_height, title_row_color,
              SIDE_LEFT | SIDE_RIGHT | SIDE_TOP | SIDE_BOTTOM, row_id, row_index++);
     draw_centered_text(game_state, ui_manager, x, y, window_width, title_row_height,
-                       "Material Library", editor_font_name_bold, text_style);
+                       "Material Library", editor_font_name, text_style);
     y += title_row_height;
 
     real32 content_height = 500.0f;
@@ -572,7 +580,7 @@ void draw_material_library(Game_State *game_state, Controller_State *controller_
                                            cancel_button_width, SMALL_ROW_HEIGHT,
                                            default_text_button_cancel_style, default_text_style,
                                            "Cancel",
-                                           editor_font_name_bold,
+                                           editor_font_name,
                                            "choose_material_cancel");
     if (cancel_pressed) {
         editor_state->open_window_flags = 0;
@@ -596,7 +604,7 @@ void draw_material_library(Game_State *game_state, Controller_State *controller_
                                         item_width, item_height,
                                         default_text_button_style, default_text_style,
                                         to_char_array(allocator, material->name),
-                                        editor_font_name_bold,
+                                        editor_font_name,
                                         button_id_string, i);
 
         if (pressed) picked_material_id = entry->key;
@@ -649,13 +657,13 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     real32 padding_top = padding_left;
     real32 padding_bottom = padding_left;
     real32 padding_y = padding_top;
-    real32 right_column_offset = padding_left + 200.0f;
+    real32 right_column_offset = padding_left + 120.0f;
     real32 small_spacing = 20.0f;
 
     real32 initial_row_height = 22.0f;
     real32 row_height = initial_row_height;
     real32 small_row_height = SMALL_ROW_HEIGHT;
-    real32 row_width = 500.0f;
+    real32 row_width = 400.0f;
 
     Vec4 title_row_color = make_vec4(0.05f, 0.2f, 0.5f, 1.0f);
     Vec4 row_color = make_vec4(0.1f, 0.1f, 0.1f, 0.9f);
@@ -672,7 +680,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     draw_row(ui_manager, controller_state, x, y, row_width, title_row_height, title_row_color,
              side_flags | SIDE_TOP, row_id, row_index++);
     draw_centered_text(game_state, ui_manager, x, y, row_width, title_row_height,
-                       "Entity Properties", editor_font_name_bold, text_style);
+                       "Entity Properties", editor_font_name, text_style);
     y += title_row_height;
     draw_row_line(ui_manager, controller_state, x, &y, row_width);
         
@@ -688,7 +696,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     char *mesh_label_string = "Mesh";
     if (entity->mesh_type == Mesh_Type::PRIMITIVE) mesh_label_string = "Mesh (primitive)";
     draw_v_centered_text(game_state, ui_manager, x + padding_left, y, row_height,
-                         mesh_label_string, editor_font_name_bold, text_style);
+                         mesh_label_string, editor_font_name, text_style);
 
     x += right_column_offset;
     bool32 choose_mesh_pressed = do_text_button(ui_manager, controller_state,
@@ -696,7 +704,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                                 choose_mesh_button_width, row_height,
                                                 button_style, default_text_style,
                                                 to_char_array(allocator, mesh->name),
-                                                editor_font_name_bold, "choose_mesh");
+                                                editor_font_name, "choose_mesh");
 
     if (!editor_state->open_window_flags && choose_mesh_pressed) {
         editor_state->open_window_flags |= MESH_LIBRARY_WINDOW;
@@ -707,7 +715,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                              x, y,
                                              add_mesh_button_width, row_height,
                                              button_style, default_text_style,
-                                             "+", editor_font_name_bold, "add_mesh");
+                                             "+", editor_font_name, "add_mesh");
     x += add_mesh_button_width + padding_left;
 
     if (add_mesh_pressed) {
@@ -725,7 +733,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                               x, y,
                                               edit_mesh_button_width, row_height,
                                               button_style, default_text_style,
-                                              "Edit", editor_font_name_bold,
+                                              "Edit", editor_font_name,
                                               entity->mesh_type == Mesh_Type::PRIMITIVE,
                                               "edit_mesh");
 
@@ -744,12 +752,12 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags,
                  row_id, row_index++);
         draw_v_centered_text(game_state, ui_manager, x + padding_left, y, row_height,
-                             "Mesh Name", editor_font_name_bold, default_text_style);
+                             "Mesh Name", editor_font_name, default_text_style);
         do_text_box(ui_manager, controller_state,
                     x + right_column_offset,
                     y,
                     edit_box_width, row_height,
-                    &mesh->name, editor_font_name_bold,
+                    &mesh->name, editor_font_name,
                     text_box_style, default_text_style,
                     "mesh_name_text_box");
         y += row_height;
@@ -766,24 +774,24 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     // POSITION
     draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags, row_id, row_index++);
     draw_v_centered_text(game_state, ui_manager, x+padding_left, y, small_row_height,
-                         "Position", editor_font_name_bold, text_style);
+                         "Position", editor_font_name, text_style);
     // x
     buf = string_format(allocator, buffer_size, "%f", transform.position.x);
     draw_labeled_text(game_state, ui_manager, x+right_column_offset, y, small_row_height,
-                      editor_font_name_bold, "x", editor_font_name, buf, text_style);
+                      editor_font_name, "x", editor_font_name, buf, text_style);
     y += small_row_height;
     // y
     draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags, row_id, row_index++);
     buf = string_format(allocator, buffer_size, "%f", transform.position.y);
     draw_labeled_text(game_state, ui_manager, x + right_column_offset, y, small_row_height,
-                      editor_font_name_bold, "y", editor_font_name, buf, text_style);
+                      editor_font_name, "y", editor_font_name, buf, text_style);
     y += small_row_height;
     // z
     draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags,
              row_id, row_index++);
     buf = string_format(allocator, buffer_size, "%f", transform.position.z);
     draw_labeled_text(game_state, ui_manager, x + right_column_offset, y, small_row_height,
-                      editor_font_name_bold, "z", editor_font_name, buf, text_style);
+                      editor_font_name, "z", editor_font_name, buf, text_style);
     y += small_row_height;    
 
     draw_row_line(ui_manager, controller_state, x, &y, row_width);
@@ -791,30 +799,30 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     // ROTATION
     draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags, row_id, row_index++);
     draw_v_centered_text(game_state, ui_manager, x+padding_left, y, small_row_height,
-                         "Rotation", editor_font_name_bold, text_style);
+                         "Rotation", editor_font_name, text_style);
     // w
     buf = string_format(allocator, buffer_size, "%f", transform.rotation.w);
     draw_labeled_text(game_state, ui_manager, x + right_column_offset, y, small_row_height,
-                      editor_font_name_bold, "w", editor_font_name, buf, text_style);
+                      editor_font_name, "w", editor_font_name, buf, text_style);
     y += small_row_height;
     // x
     draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags, row_id, row_index++);
     buf = string_format(allocator, buffer_size, "%f", transform.rotation.v.x);
     draw_labeled_text(game_state, ui_manager, x + right_column_offset, y, small_row_height,
-                      editor_font_name_bold, "x", editor_font_name, buf, text_style);
+                      editor_font_name, "x", editor_font_name, buf, text_style);
     y += small_row_height;
     // y
     draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags, row_id, row_index++);
     buf = string_format(allocator, buffer_size, "%f", transform.rotation.v.y);
     draw_labeled_text(game_state, ui_manager, x + right_column_offset, y, small_row_height,
-                      editor_font_name_bold, "y", editor_font_name, buf, text_style);
+                      editor_font_name, "y", editor_font_name, buf, text_style);
     y += small_row_height;
     // z
     draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags,
              row_id, row_index++);
     buf = string_format(allocator, buffer_size, "%f", transform.rotation.v.z);
     draw_labeled_text(game_state, ui_manager, x + right_column_offset, y, small_row_height,
-                      editor_font_name_bold, "z", editor_font_name, buf, text_style);
+                      editor_font_name, "z", editor_font_name, buf, text_style);
     y += small_row_height;
 
     draw_row_line(ui_manager, controller_state, x, &y, row_width);
@@ -822,24 +830,24 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     // SCALE
     draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags, row_id, row_index++);
     draw_v_centered_text(game_state, ui_manager, x+padding_left, y, small_row_height,
-                         "Scale", editor_font_name_bold, text_style);
+                         "Scale", editor_font_name, text_style);
     // x
     buf = string_format(allocator, buffer_size, "%f", transform.scale.x);
     draw_labeled_text(game_state, ui_manager, x + right_column_offset, y, small_row_height,
-                      editor_font_name_bold, "x", editor_font_name, buf, text_style);
+                      editor_font_name, "x", editor_font_name, buf, text_style);
     y += small_row_height;
     // y
     draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags, row_id, row_index++);
     buf = string_format(allocator, buffer_size, "%f", transform.scale.y);
     draw_labeled_text(game_state, ui_manager, x + right_column_offset, y, small_row_height,
-                      editor_font_name_bold, "y", editor_font_name, buf, text_style);
+                      editor_font_name, "y", editor_font_name, buf, text_style);
     y += small_row_height;
     // z
     draw_row(ui_manager, controller_state, x, y, row_width, small_row_height, row_color, side_flags | SIDE_BOTTOM,
              row_id, row_index++);
     buf = string_format(allocator, buffer_size, "%f", transform.scale.z);
     draw_labeled_text(game_state, ui_manager, x + right_column_offset, y, small_row_height,
-                      editor_font_name_bold, "z", editor_font_name, buf, text_style);
+                      editor_font_name, "z", editor_font_name, buf, text_style);
     y += small_row_height;
 
     draw_row_line(ui_manager, controller_state, x, &y, row_width);
@@ -851,7 +859,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags,
              row_id, row_index++);
     draw_v_centered_text(game_state, ui_manager, x+padding_left, y, row_height,
-                         "Material", editor_font_name_bold, text_style);
+                         "Material", editor_font_name, text_style);
 
     side_flags = SIDE_LEFT | SIDE_RIGHT;
 
@@ -872,7 +880,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                                     choose_material_button_width, row_height,
                                                     button_style, default_text_style,
                                                     material_name,
-                                                    editor_font_name_bold, "choose_material");
+                                                    editor_font_name, "choose_material");
 
     if (!editor_state->open_window_flags && choose_material_pressed) {
         editor_state->open_window_flags |= MATERIAL_LIBRARY_WINDOW;
@@ -883,7 +891,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                                  x, y,
                                                  add_material_button_width, row_height,
                                                  button_style, default_text_style,
-                                                 "+", editor_font_name_bold, "add_material");
+                                                 "+", editor_font_name, "add_material");
     x += add_material_button_width + padding_left;
 
     if (add_material_pressed) {
@@ -907,7 +915,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                                   x, y,
                                                   edit_material_button_width, row_height,
                                                   button_style, default_text_style,
-                                                  "Edit", editor_font_name_bold,
+                                                  "Edit", editor_font_name,
                                                   !has_material,
                                                   "edit_material");
     
@@ -929,11 +937,11 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags,
                  row_id, row_index++);
         draw_v_centered_text(game_state, ui_manager, x + padding_left, y, row_height,
-                             "Material Name", editor_font_name_bold, default_text_style);
+                             "Material Name", editor_font_name, default_text_style);
         do_text_box(ui_manager, controller_state,
                     x + right_column_offset, y,
                     edit_box_width, row_height,
-                    &material->name, editor_font_name_bold,
+                    &material->name, editor_font_name,
                     text_box_style, default_text_style,
                     "material_name_text_box");
 
@@ -950,12 +958,12 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags,
                  row_id, row_index++);
         draw_v_centered_text(game_state, ui_manager, x + padding_left, y, row_height,
-                             "Texture", editor_font_name_bold, text_style);
+                             "Texture", editor_font_name, text_style);
         bool32 choose_texture_pressed = do_text_button(ui_manager, controller_state,
                                                        x + right_column_offset, y,
                                                        edit_box_width, row_height,
                                                        button_style, default_text_style,
-                                                       texture_name, editor_font_name_bold, "choose_texture");
+                                                       texture_name, editor_font_name, "choose_texture");
         if (!editor_state->open_window_flags && choose_texture_pressed) {
             editor_state->open_window_flags |= TEXTURE_LIBRARY_WINDOW;
         }
@@ -969,11 +977,11 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                  row_id, row_index++);
         buf = string_format(allocator, buffer_size, "%f", material->gloss);
         draw_v_centered_text(game_state, ui_manager, x + padding_left, y, row_height,
-                             "Gloss", editor_font_name_bold, text_style);
+                             "Gloss", editor_font_name, text_style);
         material->gloss = do_slider(ui_manager, controller_state,
                                     x+right_column_offset, y,
                                     edit_box_width, row_height,
-                                    buf, editor_font_name_bold,
+                                    buf, editor_font_name,
                                     0.0f, 100.0f, material->gloss,
                                     default_slider_style, default_text_style,
                                     "edit_material_gloss_slider");
@@ -986,7 +994,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                  row_id, row_index++);
         buf = string_format(allocator, buffer_size, "%f", material->gloss);
         draw_v_centered_text(game_state, ui_manager, x + padding_left, y, row_height,
-                             "Color Override", editor_font_name_bold, text_style);
+                             "Color Override", editor_font_name, text_style);
         do_color_button(ui_manager, controller_state,
                         x + right_column_offset, y,
                         row_height, row_height,
@@ -1001,13 +1009,13 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags,
                  row_id, row_index++);
         draw_v_centered_text(game_state, ui_manager, x + padding_left, y, row_height,
-                             "Use Color Override", editor_font_name_bold, text_style);
+                             "Use Color Override", editor_font_name, text_style);
         bool32 toggle_color_override_pressed = do_text_button(ui_manager, controller_state,
                                                               x + right_column_offset, y,
                                                               100.0f, row_height,
                                                               button_style, default_text_style,
                                                               material->use_color_override ? "true" : "false",
-                                                              editor_font_name_bold,
+                                                              editor_font_name,
                                                               material->texture_id < 0,
                                                               "material_toggle_use_color_override");
         y += row_height;
@@ -1032,7 +1040,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         draw_row(ui_manager, controller_state, x, y, row_width, row_height, row_color, side_flags,
                  row_id, row_index++);
         draw_v_centered_text(game_state, ui_manager, x + padding_left, y, row_height,
-                             "Light Color", editor_font_name_bold, text_style);
+                             "Light Color", editor_font_name, text_style);
         do_color_button(ui_manager, controller_state,
                         x + right_column_offset, y,
                         row_height, row_height,
@@ -1049,11 +1057,11 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                  row_id, row_index++);
         buf = string_format(allocator, buffer_size, "%f", point_light->falloff_start);
         draw_v_centered_text(game_state, ui_manager, x + padding_left, y, row_height,
-                             "Falloff Start", editor_font_name_bold, text_style);
+                             "Falloff Start", editor_font_name, text_style);
         point_light->falloff_start = do_slider(ui_manager, controller_state,
                                                x+right_column_offset, y,
                                                edit_box_width, row_height,
-                                               buf, editor_font_name_bold,
+                                               buf, editor_font_name,
                                                0.0f, 100.0f, point_light->falloff_start,
                                                default_slider_style, default_text_style,
                                                "edit_material_gloss_slider");
@@ -1066,11 +1074,11 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                  row_id, row_index++);
         buf = string_format(allocator, buffer_size, "%f", point_light->falloff_end);
         draw_v_centered_text(game_state, ui_manager, x + padding_left, y, row_height,
-                             "Falloff Distance", editor_font_name_bold, text_style);
+                             "Falloff Distance", editor_font_name, text_style);
         point_light->falloff_end = do_slider(ui_manager, controller_state,
                                              x+right_column_offset, y,
                                              edit_box_width, row_height,
-                                             buf, editor_font_name_bold,
+                                             buf, editor_font_name,
                                              0.0f, 100.0f, point_light->falloff_end,
                                              default_slider_style, default_text_style,
                                              "edit_material_gloss_slider");
@@ -1103,7 +1111,7 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
     draw_row(ui_manager, controller_state, x, y,
              row_width, button_height, row_color, side_flags, row_id, row_index++);
 
-    Font font = get_font(game_state, editor_font_name_bold);
+    Font font = get_font(game_state, editor_font_name);
     
     x += padding_x;
     real32 new_level_button_width = 50.0f;
@@ -1112,7 +1120,7 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
                                               new_level_button_width, button_height,
                                               default_text_button_style, default_text_style,
                                               "New",
-                                              editor_font_name_bold, "new_level");
+                                              editor_font_name, "new_level");
     if (new_level_clicked) {
         new_level(&game_state->current_level);
         editor_state->selected_entity_index = -1;
@@ -1127,7 +1135,7 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
                                                open_level_button_width, button_height,
                                                default_text_button_style, default_text_style,
                                                "Open",
-                                               editor_font_name_bold, "open_level");
+                                               editor_font_name, "open_level");
     if (open_level_clicked) {
         Marker m = begin_region();
         char *absolute_filename = (char *) region_push(PLATFORM_MAX_PATH);
@@ -1158,7 +1166,7 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
     real32 label_row_height = 18.0f;
     draw_row(ui_manager, controller_state, x, y, row_width, label_row_height, row_color, side_flags, row_id, row_index++);
     do_text(ui_manager, x + padding_x, y + get_center_baseline_offset(label_row_height, get_adjusted_font_height(font)),
-            "Level Name", editor_font_name_bold, default_text_style, "level_name_text_box_label");
+            "Level Name", editor_font_name, default_text_style, "level_name_text_box_label");
     y += label_row_height;
 
     // level name text box
@@ -1167,7 +1175,7 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
                 x + padding_x,
                 y,
                 row_width - padding_x*2, row_height,
-                &game_state->current_level.name, editor_font_name_bold,
+                &game_state->current_level.name, editor_font_name,
                 default_text_box_style, default_text_style,
                 "level_name_text_box");
     y += row_height;
@@ -1183,7 +1191,7 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
                                                save_button_width, button_height,
                                                default_text_button_style, default_text_style,
                                                "Save",
-                                               editor_font_name_bold,
+                                               editor_font_name,
                                                is_empty(game_state->current_level.name),
                                                "save_level");
 
@@ -1219,7 +1227,7 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
                                                   save_as_button_width, button_height,
                                                default_text_button_style, default_text_style,
                                                "Save As...",
-                                               editor_font_name_bold,
+                                               editor_font_name,
                                                is_empty(game_state->current_level.name),
                                                "save_as_level");
 
@@ -1258,7 +1266,7 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
     real32 sidebar_button_width = 200.0f;
 
     real32 button_height = 25.0f;
-    char *button_font_name = editor_font_name_bold;
+    char *button_font_name = editor_font_name;
     // wireframe toggle
     real32 wireframe_button_width = sidebar_button_width;
     bool32 toggle_show_wireframe_clicked = do_text_button(ui_manager, controller_state,
@@ -1340,7 +1348,7 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
                                   "current level: %s", filename_buf);
         do_text(ui_manager,
                 5.0f, render_state->display_output.height - 9.0f,
-                buf, editor_font_name_bold, default_text_style, "editor_current_level_filename");
+                buf, editor_font_name, default_text_style, "editor_current_level_filename");
     }
 }
 

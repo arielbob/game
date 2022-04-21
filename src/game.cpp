@@ -329,12 +329,22 @@ void init_game(Game_State *game_state,
     add_font(game_state, font);
     font = load_font(game_state, "c:/windows/fonts/times.ttf", "times24", 24.0f, 512, 512);
     add_font(game_state, font);
+
     font = load_font(game_state, "c:/windows/fonts/courbd.ttf", "courier24b", 24.0f, 512, 512);
     add_font(game_state, font);
-    font = load_font(game_state, "c:/windows/fonts/cour.ttf", "courier18", 18.0f, 512, 512);
+
+    font = load_font(game_state, "c:/windows/fonts/calibri.ttf", "calibri14", 14.0f, 512, 512);
     add_font(game_state, font);
-    font = load_font(game_state, "c:/windows/fonts/courbd.ttf", "courier18b", 18.0f, 512, 512);
+    font = load_font(game_state, "c:/windows/fonts/calibrib.ttf", "calibri14b", 14.0f, 512, 512);
     add_font(game_state, font);
+
+#if 0
+    font = load_font(game_state, "c:/windows/fonts/courbd.ttf", "courier16", 16.0f, 512, 512);
+    add_font(game_state, font);
+    font = load_font(game_state, "c:/windows/fonts/courbd.ttf", "courier16b", 16.0f, 512, 512);
+    add_font(game_state, font);
+#endif
+
     font = load_font(game_state, "c:/windows/fonts/lucon.ttf", "lucidaconsole18", 18.0f, 512, 512);
     add_font(game_state, font);
 
@@ -723,6 +733,7 @@ void update(Game_State *game_state,
 
     //game_state->current_char = controller_state->pressed_key;
 
+#if 0
     static int32 hue_degrees = 0;
     Vec2 hsv_picker_position = make_vec2(30.0f, 5.0f);
     real32 hsv_picker_width = 500.0f;
@@ -758,6 +769,7 @@ void update(Game_State *game_state,
                                    hsv_picker_state.hsv_color.s,
                                    hsv_picker_state.hsv_color.v);
     do_text(ui_manager, 5.0f, 523.0f + 20.0f, hsv_text, "courier18b", "hsv_picker_value_test");
+#endif
 
 
     clear_hot_if_gone(ui_manager);

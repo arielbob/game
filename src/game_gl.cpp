@@ -175,6 +175,8 @@
 //       - TODO (done): write procedure to generate vertices for a filled circle
 //       - TODO (done): add procedure to draw filled circle
 //       - TODO (done): draw filled circle with the actual selected color at the HSV picker's cursor
+//       - TODO: add procedure for drawing a basic color picker
+
 //       - TODO: draw little arrows on the side of the hue slider so that you can move the slider without hiding
 //               the actual color with a line - we can just add a hitbox around where the current value is in
 //               do_hue_slider(), and then when we draw it, draw arrows within that hitbox.
