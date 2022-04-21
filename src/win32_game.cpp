@@ -1121,25 +1121,29 @@ int WinMain(HINSTANCE hInstance,
                 game_sound_output.max_samples = game_sound_output.buffer_size / sound_output.bytes_per_sample;
                 game_sound_output.samples_per_second = 44100;
 
-                // TODO: we may want to store this in memory
-                Game_State game_state = {};
-                game_state.is_initted = false;
-                game_state.render_state.display_output = initial_display_output;
+                using namespace Context;
 
-                Controller_State controller_state = {};
+                // TODO: we may want to store this in memory
+                Game_State init_game_state = {};
+                game_state = &init_game_state;
+                game_state->is_initted = false;
+                game_state->render_state.display_output = initial_display_output;
+
+                Controller_State init_controller_state = {};
+                controller_state = &init_controller_state;
                 
-                controller_state.current_mouse = platform_get_cursor_pos();
+                controller_state->current_mouse = platform_get_cursor_pos();
                 
                 while (is_running) {
-                    for (uint32 i = 0; i < array_length(controller_state.key_states); i++) {
-                        controller_state.key_states[i].was_down = controller_state.key_states[i].is_down;
+                    for (uint32 i = 0; i < array_length(controller_state->key_states); i++) {
+                        controller_state->key_states[i].was_down = controller_state->key_states[i].is_down;
                     }
-                    controller_state.num_pressed_chars = 0;
+                    controller_state->num_pressed_chars = 0;
 
                     Display_Output game_display_output = { display_output.width, display_output.height };
-                    game_state.render_state.display_output = game_display_output;
-                    controller_state.last_mouse = controller_state.current_mouse;
-                    controller_state.current_mouse = platform_get_cursor_pos();
+                    game_state->render_state.display_output = game_display_output;
+                    controller_state->last_mouse = controller_state->current_mouse;
+                    controller_state->current_mouse = platform_get_cursor_pos();
 
                     while (PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) {
                         if (message.message == WM_QUIT) {
@@ -1161,35 +1165,35 @@ int WinMain(HINSTANCE hInstance,
                                 } else {
                                     win32_process_keyboard_input(was_down, is_down,
                                                                  vk_code, (uint32) (message.lParam >> 16),
-                                                                 &controller_state);
+                                                                 controller_state);
                                 }
                             } break;
                             case WM_LBUTTONDOWN:
                             {
-                                controller_state.left_mouse.is_down = true;
+                                controller_state->left_mouse.is_down = true;
                             } break;
                             case WM_LBUTTONUP:
                             {
-                                controller_state.left_mouse.is_down = false;
-                                controller_state.left_mouse.was_down = true;
+                                controller_state->left_mouse.is_down = false;
+                                controller_state->left_mouse.was_down = true;
                             } break;
                             case WM_RBUTTONDOWN:
                             {
-                                controller_state.right_mouse.is_down = true;
+                                controller_state->right_mouse.is_down = true;
                             } break;
                             case WM_RBUTTONUP:
                             {
-                                controller_state.right_mouse.is_down = false;
-                                controller_state.right_mouse.was_down = true;
+                                controller_state->right_mouse.is_down = false;
+                                controller_state->right_mouse.was_down = true;
                             } break;
                             case WM_MBUTTONDOWN:
                             {
-                                controller_state.middle_mouse.is_down = true;
+                                controller_state->middle_mouse.is_down = true;
                             } break;
                             case WM_MBUTTONUP:
                             {
-                                controller_state.middle_mouse.is_down = false;
-                                controller_state.middle_mouse.was_down = true;
+                                controller_state->middle_mouse.is_down = false;
+                                controller_state->middle_mouse.was_down = true;
                             } break;
                             default:
                             {
@@ -1233,8 +1237,8 @@ int WinMain(HINSTANCE hInstance,
                         
                     uint32 num_samples = bytes_delta / sound_output.bytes_per_sample;
 
-                    update(&game_state,
-                           &controller_state,
+                    update(game_state,
+                           controller_state,
                            &game_sound_output, num_samples);
 
                     fill_sound_buffer(&sound_output, game_sound_output.sound_buffer, num_samples);
@@ -1244,11 +1248,11 @@ int WinMain(HINSTANCE hInstance,
                     }
 
 
-                    gl_render(&gl_state, &game_state,
-                              &controller_state,
+                    gl_render(&gl_state, game_state,
+                              controller_state,
                               game_display_output, &sound_output);
 
-                    clear_push_buffer(&game_state.ui_manager.push_buffer);
+                    clear_push_buffer(&game_state->ui_manager.push_buffer);
                     clear_arena(&memory.frame_arena);
                     verify(&memory.global_stack);
 

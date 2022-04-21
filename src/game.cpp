@@ -381,6 +381,7 @@ void init_game(Game_State *game_state,
     editor_state->open_window_flags = 0;
     editor_state->is_new_level = true;
     editor_state->current_level_filename = make_string_buffer(filename_allocator, PLATFORM_MAX_PATH);
+    Context::editor_state = editor_state;
     
     // init ui state
     UI_Manager *ui_manager = &game_state->ui_manager;
@@ -392,6 +393,7 @@ void init_game(Game_State *game_state,
     ui_manager->current_layer = 0;
     ui_manager->state_table = make_hash_table<UI_id, UI_State_Variant>((Allocator *) &memory.hash_table_stack,
                                                                        HASH_TABLE_SIZE, &ui_id_equals);
+    Context::ui_manager = ui_manager;
 
     // init level
     Level *current_level = &game_state->current_level;

@@ -178,7 +178,7 @@
 //       - TODO (done): write procedure to convert RGB to HSV
 //       - TODO (done): add procedure for drawing a basic color picker
 //       - TODO (done): hide color picker on click outside
-//       - TODO: maybe add Context namespace that has things like Game_State and Controller_State in it, so we don't
+//       - TODO: add Context namespace that has things like Game_State and Controller_State in it, so we don't
 //               have to constantly be passing them around
 //               - i'm pretty sure we can still have editor_state and ui_manager be inside game_state, while also
 //                 putting it in a separate member in Context. that way we can easily get it from context.

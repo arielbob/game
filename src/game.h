@@ -153,6 +153,13 @@ struct Game_State {
     char text_buffer[256] = {}; // debugging
 };
 
+namespace Context {
+    Game_State *game_state;
+    Editor_State *editor_state;
+    Controller_State *controller_state;
+    UI_Manager *ui_manager;
+};
+
 inline bool32 was_clicked(Controller_Button_State button_state);
 inline bool32 being_held(Controller_Button_State button_state);
 inline bool32 just_pressed(Controller_Button_State button_state);
