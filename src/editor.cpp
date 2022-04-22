@@ -2,11 +2,6 @@
 #include "editor.h"
 #include "game.h"
 
-#define SIDE_LEFT   0x1
-#define SIDE_RIGHT  0x2
-#define SIDE_TOP    0x4
-#define SIDE_BOTTOM 0x8
-
 #define ROW_HEIGHT 30.0f
 #define SMALL_ROW_HEIGHT 20.0f
 
@@ -608,6 +603,24 @@ void draw_material_library(Game_State *game_state, Controller_State *controller_
     pop_layer(ui_manager);
 };
 
+void open_color_picker(Editor_State *editor_state, Editor_Color_Picker color_picker_type,
+                       real32 color_picker_x, real32 color_picker_y,
+                       Vec4 color_to_change,
+                       void *color_pointer,
+                       UI_id parent) {
+    if (editor_state->open_color_picker == color_picker_type) {
+        editor_state->open_color_picker = Editor_Color_Picker::NONE;
+    } else {
+        editor_state->open_color_picker = color_picker_type;
+        editor_state->color_picker_position = make_vec2(color_picker_x, color_picker_y);
+        editor_state->color_picker_state = make_color_picker_state(color_to_change,
+                                                                   Editor_Constants::hsv_picker_width,
+                                                                   Editor_Constants::hsv_picker_height);
+        editor_state->color_picker_color_pointer = color_pointer;
+        editor_state->color_picker_parent = parent;
+    }
+}
+
 void draw_entity_box(Game_State *game_state, Controller_State *controller_state, Entity *entity) {
     int32 row_index = 0;
 
@@ -900,7 +913,6 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         editor_state->editing_selected_entity_material = !editor_state->editing_selected_entity_material;
     }
 
-    char *color_override_button_id = "material_color_override_button";
     real32 edit_box_width = choose_material_button_width + padding_left + add_material_button_width;
     if (has_material && editor_state->editing_selected_entity_material) {
         draw_row_padding(x, &y, row_width, padding_y, row_color,
@@ -967,22 +979,18 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         buf = string_format(allocator, buffer_size, "%f", material->gloss);
         draw_v_centered_text(x + padding_left, y, row_height,
                              "Color Override", editor_font_name, text_style);
+        char *color_override_button_id = "material_color_override_button";
         bool32 color_override_pressed = do_color_button(x + right_column_offset, y,
                                                         row_height, row_height,
                                                         default_color_button_style,
                                                         material->color_override,
                                                         color_override_button_id);
         if (color_override_pressed) {
-            if (editor_state->open_color_picker == Editor_Color_Picker::MATERIAL_COLOR_OVERRIDE) {
-                editor_state->open_color_picker = Editor_Color_Picker::NONE;
-            } else {
-                editor_state->open_color_picker = Editor_Color_Picker::MATERIAL_COLOR_OVERRIDE;
-                editor_state->color_picker_position = make_vec2(x + right_column_offset, y + row_height);
-
-                editor_state->color_picker_state = make_color_picker_state(material->color_override,
-                                                                           Editor_Constants::hsv_picker_width,
-                                                                           Editor_Constants::hsv_picker_height);
-            }
+            open_color_picker(editor_state, Editor_Color_Picker::MATERIAL_COLOR_OVERRIDE,
+                              x + right_column_offset, y + row_height,
+                              material->color_override,
+                              &material->color_override,
+                              { UI_COLOR_BUTTON, color_override_button_id, 0 });
         }
 
         y += row_height;
@@ -1024,11 +1032,19 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                  row_id, row_index++);
         draw_v_centered_text(x + padding_left, y, row_height,
                              "Light Color", editor_font_name, text_style);
-        do_color_button(x + right_column_offset, y,
-                        row_height, row_height,
-                        default_color_button_style,
-                        make_vec4(point_light->light_color, 1.0f),
-                        "point_light_color");
+        char *point_light_color_button_id = "point_light_color";
+        bool32 point_light_color_pressed = do_color_button(x + right_column_offset, y,
+                                                           row_height, row_height,
+                                                           default_color_button_style,
+                                                           make_vec4(point_light->light_color, 1.0f),
+                                                           point_light_color_button_id);
+        if (point_light_color_pressed) {
+            open_color_picker(editor_state, Editor_Color_Picker::POINT_LIGHT_COLOR,
+                              x + right_column_offset, y + row_height,
+                              make_vec4(point_light->light_color, 1.0f),
+                              &point_light->light_color,
+                              { UI_COLOR_BUTTON, point_light_color_button_id, 0 });
+        }
         
         y += row_height;
 
@@ -1066,35 +1082,6 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         draw_row_padding(x, &y, row_width, padding_y, row_color,
                          side_flags | SIDE_BOTTOM, row_index++);
     }
-
-    if (editor_state->open_color_picker == Editor_Color_Picker::MATERIAL_COLOR_OVERRIDE) {
-        UI_id parent_id = { UI_COLOR_BUTTON, color_override_button_id, 0 };
-        push_layer(ui_manager);
-
-        using namespace Editor_Constants;
-        UI_Color_Picker_Style color_picker_style = {
-            color_picker_width, color_picker_height,
-            hsv_picker_width, hsv_picker_height,
-            hue_slider_width,
-            small_padding_x, small_padding_y,
-            row_color
-        };
-
-        editor_state->color_picker_state = do_color_picker(editor_state->color_picker_position.x,
-                                                           editor_state->color_picker_position.y,
-                                                           color_picker_style,
-                                                           editor_state->color_picker_state,
-                                                           "color_picker");
-        RGB_Color rgb = hsv_to_rgb(editor_state->color_picker_state.hsv_picker_state.hsv_color);
-        material->color_override = make_vec4(rgb_to_vec3(rgb), 1.0f);
-
-        if (!ui_id_equals(ui_manager->hot, parent_id) && editor_state->color_picker_state.should_hide) {
-            editor_state->open_color_picker = Editor_Color_Picker::NONE;
-        }
-
-        pop_layer(ui_manager);
-    }
-
 }
 
 void draw_level_box(Game_State *game_state, Controller_State *controller_state,
@@ -1264,6 +1251,68 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
     UI_Manager *ui_manager = &game_state->ui_manager;
     Render_State *render_state = &game_state->render_state;
 
+    if (editor_state->selected_entity_index >= 0) {
+        Entity *selected_entity = get_selected_entity(game_state);
+        draw_entity_box(game_state, controller_state, selected_entity);
+
+        if (editor_state->open_window_flags & MATERIAL_LIBRARY_WINDOW) {
+            draw_material_library(game_state, controller_state, selected_entity);
+        } else if (editor_state->open_window_flags & TEXTURE_LIBRARY_WINDOW) {
+            Material *selected_material;
+            bool32 material_exists = hash_table_find_pointer(game_state->current_level.material_table,
+                                                             selected_entity->material_id,
+                                                             &selected_material);
+            assert(material_exists);
+            draw_texture_library(selected_material);
+        } else if (editor_state->open_window_flags & MESH_LIBRARY_WINDOW) {
+            draw_mesh_library(game_state, controller_state, selected_entity);
+        }
+    } else {
+        reset_entity_editors(editor_state);
+    }
+
+    if (editor_state->selected_entity_index >= 0 &&
+        (editor_state->open_color_picker != Editor_Color_Picker::NONE)) {
+        push_layer(ui_manager);
+
+        using namespace Editor_Constants;
+        UI_Color_Picker_Style color_picker_style = {
+            color_picker_width, color_picker_height,
+            hsv_picker_width, hsv_picker_height,
+            hue_slider_width,
+            small_padding_x, small_padding_y,
+            row_color
+        };
+
+        editor_state->color_picker_state = do_color_picker(editor_state->color_picker_position.x,
+                                                           editor_state->color_picker_position.y,
+                                                           color_picker_style,
+                                                           editor_state->color_picker_state,
+                                                           "color_picker");
+        RGB_Color rgb = hsv_to_rgb(editor_state->color_picker_state.hsv_picker_state.hsv_color);
+
+        // TODO: yeah, this is kind of annoying; we may just want to replace all the colors with RGBA
+        //       structs. and then have an is_alpha variable to toggle the alpha in the color picker.
+        switch (editor_state->open_color_picker) {
+            case Editor_Color_Picker::MATERIAL_COLOR_OVERRIDE: {
+                *((Vec4 *) editor_state->color_picker_color_pointer) = make_vec4(rgb_to_vec3(rgb), 1.0f);
+            } break;
+            case Editor_Color_Picker::POINT_LIGHT_COLOR: {
+                *((Vec3 *) editor_state->color_picker_color_pointer) = rgb_to_vec3(rgb);
+            } break;
+            default: {
+                assert(!"Unhandled Editor_Color_Picker type.");
+            } break;
+        }
+
+        if (!ui_id_equals(ui_manager->hot, editor_state->color_picker_parent) &&
+            editor_state->color_picker_state.should_hide) {
+            editor_state->open_color_picker = Editor_Color_Picker::NONE;
+        }
+
+        pop_layer(ui_manager);
+    }
+
     real32 y = 0.0f;
     real32 button_gap = 1.0f;
     real32 sidebar_button_width = 200.0f;
@@ -1302,26 +1351,6 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
 
     y += 5;
     draw_level_box(game_state, controller_state, render_state->display_output.width - 198.0f - 1.0f, y);
-
-    if (editor_state->selected_entity_index >= 0) {
-        Entity *selected_entity = get_selected_entity(game_state);
-        draw_entity_box(game_state, controller_state, selected_entity);
-
-        if (editor_state->open_window_flags & MATERIAL_LIBRARY_WINDOW) {
-            draw_material_library(game_state, controller_state, selected_entity);
-        } else if (editor_state->open_window_flags & TEXTURE_LIBRARY_WINDOW) {
-            Material *selected_material;
-            bool32 material_exists = hash_table_find_pointer(game_state->current_level.material_table,
-                                                             selected_entity->material_id,
-                                                             &selected_material);
-            assert(material_exists);
-            draw_texture_library(selected_material);
-        } else if (editor_state->open_window_flags & MESH_LIBRARY_WINDOW) {
-            draw_mesh_library(game_state, controller_state, selected_entity);
-        }
-    } else {
-        reset_entity_editors(editor_state);
-    }
 
     y += 120.0f;
 

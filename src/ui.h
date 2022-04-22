@@ -19,6 +19,11 @@ enum UI_Type {
 #define TEXT_ALIGN_X 0x1
 #define TEXT_ALIGN_Y 0x2
 
+#define SIDE_LEFT   0x1
+#define SIDE_RIGHT  0x2
+#define SIDE_TOP    0x4
+#define SIDE_BOTTOM 0x8
+
 #define CONSTRAINT_FILL_BUTTON_WIDTH      0x1
 #define CONSTRAINT_FILL_BUTTON_HEIGHT     0x2
 #define CONSTRAINT_KEEP_IMAGE_PROPORTIONS 0x4
@@ -356,6 +361,9 @@ UI_Slider make_ui_slider(real32 x, real32 y,
 // start box
 struct UI_Box_Style {
     Vec4 background_color;
+    Vec4 border_color;
+    real32 border_width;
+    bool32 inside_border;
 };
 
 struct UI_Box {
@@ -368,11 +376,13 @@ struct UI_Box {
     real32 height;
 
     UI_Box_Style style;
+    uint32 border_flags;
 };
 
 UI_Box make_ui_box(real32 x, real32 y,
                    real32 width, real32 height,
                    UI_Box_Style style,
+                   uint32 border_flags,
                    char *id, int32 index = 0) {
     UI_Box box = {};
 
@@ -382,6 +392,7 @@ UI_Box make_ui_box(real32 x, real32 y,
     box.width = width;
     box.height = height;
     box.style = style;
+    box.border_flags = border_flags;
 
     UI_id box_id = { UI_BOX, id, index };
     box.id = box_id;

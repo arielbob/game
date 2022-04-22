@@ -28,8 +28,8 @@ use_color_override 0
 
 material "arrow_material"
 texture "debug"
-gloss 95.631004
-color_override 0.807843 0.647059 0.403922
+gloss 90.776604
+color_override 0.870000 0.673641 0.548100
 use_color_override 1
 
 material "white_light"
@@ -52,6 +52,11 @@ texture "white"
 gloss 0.485447
 color_override 0.858824 0.976471 0.890196
 use_color_override 1
+
+material "monkey_4_material"
+gloss 0.970874
+color_override 1.000000 0.000000 0.000000
+use_color_override 1
 }
 
 entities {
@@ -65,14 +70,14 @@ scale 1.000000 1.000000 1.000000
 type normal
 mesh_primitive "cube"
 material "diffuse_plane"
-position 0.000000 0.000000 0.000000
+position 0.000000 -0.225005 0.000000
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 5.000000 0.100000 5.000000
 
 type normal
 mesh "torus"
 material "arrow_material"
-position -0.247847 0.292015 -0.176115
+position -0.247847 0.062218 -0.176115
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 0.500000 0.500000 0.500000
 
@@ -87,6 +92,13 @@ type normal
 mesh "suzanne"
 position -3.580600 2.257501 2.056933
 rotation 0.857867 -0.137453 -0.488912 -0.078337
+scale 1.000000 1.000000 1.000000
+
+type normal
+mesh "suzanne"
+material "monkey_4_material"
+position -2.186320 2.843973 -2.621594
+rotation 0.284026 -0.093312 -0.906592 -0.297846
 scale 1.000000 1.000000 1.000000
 
 type point_light

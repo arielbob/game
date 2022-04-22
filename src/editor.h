@@ -4,7 +4,7 @@
 #define LEVEL_FILE_FILTER_TITLE "Levels (*.level)"
 #define LEVEL_FILE_FILTER_TYPE "level"
 
-enum class Editor_Color_Picker { NONE = 0, MATERIAL_COLOR_OVERRIDE };
+enum class Editor_Color_Picker { NONE = 0, MATERIAL_COLOR_OVERRIDE, POINT_LIGHT_COLOR };
 
 enum Gizmo_Handle {
     GIZMO_HANDLE_NONE,
@@ -30,6 +30,7 @@ struct Gizmo {
 
 namespace Editor_Constants {
     Vec4 row_color = make_vec4(0.1f, 0.1f, 0.1f, 0.9f);
+    Vec4 border_color = make_vec4(0.3f, 0.3f, 0.3f, 1.0f);
     real32 hsv_picker_width = 200.0f;
     real32 hsv_picker_height = 200.0f;
     real32 hue_slider_width = 20.0f;
@@ -74,6 +75,8 @@ struct Editor_State {
 
     Editor_Color_Picker open_color_picker;
     Vec2 color_picker_position;
+    void *color_picker_color_pointer;
+    UI_id color_picker_parent;
     UI_Color_Picker_State color_picker_state;
 };
 

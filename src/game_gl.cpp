@@ -187,25 +187,33 @@
 //       - TODO (done): fix bug where if you have the color picker open and click another entity, that entity gets
 //                      the same color applied
 //       - TODO (done): store RGB values and HSL values with floats to prevent rounding error
-//       - TODO: draw border around color picker
+//       - TODO (done): draw border around color picker
+//       - TODO (done): add color picker to light color property
+//       - TODO: add sliders for RGB and HSV
+//       - TODO: add RGBA struct
+//       - TODO: replace Vec3 and Vec4 colors (point_light.color and material.color_override) with RGBA structs
+//       - TODO: i think we can actually replace the whole Editor_Color_Picker::MATERIAL_COLOR_OVERRIDE stuff since
+//               we will just have a pointer that we change. and really, we can just change the position and state
+//               and it'll be the same as we have it now, i think.
 
 //       - TODO: draw little arrows on the side of the hue slider so that you can move the slider without hiding
 //               the actual color with a line - we can just add a hitbox around where the current value is in
 //               do_hue_slider(), and then when we draw it, draw arrows within that hitbox.
-//       - TODO: add color picker state - add it to editor_state; we don't need to add any UI state and we're
-//               actually going to need to hold a lot of state for the color picker, so it'll be good for us to
-//               manage it in editor_state.
 //       - TODO: write procedure for converting HSV to RGB(A?)
-//       - TODO: write procedure to draw a color picker (this should not be a UI element, but instead like the
-//               draw_* procedures in editor.cpp.
 
+// TODO: maybe we don't even need UI state.. we may be able to just hold the State structs ourselves and pass them
+//       to the do_* procedures and those procedures will return the new State structs.
+// TODO: some type of messaging system that isn't in the game console, like toasts kind of (messages that appear
+//       then disappear after a few seconds). this would be nice for some type of feedback like for file saving.
+// TODO: material name/texture strings validation
+//       check for duplicates and empties. it matters that we don't have duplicates since texture names are used
+//       as keys in the opengl code. we don't store material structs in the opengl code, but it's better to be
+//       consistent. show a message using the messaging system.
 
 // TODO: editor undoing
 // TODO: prompt to save level if open pressed when changes have been made
 
 // TODO: text truncation when its containing box is too small
-// TODO: maybe we don't even need UI state.. we may be able to just hold the State structs ourselves and pass them
-//       to the do_* procedures and those procedures will return the new State structs.
 // TODO: don't allow quotes or brackets in any level strings, i.e. in level name, texture name, material name, etc.
 //       (requires text box validation)
 
@@ -218,14 +226,8 @@
 //       - would have to add way to set initial camera state, since camera can move
 
 // TODO: texture creation
-// TODO: some type of messaging system that isn't in the game console, like toasts kind of (messages that appear
-//       then disappear after a few seconds). this would be nice for some type of feedback like for file saving.
 // TODO: we can just add a star to the filename if a change has been made and needs to be saved
 // TODO: dialog prompts.. (just use windows for this maybe?)
-// TODO: material name/texture strings validation
-//       check for duplicates and empties. it matters that we don't have duplicates since texture names are used
-//       as keys in the opengl code. we don't store material structs in the opengl code, but it's better to be
-//       consistent. show a message using the messaging system.
 // TODO: keyboard shortcuts for level save/save as
 
 // TODO: add icons to some of the buttons for better recognition of buttons
@@ -234,6 +236,7 @@
 //       - TODO: scale gizmo
 //       - TODO: translation on a plane (little squares on the planes of the gizmo)
 //       - TODO: bigger hitboxes on the controls or just scale the meshes
+// TODO: maybe show lights as a light icon, so that they're easier to click on
 
 // TODO: click slider for manual value entry
 // TODO: slideable text boxes (after we do slider manual text entry)
@@ -288,6 +291,7 @@
 //              this free list struct will also be used for text fields. since we often don't want a text field to
 //              hold the direct contents of where it will eventually be stored. we will need to update our
 //              immediate mode UI code to hold state for the UI elements.
+//              (done note: this is our pool allocator)
 // TODO: we may want to add some metadata to allocations, since if we're just given a pointer to some memory and
 //       we want to deallocate it, it's impossible to know from where to deallocate it from unless its just known
 //       where, such as when we deallocate the String_Buffer in UI_Slider_State.
@@ -1974,6 +1978,64 @@ void gl_draw_ui_box(GL_State *gl_state, Render_State *render_state,
     gl_draw_quad(gl_state, render_state,
                  box.x, box.y,
                  box.width, box.height, style.background_color);
+
+    // TODO: using box_* names for border quad data is confusing
+    uint32 border_flags = box.border_flags;
+    if (border_flags) {
+        if (border_flags & SIDE_LEFT) {
+            real32 box_x = box.x;
+            if (!style.inside_border) box_x -= style.border_width;
+
+            gl_draw_quad(gl_state, render_state,
+                         box_x, box.y,
+                         style.border_width, box.height, style.border_color);
+        }
+        if (border_flags & SIDE_BOTTOM) {
+            real32 box_x = box.x;
+            real32 box_y = box.y + box.height - style.border_width;
+            real32 box_width = box.width;
+            if (!style.inside_border) {
+                box_y = box.y + box.height;
+                if (border_flags & SIDE_LEFT) {
+                    box_x -= style.border_width;
+                    box_width += style.border_width;
+                }
+                if (border_flags & SIDE_RIGHT) {
+                    box_width += style.border_width;
+                }
+            } 
+
+            gl_draw_quad(gl_state, render_state,
+                         box_x, box_y,
+                         box_width, style.border_width, style.border_color);
+        }
+        if (border_flags & SIDE_TOP) {
+            real32 box_x = box.x;
+            real32 box_y = box.y;
+            real32 box_width = box.width;
+            if (!style.inside_border) {
+                box_y = box.y - style.border_width;
+                if (border_flags & SIDE_LEFT) {
+                    box_x -= style.border_width;
+                    box_width += style.border_width;
+                }
+                if (border_flags & SIDE_RIGHT) {
+                    box_width += style.border_width;
+                }
+            }
+
+            gl_draw_quad(gl_state, render_state,
+                         box_x, box_y,
+                         box_width, style.border_width, style.border_color);
+        }
+        if (border_flags & SIDE_RIGHT) {
+            real32 box_x = box.x + box.width - style.border_width;
+            if (!style.inside_border) box_x += style.border_width;
+            gl_draw_quad(gl_state, render_state,
+                         box_x, box.y,
+                         style.border_width, box.height, style.border_color);
+        }
+    }
 }
 
 void gl_draw_ui_line(GL_State *gl_state, Display_Output display_output,

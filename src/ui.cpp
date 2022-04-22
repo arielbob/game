@@ -734,13 +734,16 @@ real32 do_slider(real32 x, real32 y,
     return value;
 }
 
+// we keep border_flags out of UI_Box_Style, since boxes can often have the same style, but have different
+// borders showing. this is the same reasoning behind keeping width and height out of UI_Box_Style.
 void do_box(real32 x, real32 y,
             real32 width, real32 height,
             UI_Box_Style style,
+            uint32 border_flags,
             char *id_string, int32 index = 0) {
     using namespace Context;
     UI_Box box = make_ui_box(x, y, width, height,
-                             style,
+                             style, border_flags,
                              id_string, index);
 
     Vec2 current_mouse = controller_state->current_mouse;
@@ -755,6 +758,16 @@ void do_box(real32 x, real32 y,
     }
 
     ui_add_box(ui_manager, box);
+}
+
+inline void do_box(real32 x, real32 y,
+                   real32 width, real32 height,
+                   UI_Box_Style style,
+                   char *id_string, int32 index = 0) {
+    return do_box(x, y,
+                  width, height,
+                  style, 0,
+                  id_string, index);
 }
 
 void do_line(UI_Manager *manager,
@@ -901,8 +914,9 @@ UI_HSV_Picker_State do_hsv_picker(real32 x, real32 y,
     return state;
 }
 
-UI_Color_Picker_State make_color_picker_state(Vec4 rgb_vec3, real32 hsv_picker_width, real32 hsv_picker_height) {
-    HSV_Color hsv_color = rgb_to_hsv(vec3_to_rgb(truncate_v4_to_v3(rgb_vec3)));
+UI_Color_Picker_State make_color_picker_state(Vec4 rgb_color,
+                                              real32 hsv_picker_width, real32 hsv_picker_height) {
+    HSV_Color hsv_color = rgb_to_hsv(vec3_to_rgb(truncate_v4_to_v3(rgb_color)));
     Vec2 relative_position = hsv_to_cursor_position_inside_quad(hsv_color,
                                                                 hsv_picker_width, hsv_picker_height);
 
@@ -926,8 +940,15 @@ UI_Color_Picker_State do_color_picker(real32 x, real32 y,
 
     Vec2 current_mouse = controller_state->current_mouse;
 
-    char *box_id = string_format((Allocator *) &memory.frame_arena, 128, "%s_box", id_string);
-    do_box(x, y, style.width, style.height, { style.background_color }, box_id);
+    char *box_id = string_format((Allocator *) &memory.frame_arena, 64, "%s_box", id_string);
+    UI_Box_Style box_style;
+    box_style.background_color = style.background_color;
+    box_style.border_color = Editor_Constants::border_color;
+    box_style.border_width = 1.0f;
+    box_style.inside_border = false;
+
+    uint32 border_flags = SIDE_LEFT | SIDE_RIGHT | SIDE_BOTTOM | SIDE_TOP;
+    do_box(x, y, style.width, style.height, box_style, border_flags, box_id);
     ui_add_color_picker(ui_manager, color_picker);
 
     real32 initial_x = x;
@@ -943,22 +964,17 @@ UI_Color_Picker_State do_color_picker(real32 x, real32 y,
     // will hide, which is undesirable, since we were just using one of the color picker's elements.
     UI_id last_active = ui_manager->active;
 
-    char *hue_slider_id = string_format((Allocator *) &memory.frame_arena, 128, "%s_hue_slider", id_string);
+    char *hue_slider_id = string_format((Allocator *) &memory.frame_arena, 64, "%s_hue_slider", id_string);
     state.hsv_picker_state.hsv_color.h = do_hue_slider(x + style.hsv_picker_width + style.padding_x, y,
                                                        style.hue_slider_width, style.hsv_picker_height,
                                                        state.hsv_picker_state.hsv_color.h,
                                                        hue_slider_id);
 
-    char *hsv_picker_id = string_format((Allocator *) &memory.frame_arena, 128, "%s_hsv_picker", id_string);
+    char *hsv_picker_id = string_format((Allocator *) &memory.frame_arena, 64, "%s_hsv_picker", id_string);
     state.hsv_picker_state = do_hsv_picker(x, y,
                                            style.hsv_picker_width, style.hsv_picker_height,
                                            state.hsv_picker_state,
                                            hsv_picker_id);
-
-    // we do these after the other elements so that the color_picker id doesn't get overwritten in active when
-    // one of the elements are active. since all of these elements are on the same layer, all the elements should
-    // still act the same. they should also act the same since we don't add any other element over top. we just
-    // pretty much add an invisible box to control whether or not the entire box should be hidden.
 
     // TODO: i think this could be better.. but it's confusing
     if (!in_bounds_on_layer(ui_manager, current_mouse,
