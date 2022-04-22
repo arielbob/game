@@ -1,6 +1,6 @@
 #version 330 core
 
-uniform int hue_degrees;
+uniform float hue_degrees;
 
 in vec4 frag_color;
 in vec2 uv;
@@ -17,8 +17,10 @@ void main() {
         vec3(1.0, 0.0, 1.0)
     };
     
-    int segment = (hue_degrees / 60) % 6;
-    float segment_percentage = mod(hue_degrees, 60) / 60.0f;
+    int segment = int(hue_degrees / 60.0) % 6;
+    // this doesn't work with opengl 3.3, modf and fract are only in versions >= 4, i think
+    //float segment_percentage = modf(hue_degrees, 60);
+    float segment_percentage = (hue_degrees / 60.0) - int(hue_degrees / 60.0);
 
     vec3 color1 = colors[segment];
     vec3 color2 = colors[(segment + 1) % 6];

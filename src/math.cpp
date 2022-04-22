@@ -1564,21 +1564,30 @@ Vec3 mix(Vec3 a, Vec3 b, real32 t) {
 
 RGB_Color vec3_to_rgb(Vec3 v) {
     RGB_Color result;
-    result.r = (int32) (v.x * 255.0f);
-    result.g = (int32) (v.y * 255.0f);
-    result.b = (int32) (v.z * 255.0f);
+    real32 min = 0.0f;
+    real32 max = 255.0f;
+    result.r = clamp(v.x * max, min, max);
+    result.g = clamp(v.y * max, min, max);
+    result.b = clamp(v.z * max, min, max);
     return result;
 }
 
 Vec3 rgb_to_vec3(RGB_Color rgb) {
     Vec3 result;
-    result.x = (real32) rgb.r / 255.0f;
-    result.y = (real32) rgb.g / 255.0f;
-    result.z = (real32) rgb.b / 255.0f;
+    real32 min = 0.0f;
+    real32 max = 1.0f;
+    real32 max_rgb = 255.0f;
+    result.x = clamp(rgb.r / max_rgb, min, max);
+    result.y = clamp(rgb.g / max_rgb, min, max);
+    result.z = clamp(rgb.b / max_rgb, min, max);
     return result;
 }
 
 RGB_Color hsv_to_rgb(HSV_Color hsv_color) {
+    assert(hsv_color.h >= 0.0f && hsv_color.h <= 360.0f);
+    assert(hsv_color.s >= 0.0f && hsv_color.s <= 100.0f);
+    assert(hsv_color.v >= 0.0f && hsv_color.v <= 100.0f);
+
     Vec3 colors[6] = {
         { 1.0f, 0.0f, 0.0f },
         { 1.0f, 1.0f, 0.0f },
@@ -1588,8 +1597,9 @@ RGB_Color hsv_to_rgb(HSV_Color hsv_color) {
         { 1.0f, 0.0f, 1.0f }
     };
 
-    int segment = (hsv_color.h / 60) % 6;
-    float segment_percentage = (hsv_color.h % 60) / 60.0f;
+    // TODO: this might be wrong
+    int segment = (int32) (hsv_color.h / 60.0f) % 6;
+    float segment_percentage = (hsv_color.h / 60.0f) - (int32) (hsv_color.h / 60.0f);
 
     Vec3 color1 = colors[segment];
     Vec3 color2 = colors[(segment + 1) % 6];
@@ -1607,10 +1617,15 @@ RGB_Color hsv_to_rgb(HSV_Color hsv_color) {
 
 HSV_Color rgb_to_hsv(RGB_Color rgb_color) {
     int32 segment = 0;
-    int32 max_value, min_value;
-    int32 red = rgb_color.r;
-    int32 green = rgb_color.g;
-    int32 blue = rgb_color.b;
+    real32 max_value, min_value;
+    real32 red = rgb_color.r;
+    real32 green = rgb_color.g;
+    real32 blue = rgb_color.b;
+
+    assert (red >= 0.0f && red <= 255.0f);
+    assert (green >= 0.0f && green <= 255.0f);
+    assert (blue >= 0.0f && blue <= 255.0f);
+
     if ((red == green) && (green == blue)) {
         segment = 0;
         max_value = red;
@@ -1630,19 +1645,19 @@ HSV_Color rgb_to_hsv(RGB_Color rgb_color) {
     }
 
     real32 hue = 0.0f;
-    real32 range = (real32) max_value - min_value;
+    real32 range = max_value - min_value;
     switch (segment) {
         case 0: {
             hue = 0.0f;
         } break;
         case 1: {
-            hue = 60.0f * ((real32) (green - blue) / range);
+            hue = 60.0f * ((green - blue) / range);
         } break;
         case 2: {
-            hue = 60.0f * (2.0f + (real32) (blue - red) / range);
+            hue = 60.0f * (2.0f + (blue - red) / range);
         } break;
         case 3: {
-            hue = 60.0f * (4.0f + (real32) (red - green) / range);
+            hue = 60.0f * (4.0f + (red - green) / range);
         } break;
     };
 
@@ -1654,10 +1669,10 @@ HSV_Color rgb_to_hsv(RGB_Color rgb_color) {
     saturation = saturation * 100.0f;
     saturation = clamp(saturation, 0.0f, 100.0f);
 
-    real32 value = (real32) max_value / 255.0f * 100.0f;
+    real32 value = max_value / 255.0f * 100.0f;
     value = clamp(value, 0.0f, 100.0f);
 
     hue = clamp(hue, 0.0f, 360.0f);
 
-    return { (int32) hue, (int32) saturation, (int32) value };
+    return { hue, saturation, value };
 }

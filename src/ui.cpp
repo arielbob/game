@@ -771,9 +771,9 @@ void do_line(UI_Manager *manager,
     ui_add_line(manager, line);
 }
 
-int32 do_hue_slider(real32 x, real32 y,
+real32 do_hue_slider(real32 x, real32 y,
                     real32 width, real32 height,
-                    int32 hue_degrees,
+                    real32 hue_degrees,
                     char *id_string) {
     using namespace Context;
     UI_Manager *manager = ui_manager;
@@ -785,9 +785,9 @@ int32 do_hue_slider(real32 x, real32 y,
 
         if (controller_state->left_mouse.is_down && !controller_state->left_mouse.was_down) {
             manager->active = slider.id;
-            hue_degrees = (int32) (360.0f - 360.0f * ((current_mouse.y - y) / height));
-            hue_degrees = min(hue_degrees, 360);
-            hue_degrees = max(hue_degrees, 0);
+            hue_degrees = 360.0f - 360.0f * ((current_mouse.y - y) / height);
+            hue_degrees = min(hue_degrees, 360.0f);
+            hue_degrees = max(hue_degrees, 0.0f);
             manager->active_initial_position = controller_state->current_mouse;
             //manager->active_initial_time = platform_get_wall_clock_time();
         }
@@ -808,9 +808,9 @@ int32 do_hue_slider(real32 x, real32 y,
     }
 
     if (ui_id_equals(manager->active, slider.id) && being_held(controller_state->left_mouse)) {
-        hue_degrees = (int32) (360.0f - 360.0f * ((current_mouse.y - slider.y) / slider.height));
-        hue_degrees = min(hue_degrees, 360);
-        hue_degrees = max(hue_degrees, 0);
+        hue_degrees = 360.0f - 360.0f * ((current_mouse.y - slider.y) / slider.height);
+        hue_degrees = min(hue_degrees, 360.0f);
+        hue_degrees = max(hue_degrees, 0.0f);
     }
 
     ui_add_hue_slider(manager, slider);
@@ -831,18 +831,18 @@ Vec2 hsv_to_cursor_position_inside_quad(HSV_Color hsv_color,
     return make_vec2(cursor_x, cursor_y);
 }
 
-HSV_Color get_hsv_inside_quad(Vec2 current_mouse, int32 hue_degrees,
+HSV_Color get_hsv_inside_quad(Vec2 current_mouse, real32 hue,
                               real32 x, real32 y,
                               real32 width, real32 height) {
-    int32 hue = hue_degrees;
+    assert(hue >= 0.0f && hue <= 360.0f);
     real32 x_percentage = (current_mouse.x - x) / width;
     real32 y_percentage = 1.0f - (current_mouse.y - y) / height; // bottom = 0.0, top = 1.0
-    int32 saturation = (int32) (x_percentage * 100.0f);
-    int32 value = (int32) (y_percentage * 100.0f);
+    real32 saturation = x_percentage * 100.0f;
+    real32 value = y_percentage * 100.0f;
 
-    hue = clamp(hue, 0, 360);
-    saturation = clamp(saturation, 0, 100);
-    value = clamp(value, 0, 100);
+    hue = clamp(hue, 0.0f, 360.0f);
+    saturation = clamp(saturation, 0.0f, 100.0f);
+    value = clamp(value, 0.0f, 100.0f);
             
     HSV_Color result = { hue, saturation, value };
     return result;

@@ -432,12 +432,12 @@ struct UI_Hue_Slider {
     real32 width;
     real32 height;
 
-    int32 hue_degrees; // between 0 and 360
+    real32 hue_degrees; // between 0 and 360
 };
 
 UI_Hue_Slider make_ui_hue_slider(real32 x, real32 y,
                                  real32 width, real32 height,
-                                 int32 hue_degrees,
+                                 real32 hue_degrees,
                                  char *id) {
     UI_Hue_Slider hue_slider;
 

@@ -184,8 +184,9 @@
 //                      - we can still have the editor handle the color picker's state
 //       - TODO (done): fix bug where if you let go of either the slider or the hsv picker outside of the color
 //                      picker bounds, you hide the picker
-//       - TODO: fix bug where if you have the color picker open and click another entity, that entity gets the
-//               same color applied
+//       - TODO (done): fix bug where if you have the color picker open and click another entity, that entity gets
+//                      the same color applied
+//       - TODO (done): store RGB values and HSL values with floats to prevent rounding error
 //       - TODO: draw border around color picker
 
 //       - TODO: draw little arrows on the side of the hue slider so that you can move the slider without hiding
@@ -1451,7 +1452,7 @@ void gl_draw_hsv_quad(GL_State *gl_state,
                       Render_State *render_state,
                       real32 x_pos_pixels, real32 y_pos_pixels,
                       real32 width_pixels, real32 height_pixels,
-                      int32 hue_degrees) {
+                      real32 hue_degrees) {
     uint32 shader_id = gl_use_shader(gl_state, "hsv");
     GL_Mesh quad_mesh = gl_use_rendering_mesh(gl_state, gl_state->quad_mesh_id);
 
@@ -1464,7 +1465,7 @@ void gl_draw_hsv_quad(GL_State *gl_state,
     glBindBuffer(GL_ARRAY_BUFFER, quad_mesh.vbo);
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(quad_vertices), quad_vertices);
     gl_set_uniform_mat4(shader_id, "ortho_matrix", &render_state->ortho_clip_matrix);
-    gl_set_uniform_int(shader_id, "hue_degrees", hue_degrees);
+    gl_set_uniform_float(shader_id, "hue_degrees", hue_degrees);
 
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     glUseProgram(0);

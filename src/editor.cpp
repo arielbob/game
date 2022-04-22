@@ -44,6 +44,7 @@ bool32 selected_entity_changed(Editor_State *editor_state) {
 
 void reset_entity_editors(Editor_State *editor_state) {
     editor_state->open_window_flags = 0;
+    editor_state->open_color_picker = Editor_Color_Picker::NONE;
 }
 
 bool32 editor_add_mesh_press(Allocator *string_allocator, Allocator *filename_allocator,
