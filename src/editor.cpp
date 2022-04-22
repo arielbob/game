@@ -39,7 +39,7 @@ bool32 selected_entity_changed(Editor_State *editor_state) {
 
 void reset_entity_editors(Editor_State *editor_state) {
     editor_state->open_window_flags = 0;
-    editor_state->open_color_picker = Editor_Color_Picker::NONE;
+    editor_state->color_picker.parent_ui_id = {};
 }
 
 bool32 editor_add_mesh_press(Allocator *string_allocator, Allocator *filename_allocator,
@@ -603,24 +603,6 @@ void draw_material_library(Game_State *game_state, Controller_State *controller_
     pop_layer(ui_manager);
 };
 
-void open_color_picker(Editor_State *editor_state, Editor_Color_Picker color_picker_type,
-                       real32 color_picker_x, real32 color_picker_y,
-                       Vec4 color_to_change,
-                       void *color_pointer,
-                       UI_id parent) {
-    if (editor_state->open_color_picker == color_picker_type) {
-        editor_state->open_color_picker = Editor_Color_Picker::NONE;
-    } else {
-        editor_state->open_color_picker = color_picker_type;
-        editor_state->color_picker_position = make_vec2(color_picker_x, color_picker_y);
-        editor_state->color_picker_state = make_color_picker_state(color_to_change,
-                                                                   Editor_Constants::hsv_picker_width,
-                                                                   Editor_Constants::hsv_picker_height);
-        editor_state->color_picker_color_pointer = color_pointer;
-        editor_state->color_picker_parent = parent;
-    }
-}
-
 void draw_entity_box(Game_State *game_state, Controller_State *controller_state, Entity *entity) {
     int32 row_index = 0;
 
@@ -979,19 +961,62 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         buf = string_format(allocator, buffer_size, "%f", material->gloss);
         draw_v_centered_text(x + padding_left, y, row_height,
                              "Color Override", editor_font_name, text_style);
-        char *color_override_button_id = "material_color_override_button";
+        UI_id color_override_button_id;
         bool32 color_override_pressed = do_color_button(x + right_column_offset, y,
                                                         row_height, row_height,
                                                         default_color_button_style,
                                                         material->color_override,
-                                                        color_override_button_id);
+                                                        "material_color_override_button", 0,
+                                                        &color_override_button_id);
+        Editor_Color_Picker *editor_color_picker = &editor_state->color_picker;
+        if (ui_id_equals(editor_color_picker->parent_ui_id, color_override_button_id)) {
+            push_layer(ui_manager);
+            editor_color_picker->ui_state = do_color_picker(x + right_column_offset, y + row_height,
+                                                            Editor_Constants::color_picker_style,
+                                                            editor_color_picker->ui_state,
+                                                            "color_picker");
+            pop_layer(ui_manager);
+            material->color_override = make_vec4(rgb_to_vec3(editor_color_picker->ui_state.rgb_color), 1.0f);
+            if (editor_color_picker->ui_state.should_hide) {
+                editor_color_picker->parent_ui_id = {};
+            }
+        } else {
+            if (color_override_pressed) {
+                editor_color_picker->parent_ui_id = color_override_button_id;
+                editor_color_picker->ui_state = make_color_picker_state(material->color_override,
+                                                                        Editor_Constants::hsv_picker_width,
+                                                                        Editor_Constants::hsv_picker_height);
+            }
+        }
+#if 0
         if (color_override_pressed) {
+            UI_id parent_id = { COLOR_BUTTON, color_override_button_id, 0 };
+            Editor_Color_Picker *editor_color_picker = &editor_state->color_picker;
+            if (!ui_id_equals(editor_color_picker->parent, parent_id)) {
+                // init the state if the current active color picker isn't the one associated with the button
+                // we just pressed
+                editor_color_picker->ui_state = make_color_picker_state(material->color_override,
+                                                                        Editor_Constants::hsv_picker_width,
+                                                                        Editor_Constants::hsv_picker_height);
+                
+            }
+
+            // TODO: add a layer here
+            editor_color_picker->ui_state = do_color_picker(x + right_column_offset, y + row_height,
+                                                            Editor_Constants::color_picker_style,
+                                                            editor_color_picker->ui_state,
+                                                            "color_picker");    
+            
+#if 0
+
             open_color_picker(editor_state, Editor_Color_Picker::MATERIAL_COLOR_OVERRIDE,
                               x + right_column_offset, y + row_height,
                               material->color_override,
                               &material->color_override,
                               { UI_COLOR_BUTTON, color_override_button_id, 0 });
+#endif
         }
+#endif
 
         y += row_height;
         draw_row_padding(x, &y, row_width, padding_y, row_color,
@@ -1038,6 +1063,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                                            default_color_button_style,
                                                            make_vec4(point_light->light_color, 1.0f),
                                                            point_light_color_button_id);
+#if 0
         if (point_light_color_pressed) {
             open_color_picker(editor_state, Editor_Color_Picker::POINT_LIGHT_COLOR,
                               x + right_column_offset, y + row_height,
@@ -1045,6 +1071,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                               &point_light->light_color,
                               { UI_COLOR_BUTTON, point_light_color_button_id, 0 });
         }
+#endif
         
         y += row_height;
 
@@ -1271,6 +1298,7 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
         reset_entity_editors(editor_state);
     }
 
+#if 0
     if (editor_state->selected_entity_index >= 0 &&
         (editor_state->open_color_picker != Editor_Color_Picker::NONE)) {
         push_layer(ui_manager);
@@ -1312,6 +1340,7 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
 
         pop_layer(ui_manager);
     }
+#endif
 
     real32 y = 0.0f;
     real32 button_gap = 1.0f;

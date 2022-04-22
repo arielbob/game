@@ -189,6 +189,10 @@
 //       - TODO (done): store RGB values and HSL values with floats to prevent rounding error
 //       - TODO (done): draw border around color picker
 //       - TODO (done): add color picker to light color property
+//       - TODO (done): layer support in rendering GUI
+//               - basically allow us to push a new layer to guarantee that elements on that layer will be rendered
+//                 after things on previous layers.
+//       - TODO: remove all the old editor color picker code
 //       - TODO: add sliders for RGB and HSV
 //       - TODO: add RGBA struct
 //       - TODO: replace Vec3 and Vec4 colors (point_light.color and material.color_override) with RGBA structs
@@ -2057,8 +2061,101 @@ void gl_draw_ui(GL_State *gl_state, Game_State *game_state,
     uint8 *address = (uint8 *) push_buffer->base;
     Render_State *render_state = &game_state->render_state;
 
-    while (address < ((uint8 *) push_buffer->base + push_buffer->used)) {
-        UI_Element *element = (UI_Element *) address;
+    // NOTE: we don't store the lowest layer, so technically you could do a bunch of push_layer()'s, and
+    //       only add an element on the highest layer, which would cause us to loop a bunch of times until
+    //       we reach that layer. i.e. this procedure assumes that every layer has something on it.
+
+    int32 current_layer = 0;
+
+    UI_Element *element = next_element(NULL, push_buffer);
+
+    bool32 found_greater_layer_element = false;
+    UI_Element *first_greater_layer_element = element;
+
+    while (first_greater_layer_element) {
+        // start from the first element that was not on the last layer, i.e. skip all the one's before
+        // it, since those are guaranteed to have been on the last layer and thus already rendered.
+        element = first_greater_layer_element;
+        
+        while (element) {
+            if (element->layer != current_layer) {
+                if (!found_greater_layer_element && (element->layer > current_layer)) {
+                    found_greater_layer_element = true;
+                    first_greater_layer_element = element;
+                }
+                element = next_element(element, push_buffer);
+                continue;
+            }
+
+            switch (element->type) {
+                case UI_TEXT: {
+                    UI_Text *ui_text = (UI_Text *) element;
+                    gl_draw_ui_text(gl_state, game_state, ui_manager, *ui_text);
+                } break;
+                case UI_TEXT_BUTTON: {
+                    UI_Text_Button *ui_text_button = (UI_Text_Button *) element;
+                    gl_draw_ui_text_button(gl_state, game_state, ui_manager, *ui_text_button);
+                } break;
+                case UI_IMAGE_BUTTON: {
+                    UI_Image_Button *ui_image_button = (UI_Image_Button *) element;
+                    gl_draw_ui_image_button(gl_state, game_state, ui_manager, *ui_image_button);
+                } break;
+                case UI_COLOR_BUTTON: {
+                    UI_Color_Button *ui_color_button = (UI_Color_Button *) element;
+                    gl_draw_ui_color_button(gl_state, render_state, ui_manager, *ui_color_button);
+                } break;
+                case UI_TEXT_BOX: {
+                    UI_Text_Box *ui_text_box = (UI_Text_Box *) element;
+                    gl_draw_ui_text_box(gl_state, game_state, display_output, ui_manager, *ui_text_box);
+                } break;
+                case UI_SLIDER: {
+                    UI_Slider *ui_slider = (UI_Slider *) element;
+                    gl_draw_ui_slider(gl_state, game_state, display_output, ui_manager, *ui_slider);
+                } break;
+                case UI_BOX: {
+                    UI_Box *ui_box = (UI_Box *) element;
+                    gl_draw_ui_box(gl_state, render_state, ui_manager, *ui_box);
+                } break;
+                case UI_LINE: {
+                    UI_Line *ui_line = (UI_Line *) element;
+                    gl_draw_ui_line(gl_state, display_output, ui_manager, *ui_line);
+                } break;
+                case UI_HUE_SLIDER: {
+                    UI_Hue_Slider *ui_hue_slider = (UI_Hue_Slider *) element;
+                    gl_draw_ui_hue_slider(gl_state, render_state, ui_manager, *ui_hue_slider);
+                } break;
+                case UI_HSV_PICKER: {
+                    UI_HSV_Picker *ui_hsv_picker = (UI_HSV_Picker *) element;
+                    gl_draw_ui_hsv_picker(gl_state, render_state, ui_manager, *ui_hsv_picker);
+                } break;
+                case UI_COLOR_PICKER: {
+                    UI_Color_Picker *ui_color_picker = (UI_Color_Picker *) element;
+                } break;
+                default: {
+                    assert(!"Unhandled UI element type.");
+                }
+            }
+
+            element = next_element(element, push_buffer);
+        }
+
+        if (!found_greater_layer_element) {
+            // on this loop, all the elements we visited were on the same layer or lower, so that means
+            // we've rendered up to and including the elements on the final layer, so we're done.
+            break;
+        } else {
+            found_greater_layer_element = false;
+            current_layer++;
+        }
+    }
+
+#if 0
+    while (((uint8 *) element) < ((uint8 *) push_buffer->base + push_buffer->used)) {
+        if (element->layer != current_layer) {
+            element = next_element(element, push_buffer);
+            continue;
+        }
+        
         switch (element->type) {
             case UI_TEXT: {
                 UI_Text *ui_text = (UI_Text *) element;
@@ -2118,7 +2215,10 @@ void gl_draw_ui(GL_State *gl_state, Game_State *game_state,
                 assert(!"Unhandled UI element type.");
             }
         }
+
+        element = (UI_Element *) address;
     }
+#endif
 }
 
 void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Editor_State *editor_state) {

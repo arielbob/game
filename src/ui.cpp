@@ -61,12 +61,24 @@ void *allocate(UI_Push_Buffer *push_buffer, uint32 size, uint32 alignment_bytes 
     uint32 align_mask = alignment_bytes - 1;
     uint32 misalignment = ((uint64) current_pointer) & align_mask;
     uint32 align_offset = 0;
-    if (misalignment) {
-        align_offset = alignment_bytes - misalignment;
-    }
+    // NOTE: unlike our other allocation procedures, we do NOT check if misalignment = 0. so, the range of
+    //       extra bytes added, when alignment_bytes=8, is between 1 and 8. we do it this way here because
+    //       when iterating through the push_buffer, to actually get the data at some address, we need to know
+    //       the alignment offset. we store the alignment offset at the beginning of some allocated memory,
+    //       since when we're iterating, we usually end up at the start of some allocated block or at the end
+    //       of some allocated block. so we can easily just read whatever is written in that single byte to know
+    //       how much we need to move up by to get the data.
+    align_offset = alignment_bytes - misalignment;
     
     size += align_offset;
     assert((push_buffer->used + size) <= push_buffer->size);
+
+    // store the offset in the space used to offset the allocation
+    // only have a single byte to store the alignment offset, so make sure the offset can fit in a single byte,
+    // although, i don't see us ever passing in alignment_bytes greater than 32, which would have a max
+    // align_offset of 32.
+    assert(align_offset < 256); 
+    *current_pointer = (uint8) align_offset;
 
     void *start_byte = (void *) (current_pointer + align_offset);
     push_buffer->used += size;
@@ -94,6 +106,7 @@ inline real32 get_center_y_offset(real32 height, real32 box_height) {
     
 void clear_push_buffer(UI_Push_Buffer *buffer) {
     buffer->used = 0;
+    buffer->first = NULL;
 }
 
 void ui_add_text_button(UI_Manager *manager, UI_Text_Button button) {
@@ -229,7 +242,15 @@ inline void clear_hot(UI_Manager *manager) {
 }
 
 UI_Element *next_element(UI_Element *current_element, UI_Push_Buffer *push_buffer) {
-    if (!current_element) return NULL;
+    if (!current_element) {
+        if (push_buffer->used > 0) {
+            uint8 byte_offset = *((uint8 *) push_buffer->base);
+            uint8 *first_element_address = (uint8 *) push_buffer->base + byte_offset;
+            return (UI_Element *) first_element_address;
+        } else {
+            return NULL;
+        }
+    }
 
     uint8 *address = (uint8 *) current_element;
     switch (current_element->type) {
@@ -272,7 +293,11 @@ UI_Element *next_element(UI_Element *current_element, UI_Push_Buffer *push_buffe
     }
 
     if (address < ((uint8 *) push_buffer->base + push_buffer->used)) {
-        return (UI_Element *) address;
+        // NOTE: we don't have to check again if this address + byte_offset is within the bounds, since
+        //       the allocator doesn't allocate (and thus does not increase push_buffer->used)if there's
+        //       not enough space for both the offset bytes and the allocation size.
+        uint8 byte_offset = *address;
+        return (UI_Element *) (address + byte_offset);
     } else {
         return NULL;
     }
@@ -303,7 +328,7 @@ void deallocate(UI_State_Variant variant) {
 //       that element is gone and thus if hot is that element, it should be cleared.
 void clear_hot_if_gone(UI_Manager *manager) {
     UI_Push_Buffer *push_buffer = &manager->push_buffer;
-    UI_Element *element = (UI_Element *) push_buffer->base;
+    UI_Element *element = next_element(NULL, push_buffer);
 
     while (element) {
         if (ui_id_equals(manager->hot, element->id)) {
@@ -320,7 +345,7 @@ void clear_hot_if_gone(UI_Manager *manager) {
 
 void delete_state_if_gone(UI_Manager *manager) {
     UI_Push_Buffer *push_buffer = &manager->push_buffer;
-    UI_Element *element = (UI_Element *) push_buffer->base;
+    UI_Element *element = next_element(NULL, push_buffer);
 
     Hash_Table<UI_id, UI_State_Variant> *state_table = &manager->state_table;
 
@@ -345,7 +370,7 @@ void delete_state_if_gone(UI_Manager *manager) {
             hash_table_remove(state_table, entry->key);
         }
 
-        element = (UI_Element *) push_buffer->base;
+        element = next_element(NULL, push_buffer);
     }
 }
 
@@ -353,7 +378,7 @@ void do_text(UI_Manager *manager,
              real32 x_px, real32 y_px,
              char *text, char *font, char *id_string, int32 index = 0) {
     UI_Text ui_text = make_ui_text(x_px, y_px,
-                                   text, font, default_text_style, id_string, index);
+                                   text, font, default_text_style, manager->current_layer, id_string, index);
 
     bool32 was_clicked = false;
 
@@ -366,7 +391,7 @@ void do_text(UI_Manager *manager,
              UI_Text_Style style,
              char *id_string, int32 index = 0) {
     UI_Text ui_text = make_ui_text(x_px, y_px,
-                                   text, font, style, id_string, index);
+                                   text, font, style, manager->current_layer, id_string, index);
 
     bool32 was_clicked = false;
 
@@ -380,7 +405,8 @@ bool32 do_text_button(real32 x_px, real32 y_px,
     using namespace Context;
     UI_Text_Button button = make_ui_text_button(x_px, y_px, width, height,
                                                 style, text_style,
-                                                text, font, is_disabled, id_string, index);
+                                                text, font, is_disabled,
+                                                ui_manager->current_layer, id_string, index);
 
     bool32 was_clicked = false;
 
@@ -440,6 +466,7 @@ bool32 do_image_button(real32 x_px, real32 y_px,
     UI_Image_Button button = make_ui_image_button(x_px, y_px, width, height,
                                                   style, text_style,
                                                   texture_id, text, font,
+                                                  ui_manager->current_layer,
                                                   id_string, index);
 
     bool32 was_clicked = false;
@@ -477,13 +504,17 @@ bool32 do_color_button(real32 x_px, real32 y_px,
                        real32 width, real32 height,
                        UI_Color_Button_Style style,
                        Vec4 color,
-                       char *id_string, int32 index = 0) {
+                       char *id_string, int32 index = 0,
+                       UI_id *result_id = NULL) {
     using namespace Context;
     UI_Color_Button button = make_ui_color_button(x_px, y_px, width, height,
                                                   style,
-                                                  color, id_string, index);
+                                                  color,
+                                                  ui_manager->current_layer, id_string, index);
 
     bool32 was_clicked = false;
+
+    if (result_id) *result_id = button.id;
 
     Vec2 current_mouse = controller_state->current_mouse;
     if (!ui_manager->is_disabled &&
@@ -595,7 +626,7 @@ void do_text_box(real32 x, real32 y,
                                              *buffer,
                                              font,
                                              style, text_style,
-                                             id_string, index);
+                                             ui_manager->current_layer, id_string, index);
 
     Vec2 current_mouse = controller_state->current_mouse;
     if (!ui_manager->is_disabled && in_bounds_on_layer(ui_manager, current_mouse, x, x + width, y, y + height)) {
@@ -657,7 +688,7 @@ real32 do_slider(real32 x, real32 y,
                                        text, font,
                                        min, max, value,
                                        style, text_style,
-                                       id_string, index);
+                                       ui_manager->current_layer, id_string, index);
     
     UI_State_Variant *state_variant;
     bool32 state_exists = get_state(ui_manager, slider.id, &state_variant);
@@ -744,7 +775,7 @@ void do_box(real32 x, real32 y,
     using namespace Context;
     UI_Box box = make_ui_box(x, y, width, height,
                              style, border_flags,
-                             id_string, index);
+                             ui_manager->current_layer, id_string, index);
 
     Vec2 current_mouse = controller_state->current_mouse;
     if (!ui_manager->is_disabled && in_bounds_on_layer(ui_manager, current_mouse,
@@ -775,8 +806,8 @@ void do_line(UI_Manager *manager,
              UI_Line_Style style,
              char *id_string, int32 index = 0) {
     UI_Line line = make_ui_line(start_pixels, end_pixels,
-                                 style,
-                                 id_string, index);
+                                style,
+                                manager->current_layer, id_string, index);
 
     // right now, we only draw lines on top of other UI elements, so we don't check if the mouse is over
     // we don't even draw lines in the UI anymore; they're too finnicky
@@ -790,7 +821,8 @@ real32 do_hue_slider(real32 x, real32 y,
                     char *id_string) {
     using namespace Context;
     UI_Manager *manager = ui_manager;
-    UI_Hue_Slider slider = make_ui_hue_slider(x, y, width, height, hue_degrees, id_string);
+    UI_Hue_Slider slider = make_ui_hue_slider(x, y, width, height, hue_degrees,
+                                              manager->current_layer, id_string);
 
     Vec2 current_mouse = controller_state->current_mouse;
     if (!manager->is_disabled && in_bounds_on_layer(manager, current_mouse, x, x + width, y, y + height)) {
@@ -873,7 +905,7 @@ UI_HSV_Picker_State do_hsv_picker(real32 x, real32 y,
     UI_HSV_Picker picker = make_ui_hsv_picker(x, y,
                                               width, height,
                                               state,
-                                              id_string);
+                                              manager->current_layer, id_string);
 
     real32 relative_x = current_mouse.x - x;
     real32 relative_y = current_mouse.y - y;
@@ -914,9 +946,10 @@ UI_HSV_Picker_State do_hsv_picker(real32 x, real32 y,
     return state;
 }
 
-UI_Color_Picker_State make_color_picker_state(Vec4 rgb_color,
+UI_Color_Picker_State make_color_picker_state(Vec4 rgb_color_v4,
                                               real32 hsv_picker_width, real32 hsv_picker_height) {
-    HSV_Color hsv_color = rgb_to_hsv(vec3_to_rgb(truncate_v4_to_v3(rgb_color)));
+    RGB_Color rgb_color = vec3_to_rgb(truncate_v4_to_v3(rgb_color_v4));
+    HSV_Color hsv_color = rgb_to_hsv(rgb_color);
     Vec2 relative_position = hsv_to_cursor_position_inside_quad(hsv_color,
                                                                 hsv_picker_width, hsv_picker_height);
 
@@ -925,7 +958,7 @@ UI_Color_Picker_State make_color_picker_state(Vec4 rgb_color,
         relative_position.x, relative_position.y
     };
     UI_Color_Picker_State color_picker_state = {
-        false, hsv_picker_state
+        false, hsv_picker_state, rgb_color
     };
 
     return color_picker_state;
@@ -936,7 +969,7 @@ UI_Color_Picker_State do_color_picker(real32 x, real32 y,
                                       UI_Color_Picker_State state,
                                       char *id_string) {
     using namespace Context;
-    UI_Color_Picker color_picker = make_ui_color_picker(x, y, style, state, id_string);
+    UI_Color_Picker color_picker = make_ui_color_picker(x, y, style, state, ui_manager->current_layer, id_string);
 
     Vec2 current_mouse = controller_state->current_mouse;
 
@@ -975,6 +1008,7 @@ UI_Color_Picker_State do_color_picker(real32 x, real32 y,
                                            style.hsv_picker_width, style.hsv_picker_height,
                                            state.hsv_picker_state,
                                            hsv_picker_id);
+    state.rgb_color = hsv_to_rgb(state.hsv_picker_state.hsv_color);
 
     // TODO: i think this could be better.. but it's confusing
     if (!in_bounds_on_layer(ui_manager, current_mouse,

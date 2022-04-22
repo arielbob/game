@@ -4,7 +4,7 @@
 #define LEVEL_FILE_FILTER_TITLE "Levels (*.level)"
 #define LEVEL_FILE_FILTER_TYPE "level"
 
-enum class Editor_Color_Picker { NONE = 0, MATERIAL_COLOR_OVERRIDE, POINT_LIGHT_COLOR };
+//enum class Editor_Color_Picker { NONE = 0, MATERIAL_COLOR_OVERRIDE, POINT_LIGHT_COLOR };
 
 enum Gizmo_Handle {
     GIZMO_HANDLE_NONE,
@@ -40,11 +40,26 @@ namespace Editor_Constants {
                                  hsv_picker_width + small_padding_x +
                                  hue_slider_width + small_padding_x);
     real32 color_picker_height = 200.0f + small_padding_y*2;
+
+    UI_Color_Picker_Style color_picker_style = {
+        color_picker_width, color_picker_height,
+        hsv_picker_width, hsv_picker_height,
+        hue_slider_width,
+        small_padding_x, small_padding_y,
+        row_color
+    };
 };
 
 #define MATERIAL_LIBRARY_WINDOW 0x1
 #define TEXTURE_LIBRARY_WINDOW  0x2
 #define MESH_LIBRARY_WINDOW     0x4
+
+struct Editor_Color_Picker {
+    Vec2 position;
+    //void *color_picker_color_pointer;
+    UI_id parent_ui_id;
+    UI_Color_Picker_State ui_state;
+};
 
 struct Editor_State {
     Transform_Mode transform_mode;
@@ -73,11 +88,7 @@ struct Editor_State {
     bool32 is_new_level;
     String_Buffer current_level_filename;
 
-    Editor_Color_Picker open_color_picker;
-    Vec2 color_picker_position;
-    void *color_picker_color_pointer;
-    UI_id color_picker_parent;
-    UI_Color_Picker_State color_picker_state;
+    Editor_Color_Picker color_picker;
 };
 
 #endif

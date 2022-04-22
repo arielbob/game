@@ -30,7 +30,8 @@ enum UI_Type {
 
 #define UI_HEADER                               \
     UI_id id;                                   \
-    UI_Type type;
+    UI_Type type;                               \
+    int32 layer;
 
 struct UI_id {
     UI_Type type;
@@ -67,10 +68,12 @@ struct UI_Text {
     UI_Text_Style style;
 };
 
-UI_Text make_ui_text(real32 x, real32 y, char *text, char *font, UI_Text_Style style, char *id, int32 index = 0) {
+UI_Text make_ui_text(real32 x, real32 y, char *text, char *font, UI_Text_Style style, int32 layer, char *id, int32 index = 0) {
     UI_Text ui_text = {};
 
     ui_text.type = UI_TEXT;
+    ui_text.layer = layer;
+
     ui_text.x = x;
     ui_text.y = y;
     ui_text.text = text;
@@ -112,10 +115,12 @@ struct UI_Text_Button {
 
 UI_Text_Button make_ui_text_button(real32 x, real32 y, real32 width, real32 height,
                                    UI_Text_Button_Style style, UI_Text_Style text_style,
-                                   char *text, char *font, bool32 is_disabled, char *id, int32 index = 0) {
+                                       char *text, char *font, bool32 is_disabled, int32 layer, char *id, int32 index = 0) {
     UI_Text_Button button = {};
 
     button.type = UI_TEXT_BUTTON;
+    button.layer = layer;
+
     button.x = x;
     button.y = y;
     button.width = width;
@@ -163,10 +168,12 @@ struct UI_Image_Button {
 
 UI_Image_Button make_ui_image_button(real32 x, real32 y, real32 width, real32 height,
                                      UI_Image_Button_Style style,
-                                     int32 texture_id, char *id, int32 index = 0) {
+                                     int32 texture_id, int32 layer, char *id, int32 index = 0) {
     UI_Image_Button button = {};
 
     button.type = UI_IMAGE_BUTTON;
+    button.layer = layer;
+
     button.x = x;
     button.y = y;
     button.width = width;
@@ -184,10 +191,12 @@ UI_Image_Button make_ui_image_button(real32 x, real32 y, real32 width, real32 he
                                      UI_Image_Button_Style style,
                                      UI_Text_Style text_style,
                                      int32 texture_id, char *text, char *font,
-                                     char *id, int32 index = 0) {
+                                     int32 layer, char *id, int32 index = 0) {
     UI_Image_Button button = {};
 
     button.type = UI_IMAGE_BUTTON;
+    button.layer = layer;
+
     button.x = x;
     button.y = y;
     button.width = width;
@@ -230,10 +239,12 @@ struct UI_Color_Button {
 
 UI_Color_Button make_ui_color_button(real32 x, real32 y, real32 width, real32 height,
                                      UI_Color_Button_Style style,
-                                     Vec4 color, char *id, int32 index = 0) {
+                                     Vec4 color, int32 layer, char *id, int32 index = 0) {
     UI_Color_Button button = {};
 
     button.type = UI_COLOR_BUTTON;
+    button.layer = layer;
+
     button.x = x;
     button.y = y;
     button.width = width;
@@ -280,10 +291,12 @@ UI_Text_Box make_ui_text_box(real32 x, real32 y,
                              String_Buffer buffer,
                              char *font,
                              UI_Text_Box_Style style, UI_Text_Style text_style,
-                             char *id, int32 index = 0) {
+                             int32 layer, char *id, int32 index = 0) {
     UI_Text_Box text_box = {};
 
     text_box.type = UI_TEXT_BOX;
+    text_box.layer = layer;
+
     text_box.x = x;
     text_box.y = y;
     text_box.width = width;
@@ -335,10 +348,12 @@ UI_Slider make_ui_slider(real32 x, real32 y,
                          char *text, char *font,
                          real32 min, real32 max, real32 value,
                          UI_Slider_Style style, UI_Text_Style text_style,
-                         char *id, int32 index = 0) {
+                         int32 layer, char *id, int32 index = 0) {
     UI_Slider slider;
 
     slider.type = UI_SLIDER;
+    slider.layer = layer;
+
     slider.x = x;
     slider.y = y;
     slider.width = width;
@@ -383,10 +398,12 @@ UI_Box make_ui_box(real32 x, real32 y,
                    real32 width, real32 height,
                    UI_Box_Style style,
                    uint32 border_flags,
-                   char *id, int32 index = 0) {
+                   int32 layer, char *id, int32 index = 0) {
     UI_Box box = {};
 
     box.type = UI_BOX;
+    box.layer = layer;
+
     box.x = x;
     box.y = y;
     box.width = width;
@@ -418,10 +435,12 @@ struct UI_Line {
 
 UI_Line make_ui_line(Vec2 start_pixels, Vec2 end_pixels,
                      UI_Line_Style style,
-                     char *id, int32 index = 0) {
+                     int32 layer, char *id, int32 index = 0) {
     UI_Line line = {};
 
     line.type = UI_LINE;
+    line.layer = layer;
+
     line.start = start_pixels;
     line.end = end_pixels;
     line.style = style;
@@ -449,10 +468,12 @@ struct UI_Hue_Slider {
 UI_Hue_Slider make_ui_hue_slider(real32 x, real32 y,
                                  real32 width, real32 height,
                                  real32 hue_degrees,
-                                 char *id) {
+                                 int32 layer, char *id) {
     UI_Hue_Slider hue_slider;
 
     hue_slider.type = UI_HUE_SLIDER;
+    hue_slider.layer = layer;
+
     hue_slider.x = x;
     hue_slider.y = y;
     hue_slider.width = width;
@@ -488,10 +509,12 @@ struct UI_HSV_Picker {
 UI_HSV_Picker make_ui_hsv_picker(real32 x, real32 y,
                                  real32 width, real32 height,
                                  UI_HSV_Picker_State state,
-                                 char *id) {
+                                 int32 layer, char *id) {
     UI_HSV_Picker hsv_picker;
 
     hsv_picker.type = UI_HSV_PICKER;
+    hsv_picker.layer = layer;
+
     hsv_picker.x = x;
     hsv_picker.y = y;
     hsv_picker.width = width;
@@ -520,6 +543,7 @@ struct UI_Color_Picker_Style {
 struct UI_Color_Picker_State {
     bool32 should_hide;
     UI_HSV_Picker_State hsv_picker_state;
+    RGB_Color rgb_color;
 };
 
 struct UI_Color_Picker {
@@ -535,10 +559,12 @@ struct UI_Color_Picker {
 UI_Color_Picker make_ui_color_picker(real32 x, real32 y,
                                      UI_Color_Picker_Style style,
                                      UI_Color_Picker_State state,
-                                     char *id) {
+                                     int32 layer, char *id) {
     UI_Color_Picker color_picker;
 
     color_picker.type = UI_COLOR_PICKER;
+    color_picker.layer = layer;
+
     color_picker.x = x;
     color_picker.y = y;
     color_picker.style = style;
@@ -572,6 +598,8 @@ struct UI_Push_Buffer {
     void *base;
     uint32 size;
     uint32 used;
+    // we store first here, since it's possible that the first element is not at base due to alignment
+    UI_Element *first;
 };
 
 struct UI_Manager {
@@ -580,7 +608,7 @@ struct UI_Manager {
 
     int32 hot_layer;
     int32 current_layer;
-    
+
     UI_Push_Buffer push_buffer;
     Hash_Table<UI_id, UI_State_Variant> state_table;
 
