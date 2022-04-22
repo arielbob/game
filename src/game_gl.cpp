@@ -192,7 +192,7 @@
 //       - TODO (done): layer support in rendering GUI
 //               - basically allow us to push a new layer to guarantee that elements on that layer will be rendered
 //                 after things on previous layers.
-//       - TODO: remove all the old editor color picker code
+//       - TODO (done): remove all the old editor color picker code
 //       - TODO: add sliders for RGB and HSV
 //       - TODO: add RGBA struct
 //       - TODO: replace Vec3 and Vec4 colors (point_light.color and material.color_override) with RGBA structs
