@@ -365,11 +365,11 @@ void do_text(UI_Manager *manager,
     ui_add_text(manager, ui_text);
 }
 
-bool32 do_text_button(UI_Manager *manager, Controller_State *controller_state,
-                      real32 x_px, real32 y_px,
+bool32 do_text_button(real32 x_px, real32 y_px,
                       real32 width, real32 height,
                       UI_Text_Button_Style style, UI_Text_Style text_style,
                       char *text, char *font, bool32 is_disabled, char *id_string, int32 index = 0) {
+    using namespace Context;
     UI_Text_Button button = make_ui_text_button(x_px, y_px, width, height,
                                                 style, text_style,
                                                 text, font, is_disabled, id_string, index);
@@ -378,59 +378,57 @@ bool32 do_text_button(UI_Manager *manager, Controller_State *controller_state,
 
     Vec2 current_mouse = controller_state->current_mouse;
 
-    if (!manager->is_disabled &&
+    if (!ui_manager->is_disabled &&
         !is_disabled &&
-        in_bounds_on_layer(manager, current_mouse, x_px, x_px + width, y_px, y_px + height)) {
+        in_bounds_on_layer(ui_manager, current_mouse, x_px, x_px + width, y_px, y_px + height)) {
         // NOTE: ui state is modified in sequence that the immediate mode calls are done. this is why we have to always
         //       set hot again. if we didn't have this, if we drew a box, then drew a button on top of it, and then moved
         //       our cursor over top of the button, hot would be the box and NOT the button. which is not desired.
-        set_hot(manager, button.id);
+        set_hot(ui_manager, button.id);
         
         if (controller_state->left_mouse.is_down && !controller_state->left_mouse.was_down) {
             // we check for !was_down to avoid setting a button active if we click and hold outside then
             // move into the button
-            manager->active = button.id;
+            ui_manager->active = button.id;
         } else if (!controller_state->left_mouse.is_down && controller_state->left_mouse.was_down) {
-            if (ui_id_equals(manager->active, button.id)) {
+            if (ui_id_equals(ui_manager->active, button.id)) {
                 was_clicked = true;
-                manager->active = {};
+                ui_manager->active = {};
                 debug_print("%s was clicked\n", button.id);
             }
         }
     } else {
-        if (ui_id_equals(manager->hot, button.id)) {
-            clear_hot(manager);
+        if (ui_id_equals(ui_manager->hot, button.id)) {
+            clear_hot(ui_manager);
         }
 
-        if (ui_id_equals(manager->active, button.id) && !controller_state->left_mouse.is_down) {
-            manager->active = {};
+        if (ui_id_equals(ui_manager->active, button.id) && !controller_state->left_mouse.is_down) {
+            ui_manager->active = {};
         }
     }
 
-    ui_add_text_button(manager, button);
+    ui_add_text_button(ui_manager, button);
 
     return was_clicked;
 }
 
-inline bool32 do_text_button(UI_Manager *manager, Controller_State *controller_state,
-                      real32 x_px, real32 y_px,
+inline bool32 do_text_button(real32 x_px, real32 y_px,
                       real32 width, real32 height,
                       UI_Text_Button_Style style, UI_Text_Style text_style,
                       char *text, char *font, char *id_string, int32 index = 0) {
-    return do_text_button(manager, controller_state,
-                          x_px, y_px,
+    return do_text_button(x_px, y_px,
                           width, height,
                           style, text_style,
                           text, font, false, id_string, index);
 }
 
-bool32 do_image_button(UI_Manager *manager, Controller_State *controller_state,
-                       real32 x_px, real32 y_px,
+bool32 do_image_button(real32 x_px, real32 y_px,
                        real32 width, real32 height,
                        UI_Image_Button_Style style,
                        UI_Text_Style text_style,
                        int32 texture_id, char *text, char *font,
                        char *id_string, int32 index = 0) {
+    using namespace Context;
     UI_Image_Button button = make_ui_image_button(x_px, y_px, width, height,
                                                   style, text_style,
                                                   texture_id, text, font,
@@ -439,39 +437,40 @@ bool32 do_image_button(UI_Manager *manager, Controller_State *controller_state,
     bool32 was_clicked = false;
 
     Vec2 current_mouse = controller_state->current_mouse;
-    if (!manager->is_disabled && in_bounds_on_layer(manager, current_mouse, x_px, x_px + width, y_px, y_px + height)) {
-        set_hot(manager, button.id);
+    if (!ui_manager->is_disabled &&
+        in_bounds_on_layer(ui_manager, current_mouse, x_px, x_px + width, y_px, y_px + height)) {
+        set_hot(ui_manager, button.id);
         
         if (controller_state->left_mouse.is_down && !controller_state->left_mouse.was_down) {
-            manager->active = button.id;
+            ui_manager->active = button.id;
         } else if (!controller_state->left_mouse.is_down && controller_state->left_mouse.was_down) {
-            if (ui_id_equals(manager->active, button.id)) {
+            if (ui_id_equals(ui_manager->active, button.id)) {
                 was_clicked = true;
-                manager->active = {};
+                ui_manager->active = {};
                 debug_print("%s was clicked\n", button.id);
             }
         }
     } else {
-        if (ui_id_equals(manager->hot, button.id)) {
-            clear_hot(manager);
+        if (ui_id_equals(ui_manager->hot, button.id)) {
+            clear_hot(ui_manager);
         }
 
-        if (ui_id_equals(manager->active, button.id) && !controller_state->left_mouse.is_down) {
-            manager->active = {};
+        if (ui_id_equals(ui_manager->active, button.id) && !controller_state->left_mouse.is_down) {
+            ui_manager->active = {};
         }
     }
 
-    ui_add_image_button(manager, button);
+    ui_add_image_button(ui_manager, button);
 
     return was_clicked;
 }
 
-bool32 do_color_button(UI_Manager *manager, Controller_State *controller_state,
-                       real32 x_px, real32 y_px,
+bool32 do_color_button(real32 x_px, real32 y_px,
                        real32 width, real32 height,
                        UI_Color_Button_Style style,
                        Vec4 color,
                        char *id_string, int32 index = 0) {
+    using namespace Context;
     UI_Color_Button button = make_ui_color_button(x_px, y_px, width, height,
                                                   style,
                                                   color, id_string, index);
@@ -479,29 +478,30 @@ bool32 do_color_button(UI_Manager *manager, Controller_State *controller_state,
     bool32 was_clicked = false;
 
     Vec2 current_mouse = controller_state->current_mouse;
-    if (!manager->is_disabled && in_bounds_on_layer(manager, current_mouse, x_px, x_px + width, y_px, y_px + height)) {
-        set_hot(manager, button.id);
+    if (!ui_manager->is_disabled &&
+        in_bounds_on_layer(ui_manager, current_mouse, x_px, x_px + width, y_px, y_px + height)) {
+        set_hot(ui_manager, button.id);
         
         if (controller_state->left_mouse.is_down && !controller_state->left_mouse.was_down) {
-            manager->active = button.id;
+            ui_manager->active = button.id;
         } else if (!controller_state->left_mouse.is_down && controller_state->left_mouse.was_down) {
-            if (ui_id_equals(manager->active, button.id)) {
+            if (ui_id_equals(ui_manager->active, button.id)) {
                 was_clicked = true;
-                manager->active = {};
+                ui_manager->active = {};
                 debug_print("%s was clicked\n", button.id);
             }
         }
     } else {
-        if (ui_id_equals(manager->hot, button.id)) {
-            clear_hot(manager);
+        if (ui_id_equals(ui_manager->hot, button.id)) {
+            clear_hot(ui_manager);
         }
 
-        if (ui_id_equals(manager->active, button.id) && !controller_state->left_mouse.is_down) {
-            manager->active = {};
+        if (ui_id_equals(ui_manager->active, button.id) && !controller_state->left_mouse.is_down) {
+            ui_manager->active = {};
         }
     }
 
-    ui_add_color_button(manager, button);
+    ui_add_color_button(ui_manager, button);
 
     return was_clicked;
 }
@@ -576,13 +576,13 @@ void do_text_box(UI_Manager *manager, Controller_State *controller_state,
 }
 #endif
 
-void do_text_box(UI_Manager *manager, Controller_State *controller_state,
-                 real32 x, real32 y,
+void do_text_box(real32 x, real32 y,
                  real32 width, real32 height,
                  String_Buffer *buffer,
                  char *font,
                  UI_Text_Box_Style style, UI_Text_Style text_style,
                  char *id_string, int32 index = 0) {
+    using namespace Context;
     UI_Text_Box text_box =  make_ui_text_box(x, y, width, height,
                                              *buffer,
                                              font,
@@ -590,13 +590,13 @@ void do_text_box(UI_Manager *manager, Controller_State *controller_state,
                                              id_string, index);
 
     Vec2 current_mouse = controller_state->current_mouse;
-    if (!manager->is_disabled && in_bounds_on_layer(manager, current_mouse, x, x + width, y, y + height)) {
-        set_hot(manager, text_box.id);
+    if (!ui_manager->is_disabled && in_bounds_on_layer(ui_manager, current_mouse, x, x + width, y, y + height)) {
+        set_hot(ui_manager, text_box.id);
 
         if (controller_state->left_mouse.is_down && !controller_state->left_mouse.was_down) {
-            manager->active = text_box.id;
-            manager->focus_timer = platform_get_wall_clock_time();
-            manager->focus_cursor_index = buffer->current_length;
+            ui_manager->active = text_box.id;
+            ui_manager->focus_timer = platform_get_wall_clock_time();
+            ui_manager->focus_cursor_index = buffer->current_length;
         }
     } else {
         // FIXME: this isn't really a bug (other programs seem to behave this way), but i'm not sure
@@ -604,47 +604,47 @@ void do_text_box(UI_Manager *manager, Controller_State *controller_state,
         //        the textbox should lose focus and text should no longer be inputted. but, for some reason it
         //        keeps focus after clicking outside of the textbox and characters keep getting inputted.
         //        actually, i think it's because we're doing while(PeekMessage...).
-        if (ui_id_equals(manager->hot, text_box.id)) {
-            clear_hot(manager);
+        if (ui_id_equals(ui_manager->hot, text_box.id)) {
+            clear_hot(ui_manager);
         }
 
-        if (ui_id_equals(manager->active, text_box.id) &&
+        if (ui_id_equals(ui_manager->active, text_box.id) &&
             controller_state->left_mouse.is_down &&
             !controller_state->left_mouse.was_down) {
-            manager->active = {};
-            manager->focus_cursor_index = 0;
+            ui_manager->active = {};
+            ui_manager->focus_cursor_index = 0;
         }
     }
 
-    if (ui_id_equals(manager->active, text_box.id)) {
+    if (ui_id_equals(ui_manager->active, text_box.id)) {
         for (int32 i = 0; i < controller_state->num_pressed_chars; i++) {
             char c = controller_state->pressed_chars[i];
             if (c == '\b') {
-                manager->focus_cursor_index--;
-                if (manager->focus_cursor_index < 0) {
-                    manager->focus_cursor_index = 0;
+                ui_manager->focus_cursor_index--;
+                if (ui_manager->focus_cursor_index < 0) {
+                    ui_manager->focus_cursor_index = 0;
                 }
-                buffer->current_length = manager->focus_cursor_index;
-            } else if (manager->focus_cursor_index < buffer->size &&
+                buffer->current_length = ui_manager->focus_cursor_index;
+            } else if (ui_manager->focus_cursor_index < buffer->size &&
                        c >= 32 &&
                        c <= 126) {
-                buffer->contents[manager->focus_cursor_index] = c;
-                manager->focus_cursor_index++;
+                buffer->contents[ui_manager->focus_cursor_index] = c;
+                ui_manager->focus_cursor_index++;
                 buffer->current_length++;
             }
         }
     }
 
-    ui_add_text_box(manager, text_box);
+    ui_add_text_box(ui_manager, text_box);
 }
 
-real32 do_slider(UI_Manager *manager, Controller_State *controller_state,
-                 real32 x, real32 y,
+real32 do_slider(real32 x, real32 y,
                  real32 width, real32 height,
                  char *text, char *font,
                  real32 min, real32 max, real32 value,
                  UI_Slider_Style style, UI_Text_Style text_style,
                  char *id_string, int32 index = 0) {
+    using namespace Context;
     UI_Slider slider =  make_ui_slider(x, y, width, height,
                                        text, font,
                                        min, max, value,
@@ -652,7 +652,7 @@ real32 do_slider(UI_Manager *manager, Controller_State *controller_state,
                                        id_string, index);
     
     UI_State_Variant *state_variant;
-    bool32 state_exists = get_state(manager, slider.id, &state_variant);
+    bool32 state_exists = get_state(ui_manager, slider.id, &state_variant);
     if (!state_exists) {
         UI_Slider_State new_slider_state = {
             make_string_buffer((Allocator *) &memory.string64_pool, text, 64)
@@ -661,52 +661,52 @@ real32 do_slider(UI_Manager *manager, Controller_State *controller_state,
         new_state.type = UI_STATE_SLIDER;
         new_state.slider_state = new_slider_state;
         
-        add_state(manager, slider.id, new_state);
+        add_state(ui_manager, slider.id, new_state);
     }
     UI_Slider_State *state = &state_variant->slider_state;
 
     Vec2 current_mouse = controller_state->current_mouse;
-    if (!manager->is_disabled && in_bounds_on_layer(manager, current_mouse, x, x + width, y, y + height)) {
-        set_hot(manager, slider.id);
+    if (!ui_manager->is_disabled && in_bounds_on_layer(ui_manager, current_mouse, x, x + width, y, y + height)) {
+        set_hot(ui_manager, slider.id);
 
         if (controller_state->left_mouse.is_down && !controller_state->left_mouse.was_down) {
-            manager->active = slider.id;
-            manager->active_initial_position = controller_state->current_mouse;
-            manager->active_initial_time = platform_get_wall_clock_time();
+            ui_manager->active = slider.id;
+            ui_manager->active_initial_position = controller_state->current_mouse;
+            ui_manager->active_initial_time = platform_get_wall_clock_time();
         }
 
         if (!controller_state->left_mouse.is_down) {
         
-            if (ui_id_equals(manager->active, slider.id)) {
-                manager->active = {};
+            if (ui_id_equals(ui_manager->active, slider.id)) {
+                ui_manager->active = {};
             }
 #if 0
             real64 deadzone_time = 0.5;
-            real32 time_since_first_active = platform_get_wall_clock_time() - manager->active_initial_time;
+            real32 time_since_first_active = platform_get_wall_clock_time() - ui_manager->active_initial_time;
 
             if (time_since_first_active < deadzone_time) {
                 state->is_textbox = true;
-                manager->active = slider.id;
+                ui_manager->active = slider.id;
             } else {
-                manager->active = {};
+                ui_manager->active = {};
             }
 #endif
         }
     } else {
-        if (ui_id_equals(manager->hot, slider.id)) {
-            clear_hot(manager);
+        if (ui_id_equals(ui_manager->hot, slider.id)) {
+            clear_hot(ui_manager);
         }
 
-        if (ui_id_equals(manager->active, slider.id) && !controller_state->left_mouse.is_down) {
-            manager->active = {};
+        if (ui_id_equals(ui_manager->active, slider.id) && !controller_state->left_mouse.is_down) {
+            ui_manager->active = {};
         }
     }
 
-    if (ui_id_equals(manager->active, slider.id) && being_held(controller_state->left_mouse)) {
+    if (ui_id_equals(ui_manager->active, slider.id) && being_held(controller_state->left_mouse)) {
 #if 0
         real32 pixel_deadzone_radius = 5.0f;
         real64 deadzone_time = 0.5;
-        real32 time_since_first_active = platform_get_wall_clock_time() - manager->active_initial_time;
+        real32 time_since_first_active = platform_get_wall_clock_time() - ui_manager->active_initial_time;
         if (time_since_first_active >= deadzone_time || delta_pixels > pixel_deadzone_radius) {
             value += delta_pixels * rate;
             value = min(max, value);
@@ -721,32 +721,32 @@ real32 do_slider(UI_Manager *manager, Controller_State *controller_state,
         value = max(min, value);
     }
 
-    ui_add_slider(manager, slider);
+    ui_add_slider(ui_manager, slider);
 
     return value;
 }
 
-void do_box(UI_Manager *manager, Controller_State *controller_state,
-            real32 x, real32 y,
+void do_box(real32 x, real32 y,
             real32 width, real32 height,
             UI_Box_Style style,
             char *id_string, int32 index = 0) {
-    UI_Box box =  make_ui_box(x, y, width, height,
-                              style,
-                              id_string, index);
+    using namespace Context;
+    UI_Box box = make_ui_box(x, y, width, height,
+                             style,
+                             id_string, index);
 
     Vec2 current_mouse = controller_state->current_mouse;
-    if (!manager->is_disabled && in_bounds_on_layer(manager, current_mouse,
-                                                    x, x + width,
-                                                    y, y + height)) {
-        set_hot(manager, box.id);
+    if (!ui_manager->is_disabled && in_bounds_on_layer(ui_manager, current_mouse,
+                                                       x, x + width,
+                                                       y, y + height)) {
+        set_hot(ui_manager, box.id);
     } else {
-        if (ui_id_equals(manager->hot, box.id)) {
-            clear_hot(manager);
+        if (ui_id_equals(ui_manager->hot, box.id)) {
+            clear_hot(ui_manager);
         }
     }
 
-    ui_add_box(manager, box);
+    ui_add_box(ui_manager, box);
 }
 
 void do_line(UI_Manager *manager,
@@ -771,11 +771,12 @@ void do_color_picker(UI_Manager *manager,
 }
 #endif
 
-int32 do_hue_slider(UI_Manager *manager, Controller_State *controller_state,
-                    real32 x, real32 y,
+int32 do_hue_slider(real32 x, real32 y,
                     real32 width, real32 height,
                     int32 hue_degrees,
                     char *id_string) {
+    using namespace Context;
+    UI_Manager *manager = ui_manager;
     UI_Hue_Slider slider = make_ui_hue_slider(x, y, width, height, hue_degrees, id_string);
 
     Vec2 current_mouse = controller_state->current_mouse;
@@ -847,12 +848,13 @@ HSV_Color get_hsv_inside_quad(Vec2 current_mouse, int32 hue_degrees,
     return result;
 }
 
-HSV_Picker_State do_hsv_picker(UI_Manager *manager, Controller_State *controller_state,
-                               real32 x, real32 y,
+HSV_Picker_State do_hsv_picker(real32 x, real32 y,
                                real32 width, real32 height,
                                HSV_Picker_State state,
                                char *id_string) {
+    using namespace Context;
     Vec2 current_mouse = controller_state->current_mouse;
+    UI_Manager *manager = ui_manager;
 
     // TODO: is it possible to move this to the end so that we don't have a frame of lag?
     UI_HSV_Picker picker = make_ui_hsv_picker(x, y,

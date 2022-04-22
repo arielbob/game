@@ -178,12 +178,12 @@
 //       - TODO (done): write procedure to convert RGB to HSV
 //       - TODO (done): add procedure for drawing a basic color picker
 //       - TODO (done): hide color picker on click outside
-//       - TODO: add Context namespace that has things like Game_State and Controller_State in it, so we don't
-//               have to constantly be passing them around
-//               - i'm pretty sure we can still have editor_state and ui_manager be inside game_state, while also
-//                 putting it in a separate member in Context. that way we can easily get it from context.
+//       - TODO (done): add Context namespace that has things like Game_State and Controller_State in it, so we don't
+//                      have to constantly be passing them around
 //       - TODO: fix bug where if you let go of either the slider or the hsv picker outside of the color picker
 //               bounds, you hide the picker
+//       - TODO: fix bug where if you have the color picker open and click another entity, that entity gets the
+//               same color applied
 //       - TODO: try moving do_color_picker to UI code instead of having it in editor.cpp
 //               - we can still have the editor handle the color picker's state, although we will also need the
 //                 color_picker's state to hold its own UI elements' states as well
