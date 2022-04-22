@@ -224,53 +224,6 @@ void draw_labeled_text(real32 x, real32 y,
                          text, text_font, text_style);
 }
 
-Vec4 do_color_picker(real32 x, real32 y, UI_id parent_element) {
-    using namespace Context;
-    Render_State *render_state = &game_state->render_state;
-    Color_Picker_State *picker_state = &editor_state->color_picker_state;
-
-    using namespace Editor_Constants;
-
-    push_layer(ui_manager);
-
-    uint32 side_flags = SIDE_LEFT | SIDE_RIGHT | SIDE_TOP | SIDE_BOTTOM;
-    draw_row(x, y,
-             color_picker_width, color_picker_height,
-             row_color,
-             side_flags,
-             "color_picker", 0);
-
-    real32 initial_x = x;
-    real32 initial_y = y;
-
-    x += small_padding_x;
-    y += small_padding_y;
-
-    HSV_Picker_State *hsv_picker_state = &picker_state->hsv_picker_state;
-    hsv_picker_state->hsv_color.h = do_hue_slider(x + hsv_picker_width + small_padding_x, y,
-                                                  hue_slider_width, hsv_picker_height,
-                                                  hsv_picker_state->hsv_color.h,
-                                                  "hue_slider");
-    picker_state->hsv_picker_state = do_hsv_picker(x, y,
-                                                   hsv_picker_width, hsv_picker_height,
-                                                   *hsv_picker_state, "hsv_picker");
-
-    if (!ui_id_equals(ui_manager->hot, parent_element) &&
-        !in_bounds_on_layer(ui_manager, controller_state->current_mouse,
-                            initial_x, initial_x + color_picker_width,
-                            initial_y, initial_y + color_picker_height)) {
-        if (was_clicked(controller_state->left_mouse)) {
-            editor_state->open_color_picker = Editor_Color_Picker::NONE;
-        }
-    }
-
-    pop_layer(ui_manager);
-
-    // TODO: add alpha
-    Vec3 color = rgb_to_vec3(hsv_to_rgb(picker_state->hsv_picker_state.hsv_color));
-    return make_vec4(color, 1.0f);
-}
-
 void draw_mesh_library(Game_State *game_state, Controller_State *controller_state, Entity *selected_entity) {
     Render_State *render_state = &game_state->render_state;
     UI_Manager *ui_manager = &game_state->ui_manager;
@@ -1025,19 +978,9 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                 editor_state->open_color_picker = Editor_Color_Picker::MATERIAL_COLOR_OVERRIDE;
                 editor_state->color_picker_position = make_vec2(x + right_column_offset, y + row_height);
 
-                using namespace Editor_Constants;
-                HSV_Color hsv_color = rgb_to_hsv(vec3_to_rgb(truncate_v4_to_v3(material->color_override)));
-                Vec2 relative_position = hsv_to_cursor_position_inside_quad(hsv_color,
-                                                                            hsv_picker_width, hsv_picker_height);
-                HSV_Picker_State hsv_picker_state = {
-                    hsv_color,
-                    relative_position.x, relative_position.y
-                };
-                Color_Picker_State color_picker_state = {
-                    //(Allocator *) &memory.string64_pool,
-                    hsv_picker_state
-                };
-                editor_state->color_picker_state = color_picker_state;
+                editor_state->color_picker_state = make_color_picker_state(material->color_override,
+                                                                           Editor_Constants::hsv_picker_width,
+                                                                           Editor_Constants::hsv_picker_height);
             }
         }
 
@@ -1125,9 +1068,30 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
 
     if (editor_state->open_color_picker == Editor_Color_Picker::MATERIAL_COLOR_OVERRIDE) {
         UI_id parent_id = { UI_COLOR_BUTTON, color_override_button_id, 0 };
-        material->color_override = do_color_picker(editor_state->color_picker_position.x,
-                                                   editor_state->color_picker_position.y,
-                                                   parent_id);
+        push_layer(ui_manager);
+
+        using namespace Editor_Constants;
+        UI_Color_Picker_Style color_picker_style = {
+            color_picker_width, color_picker_height,
+            hsv_picker_width, hsv_picker_height,
+            hue_slider_width,
+            small_padding_x, small_padding_y,
+            row_color
+        };
+
+        editor_state->color_picker_state = do_color_picker(editor_state->color_picker_position.x,
+                                                           editor_state->color_picker_position.y,
+                                                           color_picker_style,
+                                                           editor_state->color_picker_state,
+                                                           "color_picker");
+        RGB_Color rgb = hsv_to_rgb(editor_state->color_picker_state.hsv_picker_state.hsv_color);
+        material->color_override = make_vec4(rgb_to_vec3(rgb), 1.0f);
+
+        if (!ui_id_equals(ui_manager->hot, parent_id) && editor_state->color_picker_state.should_hide) {
+            editor_state->open_color_picker = Editor_Color_Picker::NONE;
+        }
+
+        pop_layer(ui_manager);
     }
 
 }

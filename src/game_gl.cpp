@@ -180,13 +180,13 @@
 //       - TODO (done): hide color picker on click outside
 //       - TODO (done): add Context namespace that has things like Game_State and Controller_State in it, so we don't
 //                      have to constantly be passing them around
-//       - TODO: fix bug where if you let go of either the slider or the hsv picker outside of the color picker
-//               bounds, you hide the picker
+//       - TODO (done): try moving do_color_picker to UI code instead of having it in editor.cpp
+//                      - we can still have the editor handle the color picker's state
+//       - TODO (done): fix bug where if you let go of either the slider or the hsv picker outside of the color
+//                      picker bounds, you hide the picker
 //       - TODO: fix bug where if you have the color picker open and click another entity, that entity gets the
 //               same color applied
-//       - TODO: try moving do_color_picker to UI code instead of having it in editor.cpp
-//               - we can still have the editor handle the color picker's state, although we will also need the
-//                 color_picker's state to hold its own UI elements' states as well
+//       - TODO: draw border around color picker
 
 //       - TODO: draw little arrows on the side of the hue slider so that you can move the slider without hiding
 //               the actual color with a line - we can just add a hitbox around where the current value is in
@@ -2046,6 +2046,10 @@ void gl_draw_ui(GL_State *gl_state, Game_State *game_state,
                 UI_HSV_Picker *ui_hsv_picker = (UI_HSV_Picker *) element;
                 gl_draw_ui_hsv_picker(gl_state, render_state, ui_manager, *ui_hsv_picker);
                 address += sizeof(UI_HSV_Picker);
+            } break;
+            case UI_COLOR_PICKER: {
+                UI_Color_Picker *ui_color_picker = (UI_Color_Picker *) element;
+                address += sizeof(UI_Color_Picker);
             } break;
             default: {
                 assert(!"Unhandled UI element type.");

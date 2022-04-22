@@ -12,8 +12,8 @@ enum UI_Type {
     UI_BOX,
     UI_LINE,
     UI_HUE_SLIDER,
-    UI_HSV_PICKER
-    //UI_COLOR_PICKER
+    UI_HSV_PICKER,
+    UI_COLOR_PICKER
 };
 
 #define TEXT_ALIGN_X 0x1
@@ -456,7 +456,7 @@ UI_Hue_Slider make_ui_hue_slider(real32 x, real32 y,
 // end hue slider
 
 // start HSV picker
-struct HSV_Picker_State {
+struct UI_HSV_Picker_State {
     HSV_Color hsv_color;
     real32 relative_cursor_x;
     real32 relative_cursor_y;
@@ -471,12 +471,12 @@ struct UI_HSV_Picker {
     real32 width;
     real32 height;
 
-    HSV_Picker_State state;
+    UI_HSV_Picker_State state;
 };
 
 UI_HSV_Picker make_ui_hsv_picker(real32 x, real32 y,
                                  real32 width, real32 height,
-                                 HSV_Picker_State state,
+                                 UI_HSV_Picker_State state,
                                  char *id) {
     UI_HSV_Picker hsv_picker;
 
@@ -495,28 +495,49 @@ UI_HSV_Picker make_ui_hsv_picker(real32 x, real32 y,
 // end HSV picker
 
 // start color picker
-#if 0
+struct UI_Color_Picker_Style {
+    real32 width;
+    real32 height;
+    real32 hsv_picker_width;
+    real32 hsv_picker_height;
+    real32 hue_slider_width;
+    real32 padding_x;
+    real32 padding_y;
+    Vec4 background_color;
+};
+
+struct UI_Color_Picker_State {
+    bool32 should_hide;
+    UI_HSV_Picker_State hsv_picker_state;
+};
+
 struct UI_Color_Picker {
     UI_HEADER
     
     real32 x;
     real32 y;
+    
+    UI_Color_Picker_Style style;
+    UI_Color_Picker_State state;
 };
 
 UI_Color_Picker make_ui_color_picker(real32 x, real32 y,
+                                     UI_Color_Picker_Style style,
+                                     UI_Color_Picker_State state,
                                      char *id) {
     UI_Color_Picker color_picker;
 
     color_picker.type = UI_COLOR_PICKER;
     color_picker.x = x;
     color_picker.y = y;
+    color_picker.style = style;
+    color_picker.state = state;
 
     UI_id color_picker_id = { UI_COLOR_PICKER, id, 0 };
     color_picker.id = color_picker_id;
 
     return color_picker;
 }
-#endif
 // end color picker
 
 // UI element states

@@ -45,13 +45,6 @@ namespace Editor_Constants {
 #define TEXTURE_LIBRARY_WINDOW  0x2
 #define MESH_LIBRARY_WINDOW     0x4
 
-// TODO: should be able to move the color picker window
-struct Color_Picker_State {
-    //Allocator *string_allocator;
-    HSV_Picker_State hsv_picker_state;
-    //int32 hue_slider_value;
-};
-
 struct Editor_State {
     Transform_Mode transform_mode;
 
@@ -81,9 +74,7 @@ struct Editor_State {
 
     Editor_Color_Picker open_color_picker;
     Vec2 color_picker_position;
-    Color_Picker_State color_picker_state;
-    //bool32 is_adding_entity;
-    //Add_Entity_Box_State add_entity_box_state;
+    UI_Color_Picker_State color_picker_state;
 };
 
 #endif
