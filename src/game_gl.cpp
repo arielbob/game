@@ -193,6 +193,8 @@
 //               - basically allow us to push a new layer to guarantee that elements on that layer will be rendered
 //                 after things on previous layers.
 //       - TODO (done): remove all the old editor color picker code
+//       - TODO (done): fix bug where color picker shows for a frame when opening edit panel again after closing it
+//                      with color picker open
 //       - TODO: add sliders for RGB and HSV
 //       - TODO: add RGBA struct
 //       - TODO: replace Vec3 and Vec4 colors (point_light.color and material.color_override) with RGBA structs
@@ -213,6 +215,9 @@
 //       check for duplicates and empties. it matters that we don't have duplicates since texture names are used
 //       as keys in the opengl code. we don't store material structs in the opengl code, but it's better to be
 //       consistent. show a message using the messaging system.
+// TODO: for checking for memory leaks, it's actually kind of unreliable to use task manager, since we just take
+//       a bunch of memory at the beginning and allocate from that. it would be better if we had an actual
+//       memory monitoring gui.
 
 // TODO: editor undoing
 // TODO: prompt to save level if open pressed when changes have been made

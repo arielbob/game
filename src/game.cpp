@@ -776,6 +776,7 @@ void update(Game_State *game_state,
 
     clear_hot_if_gone(ui_manager);
     delete_state_if_gone(ui_manager);
+    clear_editor_state_for_gone_color_pickers(ui_manager, editor_state);
     
     assert(ui_manager->current_layer == 0);
 }

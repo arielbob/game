@@ -981,7 +981,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
             editor_color_picker->ui_state = do_color_picker(x + right_column_offset, y + row_height,
                                                             Editor_Constants::color_picker_style,
                                                             editor_color_picker->ui_state,
-                                                            "color_picker");
+                                                            "editor_color_picker");
             pop_layer(ui_manager);
             material->color_override = make_vec4(rgb_to_vec3(editor_color_picker->ui_state.rgb_color), 1.0f);
             if (editor_color_picker->ui_state.should_hide) {
@@ -1044,7 +1044,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
             editor_color_picker->ui_state = do_color_picker(x + right_column_offset, y + row_height,
                                                             Editor_Constants::color_picker_style,
                                                             editor_color_picker->ui_state,
-                                                            "color_picker");
+                                                            "editor_color_picker");
             pop_layer(ui_manager);
             point_light->light_color = rgb_to_vec3(editor_color_picker->ui_state.rgb_color);
             if (editor_color_picker->ui_state.should_hide) {

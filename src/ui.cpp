@@ -164,6 +164,10 @@ void ui_add_color_picker(UI_Manager *manager, UI_Color_Picker color_picker) {
     *element = color_picker;
 }
 
+inline bool32 ui_id_is_empty(UI_id id) {
+    return ((id.string_ptr == NULL) && (id.index == 0));
+}
+
 inline bool32 ui_id_equals(UI_id id1, UI_id id2) {
     return ((id1.string_ptr == id2.string_ptr) && (id1.index == id2.index));
 }
@@ -341,6 +345,25 @@ void clear_hot_if_gone(UI_Manager *manager) {
 
     // hot is gone
     clear_hot(manager);
+}
+
+void clear_editor_state_for_gone_color_pickers(UI_Manager *manager, Editor_State *editor_state) {
+    UI_Push_Buffer *push_buffer = &manager->push_buffer;
+    UI_Element *element = next_element(NULL, push_buffer);
+
+    UI_id color_picker_parent_id = editor_state->color_picker.parent_ui_id;
+    if (ui_id_is_empty(color_picker_parent_id)) return;
+
+    while (element) {
+        if (ui_id_equals(element->id, color_picker_parent_id)) {
+            // the parent's still there
+            return;
+        }
+        element = next_element(element, push_buffer);
+    }
+
+    // we didn't find the parent, so it's gone this frame, so reset the color picker parent id
+    editor_state->color_picker.parent_ui_id = {};
 }
 
 void delete_state_if_gone(UI_Manager *manager) {
