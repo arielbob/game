@@ -1163,6 +1163,7 @@ bool32 ray_intersects_plane(Ray ray, Plane plane, real32 *t_result) {
 //       (ctrl-f triangle here: https://www.iquilezles.org/www/articles/intersectors/intersectors.htm)
 //       detailed explanation of fast algorithm here: https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/moller-trumbore-ray-triangle-intersection
 // TODO: may also be able to do a ray vs many triangles SIMD version of this procedure
+#if 0
 bool32 ray_intersects_triangle(Ray ray, Vec3 v[3], real32 *t_result) {
     Vec3 v0_v1 = v[1] - v[0];
     Vec3 v0_v2 = v[2] - v[0];
@@ -1202,6 +1203,27 @@ bool32 ray_intersects_triangle(Ray ray, Vec3 v[3], real32 *t_result) {
     }
 
     return false;
+}
+#endif
+
+// from https://www.iquilezles.org/www/articles/intersectors/intersectors.htm
+// explanation (i'm pretty sure this is just a slightly modified version of the above) here:
+// https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/moller-trumbore-ray-triangle-intersection
+bool32 ray_intersects_triangle(Ray ray, Vec3 triangle_verts[3], real32 *t_result) {
+    Vec3 v1v0 = triangle_verts[1] - triangle_verts[0];
+    Vec3 v2v0 = triangle_verts[2] - triangle_verts[0];
+    Vec3 rov0 = ray.origin - triangle_verts[0];
+    Vec3 n = cross(v1v0, v2v0);
+    Vec3 q = cross(rov0, ray.direction);
+    real32 d = 1.0f / dot(ray.direction, n);
+    real32 u = d * dot(-q, v2v0);
+    real32 v = d * dot( q, v1v0);
+    real32 t = d * dot(-n, rov0);
+    
+    if (u < 0.0f || v < 0.0f || (u + v) > 1.0 || t < 0.0f) return false;
+
+    *t_result = t;
+    return true;
 }
 
 // NOTE: we note that it's coplanar because this doesn't check for skew lines
@@ -1408,6 +1430,10 @@ AABB transform_aabb(AABB aabb, Mat4 transform_matrix) {
     transformed_aabb.p_max = make_vec3(x_max, y_max, z_max);
 
     return transformed_aabb;
+}
+
+inline AABB transform_aabb(AABB aabb, Transform transform) {
+    return transform_aabb(aabb, get_model_matrix(transform));
 }
 
 inline bool32 is_zero(Vec3 v) {

@@ -59,7 +59,8 @@ bool32 editor_add_mesh_press(Allocator *string_allocator, Allocator *filename_al
                                            new_mesh_filename_buffer,
                                            new_mesh_name_buffer);
         int32 mesh_id = level_add_mesh(level, new_mesh);
-        entity->mesh_id = mesh_id;
+
+        set_entity_mesh(Context::game_state, level, entity, Mesh_Type::LEVEL, mesh_id);
         end_region(m);
         return true;
     }
@@ -403,8 +404,8 @@ void draw_mesh_library(Game_State *game_state, Controller_State *controller_stat
         if (selected_entity->mesh_id < 0 ||
             picked_mesh_id != selected_entity->mesh_id ||
             picked_mesh_type != selected_entity->mesh_type) {
-            selected_entity->mesh_id = picked_mesh_id;
-            selected_entity->mesh_type = picked_mesh_type;
+            set_entity_mesh(game_state, &game_state->current_level, selected_entity,
+                            picked_mesh_type, picked_mesh_id);
         }
 
         editor_state->open_window_flags = 0;
@@ -1342,7 +1343,11 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
                                             &game_state->current_level,
                                             Mesh_Type::PRIMITIVE,
                                             make_string("cube"));
-        Normal_Entity new_entity = make_entity(Mesh_Type::PRIMITIVE, mesh_id, -1, make_transform());
+        AABB primitive_cube_mesh_aabb = (get_mesh(game_state, &game_state->current_level,
+                                                  Mesh_Type::PRIMITIVE, mesh_id)).aabb;
+        
+        Normal_Entity new_entity = make_entity(Mesh_Type::PRIMITIVE, mesh_id, -1, make_transform(),
+                                               primitive_cube_mesh_aabb);
         int32 entity_id = level_add_entity(&game_state->current_level, new_entity);
         editor_state->selected_entity_type = ENTITY_NORMAL;
         editor_state->selected_entity_index = entity_id;
@@ -1373,7 +1378,12 @@ int32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, real32 *t_res
 
     uint32 *indices = mesh.indices;
 
-    // this might be very slow
+    // this might be very slow - this is very cache unfriendly since we're constantly jumping around the
+    // vertices array, which in some cases is large.
+    // we could cache every single triangle vertex in an array of size num_triangles*3, so our
+    // suzanne mesh with 62976 triangles would take up 62976*3*sizeof(real32) = 755712 bytes = 756KB,
+    // which isn't terrible, but i'm not sure we even have a need for a fast ray_intersects_mesh()
+    // right now, so this way of doing it is fine for now.
     real32 t_min = FLT_MAX;
     bool32 hit = false;
     for (int32 i = 0; i < (int32) mesh.num_triangles; i++) {
@@ -1402,7 +1412,6 @@ int32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, real32 *t_res
     return hit;
 }
 
-// TODO: optimize this by checking against AABB before checking against triangles
 int32 pick_entity(Game_State *game_state, Ray cursor_ray, Entity *entity_result, int32 *index_result) {
     Editor_State *editor_state = &game_state->editor_state;
 
@@ -1417,24 +1426,28 @@ int32 pick_entity(Game_State *game_state, Ray cursor_ray, Entity *entity_result,
 
     real32 t_min = FLT_MAX;
     for (int32 i = 0; i < level->num_normal_entities; i++) {
-        real32 t;
+        real32 t, aabb_t;
         Normal_Entity *entity = &normal_entities[i];
         Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
-        if (ray_intersects_mesh(cursor_ray, mesh, entity->transform, &t) && (t < t_min)) {
-            t_min = t;
-            entity_index = i;
-            picked_entity = (Entity *) entity;
+        if (ray_intersects_aabb(cursor_ray, entity->transformed_aabb, &aabb_t) && (aabb_t < t_min)) {
+            if (ray_intersects_mesh(cursor_ray, mesh, entity->transform, &t) && (t < t_min)) {
+                t_min = t;
+                entity_index = i;
+                picked_entity = (Entity *) entity;
+            }
         }
     }
 
     for (int32 i = 0; i < level->num_point_lights; i++) {
-        real32 t;
+        real32 t, aabb_t;
         Point_Light_Entity *entity = &point_lights[i];
         Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
-        if (ray_intersects_mesh(cursor_ray, mesh, entity->transform, &t) && (t < t_min)) {
-            t_min = t;
-            entity_index = i;
-            picked_entity = (Entity *) entity;
+        if (ray_intersects_aabb(cursor_ray, entity->transformed_aabb, &aabb_t) && (aabb_t < t_min)) {
+            if (ray_intersects_mesh(cursor_ray, mesh, entity->transform, &t) && (t < t_min)) {
+                t_min = t;
+                entity_index = i;
+                picked_entity = (Entity *) entity;
+            }
         }
     }
 

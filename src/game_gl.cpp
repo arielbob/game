@@ -207,6 +207,9 @@
 //               do_hue_slider(), and then when we draw it, draw arrows within that hitbox.
 //       - TODO: write procedure for converting HSV to RGB(A?)
 
+// TODO (done): optimize pick_entity() by checking against AABB before checking against triangles
+// TODO (done): replace ray_intersects_triangle with faster algorithm
+
 // TODO: maybe we don't even need UI state.. we may be able to just hold the State structs ourselves and pass them
 //       to the do_* procedures and those procedures will return the new State structs.
 // TODO: some type of messaging system that isn't in the game console, like toasts kind of (messages that appear
@@ -218,6 +221,8 @@
 // TODO: for checking for memory leaks, it's actually kind of unreliable to use task manager, since we just take
 //       a bunch of memory at the beginning and allocate from that. it would be better if we had an actual
 //       memory monitoring gui.
+
+// TODO: entity deleting (probably have to replace entity arrays with free lists)
 
 // TODO: editor undoing
 // TODO: prompt to save level if open pressed when changes have been made

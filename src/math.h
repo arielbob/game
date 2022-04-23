@@ -146,7 +146,8 @@ struct HSV_Color {
 inline Vec4 make_vec4(real32 x, real32 y, real32 z, real32 w);
 Vec4 rgba_to_vec4(real32 r, real32 g, real32 b, real32 a);
 Vec4 rgb_to_vec4(real32 r, real32 g, real32 b);
-//Vec4 rgb_to_vec4(int32 r, int32 g, int32 b);
+AABB transform_aabb(AABB aabb, Mat4 transform_matrix);
+Mat4 get_model_matrix(Transform transform);
 
 #define GAME_MATH_H
 #endif

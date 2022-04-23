@@ -550,6 +550,29 @@ void update_gizmo(Game_State *game_state) {
     editor_state->gizmo.transform.rotation = entity->transform.rotation;
 }
 
+// TODO: we probably don't always need to update the AABB in some cases; well, idk, there might be uses for AABBs
+//       outside of the editor, but that's the only place we're using them right now. although, it is convenient
+//       that as long as we use these procedures when transforming entities, the entities will always have an
+//       up to date AABB.
+void update_entity_position(Game_State *game_state, Entity *entity, Vec3 new_position) {
+    entity->transform.position = new_position;
+    Mesh *mesh = get_mesh_pointer(game_state, &game_state->current_level, entity->mesh_type, entity->mesh_id);
+    entity->transformed_aabb = transform_aabb(mesh->aabb, get_model_matrix(entity->transform));
+}
+
+void update_entity_rotation(Game_State *game_state, Entity *entity, Quaternion new_rotation) {
+    entity->transform.rotation = new_rotation;
+    Mesh *mesh = get_mesh_pointer(game_state, &game_state->current_level, entity->mesh_type, entity->mesh_id);
+    entity->transformed_aabb = transform_aabb(mesh->aabb, get_model_matrix(entity->transform));
+}
+
+void set_entity_mesh(Game_State *game_state, Level *level, Entity *entity, Mesh_Type mesh_type, int32 mesh_id) {
+    Mesh mesh = get_mesh(game_state, level, mesh_type, mesh_id);
+    entity->mesh_type = mesh_type;
+    entity->mesh_id = mesh_id;
+    entity->transformed_aabb = transform_aabb(mesh.aabb, entity->transform);
+}
+
 void update(Game_State *game_state,
             Controller_State *controller_state,
             Sound_Output *sound_output, uint32 num_samples) {
@@ -660,10 +683,11 @@ void update(Game_State *game_state,
 
             if (is_translation(editor_state->selected_gizmo_handle)) {
                 Vec3 delta = do_gizmo_translation(&render_state->camera, editor_state, cursor_ray);
-                entity->transform.position += delta;
+                update_entity_position(game_state, entity, entity->transform.position + delta);
+                
             } else if (is_rotation(editor_state->selected_gizmo_handle)) {
                 Quaternion delta = do_gizmo_rotation(&render_state->camera, editor_state, cursor_ray);
-                entity->transform.rotation = delta*entity->transform.rotation;
+                update_entity_rotation(game_state, entity, delta*entity->transform.rotation);
             }
 
             editor_state->gizmo.transform.position = entity->transform.position;
