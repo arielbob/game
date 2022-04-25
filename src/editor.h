@@ -29,6 +29,7 @@ struct Gizmo {
 };
 
 namespace Editor_Constants {
+    real32 camera_speed = 19.0f;
     Vec4 row_color = make_vec4(0.1f, 0.1f, 0.1f, 0.9f);
     Vec4 border_color = make_vec4(0.3f, 0.3f, 0.3f, 1.0f);
     real32 hsv_picker_width = 200.0f;

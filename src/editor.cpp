@@ -1631,7 +1631,8 @@ Quaternion do_gizmo_rotation(Camera *camera, Editor_State *editor_state, Ray cur
 }
 
 void update_editor_camera(Camera *camera, Controller_State *controller_state,
-                          bool32 use_freecam, bool32 has_focus, bool32 should_move) {
+                          bool32 use_freecam, bool32 has_focus, bool32 should_move,
+                          real32 dt) {
     Basis initial_basis = camera->initial_basis;
 
     if (use_freecam && has_focus) {
@@ -1674,10 +1675,10 @@ void update_editor_camera(Camera *camera, Controller_State *controller_state,
         if (controller_state->key_a.is_down) {
             movement_delta -= right;
         }
-        // TODO: use delta time
-        real32 player_speed = 0.3f;
-        movement_delta = normalize(movement_delta) * player_speed;
-        camera->position += movement_delta;
+
+        real32 camera_speed = Editor_Constants::camera_speed;
+        movement_delta = normalize(movement_delta) * camera_speed;
+        camera->position += movement_delta * dt;
     }
     
     Basis current_basis = { forward, right, up };
@@ -1698,7 +1699,8 @@ void update_gizmo(Game_State *game_state) {
     editor_state->gizmo.transform.rotation = entity->transform.rotation;
 }
 
-void update_editor(Game_State *game_state, Controller_State *controller_state) {
+
+void update_editor(Game_State *game_state, Controller_State *controller_state, real32 dt) {
     UI_Manager *ui_manager = &game_state->ui_manager;
     Editor_State *editor_state = &game_state->editor_state;
     Render_State *render_state = &game_state->render_state;
@@ -1711,7 +1713,7 @@ void update_editor(Game_State *game_state, Controller_State *controller_state) {
 
     bool32 camera_should_move = editor_state->use_freecam && !has_focus(ui_manager);
     update_editor_camera(&render_state->camera, controller_state, editor_state->use_freecam,
-                         platform_window_has_focus(), camera_should_move);
+                         platform_window_has_focus(), camera_should_move, dt);
     update_render_state(render_state);
 
     if (editor_state->use_freecam && platform_window_has_focus()) {

@@ -544,7 +544,7 @@ void update(Game_State *game_state,
     }
 
     if (game_state->mode == Game_Mode::EDITING) {
-        update_editor(game_state, controller_state);
+        update_editor(game_state, controller_state, dt);
         draw_editor_ui(game_state, controller_state);
     }
     
