@@ -469,7 +469,7 @@ void load_default_level(Game_State *game_state, Level *level) {
     transform.position = make_vec3(0.0f, 0.0f, 0.0f);
     transform.rotation = make_quaternion();
     entity = make_entity(Mesh_Type::PRIMITIVE, primitive_cube_mesh_id, plane_material_id,
-                         transform, primitive_cube_mesh_aabb);
+                         transform, primitive_cube_mesh_aabb, true);
     level_add_entity(level, entity);
 
 #if 0

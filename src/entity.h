@@ -9,6 +9,7 @@ enum Entity_Type {
     ENTITY_NONE,
     ENTITY_NORMAL,
     ENTITY_POINT_LIGHT,
+    ENTITY_WALK_MESH
 };
 
 #define ENTITY_HEADER                           \
@@ -25,6 +26,8 @@ struct Entity {
 
 struct Normal_Entity {
     ENTITY_HEADER
+
+    bool32 is_walkable;
 };
 
 struct Point_Light_Entity {
@@ -69,11 +72,13 @@ Material make_material(String_Buffer material_name,
 
 Normal_Entity make_entity(Mesh_Type mesh_type, int32 mesh_id,
                           int32 material_id,
-                          Transform transform, AABB aabb) {
+                          Transform transform, AABB aabb,
+                          bool32 is_walkable = false) {
     AABB transformed_aabb = transform_aabb(aabb, get_model_matrix(transform));
     Normal_Entity entity = { ENTITY_NORMAL, transform,
                              mesh_type, mesh_id, material_id,
-                             transformed_aabb };
+                             transformed_aabb,
+                             is_walkable };
     return entity;
 }
 
