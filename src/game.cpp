@@ -510,6 +510,53 @@ void set_entity_mesh(Game_State *game_state, Level *level, Entity *entity, Mesh_
     entity->transformed_aabb = transform_aabb(mesh.aabb, entity->transform);
 }
 
+void update_player(Game_State *game_state, Controller_State *controller_state,
+                   real32 dt) {
+    Player *player = &game_state->player;
+
+    if (platform_window_has_focus()) {
+        real32 delta_x = controller_state->current_mouse.x - controller_state->last_mouse.x;
+        real32 delta_y = controller_state->current_mouse.y - controller_state->last_mouse.y;
+
+        real32 heading_delta = 0.2f * delta_x;
+        real32 pitch_delta = 0.2f * delta_y;
+
+        int32 heading_rotations = (int32) floorf((player->heading + heading_delta) / 360.0f);
+        int32 pitch_rotations = (int32) floorf((player->pitch + pitch_delta) / 360.0f);
+        player->heading = (player->heading + heading_delta) - heading_rotations*360.0f;
+        player->pitch = (player->pitch + pitch_delta) - pitch_rotations*360.0f;
+    }
+
+    Vec3 v0 = player->velocity;
+    Vec3 acceleration = make_vec3(0.0f, -9.81f, 0.0f);
+    Vec3 player_displacement = v0 + 0.5f*acceleration*dt*dt;
+    player->velocity = v0 + acceleration * dt;
+    player->position += player_displacement;
+}
+
+void update_camera(Camera *camera, Vec3 position, real32 heading, real32 pitch, real32 roll) {
+    Basis initial_basis = camera->initial_basis;
+
+    camera->heading = heading;
+    camera->pitch = pitch;
+    camera->roll = roll;
+
+    Mat4 model_matrix = make_rotate_matrix(camera->roll, camera->pitch, camera->heading);
+    Vec3 transformed_forward = truncate_v4_to_v3(model_matrix * make_vec4(initial_basis.forward, 1.0f));
+    Vec3 transformed_right = truncate_v4_to_v3(model_matrix * make_vec4(initial_basis.right, 1.0f));
+    Vec3 transformed_up = cross(transformed_forward, transformed_right);
+
+    Vec3 corrected_right = cross(transformed_up, transformed_forward);
+    Vec3 forward = normalize(transformed_forward);
+    Vec3 right = normalize(corrected_right);
+    Vec3 up = normalize(transformed_up);
+
+    camera->position = position;
+
+    Basis current_basis = { forward, right, up };
+    camera->current_basis = current_basis;
+}
+
 void update(Game_State *game_state,
             Controller_State *controller_state,
             Sound_Output *sound_output, uint32 num_samples) {
@@ -538,6 +585,14 @@ void update(Game_State *game_state,
     if (was_clicked(controller_state->key_f5)) {
         if (game_state->mode == Game_Mode::EDITING) {
             game_state->mode = Game_Mode::PLAYING;
+            Player player;
+            Camera camera = render_state->camera;
+            player.position = render_state->camera.position;
+            player.heading = camera.heading;
+            player.pitch = camera.pitch;
+            player.roll = camera.roll;
+            player.velocity = make_vec3();
+            game_state->player = player;
         } else {
             game_state->mode = Game_Mode::EDITING;
         }
@@ -546,6 +601,12 @@ void update(Game_State *game_state,
     if (game_state->mode == Game_Mode::EDITING) {
         update_editor(game_state, controller_state, dt);
         draw_editor_ui(game_state, controller_state);
+    } else {
+        update_player(game_state, controller_state, dt);
+        Player player = game_state->player;
+        update_camera(&render_state->camera, player.position,
+                      player.heading, player.pitch, player.roll);
+        update_render_state(render_state);
     }
     
         

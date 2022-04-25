@@ -207,6 +207,7 @@
 //       - TODO (done): add dt variable and FPS/dt display
 //       - TODO (done): use dt in update_editor_camera()
 //       - TODO (done): add is_walkable member for normal entities
+//       - TODO (done): simulate gravity with player
 
 // TODO: color selector improvements
 //       - TODO: add sliders for RGB and HSV (should do manual input sliders first)

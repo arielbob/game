@@ -1648,7 +1648,6 @@ void update_editor_camera(Camera *camera, Controller_State *controller_state,
         camera->pitch = (camera->pitch + pitch_delta) - pitch_rotations*360.0f;
     }
     
-    
     Mat4 model_matrix = make_rotate_matrix(camera->roll, camera->pitch, camera->heading);
     Vec3 transformed_forward = truncate_v4_to_v3(model_matrix * make_vec4(initial_basis.forward, 1.0f));
     Vec3 transformed_right = truncate_v4_to_v3(model_matrix * make_vec4(initial_basis.right, 1.0f));

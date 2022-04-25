@@ -135,9 +135,22 @@ enum class Game_Mode {
     EDITING, PLAYING
 };
 
+struct Player {
+    Vec3 position;
+    Vec3 velocity;
+
+    real32 heading;
+    real32 pitch;
+    real32 roll;
+
+    real32 height;
+};
+
 struct Game_State {
     bool32 is_initted;
     Game_Mode mode;
+
+    Player player;
 
     real64 last_update_time;
     real64 last_fps_update_time;
