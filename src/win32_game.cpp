@@ -559,6 +559,11 @@ internal void win32_process_keyboard_input(bool was_down, bool is_down,
                 controller_state->key_tab.was_down = was_down;
                 return;
             }
+            case VK_F10: {
+                controller_state->key_f10.is_down = is_down;
+                controller_state->key_f10.was_down = was_down;
+                return;
+            }
         }
     }
 }

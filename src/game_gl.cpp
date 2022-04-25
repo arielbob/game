@@ -163,7 +163,7 @@
 
 // TODO (done): hash table iterators
 
-// TODO: color selector
+// TODO (done): basic color selector
 //       - TODO (done): draw rainbow quad
 //       - TODO (done): add a hue slider UI element
 //       - TODO (done): draw a quad who's color is based on a hue degree value
@@ -195,20 +195,22 @@
 //       - TODO (done): remove all the old editor color picker code
 //       - TODO (done): fix bug where color picker shows for a frame when opening edit panel again after closing it
 //                      with color picker open
-//       - TODO: add sliders for RGB and HSV
-//       - TODO: add RGBA struct
-//       - TODO: replace Vec3 and Vec4 colors (point_light.color and material.color_override) with RGBA structs
-//       - TODO: i think we can actually replace the whole Editor_Color_Picker::MATERIAL_COLOR_OVERRIDE stuff since
-//               we will just have a pointer that we change. and really, we can just change the position and state
-//               and it'll be the same as we have it now, i think.
-
-//       - TODO: draw little arrows on the side of the hue slider so that you can move the slider without hiding
-//               the actual color with a line - we can just add a hitbox around where the current value is in
-//               do_hue_slider(), and then when we draw it, draw arrows within that hitbox.
-//       - TODO: write procedure for converting HSV to RGB(A?)
+//       - TODO (done): write procedure for converting HSV to RGB
 
 // TODO (done): optimize pick_entity() by checking against AABB before checking against triangles
 // TODO (done): replace ray_intersects_triangle with faster algorithm
+
+// TODO: walking on meshes
+//       - TODO (done): add update_editor() procedure and move all editor updating code there
+//       - TODO: add dt variable and use it in update_editor_camera()
+//       - TODO: add keyboard shortcut to toggle between edit mode and play mode
+//       - TODO: don't render editor UI when in play mode
+
+// TODO: color selector improvements
+//       - TODO: add sliders for RGB and HSV (should do manual input sliders first)
+//       - TODO: draw little arrows on the side of the hue slider so that you can move the slider without hiding
+//               the actual color with a line - we can just add a hitbox around where the current value is in
+//               do_hue_slider(), and then when we draw it, draw arrows within that hitbox.
 
 // TODO: maybe we don't even need UI state.. we may be able to just hold the State structs ourselves and pass them
 //       to the do_* procedures and those procedures will return the new State structs.

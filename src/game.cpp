@@ -289,6 +289,7 @@ void init_game(Game_State *game_state,
     pool_remove(&memory.string64_pool, buf3);
 #endif
 
+    game_state->mode = Game_Mode::EDITING;
     Editor_State *editor_state = &game_state->editor_state;
 
     Arena_Allocator *game_data_arena = &memory.game_data;
@@ -442,60 +443,6 @@ Vec3 cursor_pos_to_world_space(Vec2 cursor_pos, Render_State *render_state) {
     return cursor_world_space;
 }
 
-void update_camera(Camera *camera, Display_Output display_output, Controller_State *controller_state,
-                   bool32 use_freecam, bool32 has_focus, bool32 should_move) {
-    Basis initial_basis = camera->initial_basis;
-
-    if (use_freecam && has_focus) {
-        real32 delta_x = controller_state->current_mouse.x - controller_state->last_mouse.x;
-        real32 delta_y = controller_state->current_mouse.y - controller_state->last_mouse.y;
-
-        real32 heading_delta = 0.2f * delta_x;
-        real32 pitch_delta = 0.2f * delta_y;
-
-        int32 heading_rotations = (int32) floorf((camera->heading + heading_delta) / 360.0f);
-        int32 pitch_rotations = (int32) floorf((camera->pitch + pitch_delta) / 360.0f);
-        camera->heading = (camera->heading + heading_delta) - heading_rotations*360.0f;
-        camera->pitch = (camera->pitch + pitch_delta) - pitch_rotations*360.0f;
-    }
-    
-    
-    Mat4 model_matrix = make_rotate_matrix(camera->roll, camera->pitch, camera->heading);
-    Vec3 transformed_forward = truncate_v4_to_v3(model_matrix * make_vec4(initial_basis.forward, 1.0f));
-    Vec3 transformed_right = truncate_v4_to_v3(model_matrix * make_vec4(initial_basis.right, 1.0f));
-    Vec3 transformed_up = cross(transformed_forward, transformed_right);
-    // we calculate a new right vector to correct for any error to ensure that our vectors form an
-    // orthonormal basis
-    Vec3 corrected_right = cross(transformed_up, transformed_forward);
-
-    Vec3 forward = normalize(transformed_forward);
-    Vec3 right = normalize(corrected_right);
-    Vec3 up = normalize(transformed_up);
-
-    if (should_move) {
-        Vec3 movement_delta = make_vec3();
-        if (controller_state->key_w.is_down) {
-            movement_delta += forward;
-        }
-        if (controller_state->key_s.is_down) {
-            movement_delta -= forward;
-        }
-        if (controller_state->key_d.is_down) {
-            movement_delta += right;
-        }
-        if (controller_state->key_a.is_down) {
-            movement_delta -= right;
-        }
-        // TODO: use delta time
-        real32 player_speed = 0.3f;
-        movement_delta = normalize(movement_delta) * player_speed;
-        camera->position += movement_delta;
-    }
-    
-    Basis current_basis = { forward, right, up };
-    camera->current_basis = current_basis;
-}
-
 void update_render_state(Render_State *render_state) {
     Camera camera = render_state->camera;
     Mat4 view_matrix = get_view_matrix(camera);
@@ -536,20 +483,6 @@ Entity *get_selected_entity(Game_State *game_state) {
     return entity;
 }
 
-void update_gizmo(Game_State *game_state) {
-    Editor_State *editor_state = &game_state->editor_state;
-    if (editor_state->selected_entity_index < 0) return;
-
-    Camera *camera = &game_state->render_state.camera;
-    real32 gizmo_scale_factor = distance(editor_state->gizmo.transform.position - camera->position) /
-        5.0f;
-    editor_state->gizmo.transform.scale = make_vec3(gizmo_scale_factor, gizmo_scale_factor, gizmo_scale_factor);
-
-    Entity *entity = get_selected_entity(game_state);
-    editor_state->gizmo.transform.position = entity->transform.position;
-    editor_state->gizmo.transform.rotation = entity->transform.rotation;
-}
-
 // TODO: we probably don't always need to update the AABB in some cases; well, idk, there might be uses for AABBs
 //       outside of the editor, but that's the only place we're using them right now. although, it is convenient
 //       that as long as we use these procedures when transforming entities, the entities will always have an
@@ -586,156 +519,18 @@ void update(Game_State *game_state,
     Editor_State *editor_state = &game_state->editor_state;
     Render_State *render_state = &game_state->render_state;
 
-    if (just_pressed(controller_state->key_tab) && !has_focus(ui_manager)) {
-        editor_state->use_freecam = !editor_state->use_freecam;
-        platform_set_cursor_visible(!editor_state->use_freecam);
-    }
-
-    bool32 camera_should_move = editor_state->use_freecam && !has_focus(ui_manager);
-    update_camera(&render_state->camera, *display_output, controller_state, editor_state->use_freecam,
-                  platform_window_has_focus(), camera_should_move);
-    update_render_state(render_state);
-
-    if (editor_state->use_freecam && platform_window_has_focus()) {
-        Vec2 center = make_vec2(display_output->width / 2.0f, display_output->height / 2.0f);
-        platform_set_cursor_pos(center);
-        controller_state->current_mouse = center;
-    }
-
-    if (editor_state->use_freecam) {
-        disable_input(ui_manager);
-    } else {
-        enable_input(ui_manager);
+    
+    if (game_state->mode == Game_Mode::EDITING) {
+        update_editor(game_state, controller_state);
+        draw_editor_ui(game_state, controller_state);
     }
     
-    
-#if 0
-    Vec4 cursor_world_space = cursor_pos_to_world_space(game_state->cursor_pos,
-                                                        display_output.width, display_output.height,
-                                                        &perspective_clip_matrix_inverse,
-                                                        &view_matrix_inverse);
-
-    editor_state->last_cursor_ray = editor_state->cursor_ray;
-    editor_state->cursor_ray.direction = normalize(truncate_v4_to_v3(cursor_world_space) - camera.position);
-#endif
-    
-    // mesh picking
-    Vec3 cursor_world_space = cursor_pos_to_world_space(controller_state->current_mouse,
-                                                        &game_state->render_state);
-    Ray cursor_ray = { cursor_world_space,
-                       normalize(cursor_world_space - render_state->camera.position) };
-    
-    if (!ui_has_hot(ui_manager) &&
-        !ui_has_active(ui_manager) &&
-        !editor_state->use_freecam && was_clicked(controller_state->left_mouse)) {
-        if (!editor_state->selected_gizmo_handle) {
-            Entity entity;
-            int32 entity_index;
-            bool32 picked = pick_entity(game_state, cursor_ray, &entity, &entity_index);
-            
-            if (picked) {
-                if (selected_entity_changed(editor_state, entity_index, entity.type)) {
-                    editor_state->last_selected_entity_type = editor_state->selected_entity_type;
-                    editor_state->last_selected_entity_index = editor_state->selected_entity_index;
-
-                    editor_state->selected_entity_type = entity.type;
-                    editor_state->selected_entity_index = entity_index;
-
-                    editor_state->gizmo.transform = entity.transform;
-
-                    reset_entity_editors(editor_state);
-                }
-            } else {
-                editor_state->selected_entity_index = -1;
-            }
-        }
-    }
-
-    update_gizmo(game_state);
-
-    if (editor_state->selected_entity_index >= 0 &&
-        !ui_has_hot(ui_manager) &&
-        !editor_state->selected_gizmo_handle) {
-
-        Vec3 gizmo_initial_hit, gizmo_transform_axis;
-        Gizmo_Handle picked_handle = pick_gizmo(game_state, cursor_ray,
-                                                &gizmo_initial_hit, &gizmo_transform_axis);
-        if (controller_state->left_mouse.is_down && !controller_state->left_mouse.was_down) {
-            editor_state->selected_gizmo_handle = picked_handle;
-            editor_state->gizmo_initial_hit = gizmo_initial_hit;
-            editor_state->gizmo_transform_axis = gizmo_transform_axis;
-            editor_state->last_gizmo_transform_point = gizmo_initial_hit;
-        } else {
-            editor_state->hovered_gizmo_handle = picked_handle;
-        }
-    }
-
-    if (editor_state->use_freecam ||
-        (ui_has_hot(ui_manager) && !controller_state->left_mouse.is_down)) {
-        editor_state->hovered_gizmo_handle = GIZMO_HANDLE_NONE;
-        editor_state->selected_gizmo_handle = GIZMO_HANDLE_NONE;
-    }
-    
-    if (editor_state->selected_gizmo_handle) {
-        disable_input(ui_manager);
-        if (controller_state->left_mouse.is_down) {
-            Entity *entity = get_selected_entity(game_state);
-
-            if (is_translation(editor_state->selected_gizmo_handle)) {
-                Vec3 delta = do_gizmo_translation(&render_state->camera, editor_state, cursor_ray);
-                update_entity_position(game_state, entity, entity->transform.position + delta);
-                
-            } else if (is_rotation(editor_state->selected_gizmo_handle)) {
-                Quaternion delta = do_gizmo_rotation(&render_state->camera, editor_state, cursor_ray);
-                update_entity_rotation(game_state, entity, delta*entity->transform.rotation);
-            }
-
-            editor_state->gizmo.transform.position = entity->transform.position;
-            editor_state->gizmo.transform.rotation = entity->transform.rotation;
-        } else {
-            editor_state->selected_gizmo_handle = GIZMO_HANDLE_NONE;
-        }
-    }
-
-    update_gizmo(game_state);
-
-    draw_editor_ui(game_state, controller_state);
         
     char *buf = (char *) arena_push(&memory.frame_arena, 128);
-#if 0
-    buf = (char *) arena_push(&memory.frame_arena, 128);
-    string_format(buf, 128, "left mouse is down: %d",
-                  controller_state->left_mouse.is_down);
-    do_text(ui_manager, 0.0f, 516.0f, buf, "times24", "mouse_is_down");
-    buf = (char *) arena_push(&memory.frame_arena, 128);
-    string_format(buf, 128, "left mouse was down: %d",
-                  controller_state->left_mouse.was_down);
-    do_text(ui_manager, 0.0f, 500.0f, buf, "times24", "mouse_was_down");
-#endif
-
     buf = (char *) arena_push(&memory.frame_arena, 128);
     string_format(buf, 128, "current_mouse: (%f, %f)",
                   controller_state->current_mouse.x, controller_state->current_mouse.y);
     do_text(ui_manager, 0.0f, 24.0f, buf, "times24", "current_mouse_text");
-
-#if 0
-    UI_Image_Button_Style image_button_style = {
-        10.0f, 10.0f,
-        rgb_to_vec4(33, 62, 69),
-        rgb_to_vec4(47, 84, 102),
-        rgb_to_vec4(19, 37, 46)
-    };
-    do_image_button(ui_manager, controller_state, 0, 0, 200.0f, 200.0f,
-                    image_button_style, "debug", "debug_image_button");
-#endif
-
-#if 0
-    UI_Box_Style test_box_style = { make_vec4(1.0f, 0.0f, 0.0f, 1.0f) };
-    do_box(ui_manager, controller_state,
-           0.0f, 0.0f,
-           100.0f, 24.0f,
-           test_box_style, "test_box");
-#endif
 
     buf = (char *) arena_push(&memory.frame_arena, 128);
     string_format(buf, 128, "hot: %s\nactive: %s",
@@ -757,50 +552,7 @@ void update(Game_State *game_state,
     
     fill_sound_buffer_with_audio(sound_output, game_state->is_playing_music, &game_state->music, num_samples);
 
-    //game_state->current_char = controller_state->pressed_key;
-
-#if 0
-    static int32 hue_degrees = 0;
-    Vec2 hsv_picker_position = make_vec2(30.0f, 5.0f);
-    real32 hsv_picker_width = 500.0f;
-    real32 hsv_picker_height = 500.0f;
-    
-    static HSV_Color hsv_color = { hue_degrees, 100, 100 };
-    static Vec2 initial_position = hsv_to_cursor_position_inside_quad(hsv_color,
-                                                                      hsv_picker_width, hsv_picker_height);
-    static HSV_Picker_State hsv_picker_state = {
-        hsv_color,
-        initial_position.x,
-        initial_position.y
-    };
-    hue_degrees = do_hue_slider(ui_manager, controller_state, 5.0f, 5.0f,
-                                20.0f, 500.0f,
-                                hue_degrees,
-                                "hue_slider_test");
-    buf = (char *) arena_push(&memory.frame_arena, 128);
-    string_format(buf, 128, "hue_slider value: %d",
-                  hue_degrees);
-    do_text(ui_manager, 5.0f, 523.0f, buf, "courier18b", "hue_slider_value_test");
-    
-    hsv_picker_state.hsv_color.h = hue_degrees;
-    hsv_picker_state = do_hsv_picker(ui_manager, controller_state,
-                                     hsv_picker_position.x, hsv_picker_position.y,
-                                     hsv_picker_width, hsv_picker_height,
-                                     hsv_picker_state,
-                                     "hsv_picker_test");
-
-    char *hsv_text = string_format((Allocator *) &memory.frame_arena, 128,
-                                   "HSV: {%d, %d, %d}",
-                                   hsv_picker_state.hsv_color.h,
-                                   hsv_picker_state.hsv_color.s,
-                                   hsv_picker_state.hsv_color.v);
-    do_text(ui_manager, 5.0f, 523.0f + 20.0f, hsv_text, "courier18b", "hsv_picker_value_test");
-#endif
-
-
     clear_hot_if_gone(ui_manager);
     delete_state_if_gone(ui_manager);
-    clear_editor_state_for_gone_color_pickers(ui_manager, editor_state);
-    
     assert(ui_manager->current_layer == 0);
 }

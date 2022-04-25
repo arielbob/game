@@ -60,7 +60,7 @@ struct Controller_State {
     char pressed_chars[MAX_PRESSED_CHARS];
 
     union {
-        Controller_Button_State key_states[16];
+        Controller_Button_State key_states[17];
         struct {
             Controller_Button_State key_shift;
             Controller_Button_State key_ctrl;
@@ -71,6 +71,7 @@ struct Controller_State {
             Controller_Button_State key_s;
             Controller_Button_State key_d;
             Controller_Button_State key_e;
+            Controller_Button_State key_f10;
             Controller_Button_State key_up;
             Controller_Button_State key_down;
             Controller_Button_State key_right;
@@ -130,8 +131,13 @@ struct Render_State {
     Mat4 ortho_clip_matrix;
 };
 
+enum class Game_Mode {
+    EDITING, PLAYING
+};
+
 struct Game_State {
     bool32 is_initted;
+    Game_Mode mode;
 
     Render_State render_state;
     Editor_State editor_state;
@@ -177,5 +183,9 @@ Mesh get_mesh(Game_State *game_state, Level *level, Mesh_Type mesh_type, int32 m
 int32 get_mesh_id_by_name(Game_State *game_state, Level *level, Mesh_Type mesh_type, String mesh_name);
 Mesh *get_mesh_pointer(Game_State *game_state, Level *level, Mesh_Type mesh_type, int32 mesh_id);
 void set_entity_mesh(Game_State *game_state, Level *level, Entity *entity, Mesh_Type mesh_type, int32 mesh_id);
+void update_render_state(Render_State *render_state);
+Vec3 cursor_pos_to_world_space(Vec2 cursor_pos, Render_State *render_state);
+void update_entity_position(Game_State *game_state, Entity *entity, Vec3 new_position);
+void update_entity_rotation(Game_State *game_state, Entity *entity, Quaternion new_rotation);
 
 #endif

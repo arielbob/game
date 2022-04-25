@@ -1629,3 +1629,182 @@ Quaternion do_gizmo_rotation(Camera *camera, Editor_State *editor_state, Ray cur
 
     return delta_result;
 }
+
+void update_editor_camera(Camera *camera, Controller_State *controller_state,
+                          bool32 use_freecam, bool32 has_focus, bool32 should_move) {
+    Basis initial_basis = camera->initial_basis;
+
+    if (use_freecam && has_focus) {
+        real32 delta_x = controller_state->current_mouse.x - controller_state->last_mouse.x;
+        real32 delta_y = controller_state->current_mouse.y - controller_state->last_mouse.y;
+
+        real32 heading_delta = 0.2f * delta_x;
+        real32 pitch_delta = 0.2f * delta_y;
+
+        int32 heading_rotations = (int32) floorf((camera->heading + heading_delta) / 360.0f);
+        int32 pitch_rotations = (int32) floorf((camera->pitch + pitch_delta) / 360.0f);
+        camera->heading = (camera->heading + heading_delta) - heading_rotations*360.0f;
+        camera->pitch = (camera->pitch + pitch_delta) - pitch_rotations*360.0f;
+    }
+    
+    
+    Mat4 model_matrix = make_rotate_matrix(camera->roll, camera->pitch, camera->heading);
+    Vec3 transformed_forward = truncate_v4_to_v3(model_matrix * make_vec4(initial_basis.forward, 1.0f));
+    Vec3 transformed_right = truncate_v4_to_v3(model_matrix * make_vec4(initial_basis.right, 1.0f));
+    Vec3 transformed_up = cross(transformed_forward, transformed_right);
+    // we calculate a new right vector to correct for any error to ensure that our vectors form an
+    // orthonormal basis
+    Vec3 corrected_right = cross(transformed_up, transformed_forward);
+
+    Vec3 forward = normalize(transformed_forward);
+    Vec3 right = normalize(corrected_right);
+    Vec3 up = normalize(transformed_up);
+
+    if (should_move) {
+        Vec3 movement_delta = make_vec3();
+        if (controller_state->key_w.is_down) {
+            movement_delta += forward;
+        }
+        if (controller_state->key_s.is_down) {
+            movement_delta -= forward;
+        }
+        if (controller_state->key_d.is_down) {
+            movement_delta += right;
+        }
+        if (controller_state->key_a.is_down) {
+            movement_delta -= right;
+        }
+        // TODO: use delta time
+        real32 player_speed = 0.3f;
+        movement_delta = normalize(movement_delta) * player_speed;
+        camera->position += movement_delta;
+    }
+    
+    Basis current_basis = { forward, right, up };
+    camera->current_basis = current_basis;
+}
+
+void update_gizmo(Game_State *game_state) {
+    Editor_State *editor_state = &game_state->editor_state;
+    if (editor_state->selected_entity_index < 0) return;
+
+    Camera *camera = &game_state->render_state.camera;
+    real32 gizmo_scale_factor = distance(editor_state->gizmo.transform.position - camera->position) /
+        5.0f;
+    editor_state->gizmo.transform.scale = make_vec3(gizmo_scale_factor, gizmo_scale_factor, gizmo_scale_factor);
+
+    Entity *entity = get_selected_entity(game_state);
+    editor_state->gizmo.transform.position = entity->transform.position;
+    editor_state->gizmo.transform.rotation = entity->transform.rotation;
+}
+
+void update_editor(Game_State *game_state, Controller_State *controller_state) {
+    UI_Manager *ui_manager = &game_state->ui_manager;
+    Editor_State *editor_state = &game_state->editor_state;
+    Render_State *render_state = &game_state->render_state;
+    Display_Output *display_output = &game_state->render_state.display_output;
+
+    if (just_pressed(controller_state->key_tab) && !has_focus(ui_manager)) {
+        editor_state->use_freecam = !editor_state->use_freecam;
+        platform_set_cursor_visible(!editor_state->use_freecam);
+    }
+
+    bool32 camera_should_move = editor_state->use_freecam && !has_focus(ui_manager);
+    update_editor_camera(&render_state->camera, controller_state, editor_state->use_freecam,
+                         platform_window_has_focus(), camera_should_move);
+    update_render_state(render_state);
+
+    if (editor_state->use_freecam && platform_window_has_focus()) {
+        Vec2 center = make_vec2(display_output->width / 2.0f, display_output->height / 2.0f);
+        platform_set_cursor_pos(center);
+        controller_state->current_mouse = center;
+    }
+
+    if (editor_state->use_freecam) {
+        disable_input(ui_manager);
+    } else {
+        enable_input(ui_manager);
+    }
+    
+    // mesh picking
+    Vec3 cursor_world_space = cursor_pos_to_world_space(controller_state->current_mouse,
+                                                        &game_state->render_state);
+    Ray cursor_ray = { cursor_world_space,
+                       normalize(cursor_world_space - render_state->camera.position) };
+    
+    if (!ui_has_hot(ui_manager) &&
+        !ui_has_active(ui_manager) &&
+        !editor_state->use_freecam && was_clicked(controller_state->left_mouse)) {
+        if (!editor_state->selected_gizmo_handle) {
+            Entity entity;
+            int32 entity_index;
+            bool32 picked = pick_entity(game_state, cursor_ray, &entity, &entity_index);
+            
+            if (picked) {
+                if (selected_entity_changed(editor_state, entity_index, entity.type)) {
+                    editor_state->last_selected_entity_type = editor_state->selected_entity_type;
+                    editor_state->last_selected_entity_index = editor_state->selected_entity_index;
+
+                    editor_state->selected_entity_type = entity.type;
+                    editor_state->selected_entity_index = entity_index;
+
+                    editor_state->gizmo.transform = entity.transform;
+
+                    reset_entity_editors(editor_state);
+                }
+            } else {
+                editor_state->selected_entity_index = -1;
+            }
+        }
+    }
+
+    update_gizmo(game_state);
+
+    if (editor_state->selected_entity_index >= 0 &&
+        !ui_has_hot(ui_manager) &&
+        !editor_state->selected_gizmo_handle) {
+
+        Vec3 gizmo_initial_hit, gizmo_transform_axis;
+        Gizmo_Handle picked_handle = pick_gizmo(game_state, cursor_ray,
+                                                &gizmo_initial_hit, &gizmo_transform_axis);
+        if (controller_state->left_mouse.is_down && !controller_state->left_mouse.was_down) {
+            editor_state->selected_gizmo_handle = picked_handle;
+            editor_state->gizmo_initial_hit = gizmo_initial_hit;
+            editor_state->gizmo_transform_axis = gizmo_transform_axis;
+            editor_state->last_gizmo_transform_point = gizmo_initial_hit;
+        } else {
+            editor_state->hovered_gizmo_handle = picked_handle;
+        }
+    }
+
+    if (editor_state->use_freecam ||
+        (ui_has_hot(ui_manager) && !controller_state->left_mouse.is_down)) {
+        editor_state->hovered_gizmo_handle = GIZMO_HANDLE_NONE;
+        editor_state->selected_gizmo_handle = GIZMO_HANDLE_NONE;
+    }
+    
+    if (editor_state->selected_gizmo_handle) {
+        disable_input(ui_manager);
+        if (controller_state->left_mouse.is_down) {
+            Entity *entity = get_selected_entity(game_state);
+
+            if (is_translation(editor_state->selected_gizmo_handle)) {
+                Vec3 delta = do_gizmo_translation(&render_state->camera, editor_state, cursor_ray);
+                update_entity_position(game_state, entity, entity->transform.position + delta);
+                
+            } else if (is_rotation(editor_state->selected_gizmo_handle)) {
+                Quaternion delta = do_gizmo_rotation(&render_state->camera, editor_state, cursor_ray);
+                update_entity_rotation(game_state, entity, delta*entity->transform.rotation);
+            }
+
+            editor_state->gizmo.transform.position = entity->transform.position;
+            editor_state->gizmo.transform.rotation = entity->transform.rotation;
+        } else {
+            editor_state->selected_gizmo_handle = GIZMO_HANDLE_NONE;
+        }
+    }
+
+    update_gizmo(game_state);
+
+    clear_editor_state_for_gone_color_pickers(ui_manager, editor_state);
+}
