@@ -207,5 +207,6 @@ void update_render_state(Render_State *render_state);
 Vec3 cursor_pos_to_world_space(Vec2 cursor_pos, Render_State *render_state);
 void update_entity_position(Game_State *game_state, Entity *entity, Vec3 new_position);
 void update_entity_rotation(Game_State *game_state, Entity *entity, Quaternion new_rotation);
+int32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, real32 *t_result);
 
 #endif

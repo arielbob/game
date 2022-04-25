@@ -377,6 +377,14 @@ void init_game(Game_State *game_state,
                               make_string_buffer(mesh_name_allocator, "cube", MESH_NAME_MAX_SIZE));
     add_primitive_mesh(game_state, mesh);
 
+    Vec3 origin = make_vec3(0.0f, 10.0f, 0.0f);
+    Vec3 direction = make_vec3(0.0f, -1.0f, 0.0f);
+    Ray ray = make_ray(origin, direction);
+    real32 t;
+    Transform transform = make_transform();
+    transform.scale = make_vec3(1.0f, 0.5f, 1.0f);
+    ray_intersects_mesh(ray, mesh, transform, &t);
+
     // init editor_state
     editor_state->gizmo.arrow_mesh_id = gizmo_arrow_mesh_id;
     editor_state->gizmo.ring_mesh_id = gizmo_ring_mesh_id;
@@ -445,6 +453,53 @@ Vec3 cursor_pos_to_world_space(Vec2 cursor_pos, Render_State *render_state) {
     Vec3 cursor_world_space = homogeneous_divide(cursor_world_space_homogeneous);
 
     return cursor_world_space;
+}
+
+int32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, real32 *t_result) {
+    Mat4 object_to_world = get_model_matrix(transform);
+    Mat4 world_to_object = inverse(object_to_world);
+
+    // instead of transforming every vertex, we just transform the world-space ray to object-space by
+    // multiplying the origin and the direction of the ray by the inverse of the entity's model matrix.
+    // note that we must zero-out the w component of the ray direction when doing this multiplication so that
+    // we ignore the translation of the model matrix.
+    Vec3 object_space_ray_origin = truncate_v4_to_v3(world_to_object * make_vec4(ray.origin, 1.0f));
+    // NOTE: we do NOT normalize here, since this allows you to pass in a line represented as a ray, i.e.
+    //       a ray where the origin is the start and the direction is a vector in the direction of the line
+    //       that has the length of the line. you can then just check if t is between 0 and 1 to check if
+    //       the intersection occured on the line.
+    Vec3 object_space_ray_direction = truncate_v4_to_v3(world_to_object *
+                                                        make_vec4(ray.direction, 0.0f));
+    Ray object_space_ray = { object_space_ray_origin, object_space_ray_direction };
+
+    uint32 *indices = mesh.indices;
+
+    // this might be very slow - this is very cache unfriendly since we're constantly jumping around the
+    // vertices array, which in some cases is large.
+    // we could cache every single triangle vertex in an array of size num_triangles*3, so our
+    // suzanne mesh with 62976 triangles would take up 62976*3*sizeof(real32) = 755712 bytes = 756KB,
+    // which isn't terrible, but i'm not sure we even have a need for a fast ray_intersects_mesh()
+    // right now, so this way of doing it is fine for now.
+    real32 t_min = FLT_MAX;
+    bool32 hit = false;
+    for (int32 i = 0; i < (int32) mesh.num_triangles; i++) {
+        Vec3 triangle[3];
+        triangle[0] = get_vertex_from_index(&mesh, indices[i * 3]);
+        triangle[1] = get_vertex_from_index(&mesh, indices[i * 3 + 1]);
+        triangle[2] = get_vertex_from_index(&mesh, indices[i * 3 + 2]);
+        real32 t;
+
+        // TODO: we might be able to pass t_min into this test to early-out before we check if a hit point
+        //       is within the triangle, but after we've hit the plane
+        if (ray_intersects_triangle(object_space_ray, triangle, &t)) {
+            t_min = min(t, t_min);
+            hit = true;
+        }
+    }
+
+    if (hit) *t_result = t_min;
+
+    return hit;
 }
 
 void update_render_state(Render_State *render_state) {
@@ -542,10 +597,10 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
         Normal_Entity *entity = &level->normal_entities[i];
         if (entity->is_walkable) {
             Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
-            Ray displacement_ray = make_ray(player->position, normalize(player_displacement));
+            Ray displacement_ray = make_ray(player->position, player_displacement);
             if (ray_intersects_aabb(displacement_ray, entity->transformed_aabb, &aabb_t) && (aabb_t < t_min)) {
                 if (ray_intersects_mesh(displacement_ray, mesh, entity->transform, &t) &&
-                    (t < displacement_length) && (t < t_min)) {
+                    (t < 1.0f) && (t < t_min)) {
                     t_min = t;
                     intersected = true;
                 }

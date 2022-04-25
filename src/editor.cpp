@@ -1363,55 +1363,6 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
     }
 }
 
-int32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, real32 *t_result) {
-    Mat4 object_to_world = get_model_matrix(transform);
-    Mat4 world_to_object = inverse(object_to_world);
-
-    // instead of transforming every vertex, we just transform the world-space ray to object-space by
-    // multiplying the origin and the direction of the ray by the inverse of the entity's model matrix.
-    // note that we must zero-out the w component of the ray direction when doing this multiplication so that
-    // we ignore the translation of the model matrix.
-    Vec3 object_space_ray_origin = truncate_v4_to_v3(world_to_object * make_vec4(ray.origin, 1.0f));
-    Vec3 object_space_ray_direction = normalize(truncate_v4_to_v3(world_to_object *
-                                                                  make_vec4(ray.direction, 0.0f)));
-    Ray object_space_ray = { object_space_ray_origin, object_space_ray_direction };
-
-    uint32 *indices = mesh.indices;
-
-    // this might be very slow - this is very cache unfriendly since we're constantly jumping around the
-    // vertices array, which in some cases is large.
-    // we could cache every single triangle vertex in an array of size num_triangles*3, so our
-    // suzanne mesh with 62976 triangles would take up 62976*3*sizeof(real32) = 755712 bytes = 756KB,
-    // which isn't terrible, but i'm not sure we even have a need for a fast ray_intersects_mesh()
-    // right now, so this way of doing it is fine for now.
-    real32 t_min = FLT_MAX;
-    bool32 hit = false;
-    for (int32 i = 0; i < (int32) mesh.num_triangles; i++) {
-        Vec3 triangle[3];
-        triangle[0] = get_vertex_from_index(&mesh, indices[i * 3]);
-        triangle[1] = get_vertex_from_index(&mesh, indices[i * 3 + 1]);
-        triangle[2] = get_vertex_from_index(&mesh, indices[i * 3 + 2]);
-        real32 t;
-
-        // TODO: we might be able to pass t_min into this test to early-out before we check if a hit point
-        //       is within the triangle, but after we've hit the plane
-        if (ray_intersects_triangle(object_space_ray, triangle, &t)) {
-            t_min = min(t, t_min);
-            hit = true;
-        }
-    }
-
-    if (hit) {
-        // convert the t_min on the object space ray to a t_min on the world space ray
-        Vec3 object_space_hit_point = object_space_ray_origin + object_space_ray_direction * t_min;
-        Vec3 world_space_hit_point = truncate_v4_to_v3(object_to_world * make_vec4(object_space_hit_point, 1.0f));
-        real32 world_space_t_min = dot(world_space_hit_point - ray.origin, ray.direction);
-        *t_result = world_space_t_min;
-    }
-
-    return hit;
-}
-
 int32 pick_entity(Game_State *game_state, Ray cursor_ray, Entity *entity_result, int32 *index_result) {
     Editor_State *editor_state = &game_state->editor_state;
 
