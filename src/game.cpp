@@ -528,10 +528,46 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
     }
 
     Vec3 v0 = player->velocity;
-    Vec3 acceleration = make_vec3(0.0f, -9.81f, 0.0f);
+    Vec3 acceleration = player->acceleration;
     Vec3 player_displacement = v0 + 0.5f*acceleration*dt*dt;
     player->velocity = v0 + acceleration * dt;
-    player->position += player_displacement;
+
+    real32 displacement_length = distance(player_displacement);
+
+    Level *level = &game_state->current_level;
+    real32 t_min = FLT_MAX;
+    bool32 intersected = false;
+    for (int32 i = 0; i < level->num_normal_entities; i++) {
+        real32 t, aabb_t;
+        Normal_Entity *entity = &level->normal_entities[i];
+        if (entity->is_walkable) {
+            Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
+            Ray displacement_ray = make_ray(player->position, normalize(player_displacement));
+            if (ray_intersects_aabb(displacement_ray, entity->transformed_aabb, &aabb_t) && (aabb_t < t_min)) {
+                if (ray_intersects_mesh(displacement_ray, mesh, entity->transform, &t) &&
+                    (t < displacement_length) && (t < t_min)) {
+                    t_min = t;
+                    intersected = true;
+                }
+            }
+        }
+    }
+
+    if (intersected) {
+        char *intersect_text = string_format((Allocator *) &memory.frame_arena, 64, "intersect t: %f", t_min);
+        do_text(&game_state->ui_manager, 5.0f, 28.0f, intersect_text, "calibri14", "intersect_t");
+    } else {
+        char *intersect_text = string_format((Allocator *) &memory.frame_arena, 64, "intersect t: None");
+        do_text(&game_state->ui_manager, 5.0f, 28.0f, intersect_text, "calibri14", "intersect_t");
+    }
+    
+    if (intersected) {
+        player->position += player_displacement * t_min;
+        player->acceleration = make_vec3();
+        player->velocity = make_vec3();
+    } else {
+        player->position += player_displacement;
+    }
 }
 
 void update_camera(Camera *camera, Vec3 position, real32 heading, real32 pitch, real32 roll) {
@@ -592,6 +628,7 @@ void update(Game_State *game_state,
             player.pitch = camera.pitch;
             player.roll = camera.roll;
             player.velocity = make_vec3();
+            player.acceleration = make_vec3(0.0f, -9.81f, 0.0f);
             game_state->player = player;
         } else {
             game_state->mode = Game_Mode::EDITING;

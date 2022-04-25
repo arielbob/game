@@ -138,6 +138,7 @@ enum class Game_Mode {
 struct Player {
     Vec3 position;
     Vec3 velocity;
+    Vec3 acceleration;
 
     real32 heading;
     real32 pitch;
