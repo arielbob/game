@@ -139,6 +139,12 @@ struct Game_State {
     bool32 is_initted;
     Game_Mode mode;
 
+    real64 last_update_time;
+    real64 last_fps_update_time;
+    real64 fps_sum = 0.0f;
+    int32 num_fps_samples = 0;
+    real32 last_second_fps;
+
     Render_State render_state;
     Editor_State editor_state;
 

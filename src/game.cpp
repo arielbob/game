@@ -292,6 +292,10 @@ void init_game(Game_State *game_state,
     game_state->mode = Game_Mode::EDITING;
     Editor_State *editor_state = &game_state->editor_state;
 
+    real64 current_time = platform_get_wall_clock_time();
+    game_state->last_update_time = current_time;
+    game_state->last_fps_update_time = current_time;
+
     Arena_Allocator *game_data_arena = &memory.game_data;
     File_Data music_file_data = platform_open_and_read_file((Allocator *) game_data_arena,
                                                             "../drive my car.wav");
@@ -515,6 +519,19 @@ void update(Game_State *game_state,
         return;
     }
 
+    real64 current_time = platform_get_wall_clock_time();
+    real32 dt = (real32) (current_time - game_state->last_update_time);
+    game_state->last_update_time = current_time;
+    
+    game_state->fps_sum += 1.0f / dt;
+    game_state->num_fps_samples++;
+    if ((current_time - game_state->last_fps_update_time) >= 1.0f) {
+        game_state->last_fps_update_time = current_time;
+        game_state->last_second_fps = (real32) game_state->fps_sum / game_state->num_fps_samples;
+        game_state->num_fps_samples = 0;
+        game_state->fps_sum = 0.0f;
+    }
+
     UI_Manager *ui_manager = &game_state->ui_manager;
     Render_State *render_state = &game_state->render_state;
 
@@ -533,10 +550,17 @@ void update(Game_State *game_state,
     
         
     char *buf = (char *) arena_push(&memory.frame_arena, 128);
+/*
     buf = (char *) arena_push(&memory.frame_arena, 128);
     string_format(buf, 128, "current_mouse: (%f, %f)",
                   controller_state->current_mouse.x, controller_state->current_mouse.y);
     do_text(ui_manager, 0.0f, 24.0f, buf, "times24", "current_mouse_text");
+*/
+
+
+    char *dt_string = string_format((Allocator *) &memory.frame_arena, 128, "FPS %d / dt %.3f", 
+                                    (int32) round(game_state->last_second_fps), dt);
+    do_text(ui_manager, 5.0f, 14.0f, dt_string, "calibri14", "dt_string");
 
     buf = (char *) arena_push(&memory.frame_arena, 128);
     string_format(buf, 128, "hot: %s\nactive: %s",

@@ -203,7 +203,8 @@
 // TODO: walking on meshes
 //       - TODO (done): add update_editor() procedure and move all editor updating code there
 //       - TODO (done): add keyboard shortcut to toggle between edit mode and play mode
-//       - TODO: add dt variable and use it in update_editor_camera()
+//       - TODO (done): add dt variable and FPS/dt display
+//       - TODO: use dt in update_editor_camera()
 //       - TODO: don't render editor UI when in play mode
 
 // TODO: color selector improvements

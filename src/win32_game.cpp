@@ -1140,7 +1140,12 @@ int WinMain(HINSTANCE hInstance,
                 controller_state = &init_controller_state;
                 
                 controller_state->current_mouse = platform_get_cursor_pos();
-                
+
+                real64 last_time = platform_get_wall_clock_time();
+                real64 fps_timer_start = last_time;
+                real64 fps_sum = 0.0f;
+                int32 num_fps_samples = 1;
+
                 while (is_running) {
                     for (uint32 i = 0; i < array_length(controller_state->key_states); i++) {
                         controller_state->key_states[i].was_down = controller_state->key_states[i].is_down;
@@ -1243,7 +1248,7 @@ int WinMain(HINSTANCE hInstance,
                     }
                         
                     uint32 num_samples = bytes_delta / sound_output.bytes_per_sample;
-
+                    
                     update(game_state,
                            controller_state,
                            &game_sound_output, num_samples);
@@ -1271,9 +1276,10 @@ int WinMain(HINSTANCE hInstance,
                         if (sleep_is_granular) {
                             DWORD sleep_ms = (DWORD) ((target_frame_time - work_time) * 1000);
                             Sleep(sleep_ms);
-                        }
-                        while (work_time < target_frame_time) {
-                            work_time = win32_get_elapsed_time(last_perf_counter);
+                        } else {
+                            while (work_time < target_frame_time) {
+                                work_time = win32_get_elapsed_time(last_perf_counter);
+                            }
                         }
                     } else {
                         //debug_print("MISSED FRAME\n");
