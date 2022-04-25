@@ -292,6 +292,8 @@ void init_game(Game_State *game_state,
     game_state->mode = Game_Mode::EDITING;
     Editor_State *editor_state = &game_state->editor_state;
 
+    game_state->player.height = 1.6f;
+
     real64 current_time = platform_get_wall_clock_time();
     game_state->last_update_time = current_time;
     game_state->last_fps_update_time = current_time;
@@ -599,6 +601,8 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
             Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
             Ray displacement_ray = make_ray(player->position, player_displacement);
             if (ray_intersects_aabb(displacement_ray, entity->transformed_aabb, &aabb_t) && (aabb_t < t_min)) {
+                // we check for t < 1.0f, since we only want the intersections that are inside the
+                // displacement line
                 if (ray_intersects_mesh(displacement_ray, mesh, entity->transform, &t) &&
                     (t < 1.0f) && (t < t_min)) {
                     t_min = t;
@@ -676,15 +680,14 @@ void update(Game_State *game_state,
     if (was_clicked(controller_state->key_f5)) {
         if (game_state->mode == Game_Mode::EDITING) {
             game_state->mode = Game_Mode::PLAYING;
-            Player player;
+            Player *player = &game_state->player;
             Camera camera = render_state->camera;
-            player.position = render_state->camera.position;
-            player.heading = camera.heading;
-            player.pitch = camera.pitch;
-            player.roll = camera.roll;
-            player.velocity = make_vec3();
-            player.acceleration = make_vec3(0.0f, -9.81f, 0.0f);
-            game_state->player = player;
+            player->position = render_state->camera.position - make_vec3(0.0f, player->height, 0.0f);
+            player->heading = camera.heading;
+            player->pitch = camera.pitch;
+            player->roll = camera.roll;
+            player->velocity = make_vec3();
+            player->acceleration = make_vec3(0.0f, -9.81f, 0.0f);
         } else {
             game_state->mode = Game_Mode::EDITING;
         }
@@ -697,7 +700,7 @@ void update(Game_State *game_state,
     } else {
         update_player(game_state, controller_state, dt);
         Player player = game_state->player;
-        update_camera(&render_state->camera, player.position,
+        update_camera(&render_state->camera, player.position + make_vec3(0.0f, player.height, 0.0f),
                       player.heading, player.pitch, player.roll);
         update_render_state(render_state);
     }

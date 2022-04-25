@@ -209,13 +209,14 @@
 //       - TODO (done): add is_walkable member for normal entities
 //       - TODO (done): simulate gravity with player
 //       - TODO (done): basic collision with triangles of walk mesh to stop player from falling through ground
-//       - TODO: take into account the height of the player when setting the camera position
-//       - TODO: add some type of is_grounded member to player, so that they don't just fall again when going from
-//               play -> editor -> play.
-//       - TODO: walk on mesh
+//       - TODO (done): take into account the height of the player when setting the camera position
 //       - TODO: reset cursor position when in first person mode, and don't show gizmo or wireframe if in PLAYING
 //               mode. don't reset the editor state, since it's convenient to be able to quickly resume what you
 //               were doing.
+//       - TODO: add some type of is_grounded member to player, so that they don't just fall again when going from
+//               play -> editor -> play.
+//       - TODO: walk on mesh
+
 
 
 // TODO: color selector improvements
