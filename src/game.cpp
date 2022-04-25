@@ -581,8 +581,14 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
         int32 heading_rotations = (int32) floorf((player->heading + heading_delta) / 360.0f);
         int32 pitch_rotations = (int32) floorf((player->pitch + pitch_delta) / 360.0f);
         player->heading = (player->heading + heading_delta) - heading_rotations*360.0f;
-        player->pitch = (player->pitch + pitch_delta) - pitch_rotations*360.0f;
+        player->pitch = clamp(player->pitch + pitch_delta, -90.0f, 90.0f);
     }
+
+    Display_Output display_output = game_state->render_state.display_output;
+
+    Vec2 center = make_vec2(display_output.width / 2.0f, display_output.height / 2.0f);
+    platform_set_cursor_pos(center);
+    controller_state->current_mouse = center;
 
     Vec3 v0 = player->velocity;
     Vec3 acceleration = player->acceleration;

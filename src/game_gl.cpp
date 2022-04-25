@@ -210,9 +210,9 @@
 //       - TODO (done): simulate gravity with player
 //       - TODO (done): basic collision with triangles of walk mesh to stop player from falling through ground
 //       - TODO (done): take into account the height of the player when setting the camera position
-//       - TODO: reset cursor position when in first person mode, and don't show gizmo or wireframe if in PLAYING
-//               mode. don't reset the editor state, since it's convenient to be able to quickly resume what you
-//               were doing.
+//       - TODO (done): reset cursor position when in first person mode
+//       - TODO (done): don't show gizmo or wireframe if in PLAYING mode. don't reset the editor state, since it's
+//                      convenient to be able to quickly resume what you were doing.
 //       - TODO: add some type of is_grounded member to player, so that they don't just fall again when going from
 //               play -> editor -> play.
 //       - TODO: walk on mesh
@@ -2577,7 +2577,8 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
                      mesh_id, material,
                      entity->transform);
 
-        if (editor_state->show_wireframe &&
+        if (game_state->mode == Game_Mode::EDITING &&
+            editor_state->show_wireframe &&
             editor_state->selected_entity_type == ENTITY_NORMAL &&
             editor_state->selected_entity_index == i) {
             gl_draw_wireframe(gl_state, render_state, entity->mesh_type, mesh_id, entity->transform);
@@ -2587,7 +2588,7 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
     glBindFramebuffer(GL_FRAMEBUFFER, gl_state->gizmo_framebuffer.fbo);
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    if (editor_state->selected_entity_index >= 0) {
+    if (game_state->mode == Game_Mode::EDITING && editor_state->selected_entity_index >= 0) {
         gl_draw_gizmo(gl_state, render_state, editor_state);
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);

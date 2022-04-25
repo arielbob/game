@@ -1596,7 +1596,7 @@ void update_editor_camera(Camera *camera, Controller_State *controller_state,
         int32 heading_rotations = (int32) floorf((camera->heading + heading_delta) / 360.0f);
         int32 pitch_rotations = (int32) floorf((camera->pitch + pitch_delta) / 360.0f);
         camera->heading = (camera->heading + heading_delta) - heading_rotations*360.0f;
-        camera->pitch = (camera->pitch + pitch_delta) - pitch_rotations*360.0f;
+        camera->pitch = clamp(camera->pitch + pitch_delta, -90.0f, 90.0f);
     }
     
     Mat4 model_matrix = make_rotate_matrix(camera->roll, camera->pitch, camera->heading);
