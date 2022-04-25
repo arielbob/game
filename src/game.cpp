@@ -601,6 +601,7 @@ void update(Game_State *game_state,
     if (game_state->mode == Game_Mode::EDITING) {
         update_editor(game_state, controller_state, dt);
         draw_editor_ui(game_state, controller_state);
+        clear_editor_state_for_gone_color_pickers(ui_manager, &game_state->editor_state);
     } else {
         update_player(game_state, controller_state, dt);
         Player player = game_state->player;

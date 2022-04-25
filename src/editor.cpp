@@ -1806,6 +1806,4 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
     }
 
     update_gizmo(game_state);
-
-    clear_editor_state_for_gone_color_pickers(ui_manager, editor_state);
 }
