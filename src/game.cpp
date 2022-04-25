@@ -516,10 +516,16 @@ void update(Game_State *game_state,
     }
 
     UI_Manager *ui_manager = &game_state->ui_manager;
-    Editor_State *editor_state = &game_state->editor_state;
     Render_State *render_state = &game_state->render_state;
 
-    
+    if (was_clicked(controller_state->key_f5)) {
+        if (game_state->mode == Game_Mode::EDITING) {
+            game_state->mode = Game_Mode::PLAYING;
+        } else {
+            game_state->mode = Game_Mode::EDITING;
+        }
+    }
+
     if (game_state->mode == Game_Mode::EDITING) {
         update_editor(game_state, controller_state);
         draw_editor_ui(game_state, controller_state);

@@ -559,9 +559,11 @@ internal void win32_process_keyboard_input(bool was_down, bool is_down,
                 controller_state->key_tab.was_down = was_down;
                 return;
             }
-            case VK_F10: {
-                controller_state->key_f10.is_down = is_down;
-                controller_state->key_f10.was_down = was_down;
+            // NOTE: you cannot handle VK_F10 here, since F10 sends a WM_SYSKEYDOWN message instead of
+            //       WM_KEYDOWN, and we call this procedure only on WM_KEYDOWN and WM_KEYUP messages
+            case VK_F5: {
+                controller_state->key_f5.is_down = is_down;
+                controller_state->key_f5.was_down = was_down;
                 return;
             }
         }

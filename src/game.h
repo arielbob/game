@@ -71,7 +71,7 @@ struct Controller_State {
             Controller_Button_State key_s;
             Controller_Button_State key_d;
             Controller_Button_State key_e;
-            Controller_Button_State key_f10;
+            Controller_Button_State key_f5;
             Controller_Button_State key_up;
             Controller_Button_State key_down;
             Controller_Button_State key_right;
