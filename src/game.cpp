@@ -382,10 +382,8 @@ void init_game(Game_State *game_state,
     Vec3 origin = make_vec3(0.0f, 10.0f, 0.0f);
     Vec3 direction = make_vec3(0.0f, -1.0f, 0.0f);
     Ray ray = make_ray(origin, direction);
-    real32 t;
     Transform transform = make_transform();
     transform.scale = make_vec3(1.0f, 0.5f, 1.0f);
-    ray_intersects_mesh(ray, mesh, transform, &t);
 
     // init editor_state
     editor_state->gizmo.arrow_mesh_id = gizmo_arrow_mesh_id;
@@ -457,7 +455,8 @@ Vec3 cursor_pos_to_world_space(Vec2 cursor_pos, Render_State *render_state) {
     return cursor_world_space;
 }
 
-int32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, real32 *t_result) {
+int32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, bool32 include_backside,
+                          Ray_Intersects_Mesh_Result *result) {
     Mat4 object_to_world = get_model_matrix(transform);
     Mat4 world_to_object = inverse(object_to_world);
 
@@ -484,6 +483,7 @@ int32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, real32 *t_res
     // right now, so this way of doing it is fine for now.
     real32 t_min = FLT_MAX;
     bool32 hit = false;
+    int32 hit_triangle_index = -1;
     for (int32 i = 0; i < (int32) mesh.num_triangles; i++) {
         Vec3 triangle[3];
         triangle[0] = get_vertex_from_index(&mesh, indices[i * 3]);
@@ -493,13 +493,25 @@ int32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, real32 *t_res
 
         // TODO: we might be able to pass t_min into this test to early-out before we check if a hit point
         //       is within the triangle, but after we've hit the plane
-        if (ray_intersects_triangle(object_space_ray, triangle, &t)) {
-            t_min = min(t, t_min);
+        if (ray_intersects_triangle(object_space_ray, triangle, include_backside, &t)) {
+            if (t < t_min) {
+                t_min = t;
+                hit_triangle_index = i;
+            }
             hit = true;
         }
     }
 
-    if (hit) *t_result = t_min;
+    if (hit) {
+        Vec3 triangle[3];
+        triangle[0] = get_vertex_from_index(&mesh, indices[hit_triangle_index * 3]);
+        triangle[1] = get_vertex_from_index(&mesh, indices[hit_triangle_index * 3 + 1]);
+        triangle[2] = get_vertex_from_index(&mesh, indices[hit_triangle_index * 3 + 2]);
+
+        result->t = t_min;
+        result->triangle_index = hit_triangle_index;
+        result->triangle_normal = get_triangle_normal(triangle);
+    }
 
     return hit;
 }
@@ -508,7 +520,8 @@ inline Vec3 transform_point(Mat4 *model_matrix, Vec3 *point) {
     return truncate_v4_to_v3(*model_matrix * make_vec4(*point, 1.0f));
 }
 
-bool32 closest_point_below_on_mesh(Vec3 point, Mesh mesh, Transform transform, Vec3 *result) {
+bool32 closest_point_below_on_mesh(Vec3 point, Mesh mesh, Transform transform,
+                                   Vec3 *result) {
     // NOTE: we cannot do the same optimization here where we transform the world space point to object
     //       space and do the test in obejct space. this is because get_point_on_triangle_from_xz assumes
     //       that the line is going straight down. we can do the optimization in ray_intersects_mesh
@@ -673,8 +686,13 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
         Level *level = &game_state->current_level;
         real32 t_min = FLT_MAX;
         bool32 intersected = false;
+        Vec3 intersected_triangle_normal = make_vec3();
+        int32 intersected_triangle_index = -1;
+        Mesh_Type ground_mesh_type = Mesh_Type::NONE;
+        int32 ground_mesh_id = -1;
+        
         for (int32 i = 0; i < level->num_normal_entities; i++) {
-            real32 t, aabb_t;
+            real32 aabb_t;
             Normal_Entity *entity = &level->normal_entities[i];
             if (entity->is_walkable) {
                 Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
@@ -682,10 +700,15 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
                 if (ray_intersects_aabb(displacement_ray, entity->transformed_aabb, &aabb_t) && (aabb_t < t_min)) {
                     // we check for t < 1.0f, since we only want the intersections that are inside the
                     // displacement line
-                    if (ray_intersects_mesh(displacement_ray, mesh, entity->transform, &t) &&
-                        (t < 1.0f) && (t < t_min)) {
-                        t_min = t;
+                    Ray_Intersects_Mesh_Result result;
+                    if (ray_intersects_mesh(displacement_ray, mesh, entity->transform, false, &result) &&
+                        (result.t < 1.0f) && (result.t < t_min)) {
+                        t_min = result.t;
                         intersected = true;
+                        intersected_triangle_normal = result.triangle_normal;
+                        intersected_triangle_index = result.triangle_index;
+                        ground_mesh_type = entity->mesh_type;
+                        ground_mesh_id = entity->mesh_id;
                     }
                 }
             }
@@ -696,6 +719,11 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
             player->acceleration = make_vec3();
             player->velocity = make_vec3();
             player->is_grounded = true;
+
+            player->triangle_normal = intersected_triangle_normal;
+            player->triangle_index = intersected_triangle_index;
+            player->ground_mesh_type = ground_mesh_type;
+            player->ground_mesh_id = ground_mesh_id;
         }
     }
 

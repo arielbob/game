@@ -1217,13 +1217,20 @@ bool32 ray_intersects_triangle(Ray ray, Vec3 v[3], real32 *t_result) {
 // from https://www.iquilezles.org/www/articles/intersectors/intersectors.htm
 // explanation (i'm pretty sure this is just a slightly modified version of the above) here:
 // https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/moller-trumbore-ray-triangle-intersection
-bool32 ray_intersects_triangle(Ray ray, Vec3 triangle_verts[3], real32 *t_result) {
+bool32 ray_intersects_triangle(Ray ray, Vec3 triangle_verts[3], bool32 include_backside, real32 *t_result) {
     Vec3 v1v0 = triangle_verts[1] - triangle_verts[0];
     Vec3 v2v0 = triangle_verts[2] - triangle_verts[0];
     Vec3 rov0 = ray.origin - triangle_verts[0];
     Vec3 n = cross(v1v0, v2v0);
     Vec3 q = cross(rov0, ray.direction);
-    real32 d = 1.0f / dot(ray.direction, n);
+
+    real32 denom = dot(ray.direction, n);
+    if (!include_backside) {
+        // check if ray is hitting backside of triangle
+        if (!(denom < 0.0f)) return false;
+    }
+
+    real32 d = 1.0f / denom;
     real32 u = d * dot(-q, v2v0);
     real32 v = d * dot( q, v1v0);
     real32 t = d * dot(-n, rov0);
@@ -1811,4 +1818,12 @@ bool32 get_point_on_triangle_from_xz(real32 x, real32 z, Vec3 triangle[3], Vec3 
 
     *point_on_triangle = b1*triangle[0] + b2*triangle[1] + b3*triangle[2];
     return true;
+}
+
+// NOTE: vertices should be in clockwise order
+Vec3 get_triangle_normal(Vec3 triangle[3]) {
+    Vec3 v1 = triangle[1] - triangle[0];
+    Vec3 v2 = triangle[2] - triangle[1];
+    Vec3 normal = normalize(cross(v1, v2));
+    return normal;
 }

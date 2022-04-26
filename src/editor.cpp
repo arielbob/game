@@ -1416,12 +1416,13 @@ int32 pick_entity(Game_State *game_state, Ray cursor_ray, Entity *entity_result,
 
     real32 t_min = FLT_MAX;
     for (int32 i = 0; i < level->num_normal_entities; i++) {
-        real32 t, aabb_t;
+        real32 aabb_t;
         Normal_Entity *entity = &normal_entities[i];
         Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
         if (ray_intersects_aabb(cursor_ray, entity->transformed_aabb, &aabb_t) && (aabb_t < t_min)) {
-            if (ray_intersects_mesh(cursor_ray, mesh, entity->transform, &t) && (t < t_min)) {
-                t_min = t;
+            Ray_Intersects_Mesh_Result result;
+            if (ray_intersects_mesh(cursor_ray, mesh, entity->transform, true, &result) && (result.t < t_min)) {
+                t_min = result.t;
                 entity_index = i;
                 picked_entity = (Entity *) entity;
             }
@@ -1429,12 +1430,13 @@ int32 pick_entity(Game_State *game_state, Ray cursor_ray, Entity *entity_result,
     }
 
     for (int32 i = 0; i < level->num_point_lights; i++) {
-        real32 t, aabb_t;
+        real32 aabb_t;
         Point_Light_Entity *entity = &point_lights[i];
         Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
         if (ray_intersects_aabb(cursor_ray, entity->transformed_aabb, &aabb_t) && (aabb_t < t_min)) {
-            if (ray_intersects_mesh(cursor_ray, mesh, entity->transform, &t) && (t < t_min)) {
-                t_min = t;
+            Ray_Intersects_Mesh_Result result;
+            if (ray_intersects_mesh(cursor_ray, mesh, entity->transform, true, &result) && (result.t < t_min)) {
+                t_min = result.t;
                 entity_index = i;
                 picked_entity = (Entity *) entity;
             }
@@ -1513,9 +1515,10 @@ Gizmo_Handle pick_gizmo(Game_State *game_state, Ray cursor_ray,
     real32 t_min = FLT_MAX;
     for (int32 i = 0; i < 3; i++) {
         Transform gizmo_handle_transform = gizmo_handle_transforms[i];
-        real32 t;
-        if (ray_intersects_mesh(cursor_ray, arrow_mesh, gizmo_handle_transform, &t) && (t < t_min)) {
-            t_min = t;
+        Ray_Intersects_Mesh_Result result;
+        if (ray_intersects_mesh(cursor_ray, arrow_mesh, gizmo_handle_transform, true, &result) &&
+            (result.t < t_min)) {
+            t_min = result.t;
             picked_handle = gizmo_translation_handles[i];
             selected_transform_axis = transform_axes[i];
         }
@@ -1528,9 +1531,10 @@ Gizmo_Handle pick_gizmo(Game_State *game_state, Ray cursor_ray,
 
     for (int32 i = 0; i < 3; i++) {
         Transform gizmo_handle_transform = gizmo_handle_transforms[i];
-        real32 t;
-        if (ray_intersects_mesh(cursor_ray, ring_mesh, gizmo_handle_transform, &t) && (t < t_min)) {
-            t_min = t;
+        Ray_Intersects_Mesh_Result result;
+        if (ray_intersects_mesh(cursor_ray, ring_mesh, gizmo_handle_transform, true, &result) &&
+            (result.t < t_min)) {
+            t_min = result.t;
             picked_handle = gizmo_rotation_handles[i];
             selected_transform_axis = transform_axes[i];
         }

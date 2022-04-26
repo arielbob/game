@@ -220,6 +220,7 @@
 //       - TODO (done): fix bug where closest_point_below_on_mesh doesn't work with certain transforms
 //       - TODO (done): write ray vs. ray intersection test
 //       - TODO (done): move player with WASD
+//       - TODO (done): get and save triangle that the player lands on
 //       - TODO: move player on single triangle adjusted using normal; don't care about leaving triangle right now
 //       - TODO: move on single triangle - use barycentric coordinates, i.e. check if a certain coordinate is
 //               > 1 or < 0? actually, that won't really work. would have to do intersection test between all

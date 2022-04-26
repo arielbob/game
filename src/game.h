@@ -154,6 +154,10 @@ struct Player {
     real32 speed = 1.0f;
 
     bool32 is_grounded;
+    Vec3 triangle_normal;
+    int32 triangle_index;
+    Mesh_Type ground_mesh_type;
+    int32 ground_mesh_id;
 };
 
 struct Game_State {
@@ -195,6 +199,12 @@ namespace Context {
     UI_Manager *ui_manager;
 };
 
+struct Ray_Intersects_Mesh_Result {
+    real32 t;
+    int32 triangle_index;
+    Vec3 triangle_normal;
+};
+
 inline bool32 was_clicked(Controller_Button_State button_state);
 inline bool32 being_held(Controller_Button_State button_state);
 inline bool32 just_pressed(Controller_Button_State button_state);
@@ -216,7 +226,8 @@ void update_render_state(Render_State *render_state);
 Vec3 cursor_pos_to_world_space(Vec2 cursor_pos, Render_State *render_state);
 void update_entity_position(Game_State *game_state, Entity *entity, Vec3 new_position);
 void update_entity_rotation(Game_State *game_state, Entity *entity, Quaternion new_rotation);
-int32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, real32 *t_result);
+int32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, bool32 include_backside,
+                          Ray_Intersects_Mesh_Result *result);
 bool32 closest_point_below_on_mesh(Vec3 point, Mesh mesh, Transform transform, Vec3 *result);
 
 #endif
