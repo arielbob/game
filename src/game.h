@@ -145,6 +145,8 @@ struct Player {
     real32 roll;
 
     real32 height;
+
+    bool32 is_grounded;
 };
 
 struct Game_State {

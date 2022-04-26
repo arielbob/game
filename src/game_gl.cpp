@@ -213,11 +213,16 @@
 //       - TODO (done): reset cursor position when in first person mode
 //       - TODO (done): don't show gizmo or wireframe if in PLAYING mode. don't reset the editor state, since it's
 //                      convenient to be able to quickly resume what you were doing.
-//       - TODO: add some type of is_grounded member to player, so that they don't just fall again when going from
-//               play -> editor -> play.
-//       - TODO: walk on mesh
+//       - TODO (done): add some type of is_grounded member to player
+//       - TODO (done): write procedure to check if a point is inside a triangle (only need to do it in one plane)
+//       - TODO: write procedure to convert some x, y coordinate to a z coordinate on some triangle on a mesh
+//       - TODO: cache triangles in a new array for walkable meshes (so that we don't have to use indices array)
+//       - TODO: either create a procedure that checks if a player is close enough to some walkable mesh, or
+//               just move the player to the closest position on the walkable mesh and set their is_grounded to
+//               true
 
-
+// TODO: use a while loop in platform_set_cursor_visible to make the API set the visibility to whatever is passed
+//       in, since the current API is super annoying
 
 // TODO: color selector improvements
 //       - TODO: add sliders for RGB and HSV (should do manual input sliders first)
@@ -2691,6 +2696,33 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
     gl_draw_framebuffer(gl_state, gl_state->gizmo_framebuffer);
 
     gl_draw_ui(gl_state, game_state,  &game_state->ui_manager, display_output);
+
+#if 0
+    Vec3 triangle[3] = {
+        make_vec3(20.0f, 15.0f, 0.0f),
+        make_vec3(20.0f, 500.0f, 0.0f),
+        make_vec3(80.0f, 400.0f, 0.0f)
+    };
+#endif
+    Vec2 triangle[3] = {
+        make_vec2(0.0f, 0.0f),
+        make_vec2(1280.0f, 0.0f),
+        make_vec2(1280.0f, 720.0f)
+    };
+    for (int32 i = 0; i < 3; i++) {
+        Vec2 start = triangle[i];
+        Vec2 end = triangle[(i + 1) % 3];
+        gl_draw_line(gl_state, display_output, start, end, make_vec3(1.0f, 0.0f, 0.0f));
+    }
+
+    if (in_triangle(controller_state->current_mouse, triangle)) {
+        Font font = get_font(game_state, "times24");
+        gl_draw_text(gl_state, render_state, &font,
+                     0.0f, 720.0f,
+                     "inside triangle",
+                     make_vec4(text_color, 1.0f));
+    }
+    
 
 #if 0
     real32 hsv_quad_width = 20.0f;

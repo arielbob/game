@@ -26,6 +26,14 @@ inline Vec2 make_vec2(real32 x, real32 y) {
     return vec2;
 };
 
+inline Vec2 make_vec2(Vec3 v) {
+    Vec2 vec2;
+    vec2.x = v.x;
+    vec2.y = v.y;
+
+    return vec2;
+};
+
 inline Vec2 operator+(Vec2 v1, Vec2 v2) {
     Vec2 result = v1;
     result.x += v2.x;
@@ -1701,4 +1709,56 @@ HSV_Color rgb_to_hsv(RGB_Color rgb_color) {
     hue = clamp(hue, 0.0f, 360.0f);
 
     return { hue, saturation, value };
+}
+
+#if 0
+real32 get_z_on_triangle(real32 x, real32 y, Vec3 triangle[3]) {
+    Vec3 u = triangle[1] - triangle[0];
+    Vec3 v = triangle[2] - triangle[0];
+
+    // just flatten it
+    u.z = 0.0f;
+    v.z = 0.0f;
+    
+    Vec3 point = make_vec3(x, y, 0.0f);
+    Vec3 origin_to_point = normalize(point - triangle[0]);
+}
+#endif
+
+#if 0
+bool32 in_triangle(Vec3 p, Vec3 basis1, Vec3 basis2) {
+    real32 u = dot(p, normalize(basis1) / distance(basis1));
+    real32 v = dot(p, normalize(basis2) / distance(basis2));
+
+    if (u < 0.0f || u > 1.0f || v < 0.0f || v > 1.0f || (u + v) > 1.0f) {
+        return false;
+    } else {
+        return true;
+    }
+}
+#endif
+
+bool32 in_triangle(Vec2 p, Vec2 triangle[3]) {
+    real32 x1 = triangle[0].x;
+    real32 y1 = triangle[0].y;
+    real32 x2 = triangle[1].x;
+    real32 y2 = triangle[1].y;
+    real32 x3 = triangle[2].x;
+    real32 y3 = triangle[2].y;
+    
+    real32 denom = (y1-y3)*(x2-x3) + (y2-y3)*(x3-x1);
+    // check for triangle of zero area
+    if (fabs(denom) < EPSILON) return false;
+
+    real32 one_over_denom = 1.0f / denom;
+
+    real32 b1 = one_over_denom * ((p.y-y3)*(x2-x3) + (y2-y3)*(x3-p.x));
+    real32 b2 = one_over_denom * ((p.y-y1)*(x3-x1) + (y3-y1)*(x1-p.x));
+    real32 b3 = 1 - b1 - b2;
+
+    if (b1 < 0.0f || b1 > 1.0f || b2 < 0.0f || b2 > 1.0f || b3 < 0.0f || b3 > 1.0f) {
+        return false;
+    }
+
+    return true;
 }

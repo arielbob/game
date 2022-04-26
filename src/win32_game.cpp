@@ -969,6 +969,11 @@ int WinMain(HINSTANCE hInstance,
             HINSTANCE hPrevInstance,
             LPSTR lpCmdLine,
             int nShowCmd) {
+#if 0
+    Vec3 v = make_vec3(3.0f, -2.0f, 0.0f);
+    real32 test = dot(make_vec3(6.0f, -4.0f, 0.0f), normalize(v) / distance(v));
+#endif
+
     Ray ray = make_ray(make_vec3(0.0f, 0.0f, -1.1f),
                        make_vec3(1.0f, 0.0f, 0.0f));
     Vec3 triangle_vertices[3] = {

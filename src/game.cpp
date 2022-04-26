@@ -582,18 +582,18 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
         int32 pitch_rotations = (int32) floorf((player->pitch + pitch_delta) / 360.0f);
         player->heading = (player->heading + heading_delta) - heading_rotations*360.0f;
         player->pitch = clamp(player->pitch + pitch_delta, -90.0f, 90.0f);
+
+        Display_Output display_output = game_state->render_state.display_output;
+        Vec2 center = make_vec2(display_output.width / 2.0f, display_output.height / 2.0f);
+        platform_set_cursor_pos(center);
+        controller_state->current_mouse = center;
     }
 
-    Display_Output display_output = game_state->render_state.display_output;
-
-    Vec2 center = make_vec2(display_output.width / 2.0f, display_output.height / 2.0f);
-    platform_set_cursor_pos(center);
-    controller_state->current_mouse = center;
-
     Vec3 v0 = player->velocity;
-    Vec3 acceleration = player->acceleration;
-    Vec3 player_displacement = v0 + 0.5f*acceleration*dt*dt;
-    player->velocity = v0 + acceleration * dt;
+    Vec3 gravity = make_vec3(0.0f, -9.8f, 0.0f);
+    if (!player->is_grounded) player->acceleration = gravity;
+    Vec3 player_displacement = v0 + 0.5f*player->acceleration*dt*dt;
+    player->velocity = v0 + player->acceleration * dt;
 
     real32 displacement_length = distance(player_displacement);
 
@@ -630,6 +630,7 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
         player->position += player_displacement * t_min;
         player->acceleration = make_vec3();
         player->velocity = make_vec3();
+        player->is_grounded = true;
     } else {
         player->position += player_displacement;
     }
@@ -685,6 +686,7 @@ void update(Game_State *game_state,
 
     if (was_clicked(controller_state->key_f5)) {
         if (game_state->mode == Game_Mode::EDITING) {
+            if (!game_state->editor_state.use_freecam) platform_set_cursor_visible(false);
             game_state->mode = Game_Mode::PLAYING;
             Player *player = &game_state->player;
             Camera camera = render_state->camera;
@@ -693,9 +695,14 @@ void update(Game_State *game_state,
             player->pitch = camera.pitch;
             player->roll = camera.roll;
             player->velocity = make_vec3();
-            player->acceleration = make_vec3(0.0f, -9.81f, 0.0f);
+            // just set is_grounded to false, since we don't have a way to check if the player is on a mesh
+            // right now.
+            player->is_grounded = false;
         } else {
             game_state->mode = Game_Mode::EDITING;
+            if (!game_state->editor_state.use_freecam) {
+                platform_set_cursor_visible(true);
+            }
         }
     }
 
@@ -713,12 +720,10 @@ void update(Game_State *game_state,
     
         
     char *buf = (char *) arena_push(&memory.frame_arena, 128);
-/*
     buf = (char *) arena_push(&memory.frame_arena, 128);
     string_format(buf, 128, "current_mouse: (%f, %f)",
                   controller_state->current_mouse.x, controller_state->current_mouse.y);
     do_text(ui_manager, 0.0f, 24.0f, buf, "times24", "current_mouse_text");
-*/
 
 
     char *dt_string = string_format((Allocator *) &memory.frame_arena, 128, "FPS %d / dt %.3f", 
