@@ -143,6 +143,7 @@ struct HSV_Color {
     real32 v;
 };
 
+inline Vec3 make_vec3(real32 x, real32 y, real32 z);
 inline Vec4 make_vec4(real32 x, real32 y, real32 z, real32 w);
 Vec4 rgba_to_vec4(real32 r, real32 g, real32 b, real32 a);
 Vec4 rgb_to_vec4(real32 r, real32 g, real32 b);

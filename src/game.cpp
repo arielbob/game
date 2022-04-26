@@ -639,6 +639,43 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
         controller_state->current_mouse = center;
     }
 
+    Vec3 player_forward = normalize(truncate_v4_to_v3(make_rotate_matrix(y_axis, player->heading) *
+                                                      make_vec4(Player_Constants::forward, 1.0f)));
+    Vec3 player_right = normalize(truncate_v4_to_v3(make_rotate_matrix(y_axis, player->heading) *
+                                                    make_vec4(Player_Constants::right, 1.0f)));
+
+#if 0
+    Mat4 rotate_matrix = get_rotate_matrix_from_euler_angles(player->roll, player->pitch, player->heading);
+    Vec3 player_direction = normalize(truncate_v4_to_v3(rotate_matrix *
+                                                        make_vec4(Player_Constants::forward, 1.0f)));
+#endif
+    Vec3 displacement_vector = make_vec3();
+    if (controller_state->key_w.is_down) {
+        //displacement_vector = dot(heading_direction, player_direction) * heading_direction;
+        displacement_vector += player_forward;
+    }
+    if (controller_state->key_s.is_down) {
+        displacement_vector += -player_forward;
+    }
+    if (controller_state->key_d.is_down) {
+        displacement_vector += player_right;
+    }
+    if (controller_state->key_a.is_down) {
+        displacement_vector += -player_right;
+    }
+
+    displacement_vector = normalize(displacement_vector) * player->speed * dt;
+
+#if 0
+    if (distance(displacement_vector) > player->speed) {
+        displacement_vector = normalize(displacement_vector) * player->speed;
+    }
+#endif
+
+    if (player->is_grounded) {
+        player->velocity = displacement_vector;
+    }
+
     Vec3 v0 = player->velocity;
     Vec3 gravity = make_vec3(0.0f, -9.8f, 0.0f);
     if (!player->is_grounded) player->acceleration = gravity;

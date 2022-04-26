@@ -135,6 +135,12 @@ enum class Game_Mode {
     EDITING, PLAYING
 };
 
+namespace Player_Constants {
+    Vec3 forward = make_vec3(0.0f, 0.0f, 1.0f);
+    Vec3 right = make_vec3(1.0f, 0.0f, 0.0f);
+    Vec3 up = make_vec3(0.0f, 1.0f, 0.0f);
+};
+
 struct Player {
     Vec3 position;
     Vec3 velocity;
@@ -145,6 +151,7 @@ struct Player {
     real32 roll;
 
     real32 height;
+    real32 speed = 1.0f;
 
     bool32 is_grounded;
 };
