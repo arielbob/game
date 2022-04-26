@@ -644,6 +644,92 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
     Vec3 player_right = normalize(truncate_v4_to_v3(make_rotate_matrix(y_axis, player->heading) *
                                                     make_vec4(Player_Constants::right, 1.0f)));
 
+    Vec3 move_vector = make_vec3();
+    if (controller_state->key_w.is_down) {
+        //move_vector = dot(heading_direction, player_direction) * heading_direction;
+        move_vector += player_forward;
+    }
+    if (controller_state->key_s.is_down) {
+        move_vector += -player_forward;
+    }
+    if (controller_state->key_d.is_down) {
+        move_vector += player_right;
+    }
+    if (controller_state->key_a.is_down) {
+        move_vector += -player_right;
+    }
+    move_vector = normalize(move_vector) * player->speed;
+
+    if (player->is_grounded) {
+        player->velocity = move_vector;
+    } else {
+        player->acceleration = make_vec3(0.0f, -9.81f, 0.0f);
+    }
+
+    Vec3 displacement_vector = player->velocity*dt + 0.5f*player->acceleration*dt*dt;
+    player->velocity += player->acceleration * dt;
+
+    if (!player->is_grounded) {
+        Level *level = &game_state->current_level;
+        real32 t_min = FLT_MAX;
+        bool32 intersected = false;
+        for (int32 i = 0; i < level->num_normal_entities; i++) {
+            real32 t, aabb_t;
+            Normal_Entity *entity = &level->normal_entities[i];
+            if (entity->is_walkable) {
+                Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
+                Ray displacement_ray = make_ray(player->position, displacement_vector);
+                if (ray_intersects_aabb(displacement_ray, entity->transformed_aabb, &aabb_t) && (aabb_t < t_min)) {
+                    // we check for t < 1.0f, since we only want the intersections that are inside the
+                    // displacement line
+                    if (ray_intersects_mesh(displacement_ray, mesh, entity->transform, &t) &&
+                        (t < 1.0f) && (t < t_min)) {
+                        t_min = t;
+                        intersected = true;
+                    }
+                }
+            }
+        }
+
+        if (intersected) {
+            displacement_vector *= t_min;
+            player->acceleration = make_vec3();
+            player->velocity = make_vec3();
+            player->is_grounded = true;
+        }
+    }
+
+    player->position += displacement_vector;
+}
+
+#if 0
+void update_player(Game_State *game_state, Controller_State *controller_state,
+                   real32 dt) {
+    Player *player = &game_state->player;
+
+    if (platform_window_has_focus()) {
+        real32 delta_x = controller_state->current_mouse.x - controller_state->last_mouse.x;
+        real32 delta_y = controller_state->current_mouse.y - controller_state->last_mouse.y;
+
+        real32 heading_delta = 0.2f * delta_x;
+        real32 pitch_delta = 0.2f * delta_y;
+
+        int32 heading_rotations = (int32) floorf((player->heading + heading_delta) / 360.0f);
+        int32 pitch_rotations = (int32) floorf((player->pitch + pitch_delta) / 360.0f);
+        player->heading = (player->heading + heading_delta) - heading_rotations*360.0f;
+        player->pitch = clamp(player->pitch + pitch_delta, -90.0f, 90.0f);
+
+        Display_Output display_output = game_state->render_state.display_output;
+        Vec2 center = make_vec2(display_output.width / 2.0f, display_output.height / 2.0f);
+        platform_set_cursor_pos(center);
+        controller_state->current_mouse = center;
+    }
+
+    Vec3 player_forward = normalize(truncate_v4_to_v3(make_rotate_matrix(y_axis, player->heading) *
+                                                      make_vec4(Player_Constants::forward, 1.0f)));
+    Vec3 player_right = normalize(truncate_v4_to_v3(make_rotate_matrix(y_axis, player->heading) *
+                                                    make_vec4(Player_Constants::right, 1.0f)));
+
 #if 0
     Mat4 rotate_matrix = get_rotate_matrix_from_euler_angles(player->roll, player->pitch, player->heading);
     Vec3 player_direction = normalize(truncate_v4_to_v3(rotate_matrix *
@@ -674,15 +760,17 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
 
     if (player->is_grounded) {
         player->velocity = displacement_vector;
+        player->position += player->velocity;
+    } else {
+
     }
 
+#if 1
     Vec3 v0 = player->velocity;
     Vec3 gravity = make_vec3(0.0f, -9.8f, 0.0f);
     if (!player->is_grounded) player->acceleration = gravity;
     Vec3 player_displacement = v0 + 0.5f*player->acceleration*dt*dt;
     player->velocity = v0 + player->acceleration * dt;
-
-    real32 displacement_length = distance(player_displacement);
 
     Level *level = &game_state->current_level;
     real32 t_min = FLT_MAX;
@@ -721,7 +809,70 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
     } else {
         player->position += player_displacement;
     }
+#endif
+
+
+    Vec3 move_vector = make_vec3();
+    if (controller_state->key_w.is_down) {
+        //move_vector = dot(heading_direction, player_direction) * heading_direction;
+        move_vector += player_forward;
+    }
+    if (controller_state->key_s.is_down) {
+        move_vector += -player_forward;
+    }
+    if (controller_state->key_d.is_down) {
+        move_vector += player_right;
+    }
+    if (controller_state->key_a.is_down) {
+        move_vector += -player_right;
+    }
+    move_vector = normalize(move_vector) * player->speed * dt;
+
+    //Vec3 displacement_vector;
+    Vec3 displacement_vector;
+
+    if (player->is_grounded) {
+        displacement_vector = move_vector;
+    } else {
+        displacement_vector = player->velocity * 0.5f*player->acceleration*dt*dt;
+    }
+
+    player->velocity += player->acceleration * dt;
+
+    if (!is_grounded) {
+        Level *level = &game_state->current_level;
+        real32 t_min = FLT_MAX;
+        bool32 intersected = false;
+        for (int32 i = 0; i < level->num_normal_entities; i++) {
+            real32 t, aabb_t;
+            Normal_Entity *entity = &level->normal_entities[i];
+            if (entity->is_walkable) {
+                Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
+                Ray displacement_ray = make_ray(player->position, displacement_vector);
+                if (ray_intersects_aabb(displacement_ray, entity->transformed_aabb, &aabb_t) && (aabb_t < t_min)) {
+                    // we check for t < 1.0f, since we only want the intersections that are inside the
+                    // displacement line
+                    if (ray_intersects_mesh(displacement_ray, mesh, entity->transform, &t) &&
+                        (t < 1.0f) && (t < t_min)) {
+                        t_min = t;
+                        intersected = true;
+                    }
+                }
+            }
+        }
+
+        if (intersected) {
+            player->position += displacement_vector * t_min;
+            player->acceleration = make_vec3();
+            player->velocity = make_vec3();
+            player->is_grounded = true;
+        } else {
+            player->position += displacement_vector;
+        }
+    }
+    
 }
+#endif
 
 void update_camera(Camera *camera, Vec3 position, real32 heading, real32 pitch, real32 roll) {
     Basis initial_basis = camera->initial_basis;
