@@ -964,7 +964,6 @@ bool32 platform_write_file(char *filename, void *buffer, uint32 num_bytes_to_wri
     return true;
 }
 
-
 int WinMain(HINSTANCE hInstance,
             HINSTANCE hPrevInstance,
             LPSTR lpCmdLine,
@@ -1249,6 +1248,7 @@ int WinMain(HINSTANCE hInstance,
                               controller_state,
                               game_display_output, &sound_output);
 
+                    reset_debug_state(&game_state->debug_state);
                     clear_push_buffer(&game_state->ui_manager.push_buffer);
                     clear_arena(&memory.frame_arena);
                     verify(&memory.global_stack);

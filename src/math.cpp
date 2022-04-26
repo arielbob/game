@@ -1827,3 +1827,15 @@ Vec3 get_triangle_normal(Vec3 triangle[3]) {
     Vec3 normal = normalize(cross(v1, v2));
     return normal;
 }
+
+Vec3 get_point_on_plane_from_xz(real32 x, real32 z, Vec3 plane_normal, Vec3 some_point_on_plane) {
+    Vec3 n = normalize(plane_normal);
+    real32 plane_d = dot(some_point_on_plane, n);
+
+    // NOTE: this is the case where the plane is just a straight wall; we don't support this case
+    assert(fabsf(n.y) > EPSILON);
+    real32 one_over_normal_y = 1.0f / n.y;
+    
+    real32 projected_y = (plane_d - n.x*x - n.z*z) / n.y;
+    return make_vec3(x, projected_y, z);
+}

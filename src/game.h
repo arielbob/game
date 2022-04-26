@@ -6,6 +6,7 @@
 #define MAX_ENTITIES 64
 #define MAX_POINT_LIGHTS 16
 #define MAX_FONTS 64
+#define MAX_DEBUG_LINES 64
 
 #include "platform.h"
 #include "hash_table.h"
@@ -135,6 +136,17 @@ enum class Game_Mode {
     EDITING, PLAYING
 };
 
+struct Debug_Line {
+    Vec3 start;
+    Vec3 end;
+    Vec4 color;
+};
+
+struct Debug_State {
+    Debug_Line debug_lines[MAX_DEBUG_LINES];
+    int32 num_debug_lines;
+};
+
 namespace Player_Constants {
     Vec3 forward = make_vec3(0.0f, 0.0f, 1.0f);
     Vec3 right = make_vec3(1.0f, 0.0f, 0.0f);
@@ -174,6 +186,7 @@ struct Game_State {
 
     Render_State render_state;
     Editor_State editor_state;
+    Debug_State debug_state;
 
     Audio_Source music;
     bool32 is_playing_music; // debugging
@@ -188,7 +201,7 @@ struct Game_State {
     Hash_Table<int32, Mesh> primitive_mesh_table;
     Hash_Table<String, File_Data> font_file_table;
     Hash_Table<String, Font> font_table;
-    
+
     char text_buffer[256] = {}; // debugging
 };
 

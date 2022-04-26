@@ -419,6 +419,10 @@ void init_game(Game_State *game_state,
     game_state->is_initted = true;
 }
 
+void reset_debug_state(Debug_State *debug_state) {
+    debug_state->num_debug_lines = 0;
+}
+
 inline bool32 was_clicked(Controller_Button_State button_state) {
     return (!button_state.is_down && button_state.was_down);
 }
@@ -634,8 +638,14 @@ void set_entity_mesh(Game_State *game_state, Level *level, Entity *entity, Mesh_
     entity->transformed_aabb = transform_aabb(mesh.aabb, entity->transform);
 }
 
+void add_debug_line(Debug_State *debug_state, Vec3 start, Vec3 end, Vec4 color) {
+    assert(debug_state->num_debug_lines < MAX_DEBUG_LINES);
+    debug_state->debug_lines[debug_state->num_debug_lines++] = { start, end, color };
+}
+
 void update_player(Game_State *game_state, Controller_State *controller_state,
                    real32 dt) {
+    Debug_State *debug_state = &game_state->debug_state;
     Player *player = &game_state->player;
 
     if (platform_window_has_focus()) {
@@ -662,8 +672,27 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
                                                     make_vec4(Player_Constants::right, 1.0f)));
     if (player->is_grounded) {
         // make basis
+        Vec3 forward_point = player->position + player_forward;
+        forward_point = get_point_on_plane_from_xz(forward_point.x, forward_point.z,
+                                                   player->triangle_normal, player->position);
+        player_forward = normalize(forward_point - player->position);
+
+        Vec3 right_point = player->position + player_right;
+        right_point = get_point_on_plane_from_xz(right_point.x, right_point.z,
+                                                 player->triangle_normal, player->position);
+        player_right = normalize(right_point - player->position);
+
+#if 0
         player_right = normalize(cross(player->triangle_normal, player_forward));
         player_forward = normalize(cross(player_right, player->triangle_normal));
+#endif
+
+        add_debug_line(debug_state,
+                       player->position, player->position + player_right, make_vec4(x_axis, 1.0f));
+        add_debug_line(debug_state,
+                       player->position, player->position + player->triangle_normal, make_vec4(y_axis, 1.0f));
+        add_debug_line(debug_state,
+                       player->position, player->position + player_forward, make_vec4(z_axis, 1.0f));
     }
 
     Vec3 move_vector = make_vec3();

@@ -221,8 +221,10 @@
 //       - TODO (done): write ray vs. ray intersection test
 //       - TODO (done): move player with WASD
 //       - TODO (done): get and save triangle that the player lands on
-//       - TODO: add GL code for drawing line in 3D
-//       - TODO: move player on single triangle adjusted using normal; don't care about leaving triangle right now
+//       - TODO (done): add GL code for drawing line in 3D
+//       - TODO (done): move player on single triangle adjusted using normal; don't care about leaving triangle
+//                      right now
+//       - TODO: detect when player has left its triangle; maybe just is_grounded to true when that happens for now
 //       - TODO: move on single triangle - use barycentric coordinates, i.e. check if a certain coordinate is
 //               > 1 or < 0? actually, that won't really work. would have to do intersection test between all
 //               three sides and set the position to the intersection point. then attempt to move again on a
@@ -2773,6 +2775,16 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
 
     glDisable(GL_DEPTH_TEST);
     
+    // debug lines
+    glLineWidth(6.0f);
+    Debug_State *debug_state = &game_state->debug_state;
+    for (int32 i = 0; i < debug_state->num_debug_lines; i++) {
+        Debug_Line *line = &debug_state->debug_lines[i];
+        gl_draw_line(gl_state, render_state,
+                     line->start, line->end, line->color);
+    }
+    glLineWidth(1.0f);
+
     gl_draw_framebuffer(gl_state, gl_state->gizmo_framebuffer);
 
     gl_draw_ui(gl_state, game_state,  &game_state->ui_manager, display_output);
