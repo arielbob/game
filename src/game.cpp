@@ -455,6 +455,10 @@ Vec3 cursor_pos_to_world_space(Vec2 cursor_pos, Render_State *render_state) {
     return cursor_world_space;
 }
 
+inline Vec3 transform_point(Mat4 *model_matrix, Vec3 *point) {
+    return truncate_v4_to_v3(*model_matrix * make_vec4(*point, 1.0f));
+}
+
 int32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, bool32 include_backside,
                           Ray_Intersects_Mesh_Result *result) {
     Mat4 object_to_world = get_model_matrix(transform);
@@ -504,9 +508,13 @@ int32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, bool32 includ
 
     if (hit) {
         Vec3 triangle[3];
-        triangle[0] = get_vertex_from_index(&mesh, indices[hit_triangle_index * 3]);
-        triangle[1] = get_vertex_from_index(&mesh, indices[hit_triangle_index * 3 + 1]);
-        triangle[2] = get_vertex_from_index(&mesh, indices[hit_triangle_index * 3 + 2]);
+        Vec3 v1 = get_vertex_from_index(&mesh, indices[hit_triangle_index * 3]);
+        Vec3 v2 = get_vertex_from_index(&mesh, indices[hit_triangle_index * 3 + 1]);
+        Vec3 v3 = get_vertex_from_index(&mesh, indices[hit_triangle_index * 3 + 2]);
+
+        triangle[0] = transform_point(&object_to_world, &v1);
+        triangle[1] = transform_point(&object_to_world, &v2);
+        triangle[2] = transform_point(&object_to_world, &v3);
 
         result->t = t_min;
         result->triangle_index = hit_triangle_index;
@@ -514,10 +522,6 @@ int32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, bool32 includ
     }
 
     return hit;
-}
-
-inline Vec3 transform_point(Mat4 *model_matrix, Vec3 *point) {
-    return truncate_v4_to_v3(*model_matrix * make_vec4(*point, 1.0f));
 }
 
 bool32 closest_point_below_on_mesh(Vec3 point, Mesh mesh, Transform transform,
@@ -656,6 +660,11 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
                                                       make_vec4(Player_Constants::forward, 1.0f)));
     Vec3 player_right = normalize(truncate_v4_to_v3(make_rotate_matrix(y_axis, player->heading) *
                                                     make_vec4(Player_Constants::right, 1.0f)));
+    if (player->is_grounded) {
+        // make basis
+        player_right = normalize(cross(player->triangle_normal, player_forward));
+        player_forward = normalize(cross(player_right, player->triangle_normal));
+    }
 
     Vec3 move_vector = make_vec3();
     if (controller_state->key_w.is_down) {

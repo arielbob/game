@@ -221,6 +221,7 @@
 //       - TODO (done): write ray vs. ray intersection test
 //       - TODO (done): move player with WASD
 //       - TODO (done): get and save triangle that the player lands on
+//       - TODO: add GL code for drawing line in 3D
 //       - TODO: move player on single triangle adjusted using normal; don't care about leaving triangle right now
 //       - TODO: move on single triangle - use barycentric coordinates, i.e. check if a certain coordinate is
 //               > 1 or < 0? actually, that won't really work. would have to do intersection test between all
@@ -1278,6 +1279,9 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
     gl_load_shader(gl_state,
                    "src/shaders/mesh_2d.vs", "src/shaders/mesh_2d.fs",
                    "mesh_2d");
+    gl_load_shader(gl_state,
+                   "src/shaders/line_3d.vs", "src/shaders/line_3d.fs",
+                   "line_3d");
     gl_state->gizmo_framebuffer = gl_make_framebuffer(display_output.width, display_output.height);
 
     glGenBuffers(1, &gl_state->global_ubo);
@@ -1353,6 +1357,7 @@ void gl_draw_triangle(GL_State *gl_state,
                        color);
 }
 
+#if 0
 void gl_draw_line_p(GL_State *gl_state,
                     Display_Output display_output,
                     Vec2 start, Vec2 end,
@@ -1381,13 +1386,69 @@ void gl_draw_line_p(GL_State *gl_state,
     glUseProgram(0);
     glBindVertexArray(0);
 }
+#endif
 
 void gl_draw_line(GL_State *gl_state,
-                  Display_Output display_output,
+                  Render_State *render_state,
                   Vec2 start_pixels, Vec2 end_pixels,
                   Vec4 color) {
     uint32 basic_shader_id;
-    uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("basic"), &basic_shader_id);
+    uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("basic2"), &basic_shader_id);
+    assert(shader_exists);
+    glUseProgram(basic_shader_id);
+
+    GL_Mesh line_mesh = gl_use_rendering_mesh(gl_state, gl_state->line_mesh_id);
+
+    real32 line_vertices[] = {
+        start_pixels.x, start_pixels.y, 0.0f,
+        end_pixels.x, end_pixels.y, 0.0f,
+    };
+    glBindBuffer(GL_ARRAY_BUFFER, line_mesh.vbo);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(line_vertices), line_vertices);
+    gl_set_uniform_mat4(basic_shader_id, "ortho_matrix", &render_state->ortho_clip_matrix);
+    gl_set_uniform_vec4(basic_shader_id, "color", &color);
+    gl_set_uniform_int(basic_shader_id, "use_color", true);
+
+    glDrawArrays(GL_LINES, 0, 3);
+    glUseProgram(0);
+    glBindVertexArray(0);
+}
+
+void gl_draw_line(GL_State *gl_state,
+                  Render_State *render_state,
+                  Vec3 start, Vec3 end,
+                  Vec4 color) {
+    uint32 basic_shader_id;
+    uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("line_3d"), &basic_shader_id);
+    assert(shader_exists);
+    glUseProgram(basic_shader_id);
+
+    GL_Mesh line_mesh = gl_use_rendering_mesh(gl_state, gl_state->line_mesh_id);
+
+    Mat4 model_matrix = make_mat4_identity();
+
+    real32 line_vertices[] = {
+        start.x, start.y, start.z,
+        end.x, end.y, end.z
+    };
+    glBindBuffer(GL_ARRAY_BUFFER, line_mesh.vbo);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(line_vertices), line_vertices);
+    gl_set_uniform_mat4(basic_shader_id, "model_matrix", &model_matrix);
+    gl_set_uniform_mat4(basic_shader_id, "cpv_matrix", &render_state->cpv_matrix);
+    gl_set_uniform_vec4(basic_shader_id, "color", &color);
+
+    glDrawArrays(GL_LINES, 0, 3);
+    glUseProgram(0);
+    glBindVertexArray(0);
+}
+
+#if 0
+void gl_draw_line(GL_State *gl_state,
+                  Display_Output display_output,
+                  Vec3 start, Vec3 end,
+                  Vec4 color) {
+    uint32 basic_shader_id;
+    uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("basic_3d"), &basic_shader_id);
     assert(shader_exists);
     glUseProgram(basic_shader_id);
 
@@ -1410,12 +1471,13 @@ void gl_draw_line(GL_State *gl_state,
     glUseProgram(0);
     glBindVertexArray(0);
 }
+#endif
 
-void gl_draw_line(GL_State *gl_state,
-                  Display_Output display_output,
-                  Vec2 start_pixels, Vec2 end_pixels,
-                  Vec3 color) {
-    gl_draw_line(gl_state, display_output, start_pixels, end_pixels, make_vec4(color, 1.0f));
+inline void gl_draw_line(GL_State *gl_state,
+                         Render_State *render_state,
+                         Vec2 start_pixels, Vec2 end_pixels,
+                         Vec3 color) {
+    gl_draw_line(gl_state, render_state, start_pixels, end_pixels, make_vec4(color, 1.0f));
 }
 
 // NOTE: percentage based position
@@ -1611,7 +1673,8 @@ void gl_draw_circle(GL_State *gl_state, Render_State *render_state,
     glBindVertexArray(0);
 }
 
-void draw_sound_cursor(GL_State *gl_state,
+// TODO: these sound buffer drawing functions are probably messed up since we changed the line drawing code
+void draw_sound_cursor(GL_State *gl_state, Render_State *render_state,
                        Display_Output display_output, Win32_Sound_Output *win32_sound_output,
                        real32 cursor_position, Vec3 color) {
     real32 cursor_width = 10.0f;
@@ -1623,14 +1686,14 @@ void draw_sound_cursor(GL_State *gl_state,
                      cursor_width, cursor_height,
                      make_vec4(color, 1.0f));
 
-    gl_draw_line(gl_state, display_output,
+    gl_draw_line(gl_state, render_state,
                  make_vec2(cursor_position * display_output.width, display_output.height - 202.0f),
                  make_vec2(cursor_position * display_output.width, (real32) display_output.height),
-                 color);
+                 make_vec4(color, 1.0f));
 }
 
-void draw_sound_buffer(GL_State *gl_state,
-                       Render_State *render_state, Win32_Sound_Output *win32_sound_output) {
+void draw_sound_buffer(GL_State *gl_state, Render_State *render_state,
+                       Win32_Sound_Output *win32_sound_output) {
     Display_Output display_output = render_state->display_output;
     int32 max_samples = win32_sound_output->buffer_size / win32_sound_output->bytes_per_sample;
 
@@ -1640,20 +1703,20 @@ void draw_sound_buffer(GL_State *gl_state,
                  0.0f, display_output.height - height_offset,
                  (real32) display_output.width, channel_height,
                  make_vec3(0.1f, 0.1f, 0.1f));
-    gl_draw_line(gl_state, display_output,
+    gl_draw_line(gl_state, render_state,
                  make_vec2(0.0f, display_output.height - height_offset - 1),
                  make_vec2((real32) display_output.width, display_output.height - height_offset - 1),
-                 make_vec3(1.0f, 1.0f, 1.0f));
+                 make_vec4(1.0f, 1.0f, 1.0f, 1.0f));
 
     height_offset += channel_height + 1;
     gl_draw_quad(gl_state, render_state,
                  0.0f, display_output.height - height_offset,
                  (real32) display_output.width, channel_height,
                  make_vec3(0.1f, 0.1f, 0.1f));
-    gl_draw_line(gl_state, display_output,
+    gl_draw_line(gl_state, render_state,
                  make_vec2(0.0f, display_output.height - height_offset - 1),
                  make_vec2((real32) display_output.width, display_output.height - height_offset - 1),
-                 make_vec3(1.0f, 1.0f, 1.0f));
+                 make_vec4(1.0f, 1.0f, 1.0f, 1.0f));
 
     int32 increment = max_samples / display_output.width;
     for (int32 i = 0; i < max_samples; i += increment) {
@@ -1665,26 +1728,28 @@ void draw_sound_buffer(GL_State *gl_state,
         real32 sample_height = (real32) left_sample / 32768 * channel_height;
         real32 midline_offset = display_output.height - channel_height / 2.0f;
 
-        gl_draw_line(gl_state, display_output,
+        gl_draw_line(gl_state, render_state,
                      make_vec2(sample_x, midline_offset),
                      make_vec2(sample_x, midline_offset - sample_height),
-                     make_vec3(0.0f, 1.0f, 0.0f));
+                     make_vec4(0.0f, 1.0f, 0.0f, 1.0f));
 
         
         sample_height = (real32) right_sample / 32768 * channel_height;
         midline_offset -= channel_height + 1;
 
-        gl_draw_line(gl_state, display_output,
+        gl_draw_line(gl_state, render_state,
                      make_vec2(sample_x, midline_offset),
                      make_vec2(sample_x, midline_offset - sample_height),
-                     make_vec3(0.0f, 1.0f, 0.0f));
+                     make_vec4(0.0f, 1.0f, 0.0f, 1.0f));
 
     }
 
     real32 play_cursor_position = (real32) win32_sound_output->current_play_cursor / win32_sound_output->buffer_size;
-    draw_sound_cursor(gl_state, display_output, win32_sound_output, play_cursor_position, make_vec3(1.0f, 1.0f, 1.0f));
+    draw_sound_cursor(gl_state, render_state, display_output, win32_sound_output,
+                      play_cursor_position, make_vec3(1.0f, 1.0f, 1.0f));
     real32 write_cursor_position = (real32) win32_sound_output->current_write_cursor / win32_sound_output->buffer_size;
-    draw_sound_cursor(gl_state, display_output, win32_sound_output, write_cursor_position, make_vec3(1.0f, 0.0f, 0.0f));
+    draw_sound_cursor(gl_state, render_state, display_output, win32_sound_output,
+                      write_cursor_position, make_vec3(1.0f, 0.0f, 0.0f));
 }
 
 void gl_draw_ui_text(GL_State *gl_state, Game_State *game_state,
@@ -2082,12 +2147,12 @@ void gl_draw_ui_box(GL_State *gl_state, Render_State *render_state,
     }
 }
 
-void gl_draw_ui_line(GL_State *gl_state, Display_Output display_output,
+void gl_draw_ui_line(GL_State *gl_state, Render_State *render_state,
                      UI_Manager *ui_manager, UI_Line line) {
     UI_Line_Style style = line.style;
 
     // TODO: use style.line_width in gl_draw_line()
-    gl_draw_line(gl_state, display_output,
+    gl_draw_line(gl_state, render_state,
                  line.start, line.end,
                  style.color);
 }
@@ -2158,7 +2223,7 @@ void gl_draw_ui(GL_State *gl_state, Game_State *game_state,
                 } break;
                 case UI_LINE: {
                     UI_Line *ui_line = (UI_Line *) element;
-                    gl_draw_ui_line(gl_state, display_output, ui_manager, *ui_line);
+                    gl_draw_ui_line(gl_state, render_state, ui_manager, *ui_line);
                 } break;
                 case UI_HUE_SLIDER: {
                     UI_Hue_Slider *ui_hue_slider = (UI_Hue_Slider *) element;
@@ -2700,6 +2765,11 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
                             make_vec3(0.5f, 0.5f, 0.5f) };
 */
     // gl_draw_mesh(gl_state, render_state, "cube", "basic_3d", transform);    
+
+#if 0
+    gl_draw_line(gl_state, render_state, make_vec3(), make_vec3(5.0f, 0.0f, 0.0f),
+                 make_vec4(1.0f, 0.0f, 0.0f, 1.0f));
+#endif
 
     glDisable(GL_DEPTH_TEST);
     
