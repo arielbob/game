@@ -218,6 +218,12 @@
 //       - TODO (done): write procedure to convert some x, z coordinate to a point on some triangle on a mesh
 //       - TODO (done): test x,z to triangle point procedure
 //       - TODO (done): fix bug where closest_point_below_on_mesh doesn't work with certain transforms
+//       - TODO (done): write ray vs. ray intersection test
+//       - TODO: move player on single triangle adjusted using normal; don't care about leaving triangle right now
+//       - TODO: move on single triangle - use barycentric coordinates, i.e. check if a certain coordinate is
+//               > 1 or < 0? actually, that won't really work. would have to do intersection test between all
+//               three sides and set the position to the intersection point. then attempt to move again on a
+//               triangle adjacent to the side that was crossed.
 //       - TODO: cache triangles in a new array for walkable meshes (so that we don't have to use indices array)
 //       - TODO: either create a procedure that checks if a player is close enough to some walkable mesh, or
 //               just move the player to the closest position on the walkable mesh and set their is_grounded to

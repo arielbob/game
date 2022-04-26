@@ -1236,6 +1236,7 @@ bool32 ray_intersects_triangle(Ray ray, Vec3 triangle_verts[3], real32 *t_result
 
 // NOTE: we note that it's coplanar because this doesn't check for skew lines
 //       checking for skew lines would require us to find both t_1 and t_2
+#if 0
 bool32 line_intersects_coplanar_ray(Line line, Ray ray, real32 *t_result) {
     Vec3 p1 = line.origin;
     Vec3 p2 = ray.origin;
@@ -1245,10 +1246,8 @@ bool32 line_intersects_coplanar_ray(Line line, Ray ray, real32 *t_result) {
     real32 d1_cross_d2_distance = distance(cross(d1, d2));
     real32 denom = d1_cross_d2_distance * d1_cross_d2_distance;
 
-    if (denom > -0.000001f && denom < 0.000001f) {
-        // rays are parallel
-        return false;
-    }
+    // check if lines are parellel
+    if (fabsf(denom) < EPSILON) return false;
 
     real32 t = dot(cross((p2 - p1), d2), cross(d1, d2)) / denom;
     // make sure the t is within the line segment
@@ -1258,6 +1257,26 @@ bool32 line_intersects_coplanar_ray(Line line, Ray ray, real32 *t_result) {
     } else {
         return false;
     }
+}
+#endif
+
+bool32 ray_intersects_coplanar_ray(Ray ray1, Ray ray2, real32 *t_result) {
+    Vec3 p1 = ray1.origin;
+    Vec3 p2 = ray2.origin;
+    Vec3 d1 = ray1.direction;
+    Vec3 d2 = ray2.direction;
+
+    real32 d1_cross_d2_distance = distance(cross(d1, d2));
+    real32 denom = d1_cross_d2_distance * d1_cross_d2_distance;
+
+    // check if lines are parallel
+    if (fabsf(denom) < EPSILON) return false;
+
+    real32 t = dot(cross((p2 - p1), d2), cross(d1, d2)) / denom;
+    if (t < 0.0f) return false;
+
+    *t_result = t;
+    return true;
 }
 
 // TODO: optimize probably
