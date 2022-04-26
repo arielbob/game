@@ -504,22 +504,36 @@ int32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, real32 *t_res
     return hit;
 }
 
-bool32 closest_point_below_on_mesh(Vec3 world_space_point, Mesh mesh, Transform transform, Vec3 *result) {
-    Mat4 object_to_world = get_model_matrix(transform);
-    Mat4 world_to_object = inverse(object_to_world);
+inline Vec3 transform_point(Mat4 *model_matrix, Vec3 *point) {
+    return truncate_v4_to_v3(*model_matrix * make_vec4(*point, 1.0f));
+}
 
-    Vec3 point = truncate_v4_to_v3(world_to_object * make_vec4(world_space_point, 1.0f));
+bool32 closest_point_below_on_mesh(Vec3 point, Mesh mesh, Transform transform, Vec3 *result) {
+    // NOTE: we cannot do the same optimization here where we transform the world space point to object
+    //       space and do the test in obejct space. this is because get_point_on_triangle_from_xz assumes
+    //       that the line is going straight down. we can do the optimization in ray_intersects_mesh
+    //       because we have a ray that we can transform. in this procedure, we cannot transform the "ray"
+    //       so we must transform the triangles to world space before doing the test.
+    // TODO: we can write an optimized version of this that takes in a list of transformed triangles.
+    //       we can generate those transformed triangles for the walk mesh, and assuming that the walk
+    //       mesh doesn't change, we can just do it once and have the benefits of not having to use the
+    //       indices array.
+    // TODO: SIMDize the matrix multiplication code
+    // TODO: we can probably also cache some things to make get_point_on_triangle_from_xz() faster
+    Mat4 object_to_world = get_model_matrix(transform);
 
     uint32 *indices = mesh.indices;
 
-    // TODO: optimize (same as in ray_intersects_mesh())
     Vec3 closest_point_below = make_vec3();
     bool32 hit = false;
     for (int32 i = 0; i < (int32) mesh.num_triangles; i++) {
         Vec3 triangle[3];
-        triangle[0] = get_vertex_from_index(&mesh, indices[i * 3]);
-        triangle[1] = get_vertex_from_index(&mesh, indices[i * 3 + 1]);
-        triangle[2] = get_vertex_from_index(&mesh, indices[i * 3 + 2]);
+        Vec3 v1 = get_vertex_from_index(&mesh, indices[i*3]);
+        Vec3 v2 = get_vertex_from_index(&mesh, indices[i*3 + 1]);
+        Vec3 v3 = get_vertex_from_index(&mesh, indices[i*3 + 2]);
+        triangle[0] = transform_point(&object_to_world, &v1);
+        triangle[1] = transform_point(&object_to_world, &v2);
+        triangle[2] = transform_point(&object_to_world, &v3);
         Vec3 point_on_triangle;
         if (get_point_on_triangle_from_xz(point.x, point.z, triangle, &point_on_triangle)) {
             if (point_on_triangle.y < point.y) {
@@ -535,7 +549,7 @@ bool32 closest_point_below_on_mesh(Vec3 world_space_point, Mesh mesh, Transform 
         }
     }
 
-    if (hit) *result = truncate_v4_to_v3(object_to_world * (make_vec4(closest_point_below, 1.0f)));
+    if (hit) *result = closest_point_below;
 
     return hit;
 }

@@ -217,6 +217,7 @@
 //       - TODO (done): write procedure to check if a point is inside a triangle (only need to do it in one plane)
 //       - TODO (done): write procedure to convert some x, z coordinate to a point on some triangle on a mesh
 //       - TODO (done): test x,z to triangle point procedure
+//       - TODO (done): fix bug where closest_point_below_on_mesh doesn't work with certain transforms
 //       - TODO: cache triangles in a new array for walkable meshes (so that we don't have to use indices array)
 //       - TODO: either create a procedure that checks if a player is close enough to some walkable mesh, or
 //               just move the player to the closest position on the walkable mesh and set their is_grounded to
