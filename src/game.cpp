@@ -459,10 +459,6 @@ Vec3 cursor_pos_to_world_space(Vec2 cursor_pos, Render_State *render_state) {
     return cursor_world_space;
 }
 
-inline Vec3 transform_point(Mat4 *model_matrix, Vec3 *point) {
-    return truncate_v4_to_v3(*model_matrix * make_vec4(*point, 1.0f));
-}
-
 int32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, bool32 include_backside,
                           Ray_Intersects_Mesh_Result *result) {
     Mat4 object_to_world = get_model_matrix(transform);
@@ -589,27 +585,36 @@ void update_render_state(Render_State *render_state) {
     render_state->ortho_clip_matrix = ortho_clip_matrix;
 }
 
+Entity *get_entity(Level *level, Entity_Type entity_type, int32 entity_index) {
+    Entity *entity = NULL;
+
+    switch (entity_type) {
+        case ENTITY_NORMAL:
+        {
+            entity = (Entity *) &level->normal_entities[entity_index];
+        } break;
+        case ENTITY_POINT_LIGHT:
+        {
+            entity = (Entity *) &level->point_lights[entity_index];
+        } break;
+        default: {
+            assert(!"Unhandled entity type.");
+        } break;
+    }
+
+    return entity;
+}
+
 Entity *get_selected_entity(Game_State *game_state) {
     Editor_State *editor_state = &game_state->editor_state;
 
-    Entity *entity = NULL;
+    
     int32 index = editor_state->selected_entity_index;
 
     Level *level = &game_state->current_level;
 
-    switch (editor_state->selected_entity_type) {
-        case ENTITY_NORMAL:
-        {
-            entity = (Entity *) &level->normal_entities[index];
-        } break;
-        case ENTITY_POINT_LIGHT:
-        {
-            entity = (Entity *) &level->point_lights[index];
-        } break;
-        default: {
-            assert (!"Unhandled entity type.");
-        } break;
-    }
+    Entity *entity = NULL;
+    entity = get_entity(level, editor_state->selected_entity_type, index);
 
     assert(entity);
     return entity;
@@ -682,11 +687,6 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
                                                  player->triangle_normal, player->position);
         player_right = normalize(right_point - player->position);
 
-#if 0
-        player_right = normalize(cross(player->triangle_normal, player_forward));
-        player_forward = normalize(cross(player_right, player->triangle_normal));
-#endif
-
         add_debug_line(debug_state,
                        player->position, player->position + player_right, make_vec4(x_axis, 1.0f));
         add_debug_line(debug_state,
@@ -712,6 +712,28 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
     move_vector = normalize(move_vector) * player->speed;
 
     if (player->is_grounded) {
+        Vec3 current_triangle[3];
+        Entity *ground_entity = get_entity(&game_state->current_level,
+                                           player->ground_entity_type, player->ground_entity_index);
+        Mesh *ground_mesh = get_mesh_pointer(game_state, &game_state->current_level,
+                                             ground_entity->mesh_type, ground_entity->mesh_id);
+        get_triangle(ground_mesh, player->triangle_index, current_triangle);
+        Mat4 ground_model_matrix = get_model_matrix(ground_entity->transform);
+        transform_triangle(current_triangle, &ground_model_matrix);
+
+        Vec3 point_on_triangle;
+        if (!get_point_on_triangle_from_xz(player->position.x, player->position.z,
+                                           current_triangle, &point_on_triangle)) {
+            player->is_grounded = false;
+            player->velocity = make_vec3();
+        }
+
+        char *buf = string_format((Allocator *) &memory.frame_arena, 64,
+                                  "current triangle index: %d", player->triangle_index);
+        do_text(&game_state->ui_manager, 5.0f, 700.0f, buf, "calibri14", "current_triangle_index");
+    }
+
+    if (player->is_grounded) {
         player->velocity = move_vector;
     } else {
         player->acceleration = make_vec3(0.0f, -9.81f, 0.0f);
@@ -726,8 +748,8 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
         bool32 intersected = false;
         Vec3 intersected_triangle_normal = make_vec3();
         int32 intersected_triangle_index = -1;
-        Mesh_Type ground_mesh_type = Mesh_Type::NONE;
-        int32 ground_mesh_id = -1;
+        int32 ground_entity_index = -1;
+        Entity_Type ground_entity_type = ENTITY_NONE;
         
         for (int32 i = 0; i < level->num_normal_entities; i++) {
             real32 aabb_t;
@@ -745,8 +767,8 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
                         intersected = true;
                         intersected_triangle_normal = result.triangle_normal;
                         intersected_triangle_index = result.triangle_index;
-                        ground_mesh_type = entity->mesh_type;
-                        ground_mesh_id = entity->mesh_id;
+                        ground_entity_index = i;
+                        ground_entity_type = ENTITY_NORMAL;
                     }
                 }
             }
@@ -760,8 +782,8 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
 
             player->triangle_normal = intersected_triangle_normal;
             player->triangle_index = intersected_triangle_index;
-            player->ground_mesh_type = ground_mesh_type;
-            player->ground_mesh_id = ground_mesh_id;
+            player->ground_entity_index = ground_entity_index;
+            player->ground_entity_type = ground_entity_type;
         }
     }
 

@@ -168,8 +168,8 @@ struct Player {
     bool32 is_grounded;
     Vec3 triangle_normal;
     int32 triangle_index;
-    Mesh_Type ground_mesh_type;
-    int32 ground_mesh_id;
+    int32 ground_entity_index;
+    Entity_Type ground_entity_type;
 };
 
 struct Game_State {

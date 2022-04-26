@@ -1839,3 +1839,13 @@ Vec3 get_point_on_plane_from_xz(real32 x, real32 z, Vec3 plane_normal, Vec3 some
     real32 projected_y = (plane_d - n.x*x - n.z*z) / n.y;
     return make_vec3(x, projected_y, z);
 }
+
+inline Vec3 transform_point(Mat4 *model_matrix, Vec3 *point) {
+    return truncate_v4_to_v3(*model_matrix * make_vec4(*point, 1.0f));
+}
+
+void transform_triangle(Vec3 triangle[3], Mat4 *model_matrix) {
+    for (int32 i = 0; i < 3; i++) {
+        triangle[i] = transform_point(model_matrix, &triangle[i]);
+    }
+}

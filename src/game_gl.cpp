@@ -224,7 +224,14 @@
 //       - TODO (done): add GL code for drawing line in 3D
 //       - TODO (done): move player on single triangle adjusted using normal; don't care about leaving triangle
 //                      right now
-//       - TODO: detect when player has left its triangle; maybe just is_grounded to true when that happens for now
+//       - TODO (done): detect when player has left its triangle; maybe just is_grounded to true when that happens
+//                      for now
+//       - TODO: stop player at edge of triangle if they cross over
+//       - TODO: i think we may be able to just set is_grounded to false, then find a close enough triangle,
+//               and move there.. actually.. this wouldn't really work if we're moving quickly, and there a lot
+//               of triangles underneath us. since you would fly off one triangle, and then possible be falling
+//               since you skipped over all the triangles near you. although, this is a possible super easy
+//               solution.
 //       - TODO: move on single triangle - use barycentric coordinates, i.e. check if a certain coordinate is
 //               > 1 or < 0? actually, that won't really work. would have to do intersection test between all
 //               three sides and set the position to the intersection point. then attempt to move again on a
@@ -236,6 +243,10 @@
 
 // TODO: use a while loop in platform_set_cursor_visible to make the API set the visibility to whatever is passed
 //       in, since the current API is super annoying
+
+// TODO: make sure after we've added entity deleting, that when entities are deleted, if the entity was being
+//       used as a walk mesh, then the player's walk mesh properties are cleared. although, this might not be
+//       an issue if we constantly reset is_grounded to false whenever we switch from editor to play mode
 
 // TODO: color selector improvements
 //       - TODO: add sliders for RGB and HSV (should do manual input sliders first)
