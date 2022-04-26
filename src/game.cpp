@@ -504,6 +504,42 @@ int32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, real32 *t_res
     return hit;
 }
 
+bool32 closest_point_below_on_mesh(Vec3 world_space_point, Mesh mesh, Transform transform, Vec3 *result) {
+    Mat4 object_to_world = get_model_matrix(transform);
+    Mat4 world_to_object = inverse(object_to_world);
+
+    Vec3 point = truncate_v4_to_v3(world_to_object * make_vec4(world_space_point, 1.0f));
+
+    uint32 *indices = mesh.indices;
+
+    // TODO: optimize (same as in ray_intersects_mesh())
+    Vec3 closest_point_below = make_vec3();
+    bool32 hit = false;
+    for (int32 i = 0; i < (int32) mesh.num_triangles; i++) {
+        Vec3 triangle[3];
+        triangle[0] = get_vertex_from_index(&mesh, indices[i * 3]);
+        triangle[1] = get_vertex_from_index(&mesh, indices[i * 3 + 1]);
+        triangle[2] = get_vertex_from_index(&mesh, indices[i * 3 + 2]);
+        Vec3 point_on_triangle;
+        if (get_point_on_triangle_from_xz(point.x, point.z, triangle, &point_on_triangle)) {
+            if (point_on_triangle.y < point.y) {
+                if (!hit) {
+                    closest_point_below = point_on_triangle;
+                    hit = true;
+                } else {
+                    if (point_on_triangle.y > closest_point_below.y) {
+                        closest_point_below = point_on_triangle;
+                    }
+                }
+            }
+        }
+    }
+
+    if (hit) *result = truncate_v4_to_v3(object_to_world * (make_vec4(closest_point_below, 1.0f)));
+
+    return hit;
+}
+
 void update_render_state(Render_State *render_state) {
     Camera camera = render_state->camera;
     Mat4 view_matrix = get_view_matrix(camera);
@@ -720,10 +756,12 @@ void update(Game_State *game_state,
     
         
     char *buf = (char *) arena_push(&memory.frame_arena, 128);
+#if 0
     buf = (char *) arena_push(&memory.frame_arena, 128);
     string_format(buf, 128, "current_mouse: (%f, %f)",
                   controller_state->current_mouse.x, controller_state->current_mouse.y);
     do_text(ui_manager, 0.0f, 24.0f, buf, "times24", "current_mouse_text");
+#endif
 
 
     char *dt_string = string_format((Allocator *) &memory.frame_arena, 128, "FPS %d / dt %.3f", 

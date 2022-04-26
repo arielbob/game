@@ -1756,9 +1756,40 @@ bool32 in_triangle(Vec2 p, Vec2 triangle[3]) {
     real32 b2 = one_over_denom * ((p.y-y1)*(x3-x1) + (y3-y1)*(x1-p.x));
     real32 b3 = 1 - b1 - b2;
 
-    if (b1 < 0.0f || b1 > 1.0f || b2 < 0.0f || b2 > 1.0f || b3 < 0.0f || b3 > 1.0f) {
+    if (b1 < 0.0f || b2 < 0.0f || b3 < 0.0f || (b1 + b2 + b3) > 1.0f) {
         return false;
     }
 
+    return true;
+}
+
+// NOTE: gets the point on a triangle that a vertical line passing through the xz-plane hits
+// NOTE: xz is our flat plane in our coordinate-space, and so where usually you would see y, is now z
+// NOTE: we pass in x and z instead of a Vec2, since Vec2 has members x and y, and i thought it looked
+//       confusing when using them in the equations.
+bool32 get_point_on_triangle_from_xz(real32 x, real32 z, Vec3 triangle[3], Vec3 *point_on_triangle) {
+    // drop out y-coordinate
+    real32 x1 = triangle[0].x;
+    real32 z1 = triangle[0].z;
+    real32 x2 = triangle[1].x;
+    real32 z2 = triangle[1].z;
+    real32 x3 = triangle[2].x;
+    real32 z3 = triangle[2].z;
+
+    real32 denom = (z1-z3)*(x2-x3) + (z2-z3)*(x3-x1);
+    // check for triangle of zero area
+    if (fabs(denom) < EPSILON) return false;
+
+    real32 one_over_denom = 1.0f / denom;
+
+    real32 b1 = one_over_denom * ((z-z3)*(x2-x3) + (z2-z3)*(x3-x));
+    real32 b2 = one_over_denom * ((z-z1)*(x3-x1) + (z3-z1)*(x1-x));
+    real32 b3 = 1 - b1 - b2;
+
+    if (b1 < 0.0f || b2 < 0.0f || b3 < 0.0f || (b1 + b2 + b3) > 1.0f) {
+        return false;
+    }
+
+    *point_on_triangle = b1*triangle[0] + b2*triangle[1] + b3*triangle[2];
     return true;
 }

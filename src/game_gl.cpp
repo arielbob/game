@@ -215,7 +215,8 @@
 //                      convenient to be able to quickly resume what you were doing.
 //       - TODO (done): add some type of is_grounded member to player
 //       - TODO (done): write procedure to check if a point is inside a triangle (only need to do it in one plane)
-//       - TODO: write procedure to convert some x, y coordinate to a z coordinate on some triangle on a mesh
+//       - TODO (done): write procedure to convert some x, z coordinate to a point on some triangle on a mesh
+//       - TODO (done): test x,z to triangle point procedure
 //       - TODO: cache triangles in a new array for walkable meshes (so that we don't have to use indices array)
 //       - TODO: either create a procedure that checks if a player is close enough to some walkable mesh, or
 //               just move the player to the closest position on the walkable mesh and set their is_grounded to
@@ -2704,6 +2705,7 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
         make_vec3(80.0f, 400.0f, 0.0f)
     };
 #endif
+#if 0
     Vec2 triangle[3] = {
         make_vec2(0.0f, 0.0f),
         make_vec2(1280.0f, 0.0f),
@@ -2722,7 +2724,7 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
                      "inside triangle",
                      make_vec4(text_color, 1.0f));
     }
-    
+#endif
 
 #if 0
     real32 hsv_quad_width = 20.0f;

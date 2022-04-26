@@ -1361,6 +1361,45 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
                 5.0f, render_state->display_output.height - 9.0f,
                 buf, editor_font_name, default_text_style, "editor_current_level_filename");
     }
+
+    Vec3 closest_point_below = make_vec3();
+    bool32 found_closest_point = false;
+    Vec3 camera_position = render_state->camera.position;
+    Level *level = &game_state->current_level;
+    for (int32 i = 0; i < level->num_normal_entities; i++) {
+        Normal_Entity *entity = &level->normal_entities[i];
+        if (entity->is_walkable) {
+            Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
+            Vec3 result;
+            if (closest_point_below_on_mesh(camera_position, mesh, entity->transform, &result)) {
+                if (!found_closest_point) {
+                    closest_point_below = result;
+                    found_closest_point = true;
+                } else {
+                    if (result.y > closest_point_below.y) {
+                        closest_point_below = result;
+                    }
+                }
+            }
+        }
+    }
+
+    char *buf;
+    if (found_closest_point) {
+        buf = string_format((Allocator *) &memory.frame_arena, 128,
+                            "closest point on triangle below (%f, %f, %f): (%f, %f, %f)",
+                            camera_position.x, camera_position.y, camera_position.z,
+                            closest_point_below.x, closest_point_below.y, closest_point_below.z);
+    } else {
+        buf = string_format((Allocator *) &memory.frame_arena, 128,
+                            "closest point on triangle below (%f, %f, %f): None",
+                            camera_position.x, camera_position.y, camera_position.z,
+                            closest_point_below.x, closest_point_below.y, closest_point_below.z);
+    }
+    
+    do_text(ui_manager,
+            5.0f, render_state->display_output.height - 16.0f,
+            buf, editor_font_name, default_text_style, "highest_triangle_point_below");
 }
 
 int32 pick_entity(Game_State *game_state, Ray cursor_ray, Entity *entity_result, int32 *index_result) {
