@@ -226,7 +226,15 @@
 //                      right now
 //       - TODO (done): detect when player has left its triangle; maybe just is_grounded to true when that happens
 //                      for now
-//       - TODO: stop player at edge of triangle if they cross over
+//       - TODO (done): get the closest point on another triangle when the player has left a triangle
+//       - TODO (done): set player's walk_state when moving to another triangle
+//       - TODO: ignore current ground entity
+//       - TODO: scale triangle vertices using centroid to vertices vector
+
+//       - TODO: remove the first player->is_grounded if block and move it to the new player->is_grounded if block
+//       - TODO: move to adjacent triangle.. actually it shouldn't just be adjacent. it should just be a close
+//               triangle. this should be obtained using the closest_point_below_on_mesh procedure. move to the
+//               triangle that's closest that isn't the one it was one and then continue the move.
 //       - TODO: i think we may be able to just set is_grounded to false, then find a close enough triangle,
 //               and move there.. actually.. this wouldn't really work if we're moving quickly, and there a lot
 //               of triangles underneath us. since you would fly off one triangle, and then possible be falling

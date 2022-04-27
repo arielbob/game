@@ -153,6 +153,13 @@ namespace Player_Constants {
     Vec3 up = make_vec3(0.0f, 1.0f, 0.0f);
 };
 
+struct Walk_State {
+    Vec3 triangle_normal;
+    int32 triangle_index;
+    int32 ground_entity_index;
+    Entity_Type ground_entity_type;
+};
+
 struct Player {
     Vec3 position;
     Vec3 velocity;
@@ -163,13 +170,10 @@ struct Player {
     real32 roll;
 
     real32 height;
-    real32 speed = 1.0f;
+    real32 speed = 2.0f;
 
     bool32 is_grounded;
-    Vec3 triangle_normal;
-    int32 triangle_index;
-    int32 ground_entity_index;
-    Entity_Type ground_entity_type;
+    Walk_State walk_state;
 };
 
 struct Game_State {
@@ -214,6 +218,13 @@ namespace Context {
 
 struct Ray_Intersects_Mesh_Result {
     real32 t;
+    int32 triangle_index;
+    Vec3 triangle_normal;
+};
+
+struct Closest_Vertical_Point_On_Mesh_Result {
+    Vec3 point;
+    real32 distance_to_point;
     int32 triangle_index;
     Vec3 triangle_normal;
 };

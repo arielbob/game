@@ -571,6 +571,91 @@ bool32 closest_point_below_on_mesh(Vec3 point, Mesh mesh, Transform transform,
     return hit;
 }
 
+bool32 closest_vertical_point_on_mesh(Vec3 point, Mesh *mesh, Transform transform,
+                                      real32 max_distance,
+                                      Closest_Vertical_Point_On_Mesh_Result *result) {
+    Mat4 object_to_world = get_model_matrix(transform);
+
+    uint32 *indices = mesh->indices;
+
+    bool32 found = false;
+    Vec3 closest_point = make_vec3();
+    real32 distance_to_closest_point = FLT_MAX;
+    int32 triangle_index = -1;
+    for (int32 i = 0; i < (int32) mesh->num_triangles; i++) {
+        Vec3 triangle[3];
+        get_triangle(mesh, i, triangle);
+        transform_triangle(triangle, &object_to_world);
+
+        Vec3 point_on_triangle;
+        if (get_point_on_triangle_from_xz(point.x, point.z, triangle, &point_on_triangle)) {
+            real32 distance_to_point = distance(point - point_on_triangle);
+            if ((distance_to_point < max_distance) && (distance_to_point < distance_to_closest_point)) {
+                closest_point = point;
+                distance_to_closest_point = distance_to_point;
+                found = true;
+                triangle_index = i;
+            }
+        }
+    }
+
+    if (found) {
+        result->point = closest_point;
+        result->distance_to_point = distance_to_closest_point;
+        result->triangle_index = triangle_index;
+
+        Vec3 triangle[3];
+        get_triangle(mesh, triangle_index, triangle);
+        transform_triangle(triangle, &object_to_world);
+        Vec3 normal = get_triangle_normal(triangle);
+
+        result->triangle_normal = normal;
+    }
+
+    return found;
+}
+
+// TODO: ignore current walk_state's entity
+bool32 get_new_walk_state(Game_State *game_state, Walk_State current_walk_state, Vec3 player_position,
+                          Walk_State *walk_state_result, Vec3 *grounded_position) {
+    Level *level = &game_state->current_level;
+    real32 max_distance = 0.1f;
+
+    bool32 found = false;
+    Walk_State new_walk_state = {};
+    Vec3 closest_point = make_vec3();
+    real32 closest_distance = FLT_MAX;
+
+    for (int32 i = 0; i < level->num_normal_entities; i++) {
+        Normal_Entity *entity = &level->normal_entities[i];
+        if (entity->is_walkable) {
+            Mesh *mesh = get_mesh_pointer(game_state, level, entity->mesh_type, entity->mesh_id);
+            Closest_Vertical_Point_On_Mesh_Result result;
+            if (closest_vertical_point_on_mesh(player_position, mesh, entity->transform, max_distance,
+                                               &result)) {
+                if (result.distance_to_point < closest_distance) {
+                    closest_distance = result.distance_to_point;
+                    closest_point = result.point;
+
+                    new_walk_state.triangle_normal = result.triangle_normal;
+                    new_walk_state.triangle_index = result.triangle_index;
+                    new_walk_state.ground_entity_index = i;
+                    new_walk_state.ground_entity_type = entity->type;
+
+                    found = true;
+                }
+            }
+        }
+    }
+
+    if (found) {
+        *walk_state_result = new_walk_state;
+        *grounded_position = closest_point;
+    }
+
+    return found;
+}
+
 void update_render_state(Render_State *render_state) {
     Camera camera = render_state->camera;
     Mat4 view_matrix = get_view_matrix(camera);
@@ -677,22 +762,26 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
                                                     make_vec4(Player_Constants::right, 1.0f)));
     if (player->is_grounded) {
         // make basis
+        Walk_State *walk_state = &player->walk_state;
+
         Vec3 forward_point = player->position + player_forward;
         forward_point = get_point_on_plane_from_xz(forward_point.x, forward_point.z,
-                                                   player->triangle_normal, player->position);
+                                                   walk_state->triangle_normal, player->position);
         player_forward = normalize(forward_point - player->position);
 
         Vec3 right_point = player->position + player_right;
         right_point = get_point_on_plane_from_xz(right_point.x, right_point.z,
-                                                 player->triangle_normal, player->position);
+                                                 walk_state->triangle_normal, player->position);
         player_right = normalize(right_point - player->position);
 
+#if 0
         add_debug_line(debug_state,
                        player->position, player->position + player_right, make_vec4(x_axis, 1.0f));
         add_debug_line(debug_state,
-                       player->position, player->position + player->triangle_normal, make_vec4(y_axis, 1.0f));
+                       player->position, player->position + walk_state->triangle_normal, make_vec4(y_axis, 1.0f));
         add_debug_line(debug_state,
                        player->position, player->position + player_forward, make_vec4(z_axis, 1.0f));
+#endif
     }
 
     Vec3 move_vector = make_vec3();
@@ -711,6 +800,7 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
     }
     move_vector = normalize(move_vector) * player->speed;
 
+#if 0
     if (player->is_grounded) {
         Vec3 current_triangle[3];
         Entity *ground_entity = get_entity(&game_state->current_level,
@@ -732,6 +822,7 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
                                   "current triangle index: %d", player->triangle_index);
         do_text(&game_state->ui_manager, 5.0f, 700.0f, buf, "calibri14", "current_triangle_index");
     }
+#endif
 
     if (player->is_grounded) {
         player->velocity = move_vector;
@@ -780,10 +871,43 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
             player->velocity = make_vec3();
             player->is_grounded = true;
 
-            player->triangle_normal = intersected_triangle_normal;
-            player->triangle_index = intersected_triangle_index;
-            player->ground_entity_index = ground_entity_index;
-            player->ground_entity_type = ground_entity_type;
+            Walk_State *walk_state = &player->walk_state;
+            walk_state->triangle_normal = intersected_triangle_normal;
+            walk_state->triangle_index = intersected_triangle_index;
+            walk_state->ground_entity_index = ground_entity_index;
+            walk_state->ground_entity_type = ground_entity_type;
+        }
+    } else {
+        // grounded
+        Vec3 next_position = player->position + displacement_vector;
+
+        Walk_State *walk_state = &player->walk_state;
+
+        Vec3 current_triangle[3];
+        Entity *ground_entity = get_entity(&game_state->current_level,
+                                           walk_state->ground_entity_type, walk_state->ground_entity_index);
+        Mesh *ground_mesh = get_mesh_pointer(game_state, &game_state->current_level,
+                                             ground_entity->mesh_type, ground_entity->mesh_id);
+        get_triangle(ground_mesh, walk_state->triangle_index, current_triangle);
+        Mat4 ground_model_matrix = get_model_matrix(ground_entity->transform);
+        transform_triangle(current_triangle, &ground_model_matrix);
+
+        Vec3 point_on_triangle;
+        if (!get_point_on_triangle_from_xz(next_position.x, next_position.z,
+                                           current_triangle, &point_on_triangle)) {
+            Walk_State new_walk_state;
+            Vec3 grounded_position;
+            bool32 found_new_ground = get_new_walk_state(game_state, player->walk_state, next_position,
+                                                         &new_walk_state, &grounded_position);
+            
+            if (found_new_ground) {
+                player->walk_state = new_walk_state;
+                displacement_vector = grounded_position - player->position;
+                //player->position = grounded_position;
+            } else {
+                player->is_grounded = false;
+                //player->velocity = make_vec3();
+            }
         }
     }
 

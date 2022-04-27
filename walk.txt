@@ -61,3 +61,17 @@ if (u < 0.0f || u > 1.0f || v < 0.0f || v > 1.0f || (u + v) > 1.0f) {
 } else {
   return true;
 }
+
+
+- don't use edge intersections
+- just use the xz test when they aren't on a triangle
+- we get the closest point on a triangle and we put the player there
+- we don't really care about ultra precision when moving super quickly
+- if we care about that, we can do something like split up the displacement vector checks into multiple smaller
+  checks if the displacement vector exceeds some length
+- we may want to add some tolerance when looking for the closest next triangle
+- to add tolerances to each vertex of the triangle, you don't want to do a scale, since a 2x scale of
+  a length of 0.5 is different than the same scale applied to a length of 5 (2*0.5 = 1 and 2*5 = 10), instead
+  we want to just translate each vertex by some amount along the vector from the centroid to the vertex
+- but i don't think we want any tolernace when checking if the player has left the triangle
+- optimize by gathering triangles first

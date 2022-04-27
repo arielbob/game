@@ -1280,7 +1280,7 @@ bool32 ray_intersects_coplanar_ray(Ray ray1, Ray ray2, real32 *t_result) {
     if (fabsf(denom) < EPSILON) return false;
 
     real32 t = dot(cross((p2 - p1), d2), cross(d1, d2)) / denom;
-    if (t < 0.0f) return false;
+    //if (t < 0.0f) return false;
 
     *t_result = t;
     return true;

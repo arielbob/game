@@ -402,7 +402,7 @@ Vec3 get_vertex_from_index(Mesh *mesh, uint32 index) {
     return result;
 }
 
-void get_triangle(Mesh *mesh, int32 triangle_index, Vec3 triangle[3]) {
+inline void get_triangle(Mesh *mesh, int32 triangle_index, Vec3 triangle[3]) {
     triangle[0] = get_vertex_from_index(mesh, mesh->indices[triangle_index*3]);
     triangle[1] = get_vertex_from_index(mesh, mesh->indices[triangle_index*3 + 1]);
     triangle[2] = get_vertex_from_index(mesh, mesh->indices[triangle_index*3 + 2]);
