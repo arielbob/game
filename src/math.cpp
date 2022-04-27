@@ -1149,8 +1149,7 @@ bool32 ray_intersects_circle(Ray_2D ray, real32 radius, Vec2 center_pos, real32 
 //       of the plane
 bool32 ray_intersects_plane(Ray ray, Vec3 plane_normal, real32 plane_d, real32 *t_result) {
     real32 denom = dot(ray.direction, plane_normal);
-    // TODO: use epsilon value here, with absolute value of denom
-    if (denom == 0.0f) {
+    if (fabsf(denom) < EPSILON) {
         return false;
     }
     
@@ -1165,6 +1164,135 @@ bool32 ray_intersects_plane(Ray ray, Vec3 plane_normal, real32 plane_d, real32 *
 
 bool32 ray_intersects_plane(Ray ray, Plane plane, real32 *t_result) {
     return ray_intersects_plane(ray, plane.normal, plane.d, t_result);
+}
+
+inline real32 saturate(real32 t) {
+    return min(max(t, 0.0f), 1.0f);
+}
+
+// NOTE: vertices should be in clockwise order
+Vec3 get_triangle_normal(Vec3 triangle[3]) {
+    Vec3 v1 = triangle[1] - triangle[0];
+    Vec3 v2 = triangle[2] - triangle[1];
+    Vec3 normal = normalize(cross(v1, v2));
+    return normal;
+}
+
+Vec3 closest_point_on_line_segment(Vec3 a, Vec3 b, Vec3 point) {
+    Vec3 AB = b - a;
+    // we're pretty much dividing the dot product by the length of AB, to get the projected distance
+    // of a over AB, i.e. dot(a, normalize(AB)), then dividing that projected distance by the distance of
+    // AB, to get the percentage that the projected distance makes up of the length of AB.
+    // so to do this we do
+    // dot(point - a, AB) / ||AB|| / ||AB||
+    // = dot(point - a, AB) / ||AB||^2
+    // = dot(point - a, AB) / dot(AB, AB)
+    real32 t = dot(point - a, AB) / dot(AB, AB);
+    return a + saturate(t) * AB;
+}
+
+Vec3 get_closest_point_on_triangle_to_coplanar_point(Vec3 coplanar_point, Vec3 triangle[3], Vec3 triangle_normal) {
+    // determine whether line_plane_intersection is inside the triangle
+    Vec3 p0 = triangle[0];
+    Vec3 p1 = triangle[1];
+    Vec3 p2 = triangle[2];
+
+    Vec3 c0 = cross(coplanar_point - p0, p1 - p0);
+    Vec3 c1 = cross(coplanar_point - p1, p2 - p1);
+    Vec3 c2 = cross(coplanar_point - p2, p0 - p2);
+    bool is_inside = (dot(c0, triangle_normal) <= 0.0f &&
+                      dot(c1, triangle_normal) <= 0.0f &&
+                      dot(c2, triangle_normal) <= 0.0f);
+ 
+    if (is_inside)  {
+        return coplanar_point;
+    } else {
+        // find the closest points on the triangle edges to the point that lies outside the triangle
+        // and we return the closest one found
+
+        // edge 2
+        Vec3 point1 = closest_point_on_line_segment(p0, p1, coplanar_point);
+        Vec3 v1 = coplanar_point - point1;
+        real32 dist_squared = dot(v1, v1);
+        real32 smallest_distance = dist_squared;
+        Vec3 closest_point = point1;
+ 
+        // edge 2
+        Vec3 point2 = closest_point_on_line_segment(p1, p2, coplanar_point);
+        Vec3 v2 = coplanar_point - point2;
+        dist_squared = dot(v2, v2);
+        if(dist_squared < smallest_distance) {
+            closest_point = point2;
+            smallest_distance = dist_squared;
+        }
+ 
+        // edge 3
+        Vec3 point3 = closest_point_on_line_segment(p2, p0, coplanar_point);
+        Vec3 v3 = coplanar_point - point3;
+        dist_squared = dot(v3, v3);
+        if(dist_squared < smallest_distance) {
+            closest_point = point3;
+            smallest_distance = dist_squared;
+        }
+
+        return closest_point;
+    }
+}
+
+bool32 sphere_intersects_triangle(Vec3 center, real32 radius, Vec3 triangle[3],
+                                  Vec3 *penetration_normal, real32 *penetration_depth) {
+    Vec3 p0 = triangle[0];
+    Vec3 p1 = triangle[1];
+    Vec3 p2 = triangle[2];
+    
+    Vec3 triangle_normal = get_triangle_normal(triangle);
+    
+    real32 center_distance_from_plane = dot(center - p0, triangle_normal);
+
+    if (fabsf(center_distance_from_plane) > radius) return false;
+
+    Vec3 coplanar_point = center - triangle_normal*center_distance_from_plane;
+    Vec3 closest_point_on_triangle = get_closest_point_on_triangle_to_coplanar_point(coplanar_point, triangle,
+                                                                                     triangle_normal);
+    Vec3 point_to_center = center - closest_point_on_triangle;
+    real32 radius_squared = radius*radius;
+    if (dot(point_to_center, point_to_center) > radius_squared) return false;
+
+    Vec3 penetration_vector = center - closest_point_on_triangle;
+    *penetration_normal = normalize(penetration_vector);
+    *penetration_depth = distance(penetration_vector);
+    return true;
+}
+
+// https://wickedengine.net/2020/04/26/capsule-collision-detection/
+bool32 capsule_intersects_triangle(Capsule capsule, Vec3 triangle[3],
+                                   Vec3 *penetration_normal, real32 *penetration_depth) {
+    Vec3 capsule_normal = normalize(capsule.tip - capsule.base);
+    Vec3 line_end_offset = capsule_normal * capsule.radius;
+    Vec3 a = capsule.base + line_end_offset;
+    Vec3 b = capsule.tip - line_end_offset;
+
+    Vec3 triangle_normal = get_triangle_normal(triangle);
+    Ray capsule_ray = make_ray(capsule.base, capsule_normal);
+    real32 plane_d = dot(triangle[0], triangle_normal);
+    real32 plane_intersect_t;
+
+    Vec3 reference_point;
+    if (!ray_intersects_plane(capsule_ray, triangle_normal, plane_d, &plane_intersect_t)) {
+        Vec3 intersection_point = capsule.base + capsule_normal * plane_intersect_t;
+        reference_point = get_closest_point_on_triangle_to_coplanar_point(intersection_point,
+                                                                          triangle, triangle_normal);
+    } else {
+        reference_point = triangle[0];
+    }
+    
+    Vec3 sphere_center = closest_point_on_line_segment(a, b, reference_point);
+    if (!sphere_intersects_triangle(sphere_center, capsule.radius, triangle,
+                                    penetration_normal, penetration_depth)) {
+        return false;
+    }
+
+    return true;
 }
 
 // TODO: replace this with the faster ray vs triangle test
@@ -1820,14 +1948,6 @@ bool32 get_point_on_triangle_from_xz(real32 x, real32 z, Vec3 triangle[3], Vec3 
     return true;
 }
 
-// NOTE: vertices should be in clockwise order
-Vec3 get_triangle_normal(Vec3 triangle[3]) {
-    Vec3 v1 = triangle[1] - triangle[0];
-    Vec3 v2 = triangle[2] - triangle[1];
-    Vec3 normal = normalize(cross(v1, v2));
-    return normal;
-}
-
 Vec3 get_point_on_plane_from_xz(real32 x, real32 z, Vec3 plane_normal, Vec3 some_point_on_plane) {
     Vec3 n = normalize(plane_normal);
     real32 plane_d = dot(some_point_on_plane, n);
@@ -1844,7 +1964,7 @@ inline Vec3 transform_point(Mat4 *model_matrix, Vec3 *point) {
     return truncate_v4_to_v3(*model_matrix * make_vec4(*point, 1.0f));
 }
 
-void transform_triangle(Vec3 triangle[3], Mat4 *model_matrix) {
+inline void transform_triangle(Vec3 triangle[3], Mat4 *model_matrix) {
     for (int32 i = 0; i < 3; i++) {
         triangle[i] = transform_point(model_matrix, &triangle[i]);
     }

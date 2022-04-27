@@ -571,6 +571,27 @@ bool32 closest_point_below_on_mesh(Vec3 point, Mesh mesh, Transform transform,
     return hit;
 }
 
+// TODO: this is VERY slow
+bool32 capsule_intersects_mesh(Capsule capsule, Mesh mesh, Transform transform) {
+    Mat4 object_to_world = get_model_matrix(transform);
+
+    uint32 *indices = mesh.indices;
+
+    for (int32 i = 0; i < (int32) mesh.num_triangles; i++) {
+        Vec3 triangle[3];
+        get_triangle(&mesh, i, triangle);
+        transform_triangle(triangle, &object_to_world);
+
+        Vec3 penetration_normal;
+        real32 penetration_depth;
+        if (capsule_intersects_triangle(capsule, triangle, &penetration_normal, &penetration_depth)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 bool32 closest_vertical_point_on_mesh(Vec3 point, Mesh *mesh, Transform transform,
                                       real32 max_distance,
                                       Closest_Vertical_Point_On_Mesh_Result *result) {
@@ -628,6 +649,9 @@ bool32 get_new_walk_state(Game_State *game_state, Walk_State current_walk_state,
 
     for (int32 i = 0; i < level->num_normal_entities; i++) {
         Normal_Entity *entity = &level->normal_entities[i];
+        if (entity->type == current_walk_state.ground_entity_type &&
+            i == current_walk_state.ground_entity_index) continue;
+
         if (entity->is_walkable) {
             Mesh *mesh = get_mesh_pointer(game_state, level, entity->mesh_type, entity->mesh_id);
             Closest_Vertical_Point_On_Mesh_Result result;
@@ -731,6 +755,28 @@ void set_entity_mesh(Game_State *game_state, Level *level, Entity *entity, Mesh_
 void add_debug_line(Debug_State *debug_state, Vec3 start, Vec3 end, Vec4 color) {
     assert(debug_state->num_debug_lines < MAX_DEBUG_LINES);
     debug_state->debug_lines[debug_state->num_debug_lines++] = { start, end, color };
+}
+
+void check_player_collisions(Game_State *game_state) {
+    Level *level = &game_state->current_level;
+    Player *player = &game_state->player;
+
+    Capsule player_capsule = { player->position,
+                               player->position + make_vec3(0.0f, player->height, 0.0f),
+                               1.0f };
+
+    for (int32 i = 0; i < level->num_normal_entities; i++) {
+        Normal_Entity *entity = &level->normal_entities[i];
+        if (!entity->is_walkable) {
+            Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
+            if (capsule_intersects_mesh(player_capsule, mesh, entity->transform)) {
+                char *buf = string_format((Allocator *) &memory.frame_arena, 128,
+                                          "capsule is intersecting: %s",
+                                          to_char_array((Allocator *) &memory.frame_arena, mesh.name));
+                do_text(&game_state->ui_manager, 5.0f, 650.0f, buf, "calibri14", "capsule_intersecting_mesh");
+            }
+        }
+    }
 }
 
 void update_player(Game_State *game_state, Controller_State *controller_state,
@@ -912,6 +958,8 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
     }
 
     player->position += displacement_vector;
+
+    check_player_collisions(game_state);
 }
 
 #if 0

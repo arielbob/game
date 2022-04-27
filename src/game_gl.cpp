@@ -228,8 +228,28 @@
 //                      for now
 //       - TODO (done): get the closest point on another triangle when the player has left a triangle
 //       - TODO (done): set player's walk_state when moving to another triangle
-//       - TODO: ignore current ground entity
-//       - TODO: scale triangle vertices using centroid to vertices vector
+//       - TODO (done): ignore current ground entity
+//       - TODO: instead of scaling, we could instead just do a circle vs triangle test to check if the player
+//               is still inside its triangle. ideally the circle will be a small enough radius that it doesn't
+//               look too weird if you're going up a slope.
+//               - at this point, i think we may as well just treat the player as a capsule
+
+//       - TODO (done): implement capsule vs triangle test
+//                      (https://wickedengine.net/2020/04/26/capsule-collision-detection/)
+
+//       - TODO (actually, don't think we need this): implement circle intersects triangle
+//               - check if circle center is inside triangle, if not, then get closest distance between the
+//                 circle's center and each of the triangle's edges. if either of the distances are less than
+//                 the circle's radius, then it intersects.
+//       - TODO: when we leave a triangle, do a capsule vs triangle test, but add some tolerances to the capsule
+//               base and tip by just adding some small vector to both. then, we just move to the triangle if
+//               we're intersecting. the new position will be capsule.base + penetration_vector*penetration_depth.
+//               i don't think we need to ignore the current triangle?
+//       - TODO: we actually should NOT ignore the current entity when leaving a triangle. we should just ignore
+//               the triangle that we're on, not the entity. the current code is wrong since it ignores the
+//               current entity and is why we fall through the ground if we leave our triangle.
+
+//       - TODO: implement granular steps if displacement vector is larger than some threshold value
 
 //       - TODO: remove the first player->is_grounded if block and move it to the new player->is_grounded if block
 //       - TODO: move to adjacent triangle.. actually it shouldn't just be adjacent. it should just be a close

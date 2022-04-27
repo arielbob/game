@@ -170,7 +170,7 @@ struct Player {
     real32 roll;
 
     real32 height;
-    real32 speed = 2.0f;
+    real32 speed = 5.0f;
 
     bool32 is_grounded;
     Walk_State walk_state;

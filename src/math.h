@@ -111,6 +111,12 @@ struct Cylinder {
     real32 height;
 };
 
+struct Capsule {
+    Vec3 base; // the bottom of the capsule
+    Vec3 tip;  // the top of the capsule
+    real32 radius;
+};
+
 struct Quaternion {
     real32 w;
     Vec3 v;
