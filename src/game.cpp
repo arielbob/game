@@ -938,13 +938,13 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
     } else {
         if (player->is_grounded) {
             player->is_grounded = false;
-            player->velocity = make_vec3();
+            //player->velocity = make_vec3();
         }
     }
 
     player->position += displacement_vector;
 
-    check_player_collisions(game_state);
+    //check_player_collisions(game_state);
 }
 
 void update_camera(Camera *camera, Vec3 position, real32 heading, real32 pitch, real32 roll) {

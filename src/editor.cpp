@@ -753,9 +753,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     if (entity->type == ENTITY_NORMAL) {
         Normal_Entity *normal_entity = (Normal_Entity *) entity;
         // COLLIDER PROPERTIES
-        draw_row_padding(x, &y, row_width, padding_y, row_color, side_flags,
-                         row_id, row_index++);
-        draw_row(x, y, row_width, row_height, row_color, side_flags,
+        draw_row(x, y, row_width, row_height, row_color, side_flags | SIDE_BOTTOM,
                  row_id, row_index++);
         draw_v_centered_text(x + padding_left, y, row_height,
                              "Collider", editor_font_name, default_text_style);
@@ -764,10 +762,35 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         char *collider_type_text = get_collider_type_string(normal_entity->collider.type);
         draw_v_centered_text(x, y, row_height,
                              collider_type_text, editor_font_name, default_text_style);
+        y += row_height + 1;
+        x = initial_x;
+
+        // WALKABLE PROPERTY
+        draw_row_padding(x, &y, row_width, padding_y, row_color, side_flags,
+                         row_id, row_index++);
+        draw_row(x, y, row_width, row_height, row_color, side_flags,
+                 row_id, row_index++);
+        draw_v_centered_text(x + padding_left, y, row_height,
+                             "Is Walkable", editor_font_name, default_text_style);
+        x += right_column_offset;
+
+        char *is_walkable_text = normal_entity->is_walkable ? "true" : "false";
+        bool32 toggle_is_walkable_pressed = do_text_button(x, y,
+                                                           100.0f, row_height,
+                                                           button_style, default_text_style,
+                                                           is_walkable_text,
+                                                           editor_font_name,
+                                                           false,
+                                                           "toggle_is_walkable");
         y += row_height;
         x = initial_x;
+
         draw_row_padding(x, &y, row_width, padding_y, row_color, side_flags | SIDE_BOTTOM,
                          row_id, row_index++);
+        
+        if (toggle_is_walkable_pressed) {
+            normal_entity->is_walkable = !normal_entity->is_walkable;
+        }
     }
     
     char *buf;

@@ -153,7 +153,7 @@ namespace Player_Constants {
     real32 max_lower_ground_offset = 0.2f; 
     // maximum distance above the player position that the player will instantly walk to
     real32 max_upper_ground_offset = 0.5f;
-    real32 walk_radius = 0.0000001f;
+    real32 walk_radius = 0.01f;
     //real32 walk_radius = 1.0f;
 
     Vec3 forward = make_vec3(0.0f, 0.0f, 1.0f);

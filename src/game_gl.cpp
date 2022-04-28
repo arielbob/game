@@ -229,11 +229,6 @@
 //       - TODO (done): get the closest point on another triangle when the player has left a triangle
 //       - TODO (done): set player's walk_state when moving to another triangle
 //       - TODO (done): ignore current ground entity
-//       - TODO: instead of scaling, we could instead just do a circle vs triangle test to check if the player
-//               is still inside its triangle. ideally the circle will be a small enough radius that it doesn't
-//               look too weird if you're going up a slope.
-//               - at this point, i think we may as well just treat the player as a capsule
-
 //       - TODO (done): implement capsule vs triangle test
 //                      (https://wickedengine.net/2020/04/26/capsule-collision-detection/)
 
@@ -245,50 +240,33 @@
 //       - TODO (done): if we leave the triangle, do another circle triangle intersection test on the walk mesh to
 //                      find the next triangle
 //       - TODO (done): fix weird collision when walkable entity's position is negative
-//       - TODO: fix behaviour of going to higher triangle that's on the other side of an entity, but is inside
-//               our walk radius, when we want to actually be on the triangle that's directly below us
-//               - we can fix this by making walk_radius very small, but then that allows us to fall through gaps
-//               - a different solution would be to check if the triangle is on the same entity or not
-//               - actually, no, i think maybe we should just pick the closest that's within our radius?
-
-
-//       - TODO: when we leave a triangle, do a capsule vs triangle test, but add some tolerances to the capsule
-//               base and tip by just adding some small vector to both. then, we just move to the triangle if
-//               we're intersecting. the new position will be capsule.base + penetration_vector*penetration_depth.
-//               i don't think we need to ignore the current triangle?
-//               - actually, try it without the tolerances for now
-//               - this is actually a lot more annoying since if we want to walk up between two walk meshes,
-//                 or if we're on a mesh and colliding with a triangle of another mesh that's higher and within
-//                 our steppable bounds and want to move up to it, i'm not sure of a way to move the capsule up,
-//                 with the given information we get from the collision test, the minimum amount we need to move
-//                 such that the capsule is no longer colliding with the triangle.
-//       - TODO: we actually should NOT ignore the current entity when leaving a triangle. we should just ignore
-//               the triangle that we're on, not the entity. the current code is wrong since it ignores the
-//               current entity and is why we fall through the ground if we leave our triangle.
-
-//       - TODO: implement granular steps if displacement vector is larger than some threshold value
-
-//       - TODO: remove the first player->is_grounded if block and move it to the new player->is_grounded if block
-//       - TODO: move to adjacent triangle.. actually it shouldn't just be adjacent. it should just be a close
-//               triangle. this should be obtained using the closest_point_below_on_mesh procedure. move to the
-//               triangle that's closest that isn't the one it was one and then continue the move.
-//       - TODO: i think we may be able to just set is_grounded to false, then find a close enough triangle,
-//               and move there.. actually.. this wouldn't really work if we're moving quickly, and there a lot
-//               of triangles underneath us. since you would fly off one triangle, and then possible be falling
-//               since you skipped over all the triangles near you. although, this is a possible super easy
-//               solution.
-//       - TODO: move on single triangle - use barycentric coordinates, i.e. check if a certain coordinate is
-//               > 1 or < 0? actually, that won't really work. would have to do intersection test between all
-//               three sides and set the position to the intersection point. then attempt to move again on a
-//               triangle adjacent to the side that was crossed.
-//       - TODO: cache triangles in a new array for walkable meshes (so that we don't have to use indices array)
-//       - TODO: either create a procedure that checks if a player is close enough to some walkable mesh, or
-//               just move the player to the closest position on the walkable mesh and set their is_grounded to
-//               true
 
 // TODO (done): add collider information to entities
 // TODO (done): draw colliders
+// TODO (done): add is_walkable to entity boxes
+// TODO (done): add is_walkable to levels
+
 // TODO: add collider information to levels
+
+
+// TODO: implement granular steps if displacement vector is larger than some threshold value
+// TODO: replace is_walkable with Walkable_Entity structs, i.e. a new Entity type.
+//       we want to do this since we will probably replace the Mesh in the entity with a different type of
+//       mesh. one that holds all the triangles so that we don't have to use indices. we also might use a BVH
+//       so we don't have to check every single triangle all the time.
+// TODO: cache triangles in a new array for walkable meshes (so that we don't have to use indices array)
+// TODO: use oriented bounding boxes for collisions with objects instead of doing capsule vs triangle
+
+// TODO: fix behaviour of going to higher triangle that's on the other side of an entity, but is inside
+//       our walk radius, when we want to actually be on the triangle that's directly below us
+//       - we can fix this by making walk_radius very small, but then that allows us to fall through gaps
+//       - a different solution would be to check if the triangle is on the same entity or not
+//       - actually, no, i think maybe we should just pick the closest that's within our radius?
+//       - let's just make the walk radius small for now. i think that this can be fixed once we
+//         implement capsule vs other colliders tests and collision responses. at that point, we might
+//         also be able to use it for our walking as well.
+//       - this also isn't really an issue since we can always author walk meshes manually with entities
+//         that don't render, but are walkable
 
 // TODO: use a while loop in platform_set_cursor_visible to make the API set the visibility to whatever is passed
 //       in, since the current API is super annoying
@@ -296,6 +274,9 @@
 // TODO: make sure after we've added entity deleting, that when entities are deleted, if the entity was being
 //       used as a walk mesh, then the player's walk mesh properties are cleared. although, this might not be
 //       an issue if we constantly reset is_grounded to false whenever we switch from editor to play mode
+
+// TODO: change level loading to use format similar to WAIT_FOR_ENTITY_BOOL, so we don't have to keep adding
+//       new parser states for every property
 
 // TODO: color selector improvements
 //       - TODO: add sliders for RGB and HSV (should do manual input sliders first)

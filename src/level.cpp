@@ -233,6 +233,9 @@ void export_level(Allocator *allocator, Game_State *game_state, Level *level, ch
 
         append_string(&working_buffer, "type normal\n");
         append_default_entity_info(game_state, level, &working_buffer, (Entity *) entity);
+        append_string(&working_buffer, "is_walkable ");
+        append_string(&working_buffer, entity->is_walkable ? "1" : "0");
+        append_string(&working_buffer, "\n");
 
         if (i < level->num_normal_entities - 1) append_string(&working_buffer, "\n");
     }
@@ -693,6 +696,8 @@ bool32 Level_Loader::load_temp_level(Allocator *temp_allocator, Game_State *game
     Vec3 vec3_buffer = {};
     Quaternion quaternion_buffer = {};
 
+    bool32 *bool_to_edit = NULL;
+
     do {
         token = get_token(&tokenizer, (char *) file_data.contents);
 
@@ -1029,6 +1034,9 @@ bool32 Level_Loader::load_temp_level(Allocator *temp_allocator, Game_State *game
                     } else if (string_equals(token.string, "scale")) {
                         num_values_read = 0;
                         state = WAIT_FOR_ENTITY_SCALE_VEC3;
+                    } else if (string_equals(token.string, "is_walkable")) {
+                        bool_to_edit = &temp_normal_entity.is_walkable;
+                        state = WAIT_FOR_ENTITY_BOOL;
                     } else if (temp_entity_type == ENTITY_POINT_LIGHT) {
                         if (string_equals(token.string, "light_color")) {
                             num_values_read = 0;
@@ -1136,7 +1144,17 @@ bool32 Level_Loader::load_temp_level(Allocator *temp_allocator, Game_State *game
                     assert(!"Expected 3 numbers for entity property scale.");
                 }
             } break;
-
+            case WAIT_FOR_ENTITY_BOOL: {
+                if (token.type == INTEGER) {
+                    assert(bool_to_edit);
+                    *bool_to_edit = (int32) string_to_uint32(token.string.contents,
+                                                             token.string.length);
+                    state = WAIT_FOR_ENTITY_PROPERTY_NAME_OR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE;
+                } else {
+                    // TODO: we could add a variable that saves the name of the property for better errors
+                    assert(!"Expected an integer for entity property");
+                }
+            } break;
             case WAIT_FOR_POINT_LIGHT_ENTITY_LIGHT_COLOR_VEC3: {
                 assert(temp_entity_type == ENTITY_POINT_LIGHT);
                 Point_Light_Entity *point_light_entity = (Point_Light_Entity *) temp_entity;
