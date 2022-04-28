@@ -148,6 +148,14 @@ struct Debug_State {
 };
 
 namespace Player_Constants {
+    // maximum distance below the player position where the player will instantly walk; if the
+    // ground is a larger distance away than this, then the player will fall instead.
+    real32 max_lower_ground_offset = 0.2f; 
+    // maximum distance above the player position that the player will instantly walk to
+    real32 max_upper_ground_offset = 2.0f;
+    //real32 walk_radius = 0.0000001f;
+    real32 walk_radius = 1.0f;
+
     Vec3 forward = make_vec3(0.0f, 0.0f, 1.0f);
     Vec3 right = make_vec3(1.0f, 0.0f, 0.0f);
     Vec3 up = make_vec3(0.0f, 1.0f, 0.0f);
@@ -156,8 +164,8 @@ namespace Player_Constants {
 struct Walk_State {
     Vec3 triangle_normal;
     int32 triangle_index;
-    int32 ground_entity_index;
     Entity_Type ground_entity_type;
+    int32 ground_entity_index;
 };
 
 struct Player {

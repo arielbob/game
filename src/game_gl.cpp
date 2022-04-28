@@ -242,8 +242,14 @@
 //                 circle's center and each of the triangle's edges. if either of the distances are less than
 //                 the circle's radius, then it intersects.
 //       - TODO (done): implement circle vs triangle intersection test
-//       - TODO: if we leave the triangle, we just do another circle triangle intersection test on the walk mesh
-//               to find the next triangle
+//       - TODO (done): if we leave the triangle, do another circle triangle intersection test on the walk mesh to
+//                      find the next triangle
+//       - TODO: fix weird collision when walkable entity's position is negative
+//       - TODO: fix behaviour of going to higher triangle that's on the other side of an entity, but is inside
+//               our walk radius, when we want to actually be on the triangle that's directly below us
+//               - we can fix this by making walk_radius very small, but then that allows us to fall through gaps
+//               - a different solution would be to check if the triangle is on the same entity or not
+//               - actually, no, i think maybe we should just pick the closest that's within our radius?
 
 
 //       - TODO: when we leave a triangle, do a capsule vs triangle test, but add some tolerances to the capsule

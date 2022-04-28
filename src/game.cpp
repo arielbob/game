@@ -681,93 +681,61 @@ bool32 closest_vertical_point_on_mesh(Vec3 point, Mesh *mesh, Transform transfor
     return found;
 }
 
-#if 0
 bool32 get_new_walk_state(Game_State *game_state, Walk_State current_walk_state, Vec3 player_position,
                           Walk_State *walk_state_result, Vec3 *grounded_position) {
     Level *level = &game_state->current_level;
-    real32 max_distance = 0.1f;
 
-    bool32 found = false;
-    Walk_State new_walk_state = {};
-    Vec3 closest_point = make_vec3();
-    real32 closest_distance = FLT_MAX;
+    Circle_Collider player_collider = make_circle_collider(player_position, Player_Constants::walk_radius);
+
+    Vec3 highest_point = make_vec3(0.0f, FLT_MIN, 0.0f);
+    int32 triangle_index = -1;
+    Vec3 triangle_normal = make_vec3();
+    bool32 found_walkable_point = false;
+    Entity_Type ground_entity_type = ENTITY_NONE;
+    int32 ground_entity_index = -1;
+
+    real32 max_lower_offset = Player_Constants::max_lower_ground_offset;
+    real32 max_upper_offset = Player_Constants::max_upper_ground_offset;
 
     for (int32 i = 0; i < level->num_normal_entities; i++) {
         Normal_Entity *entity = &level->normal_entities[i];
-        if (entity->type == current_walk_state.ground_entity_type &&
-            i == current_walk_state.ground_entity_index) continue;
-
         if (entity->is_walkable) {
             Mesh *mesh = get_mesh_pointer(game_state, level, entity->mesh_type, entity->mesh_id);
-            Closest_Vertical_Point_On_Mesh_Result result;
-            if (closest_vertical_point_on_mesh(player_position, mesh, entity->transform, max_distance,
-                                               &result)) {
-                if (result.distance_to_point < closest_distance) {
-                    closest_distance = result.distance_to_point;
-                    closest_point = result.point;
+            Get_Walkable_Triangle_On_Mesh_Result result;
+            bool32 found_triangle = get_walkable_triangle_on_mesh(player_collider.center, player_collider.radius,
+                                                                  mesh,
+                                                                  entity->transform,
+                                                                  player_collider.center.y - max_lower_offset,
+                                                                  player_collider.center.y + max_upper_offset,
+                                                                  &result);
+            if (result.point.y > highest_point.y) {
+                highest_point = result.point;
+                triangle_index = result.triangle_index;
+                triangle_normal = result.triangle_normal;
 
-                    new_walk_state.triangle_normal = result.triangle_normal;
-                    new_walk_state.triangle_index = result.triangle_index;
-                    new_walk_state.ground_entity_index = i;
-                    new_walk_state.ground_entity_type = entity->type;
-
-                    found = true;
-                }
+                ground_entity_type = entity->type;
+                ground_entity_index = i;
+                
+                found_walkable_point = true;
             }
         }
     }
 
-    if (found) {
-        *walk_state_result = new_walk_state;
-        *grounded_position = closest_point;
-    }
+    if (found_walkable_point) {
+        walk_state_result->triangle_normal = triangle_normal;
+        walk_state_result->triangle_index = triangle_index;
+        walk_state_result->ground_entity_type = ground_entity_type;
+        walk_state_result->ground_entity_index = ground_entity_index;
+        *grounded_position = highest_point;
 
-    return found;
-}
-#else
-bool32 get_new_walk_state(Game_State *game_state, Walk_State current_walk_state, Vec3 player_position,
-                          Walk_State *walk_state_result, Vec3 *grounded_position) {
-    Level *level = &game_state->current_level;
-    real32 max_distance = 0.1f;
-
-    bool32 found = false;
-    Walk_State new_walk_state = {};
-    Vec3 closest_point = make_vec3();
-    real32 closest_distance = FLT_MAX;
-
-    for (int32 i = 0; i < level->num_normal_entities; i++) {
-        Normal_Entity *entity = &level->normal_entities[i];
-        if (entity->type == current_walk_state.ground_entity_type &&
-            i == current_walk_state.ground_entity_index) continue;
-
-        if (entity->is_walkable) {
-            Mesh *mesh = get_mesh_pointer(game_state, level, entity->mesh_type, entity->mesh_id);
-            Closest_Vertical_Point_On_Mesh_Result result;
-            if (closest_vertical_point_on_mesh(player_position, mesh, entity->transform, max_distance,
-                                               &result)) {
-                if (result.distance_to_point < closest_distance) {
-                    closest_distance = result.distance_to_point;
-                    closest_point = result.point;
-
-                    new_walk_state.triangle_normal = result.triangle_normal;
-                    new_walk_state.triangle_index = result.triangle_index;
-                    new_walk_state.ground_entity_index = i;
-                    new_walk_state.ground_entity_type = entity->type;
-
-                    found = true;
-                }
-            }
-        }
-    }
-
-    if (found) {
-        *walk_state_result = new_walk_state;
-        *grounded_position = closest_point;
-    }
-
-    return found;
-}
+#if 1
+        add_debug_line(&game_state->debug_state, player_position, highest_point,
+                       make_vec4(1.0f, 1.0f, 0.0f, 1.0f));
 #endif
+    }
+
+    return found_walkable_point;
+}
 
 void update_render_state(Render_State *render_state) {
     Camera camera = render_state->camera;
@@ -923,7 +891,7 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
                                                  walk_state->triangle_normal, player->position);
         player_right = normalize(right_point - player->position);
 
-#if 0
+#if 1
         add_debug_line(debug_state,
                        player->position, player->position + player_right, make_vec4(x_axis, 1.0f));
         add_debug_line(debug_state,
@@ -949,30 +917,6 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
     }
     move_vector = normalize(move_vector) * player->speed;
 
-#if 0
-    if (player->is_grounded) {
-        Vec3 current_triangle[3];
-        Entity *ground_entity = get_entity(&game_state->current_level,
-                                           player->ground_entity_type, player->ground_entity_index);
-        Mesh *ground_mesh = get_mesh_pointer(game_state, &game_state->current_level,
-                                             ground_entity->mesh_type, ground_entity->mesh_id);
-        get_triangle(ground_mesh, player->triangle_index, current_triangle);
-        Mat4 ground_model_matrix = get_model_matrix(ground_entity->transform);
-        transform_triangle(current_triangle, &ground_model_matrix);
-
-        Vec3 point_on_triangle;
-        if (!get_point_on_triangle_from_xz(player->position.x, player->position.z,
-                                           current_triangle, &point_on_triangle)) {
-            player->is_grounded = false;
-            player->velocity = make_vec3();
-        }
-
-        char *buf = string_format((Allocator *) &memory.frame_arena, 64,
-                                  "current triangle index: %d", player->triangle_index);
-        do_text(&game_state->ui_manager, 5.0f, 700.0f, buf, "calibri14", "current_triangle_index");
-    }
-#endif
-
     if (player->is_grounded) {
         player->velocity = move_vector;
     } else {
@@ -982,260 +926,25 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
     Vec3 displacement_vector = player->velocity*dt + 0.5f*player->acceleration*dt*dt;
     player->velocity += player->acceleration * dt;
 
-    if (!player->is_grounded) {
-        Level *level = &game_state->current_level;
-        real32 t_min = FLT_MAX;
-        bool32 intersected = false;
-        Vec3 intersected_triangle_normal = make_vec3();
-        int32 intersected_triangle_index = -1;
-        int32 ground_entity_index = -1;
-        Entity_Type ground_entity_type = ENTITY_NONE;
-        
-        for (int32 i = 0; i < level->num_normal_entities; i++) {
-            real32 aabb_t;
-            Normal_Entity *entity = &level->normal_entities[i];
-            if (entity->is_walkable) {
-                Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
-                Ray displacement_ray = make_ray(player->position, displacement_vector);
-                if (ray_intersects_aabb(displacement_ray, entity->transformed_aabb, &aabb_t) && (aabb_t < t_min)) {
-                    // we check for t < 1.0f, since we only want the intersections that are inside the
-                    // displacement line
-                    Ray_Intersects_Mesh_Result result;
-                    if (ray_intersects_mesh(displacement_ray, mesh, entity->transform, false, &result) &&
-                        (result.t < 1.0f) && (result.t < t_min)) {
-                        t_min = result.t;
-                        intersected = true;
-                        intersected_triangle_normal = result.triangle_normal;
-                        intersected_triangle_index = result.triangle_index;
-                        ground_entity_index = i;
-                        ground_entity_type = ENTITY_NORMAL;
-                    }
-                }
-            }
-        }
+    Vec3 next_position = player->position + displacement_vector;
 
-        if (intersected) {
-            displacement_vector *= t_min;
-            player->acceleration = make_vec3();
-            player->velocity = make_vec3();
-            player->is_grounded = true;
-
-            Walk_State *walk_state = &player->walk_state;
-            walk_state->triangle_normal = intersected_triangle_normal;
-            walk_state->triangle_index = intersected_triangle_index;
-            walk_state->ground_entity_index = ground_entity_index;
-            walk_state->ground_entity_type = ground_entity_type;
-        }
+    Walk_State new_walk_state;
+    Vec3 grounded_position;
+    bool32 found_new_ground = get_new_walk_state(game_state, player->walk_state, next_position,
+                                                 &new_walk_state, &grounded_position);
+    if (found_new_ground) {
+        player->walk_state = new_walk_state;
+        displacement_vector = grounded_position - player->position;
+        player->is_grounded = true;
     } else {
-        // grounded
-        Vec3 next_position = player->position + displacement_vector;
-
-        Walk_State *walk_state = &player->walk_state;
-
-        Vec3 current_triangle[3];
-        Entity *ground_entity = get_entity(&game_state->current_level,
-                                           walk_state->ground_entity_type, walk_state->ground_entity_index);
-        Mesh *ground_mesh = get_mesh_pointer(game_state, &game_state->current_level,
-                                             ground_entity->mesh_type, ground_entity->mesh_id);
-        get_triangle(ground_mesh, walk_state->triangle_index, current_triangle);
-        Mat4 ground_model_matrix = get_model_matrix(ground_entity->transform);
-        transform_triangle(current_triangle, &ground_model_matrix);
-
-        Vec3 point_on_triangle;
-        if (!get_point_on_triangle_from_xz(next_position.x, next_position.z,
-                                           current_triangle, &point_on_triangle)) {
-            Walk_State new_walk_state;
-            Vec3 grounded_position;
-            bool32 found_new_ground = get_new_walk_state(game_state, player->walk_state, next_position,
-                                                         &new_walk_state, &grounded_position);
-            
-            if (found_new_ground) {
-                player->walk_state = new_walk_state;
-                displacement_vector = grounded_position - player->position;
-                //player->position = grounded_position;
-            } else {
-                player->is_grounded = false;
-                //player->velocity = make_vec3();
-            }
-        }
+        player->is_grounded = false;
+        //player->velocity = make_vec3();
     }
 
     player->position += displacement_vector;
 
     check_player_collisions(game_state);
 }
-
-#if 0
-void update_player(Game_State *game_state, Controller_State *controller_state,
-                   real32 dt) {
-    Player *player = &game_state->player;
-
-    if (platform_window_has_focus()) {
-        real32 delta_x = controller_state->current_mouse.x - controller_state->last_mouse.x;
-        real32 delta_y = controller_state->current_mouse.y - controller_state->last_mouse.y;
-
-        real32 heading_delta = 0.2f * delta_x;
-        real32 pitch_delta = 0.2f * delta_y;
-
-        int32 heading_rotations = (int32) floorf((player->heading + heading_delta) / 360.0f);
-        int32 pitch_rotations = (int32) floorf((player->pitch + pitch_delta) / 360.0f);
-        player->heading = (player->heading + heading_delta) - heading_rotations*360.0f;
-        player->pitch = clamp(player->pitch + pitch_delta, -90.0f, 90.0f);
-
-        Display_Output display_output = game_state->render_state.display_output;
-        Vec2 center = make_vec2(display_output.width / 2.0f, display_output.height / 2.0f);
-        platform_set_cursor_pos(center);
-        controller_state->current_mouse = center;
-    }
-
-    Vec3 player_forward = normalize(truncate_v4_to_v3(make_rotate_matrix(y_axis, player->heading) *
-                                                      make_vec4(Player_Constants::forward, 1.0f)));
-    Vec3 player_right = normalize(truncate_v4_to_v3(make_rotate_matrix(y_axis, player->heading) *
-                                                    make_vec4(Player_Constants::right, 1.0f)));
-
-#if 0
-    Mat4 rotate_matrix = get_rotate_matrix_from_euler_angles(player->roll, player->pitch, player->heading);
-    Vec3 player_direction = normalize(truncate_v4_to_v3(rotate_matrix *
-                                                        make_vec4(Player_Constants::forward, 1.0f)));
-#endif
-    Vec3 displacement_vector = make_vec3();
-    if (controller_state->key_w.is_down) {
-        //displacement_vector = dot(heading_direction, player_direction) * heading_direction;
-        displacement_vector += player_forward;
-    }
-    if (controller_state->key_s.is_down) {
-        displacement_vector += -player_forward;
-    }
-    if (controller_state->key_d.is_down) {
-        displacement_vector += player_right;
-    }
-    if (controller_state->key_a.is_down) {
-        displacement_vector += -player_right;
-    }
-
-    displacement_vector = normalize(displacement_vector) * player->speed * dt;
-
-#if 0
-    if (distance(displacement_vector) > player->speed) {
-        displacement_vector = normalize(displacement_vector) * player->speed;
-    }
-#endif
-
-    if (player->is_grounded) {
-        player->velocity = displacement_vector;
-        player->position += player->velocity;
-    } else {
-
-    }
-
-#if 1
-    Vec3 v0 = player->velocity;
-    Vec3 gravity = make_vec3(0.0f, -9.8f, 0.0f);
-    if (!player->is_grounded) player->acceleration = gravity;
-    Vec3 player_displacement = v0 + 0.5f*player->acceleration*dt*dt;
-    player->velocity = v0 + player->acceleration * dt;
-
-    Level *level = &game_state->current_level;
-    real32 t_min = FLT_MAX;
-    bool32 intersected = false;
-    for (int32 i = 0; i < level->num_normal_entities; i++) {
-        real32 t, aabb_t;
-        Normal_Entity *entity = &level->normal_entities[i];
-        if (entity->is_walkable) {
-            Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
-            Ray displacement_ray = make_ray(player->position, player_displacement);
-            if (ray_intersects_aabb(displacement_ray, entity->transformed_aabb, &aabb_t) && (aabb_t < t_min)) {
-                // we check for t < 1.0f, since we only want the intersections that are inside the
-                // displacement line
-                if (ray_intersects_mesh(displacement_ray, mesh, entity->transform, &t) &&
-                    (t < 1.0f) && (t < t_min)) {
-                    t_min = t;
-                    intersected = true;
-                }
-            }
-        }
-    }
-
-    if (intersected) {
-        char *intersect_text = string_format((Allocator *) &memory.frame_arena, 64, "intersect t: %f", t_min);
-        do_text(&game_state->ui_manager, 5.0f, 28.0f, intersect_text, "calibri14", "intersect_t");
-    } else {
-        char *intersect_text = string_format((Allocator *) &memory.frame_arena, 64, "intersect t: None");
-        do_text(&game_state->ui_manager, 5.0f, 28.0f, intersect_text, "calibri14", "intersect_t");
-    }
-    
-    if (intersected) {
-        player->position += player_displacement * t_min;
-        player->acceleration = make_vec3();
-        player->velocity = make_vec3();
-        player->is_grounded = true;
-    } else {
-        player->position += player_displacement;
-    }
-#endif
-
-
-    Vec3 move_vector = make_vec3();
-    if (controller_state->key_w.is_down) {
-        //move_vector = dot(heading_direction, player_direction) * heading_direction;
-        move_vector += player_forward;
-    }
-    if (controller_state->key_s.is_down) {
-        move_vector += -player_forward;
-    }
-    if (controller_state->key_d.is_down) {
-        move_vector += player_right;
-    }
-    if (controller_state->key_a.is_down) {
-        move_vector += -player_right;
-    }
-    move_vector = normalize(move_vector) * player->speed * dt;
-
-    //Vec3 displacement_vector;
-    Vec3 displacement_vector;
-
-    if (player->is_grounded) {
-        displacement_vector = move_vector;
-    } else {
-        displacement_vector = player->velocity * 0.5f*player->acceleration*dt*dt;
-    }
-
-    player->velocity += player->acceleration * dt;
-
-    if (!is_grounded) {
-        Level *level = &game_state->current_level;
-        real32 t_min = FLT_MAX;
-        bool32 intersected = false;
-        for (int32 i = 0; i < level->num_normal_entities; i++) {
-            real32 t, aabb_t;
-            Normal_Entity *entity = &level->normal_entities[i];
-            if (entity->is_walkable) {
-                Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
-                Ray displacement_ray = make_ray(player->position, displacement_vector);
-                if (ray_intersects_aabb(displacement_ray, entity->transformed_aabb, &aabb_t) && (aabb_t < t_min)) {
-                    // we check for t < 1.0f, since we only want the intersections that are inside the
-                    // displacement line
-                    if (ray_intersects_mesh(displacement_ray, mesh, entity->transform, &t) &&
-                        (t < 1.0f) && (t < t_min)) {
-                        t_min = t;
-                        intersected = true;
-                    }
-                }
-            }
-        }
-
-        if (intersected) {
-            player->position += displacement_vector * t_min;
-            player->acceleration = make_vec3();
-            player->velocity = make_vec3();
-            player->is_grounded = true;
-        } else {
-            player->position += displacement_vector;
-        }
-    }
-    
-}
-#endif
 
 void update_camera(Camera *camera, Vec3 position, real32 heading, real32 pitch, real32 roll) {
     Basis initial_basis = camera->initial_basis;
