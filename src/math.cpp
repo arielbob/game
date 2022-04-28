@@ -1197,6 +1197,8 @@ Vec3 get_closest_point_on_triangle_to_coplanar_point(Vec3 coplanar_point, Vec3 t
     Vec3 p1 = triangle[1];
     Vec3 p2 = triangle[2];
 
+    // TODO: we may need to do some checking here for degenerate triangles, i.e. where cross product would be
+    //       the zero vector.
     Vec3 c0 = cross(coplanar_point - p0, p1 - p0);
     Vec3 c1 = cross(coplanar_point - p1, p2 - p1);
     Vec3 c2 = cross(coplanar_point - p2, p0 - p2);
@@ -1210,7 +1212,7 @@ Vec3 get_closest_point_on_triangle_to_coplanar_point(Vec3 coplanar_point, Vec3 t
         // find the closest points on the triangle edges to the point that lies outside the triangle
         // and we return the closest one found
 
-        // edge 2
+        // edge 1
         Vec3 point1 = closest_point_on_line_segment(p0, p1, coplanar_point);
         Vec3 v1 = coplanar_point - point1;
         real32 dist_squared = dot(v1, v1);
@@ -1237,6 +1239,42 @@ Vec3 get_closest_point_on_triangle_to_coplanar_point(Vec3 coplanar_point, Vec3 t
 
         return closest_point;
     }
+}
+
+Vec3 get_point_on_plane_from_xz(real32 x, real32 z, Vec3 plane_normal, Vec3 some_point_on_plane) {
+    Vec3 n = normalize(plane_normal);
+    real32 plane_d = dot(some_point_on_plane, n);
+
+    // NOTE: this is the case where the plane is just a straight wall; we don't support this case
+    assert(fabsf(n.y) > EPSILON);
+
+    real32 projected_y = (plane_d - n.x*x - n.z*z) / n.y;
+    return make_vec3(x, projected_y, z);
+}
+
+bool32 circle_intersects_triangle_on_xz_plane(Vec3 center, real32 radius, Vec3 triangle[3]) {
+    Vec3 p0 = triangle[0];
+    Vec3 p1 = triangle[1];
+    Vec3 p2 = triangle[2];
+
+    Vec3 projected_triangle[] = {
+        make_vec3(p0.x, 0.0f, p0.z),
+        make_vec3(p1.x, 0.0f, p1.z),
+        make_vec3(p2.x, 0.0f, p2.z)
+    };
+    
+    Vec3 projected_center = make_vec3(center.x, 0.0f, center.z);
+    Vec3 closest_point_on_triangle = get_closest_point_on_triangle_to_coplanar_point(projected_center,
+                                                                                     projected_triangle,
+                                                                                     make_vec3(0.0f, 1.0f, 0.0f));
+    Vec3 point_to_center = projected_center - closest_point_on_triangle;
+    real32 radius_squared = radius*radius;
+    if (dot(point_to_center, point_to_center) > radius_squared) {
+        // circle doesn't touch the projected triangle
+        return false;
+    }
+
+    return true;
 }
 
 bool32 sphere_intersects_triangle(Vec3 center, real32 radius, Vec3 triangle[3],
@@ -1946,18 +1984,6 @@ bool32 get_point_on_triangle_from_xz(real32 x, real32 z, Vec3 triangle[3], Vec3 
 
     *point_on_triangle = b1*triangle[0] + b2*triangle[1] + b3*triangle[2];
     return true;
-}
-
-Vec3 get_point_on_plane_from_xz(real32 x, real32 z, Vec3 plane_normal, Vec3 some_point_on_plane) {
-    Vec3 n = normalize(plane_normal);
-    real32 plane_d = dot(some_point_on_plane, n);
-
-    // NOTE: this is the case where the plane is just a straight wall; we don't support this case
-    assert(fabsf(n.y) > EPSILON);
-    real32 one_over_normal_y = 1.0f / n.y;
-    
-    real32 projected_y = (plane_d - n.x*x - n.z*z) / n.y;
-    return make_vec3(x, projected_y, z);
 }
 
 inline Vec3 transform_point(Mat4 *model_matrix, Vec3 *point) {

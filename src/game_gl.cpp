@@ -241,7 +241,11 @@
 //               - check if circle center is inside triangle, if not, then get closest distance between the
 //                 circle's center and each of the triangle's edges. if either of the distances are less than
 //                 the circle's radius, then it intersects.
-//       - TODO: implement circle vs triangle intersection test
+//       - TODO (done): implement circle vs triangle intersection test
+//       - TODO: if we leave the triangle, we just do another circle triangle intersection test on the walk mesh
+//               to find the next triangle
+
+
 //       - TODO: when we leave a triangle, do a capsule vs triangle test, but add some tolerances to the capsule
 //               base and tip by just adding some small vector to both. then, we just move to the triangle if
 //               we're intersecting. the new position will be capsule.base + penetration_vector*penetration_depth.

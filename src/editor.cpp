@@ -1833,4 +1833,43 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
     }
 
     update_gizmo(game_state);
+
+    if (editor_state->selected_entity_index >= 0) {
+        Level *level = &game_state->current_level;
+        Entity *entity = get_selected_entity(game_state);
+        if (entity->type == ENTITY_NORMAL) {
+            Normal_Entity *normal_entity = (Normal_Entity *) entity;
+            if (normal_entity->collider.type == Collider_Type::CIRCLE) {
+                Circle_Collider collider = normal_entity->collider.circle;
+                Vec3 highest_point = make_vec3(0.0f, FLT_MIN, 0.0f);
+                int32 triangle_index = -1;
+                Vec3 triangle_normal;
+                bool32 found_walkable_point = false;
+
+                for (int32 i = 0; i < level->num_normal_entities; i++) {
+                    Normal_Entity *e = &level->normal_entities[i];
+                    if (e->is_walkable) {
+                        Mesh *mesh = get_mesh_pointer(game_state, level, e->mesh_type, e->mesh_id);
+                        Get_Walkable_Triangle_On_Mesh_Result result;
+                        bool32 found_triangle = get_walkable_triangle_on_mesh(collider.center, collider.radius,
+                                                                              mesh,
+                                                                              e->transform,
+                                                                              collider.center.y - 5.0f,
+                                                                              collider.center.x + 5.0f,
+                                                                              &result);
+                        if (result.point.y > highest_point.y) {
+                            highest_point = result.point;
+                            triangle_index = result.triangle_index;
+                            triangle_normal = result.triangle_normal;
+                            found_walkable_point = true;
+                        }
+                    }
+                }
+                if (found_walkable_point) {
+                    add_debug_line(&game_state->debug_state, entity->transform.position, highest_point,
+                                   make_vec4(1.0f, 1.0f, 0.0f, 1.0f));
+                }
+            }
+        }
+    }
 }

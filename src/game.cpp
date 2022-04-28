@@ -592,6 +592,51 @@ bool32 capsule_intersects_mesh(Capsule capsule, Mesh mesh, Transform transform) 
     return false;
 }
 
+// gets the highest point within the cylinder of some radius around some center from min_y to max_y
+bool32 get_walkable_triangle_on_mesh(Vec3 center, real32 radius,
+                                     Mesh *mesh, Transform transform,
+                                     real32 min_y, real32 max_y,
+                                     Get_Walkable_Triangle_On_Mesh_Result *result) {
+    Mat4 object_to_world = get_model_matrix(transform);
+
+    uint32 *indices = mesh->indices;
+
+    bool32 found = false;
+    Vec3 highest_point_in_range = make_vec3();
+    real32 found_point_height = FLT_MIN;
+    int32 triangle_index = -1;
+    Vec3 found_triangle_normal = make_vec3();
+    for (int32 i = 0; i < (int32) mesh->num_triangles; i++) {
+        Vec3 triangle[3];
+        get_triangle(mesh, i, triangle);
+        transform_triangle(triangle, &object_to_world);
+
+        if (circle_intersects_triangle_on_xz_plane(center, radius, triangle)) {
+            Vec3 triangle_normal = get_triangle_normal(triangle);
+            if (fabs(triangle_normal.y) < EPSILON) continue;
+            Vec3 point_on_triangle_plane = get_point_on_plane_from_xz(center.x, center.z,
+                                                                      triangle_normal, triangle[0]);
+
+            real32 point_y = point_on_triangle_plane.y;
+            if ((point_y > found_point_height) && (point_y > min_y) && (point_y < max_y)) {
+                found_point_height = point_y;
+                highest_point_in_range = point_on_triangle_plane;
+                triangle_index = i;
+                found = true;
+                found_triangle_normal = triangle_normal;
+            }
+        }
+    }
+
+    if (found) {
+        result->point = highest_point_in_range;
+        result->triangle_index = triangle_index;
+        result->triangle_normal = found_triangle_normal;
+    }
+
+    return found;
+}
+
 bool32 closest_vertical_point_on_mesh(Vec3 point, Mesh *mesh, Transform transform,
                                       real32 max_distance,
                                       Closest_Vertical_Point_On_Mesh_Result *result) {

@@ -222,6 +222,12 @@ struct Ray_Intersects_Mesh_Result {
     Vec3 triangle_normal;
 };
 
+struct Get_Walkable_Triangle_On_Mesh_Result {
+    Vec3 point;
+    int32 triangle_index;
+    Vec3 triangle_normal;
+};
+
 struct Closest_Vertical_Point_On_Mesh_Result {
     Vec3 point;
     real32 distance_to_point;
@@ -253,5 +259,10 @@ void update_entity_rotation(Game_State *game_state, Entity *entity, Quaternion n
 int32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, bool32 include_backside,
                           Ray_Intersects_Mesh_Result *result);
 bool32 closest_point_below_on_mesh(Vec3 point, Mesh mesh, Transform transform, Vec3 *result);
+bool32 get_walkable_triangle_on_mesh(Vec3 center, real32 radius,
+                                     Mesh *mesh, Transform transform,
+                                     real32 min_y, real32 max_y,
+                                     Get_Walkable_Triangle_On_Mesh_Result *result);
+void add_debug_line(Debug_State *debug_state, Vec3 start, Vec3 end, Vec4 color);
 
 #endif

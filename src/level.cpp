@@ -461,7 +461,7 @@ void load_default_level(Game_State *game_state, Level *level) {
     assert(primitive_cube_mesh_id >= 0);
     AABB primitive_cube_mesh_aabb = (get_mesh(game_state, level, Mesh_Type::PRIMITIVE, primitive_cube_mesh_id)).aabb;
     entity = make_entity(Mesh_Type::PRIMITIVE, primitive_cube_mesh_id, shiny_monkey_material_id,
-                         transform, primitive_cube_mesh_aabb);
+                         transform, primitive_cube_mesh_aabb, true);
     level_add_entity(level, entity);
 
     transform = {};
@@ -487,7 +487,7 @@ void load_default_level(Game_State *game_state, Level *level) {
     transform.rotation = make_quaternion();
     Collider_Variant collider;
     collider.type = Collider_Type::CIRCLE;
-    collider.circle = make_circle_collider(transform.position, 1.0f);
+    collider.circle = make_circle_collider(transform.position, 0.51f);
     entity = make_entity(Mesh_Type::LEVEL, sphere_mesh_id, diffuse_sphere_material_id,
                          transform, sphere_mesh_aabb, collider);
     level_add_entity(level, entity);
