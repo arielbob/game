@@ -603,7 +603,7 @@ bool32 get_walkable_triangle_on_mesh(Vec3 center, real32 radius,
 
     bool32 found = false;
     Vec3 highest_point_in_range = make_vec3();
-    real32 found_point_height = FLT_MIN;
+    real32 found_point_height = min_y;
     int32 triangle_index = -1;
     Vec3 found_triangle_normal = make_vec3();
     for (int32 i = 0; i < (int32) mesh->num_triangles; i++) {
@@ -686,16 +686,15 @@ bool32 get_new_walk_state(Game_State *game_state, Walk_State current_walk_state,
     Level *level = &game_state->current_level;
 
     Circle_Collider player_collider = make_circle_collider(player_position, Player_Constants::walk_radius);
+    real32 max_lower_offset = Player_Constants::max_lower_ground_offset;
+    real32 max_upper_offset = Player_Constants::max_upper_ground_offset;
 
-    Vec3 highest_point = make_vec3(0.0f, FLT_MIN, 0.0f);
+    Vec3 highest_point = make_vec3(0.0f, player_collider.center.y - max_lower_offset, 0.0f);
     int32 triangle_index = -1;
     Vec3 triangle_normal = make_vec3();
     bool32 found_walkable_point = false;
     Entity_Type ground_entity_type = ENTITY_NONE;
     int32 ground_entity_index = -1;
-
-    real32 max_lower_offset = Player_Constants::max_lower_ground_offset;
-    real32 max_upper_offset = Player_Constants::max_upper_ground_offset;
 
     for (int32 i = 0; i < level->num_normal_entities; i++) {
         Normal_Entity *entity = &level->normal_entities[i];
@@ -708,7 +707,7 @@ bool32 get_new_walk_state(Game_State *game_state, Walk_State current_walk_state,
                                                                   player_collider.center.y - max_lower_offset,
                                                                   player_collider.center.y + max_upper_offset,
                                                                   &result);
-            if (result.point.y > highest_point.y) {
+            if (found_triangle && (result.point.y > highest_point.y)) {
                 highest_point = result.point;
                 triangle_index = result.triangle_index;
                 triangle_normal = result.triangle_normal;
@@ -937,8 +936,10 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
         displacement_vector = grounded_position - player->position;
         player->is_grounded = true;
     } else {
-        player->is_grounded = false;
-        //player->velocity = make_vec3();
+        if (player->is_grounded) {
+            player->is_grounded = false;
+            player->velocity = make_vec3();
+        }
     }
 
     player->position += displacement_vector;

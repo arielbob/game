@@ -1841,7 +1841,8 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
             Normal_Entity *normal_entity = (Normal_Entity *) entity;
             if (normal_entity->collider.type == Collider_Type::CIRCLE) {
                 Circle_Collider collider = normal_entity->collider.circle;
-                Vec3 highest_point = make_vec3(0.0f, FLT_MIN, 0.0f);
+                real32 low_offset = 5.0f;
+                Vec3 highest_point = make_vec3(0.0f, collider.center.y - low_offset, 0.0f);
                 int32 triangle_index = -1;
                 Vec3 triangle_normal;
                 bool32 found_walkable_point = false;
@@ -1854,10 +1855,10 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
                         bool32 found_triangle = get_walkable_triangle_on_mesh(collider.center, collider.radius,
                                                                               mesh,
                                                                               e->transform,
-                                                                              collider.center.y - 5.0f,
-                                                                              collider.center.x + 5.0f,
+                                                                              collider.center.y - low_offset,
+                                                                              collider.center.y + 5.0f,
                                                                               &result);
-                        if (result.point.y > highest_point.y) {
+                        if (found_triangle && (result.point.y > highest_point.y)) {
                             highest_point = result.point;
                             triangle_index = result.triangle_index;
                             triangle_normal = result.triangle_normal;

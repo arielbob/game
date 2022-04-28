@@ -244,7 +244,7 @@
 //       - TODO (done): implement circle vs triangle intersection test
 //       - TODO (done): if we leave the triangle, do another circle triangle intersection test on the walk mesh to
 //                      find the next triangle
-//       - TODO: fix weird collision when walkable entity's position is negative
+//       - TODO (done): fix weird collision when walkable entity's position is negative
 //       - TODO: fix behaviour of going to higher triangle that's on the other side of an entity, but is inside
 //               our walk radius, when we want to actually be on the triangle that's directly below us
 //               - we can fix this by making walk_radius very small, but then that allows us to fall through gaps
