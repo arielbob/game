@@ -277,6 +277,8 @@
 //               true
 
 // TODO (done): add collider information to entities
+// TODO (done): draw colliders
+// TODO: add collider information to levels
 
 // TODO: use a while loop in platform_set_cursor_visible to make the API set the visibility to whatever is passed
 //       in, since the current API is super annoying
@@ -899,6 +901,49 @@ void gl_draw_wireframe(GL_State *gl_state, Render_State *render_state,
 
     glUseProgram(0);
     glBindVertexArray(0);
+}
+
+void gl_draw_circle(GL_State *gl_state, Render_State *render_state, Transform transform, Vec4 color) {
+    uint32 shader_id;
+    uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("line_3d"), &shader_id);
+    assert(shader_exists);
+    glUseProgram(shader_id);
+
+    GL_Mesh circle_mesh = gl_use_rendering_mesh(gl_state, gl_state->circle_mesh_id);
+
+    Mat4 model_matrix = get_model_matrix(transform);
+    gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
+    gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->cpv_matrix);
+    gl_set_uniform_vec4(shader_id, "color", &color);
+
+    // offset by 1 since this only draws an outline
+    //glDrawArrays(GL_TRIANGLE_FAN, 0, NUM_CIRCLE_VERTICES + 2);
+    glDrawArrays(GL_LINE_STRIP, 1, NUM_CIRCLE_VERTICES + 1);
+
+    glUseProgram(0);
+    glBindVertexArray(0);
+}
+
+void gl_draw_collider(GL_State *gl_state, Render_State *render_state, Collider_Variant collider) {
+    Vec4 collider_color = make_vec4(1.0f, 0.0f, 1.0f, 1.0f);
+
+    switch (collider.type) {
+        case Collider_Type::NONE: return;
+        case Collider_Type::CIRCLE: {
+            Transform transform;
+            Circle_Collider circle = collider.circle;
+            transform.position = circle.center;
+            // scale happens before rotation, so we scale on x and y since the circle primitive's vertices
+            // exist on that plane
+            transform.scale = make_vec3(circle.radius, circle.radius, 1.0f);
+            transform.rotation = make_quaternion(90.0f, x_axis);
+            gl_draw_circle(gl_state, render_state, transform, collider_color);
+        } break;
+        default: {
+            assert(!"Unhandled collider type");
+            return;
+        } break;
+    }
 }
 
 void copy_aligned_quad_to_arrays(stbtt_aligned_quad q, real32 *vertices, real32 *uvs) {
@@ -1667,26 +1712,6 @@ void gl_draw_quad(GL_State *gl_state,
                  make_vec4(color, 1.0f));
 }
 
-void gl_draw_circle(GL_State *gl_state, Render_State *render_state, Transform transform, Vec4 color) {
-    uint32 shader_id;
-    uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("basic_3d"), &shader_id);
-    assert(shader_exists);
-    glUseProgram(shader_id);
-
-    GL_Mesh circle_mesh = gl_use_rendering_mesh(gl_state, gl_state->circle_mesh_id);
-
-    Mat4 model_matrix = get_model_matrix(transform);
-    gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
-    gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->cpv_matrix);
-    gl_set_uniform_vec4(shader_id, "color", &color);
-
-    // offset by 1 since this only draws an outline
-    glDrawArrays(GL_LINE, 1, NUM_CIRCLE_VERTICES + 1);
-
-    glUseProgram(0);
-    glBindVertexArray(0);
-}
-
 void gl_draw_circle(GL_State *gl_state, Render_State *render_state,
                     real32 center_x, real32 center_y,
                     real32 radius,
@@ -1716,7 +1741,7 @@ void gl_draw_circle(GL_State *gl_state, Render_State *render_state,
     if (is_filled) {
         glDrawArrays(GL_TRIANGLE_FAN, 0, NUM_CIRCLE_VERTICES + 2);
     } else {
-        glDrawArrays(GL_LINE, 1, NUM_CIRCLE_VERTICES + 1);
+        glDrawArrays(GL_LINE_STRIP, 1, NUM_CIRCLE_VERTICES + 1);
     }
 
     glUseProgram(0);
@@ -2712,6 +2737,11 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
             editor_state->selected_entity_type == ENTITY_NORMAL &&
             editor_state->selected_entity_index == i) {
             gl_draw_wireframe(gl_state, render_state, entity->mesh_type, mesh_id, entity->transform);
+        }
+
+        if (game_state->mode == Game_Mode::EDITING &&
+            editor_state->show_colliders) {
+            gl_draw_collider(gl_state, render_state, entity->collider);
         }
     }
 

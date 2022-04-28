@@ -485,8 +485,11 @@ void load_default_level(Game_State *game_state, Level *level) {
     transform.scale = make_vec3(0.5f, 0.5f, 0.5f);
     transform.position = make_vec3(-1.5f, 1.5f, -1.0f);
     transform.rotation = make_quaternion();
+    Collider_Variant collider;
+    collider.type = Collider_Type::CIRCLE;
+    collider.circle = make_circle_collider(transform.position, 1.0f);
     entity = make_entity(Mesh_Type::LEVEL, sphere_mesh_id, diffuse_sphere_material_id,
-                         transform, sphere_mesh_aabb);
+                         transform, sphere_mesh_aabb, collider);
     level_add_entity(level, entity);
 
     Vec3 light_color;

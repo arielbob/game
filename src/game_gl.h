@@ -108,7 +108,7 @@
 #define GL_SRGB_ALPHA                     0x8C42
 
 #define TEXT_SHADOW_OFFSET 2.0f
-#define NUM_CIRCLE_VERTICES 18
+#define NUM_CIRCLE_VERTICES 64
 
 enum Shader_Type {
     VERTEX,

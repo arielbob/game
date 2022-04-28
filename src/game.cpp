@@ -781,6 +781,20 @@ void update_entity_position(Game_State *game_state, Entity *entity, Vec3 new_pos
     entity->transform.position = new_position;
     Mesh *mesh = get_mesh_pointer(game_state, &game_state->current_level, entity->mesh_type, entity->mesh_id);
     entity->transformed_aabb = transform_aabb(mesh->aabb, get_model_matrix(entity->transform));
+
+    if (entity->type == ENTITY_NORMAL) {
+        Normal_Entity *normal_entity = (Normal_Entity *) entity;
+        Collider_Variant *collider = &normal_entity->collider;
+        switch (collider->type) {
+            case Collider_Type::NONE: break;
+            case Collider_Type::CIRCLE: {
+                collider->circle.center = new_position;
+            } break;
+            default: {
+                assert(!"Unhandled collider type.");
+            } break;
+        }
+    }
 }
 
 void update_entity_rotation(Game_State *game_state, Entity *entity, Quaternion new_rotation) {

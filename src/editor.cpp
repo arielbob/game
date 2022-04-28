@@ -1359,7 +1359,7 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
                                                default_text_button_style, default_text_style,
                                                "Add Entity",
                                                button_font_name, "add_entity");
-
+    y += button_height + button_gap;
     if (add_entity_clicked) {
         int32 mesh_id = get_mesh_id_by_name(game_state,
                                             &game_state->current_level,
@@ -1373,6 +1373,17 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
         int32 entity_id = level_add_entity(&game_state->current_level, new_entity);
         editor_state->selected_entity_type = ENTITY_NORMAL;
         editor_state->selected_entity_index = entity_id;
+    }
+
+    bool32 toggle_colliders_clicked = do_text_button(render_state->display_output.width - sidebar_button_width, y,
+                                                     sidebar_button_width, button_height,
+                                                     default_text_button_style, default_text_style,
+                                                     editor_state->show_colliders ?
+                                                     "Hide Colliders" : "Show Colliders",
+                                                     button_font_name, "toggle_show_colliders");
+
+    if (toggle_colliders_clicked) {
+        editor_state->show_colliders = !editor_state->show_colliders;
     }
 
     if (!editor_state->is_new_level) {
