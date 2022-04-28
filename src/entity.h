@@ -4,6 +4,7 @@
 #include "math.h"
 #include "string.h"
 #include "mesh.h"
+#include "collider.h"
 
 enum Entity_Type {
     ENTITY_NONE,
@@ -27,6 +28,7 @@ struct Entity {
 struct Normal_Entity {
     ENTITY_HEADER
 
+    Collider_Variant collider;
     bool32 is_walkable;
 };
 
@@ -73,11 +75,27 @@ Material make_material(String_Buffer material_name,
 Normal_Entity make_entity(Mesh_Type mesh_type, int32 mesh_id,
                           int32 material_id,
                           Transform transform, AABB aabb,
+                          Collider_Variant collider,
                           bool32 is_walkable = false) {
     AABB transformed_aabb = transform_aabb(aabb, get_model_matrix(transform));
     Normal_Entity entity = { ENTITY_NORMAL, transform,
                              mesh_type, mesh_id, material_id,
                              transformed_aabb,
+                             collider,
+                             is_walkable };
+    return entity;
+}
+
+Normal_Entity make_entity(Mesh_Type mesh_type, int32 mesh_id,
+                          int32 material_id,
+                          Transform transform, AABB aabb,
+                          bool32 is_walkable = false) {
+    AABB transformed_aabb = transform_aabb(aabb, get_model_matrix(transform));
+    Collider_Variant collider;
+    collider.type = Collider_Type::NONE;
+    Normal_Entity entity = { ENTITY_NORMAL, transform,
+                             mesh_type, mesh_id, material_id,
+                             transformed_aabb, collider,
                              is_walkable };
     return entity;
 }

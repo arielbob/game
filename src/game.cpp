@@ -636,7 +636,7 @@ bool32 closest_vertical_point_on_mesh(Vec3 point, Mesh *mesh, Transform transfor
     return found;
 }
 
-// TODO: ignore current walk_state's entity
+#if 0
 bool32 get_new_walk_state(Game_State *game_state, Walk_State current_walk_state, Vec3 player_position,
                           Walk_State *walk_state_result, Vec3 *grounded_position) {
     Level *level = &game_state->current_level;
@@ -679,6 +679,50 @@ bool32 get_new_walk_state(Game_State *game_state, Walk_State current_walk_state,
 
     return found;
 }
+#else
+bool32 get_new_walk_state(Game_State *game_state, Walk_State current_walk_state, Vec3 player_position,
+                          Walk_State *walk_state_result, Vec3 *grounded_position) {
+    Level *level = &game_state->current_level;
+    real32 max_distance = 0.1f;
+
+    bool32 found = false;
+    Walk_State new_walk_state = {};
+    Vec3 closest_point = make_vec3();
+    real32 closest_distance = FLT_MAX;
+
+    for (int32 i = 0; i < level->num_normal_entities; i++) {
+        Normal_Entity *entity = &level->normal_entities[i];
+        if (entity->type == current_walk_state.ground_entity_type &&
+            i == current_walk_state.ground_entity_index) continue;
+
+        if (entity->is_walkable) {
+            Mesh *mesh = get_mesh_pointer(game_state, level, entity->mesh_type, entity->mesh_id);
+            Closest_Vertical_Point_On_Mesh_Result result;
+            if (closest_vertical_point_on_mesh(player_position, mesh, entity->transform, max_distance,
+                                               &result)) {
+                if (result.distance_to_point < closest_distance) {
+                    closest_distance = result.distance_to_point;
+                    closest_point = result.point;
+
+                    new_walk_state.triangle_normal = result.triangle_normal;
+                    new_walk_state.triangle_index = result.triangle_index;
+                    new_walk_state.ground_entity_index = i;
+                    new_walk_state.ground_entity_type = entity->type;
+
+                    found = true;
+                }
+            }
+        }
+    }
+
+    if (found) {
+        *walk_state_result = new_walk_state;
+        *grounded_position = closest_point;
+    }
+
+    return found;
+}
+#endif
 
 void update_render_state(Render_State *render_state) {
     Camera camera = render_state->camera;

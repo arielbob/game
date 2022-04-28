@@ -169,11 +169,11 @@ inline void draw_row_padding(real32 x, real32 *y,
                              real32 row_width,
                              real32 padding,
                              Vec4 color, uint32 side_flags,
-                             int32 index) {
+                             char *row_id, int32 index) {
     draw_row(x, *y,
              row_width, padding,
              color, side_flags,
-             "row_padding", index);
+             row_id, index);
     *y += padding;
     // NOTE: we're assuming we're drawing the ui from top to bottom and that if there's a border above a
     //       padding row, there won't be another row above it. if there were a row above this type of
@@ -669,13 +669,14 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     y += title_row_height;
     draw_row_line(x, &y, row_width);
         
+    // MESH PROPERTIES
     real32 choose_mesh_button_width = 200.0f;
     real32 add_mesh_button_width = 30.0f;
     choose_mesh_button_width -= add_mesh_button_width;
 
     char *mesh_name = to_char_array(allocator, mesh->name);
     draw_row_padding(x, &y, row_width, padding_top, row_color, side_flags,
-                     row_index++);
+                     row_id, row_index++);
     draw_row(x, y, row_width, row_height, row_color, side_flags,
              row_id, row_index++);
     char *mesh_label_string = "Mesh";
@@ -727,7 +728,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     x = initial_x;
     if (editor_state->editing_selected_entity_mesh) {
         draw_row_padding(x, &y, row_width, padding_y, row_color, side_flags,
-            row_index++);
+                         row_id, row_index++);
         UI_Text_Box_Style text_box_style = default_text_box_style;
         real32 edit_box_width = choose_mesh_button_width + padding_left + add_mesh_button_width;
 
@@ -744,10 +745,31 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         
     }
     draw_row_padding(x, &y, row_width, padding_y, row_color,
-                     side_flags | SIDE_BOTTOM, row_index++);
+                     side_flags | SIDE_BOTTOM,
+                     row_id, row_index++);
 
     x = initial_x;
 
+    if (entity->type == ENTITY_NORMAL) {
+        Normal_Entity *normal_entity = (Normal_Entity *) entity;
+        // COLLIDER PROPERTIES
+        draw_row_padding(x, &y, row_width, padding_y, row_color, side_flags,
+                         row_id, row_index++);
+        draw_row(x, y, row_width, row_height, row_color, side_flags,
+                 row_id, row_index++);
+        draw_v_centered_text(x + padding_left, y, row_height,
+                             "Collider", editor_font_name, default_text_style);
+        x += right_column_offset;
+
+        char *collider_type_text = get_collider_type_string(normal_entity->collider.type);
+        draw_v_centered_text(x, y, row_height,
+                             collider_type_text, editor_font_name, default_text_style);
+        y += row_height;
+        x = initial_x;
+        draw_row_padding(x, &y, row_width, padding_y, row_color, side_flags | SIDE_BOTTOM,
+                         row_id, row_index++);
+    }
+    
     char *buf;
     int32 buffer_size = 16;
     
@@ -834,7 +856,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
 
     // MATERIAL
     draw_row_padding(x, &y, row_width, padding_bottom, row_color,
-                     side_flags, row_index++);
+                     side_flags, row_id, row_index++);
 
     draw_row(x, y, row_width, row_height, row_color, side_flags,
              row_id, row_index++);
@@ -906,7 +928,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     real32 edit_box_width = choose_material_button_width + padding_left + add_material_button_width;
     if (has_material && editor_state->editing_selected_entity_material) {
         draw_row_padding(x, &y, row_width, padding_y, row_color,
-                         side_flags, row_index++);
+                         side_flags, row_id, row_index++);
 
         UI_Text_Box_Style text_box_style = default_text_box_style;
 
@@ -923,7 +945,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
 
         y += row_height;
         draw_row_padding(x, &y, row_width, padding_y, row_color,
-                         side_flags, row_index++);
+                         side_flags, row_id, row_index++);
 
         // TEXTURE
         char *texture_name = "";
@@ -945,7 +967,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
 
         y += row_height;
         draw_row_padding(x, &y, row_width, padding_y, row_color,
-                         side_flags, row_index++);
+                         side_flags, row_id, row_index++);
 
         // GLOSS
         draw_row(x, y, row_width, row_height, row_color, side_flags,
@@ -961,7 +983,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                     "edit_material_gloss_slider");
         y += row_height;
         draw_row_padding(x, &y, row_width, padding_y, row_color,
-                         side_flags, row_index++);
+                         side_flags, row_id, row_index++);
 
         // COLOR OVERRIDE
         draw_row(x, y, row_width, row_height, row_color, side_flags,
@@ -994,7 +1016,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
 
         y += row_height;
         draw_row_padding(x, &y, row_width, padding_y, row_color,
-                         side_flags, row_index++);
+                         side_flags, row_id, row_index++);
 
         // USE COLOR OVERRIDE
         draw_row(x, y, row_width, row_height, row_color, side_flags,
@@ -1019,11 +1041,11 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     }
 
     draw_row_padding(x, &y, row_width, padding_y, row_color,
-                     side_flags | SIDE_BOTTOM, row_index++);
+                     side_flags | SIDE_BOTTOM, row_id, row_index++);
 
     if (entity->type == ENTITY_POINT_LIGHT) {
         draw_row_padding(x, &y, row_width, padding_y, row_color,
-                         side_flags, row_index++);
+                         side_flags, row_id, row_index++);
         Point_Light_Entity *point_light = (Point_Light_Entity *) entity;
 
         // LIGHT COLOR
@@ -1070,7 +1092,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
 
         // LIGHT MIN DISTANCE
         draw_row_padding(x, &y, row_width, padding_y, row_color,
-                         side_flags, row_index++);
+                         side_flags, row_id, row_index++);
         draw_row(x, y, row_width, row_height, row_color, side_flags,
                  row_id, row_index++);
         buf = string_format(allocator, buffer_size, "%f", point_light->falloff_start);
@@ -1084,7 +1106,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                                "edit_material_gloss_slider");
         y += row_height;
         draw_row_padding(x, &y, row_width, padding_y, row_color,
-                         side_flags, row_index++);
+                         side_flags, row_id, row_index++);
 
         // LIGHT MAX DISTANCE
         draw_row(x, y, row_width, row_height, row_color, side_flags,
@@ -1100,7 +1122,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                              "edit_material_gloss_slider");
         y += row_height;
         draw_row_padding(x, &y, row_width, padding_y, row_color,
-                         side_flags | SIDE_BOTTOM, row_index++);
+                         side_flags | SIDE_BOTTOM, row_id, row_index++);
     }
 }
 
@@ -1122,7 +1144,7 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
 
     real32 button_height = 25.0f;
 
-    draw_row_padding(x, &y, row_width, padding_y, row_color, side_flags | SIDE_TOP, row_index);
+    draw_row_padding(x, &y, row_width, padding_y, row_color, side_flags | SIDE_TOP, row_id, row_index);
 
     draw_row(x, y,
              row_width, button_height, row_color, side_flags, row_id, row_index++);
@@ -1174,7 +1196,7 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
 
     y += button_height;
     x = initial_x;
-    draw_row_padding(x, &y, row_width, padding_y, row_color, side_flags, row_index);
+    draw_row_padding(x, &y, row_width, padding_y, row_color, side_flags, row_id, row_index);
 
     // level name text
     real32 label_row_height = 18.0f;
@@ -1192,7 +1214,7 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
                 default_text_box_style, default_text_style,
                 "level_name_text_box");
     y += row_height;
-    draw_row_padding(x, &y, row_width, padding_y, row_color, side_flags, row_index);
+    draw_row_padding(x, &y, row_width, padding_y, row_color, side_flags, row_id, row_index);
 
     // save level button
     draw_row(x, y, row_width, button_height, row_color, side_flags, row_id, row_index++);
@@ -1263,7 +1285,7 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
 
     y += button_height;
     
-    draw_row_padding(x, &y, row_width, padding_y, row_color, side_flags | SIDE_BOTTOM, row_index);
+    draw_row_padding(x, &y, row_width, padding_y, row_color, side_flags | SIDE_BOTTOM, row_id, row_index);
 }
 
 void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) {

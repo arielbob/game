@@ -241,10 +241,17 @@
 //               - check if circle center is inside triangle, if not, then get closest distance between the
 //                 circle's center and each of the triangle's edges. if either of the distances are less than
 //                 the circle's radius, then it intersects.
+//       - TODO: implement circle vs triangle intersection test
 //       - TODO: when we leave a triangle, do a capsule vs triangle test, but add some tolerances to the capsule
 //               base and tip by just adding some small vector to both. then, we just move to the triangle if
 //               we're intersecting. the new position will be capsule.base + penetration_vector*penetration_depth.
 //               i don't think we need to ignore the current triangle?
+//               - actually, try it without the tolerances for now
+//               - this is actually a lot more annoying since if we want to walk up between two walk meshes,
+//                 or if we're on a mesh and colliding with a triangle of another mesh that's higher and within
+//                 our steppable bounds and want to move up to it, i'm not sure of a way to move the capsule up,
+//                 with the given information we get from the collision test, the minimum amount we need to move
+//                 such that the capsule is no longer colliding with the triangle.
 //       - TODO: we actually should NOT ignore the current entity when leaving a triangle. we should just ignore
 //               the triangle that we're on, not the entity. the current code is wrong since it ignores the
 //               current entity and is why we fall through the ground if we leave our triangle.
@@ -268,6 +275,8 @@
 //       - TODO: either create a procedure that checks if a player is close enough to some walkable mesh, or
 //               just move the player to the closest position on the walkable mesh and set their is_grounded to
 //               true
+
+// TODO (done): add collider information to entities
 
 // TODO: use a while loop in platform_set_cursor_visible to make the API set the visibility to whatever is passed
 //       in, since the current API is super annoying
