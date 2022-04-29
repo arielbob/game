@@ -255,7 +255,13 @@
 //                      needs one for deletion
 
 // TODO (done): be able to add point light entities
-// TODO: show lights as a light icon, so that they're easier to click on
+// TODO (done): show lights as a light icon
+// TODO: remove meshes and materials from point light entities
+// TODO: make clickable region for point light entities match the icon size
+
+// TODO: be able to make entities invisible (for walk meshes)
+
+// TODO: entity list view
 
 // TODO: fix issue where gizmo appears at last location for a frame before moving when adding a new entity
 // TODO: editor undoing
@@ -599,7 +605,7 @@ void gl_load_shader(GL_State *gl_state,
     hash_table_add(&gl_state->shader_ids_table, make_string(shader_name), shader_id);
 }
 
-GL_Texture gl_load_texture(GL_State *gl_state, char *texture_filename) {
+GL_Texture gl_load_texture(GL_State *gl_state, char *texture_filename, bool32 has_alpha=false) {
     Marker m = begin_region();
     File_Data texture_file_data = platform_open_and_read_file((Allocator *) &memory.global_stack,
                                                               texture_filename);
@@ -615,7 +621,11 @@ GL_Texture gl_load_texture(GL_State *gl_state, char *texture_filename) {
 
     // TODO: we may want to be able to modify these parameters
     glBindTexture(GL_TEXTURE_2D, texture_id);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+    if (has_alpha) {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    } else {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+    }
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -628,7 +638,7 @@ GL_Texture gl_load_texture(GL_State *gl_state, char *texture_filename) {
     return gl_texture;
 }
 
-GL_Texture gl_load_texture(GL_State *gl_state, Texture texture) {
+GL_Texture gl_load_texture(GL_State *gl_state, Texture texture, bool32 has_alpha=false) {
     Marker m = begin_region();
     Allocator *temp_allocator = (Allocator *) &memory.global_stack;
     char *temp_texture_filename = to_char_array(temp_allocator, texture.filename);
@@ -646,7 +656,11 @@ GL_Texture gl_load_texture(GL_State *gl_state, Texture texture) {
 
     // TODO: we may want to be able to modify these parameters
     glBindTexture(GL_TEXTURE_2D, texture_id);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+    if (has_alpha) {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    } else {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+    }
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -734,6 +748,14 @@ void gl_use_texture(GL_State *gl_state, int32 texture_id) {
     // TODO: will have to add parameter to specify which texture slot to use
     GL_Texture texture;
     uint32 texture_exists = hash_table_find(gl_state->level_texture_table, texture_id, &texture);
+    assert(texture_exists);
+    glBindTexture(GL_TEXTURE_2D, texture.id); 
+}
+
+void gl_use_rendering_texture(GL_State *gl_state, int32 texture_id) {
+    // TODO: will have to add parameter to specify which texture slot to use
+    GL_Texture texture;
+    uint32 texture_exists = hash_table_find(gl_state->rendering_texture_table, texture_id, &texture);
     assert(texture_exists);
     glBindTexture(GL_TEXTURE_2D, texture.id); 
 }
@@ -1173,6 +1195,12 @@ int32 gl_add_rendering_mesh(GL_State *gl_state, GL_Mesh gl_mesh) {
     return mesh_id;
 }
 
+int32 gl_add_rendering_texture(GL_State *gl_state, GL_Texture gl_texture) {
+    int32 texture_id = gl_state->rendering_texture_table.total_added_ever;
+    hash_table_add(&gl_state->rendering_texture_table, texture_id, gl_texture);
+    return texture_id;
+}
+
 void gl_init(GL_State *gl_state, Display_Output display_output) {
     gl_state->shader_ids_table = make_hash_table<String, uint32>((Allocator *) &memory.hash_table_stack,
                                                                  HASH_TABLE_SIZE, &string_equals);
@@ -1182,6 +1210,9 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
                                                                   HASH_TABLE_SIZE, &int32_equals);
     gl_state->primitive_mesh_table = make_hash_table<int32, GL_Mesh>((Allocator *) &memory.hash_table_stack,
                                                                      HASH_TABLE_SIZE, &int32_equals);
+    gl_state->rendering_texture_table = make_hash_table<int32, GL_Texture>((Allocator *) &memory.hash_table_stack,
+                                                                           HASH_TABLE_SIZE, &int32_equals);
+
     gl_state->level_mesh_table = make_hash_table<int32, GL_Mesh>((Allocator *) &memory.hash_table_stack,
                                                                  HASH_TABLE_SIZE, &int32_equals);
     gl_state->level_texture_table = make_hash_table<int32, GL_Texture>((Allocator *) &memory.hash_table_stack,
@@ -1385,8 +1416,14 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
     gl_load_shader(gl_state,
                    "src/shaders/line_3d.vs", "src/shaders/line_3d.fs",
                    "line_3d");
+    gl_load_shader(gl_state,
+                   "src/shaders/constant_facing_quad.vs", "src/shaders/constant_facing_quad.fs",
+                   "constant_facing_quad");
+
+    // NOTE: framebuffers
     gl_state->gizmo_framebuffer = gl_make_framebuffer(display_output.width, display_output.height);
 
+    // NOTE: unified buffer object
     glGenBuffers(1, &gl_state->global_ubo);
     glBindBuffer(GL_UNIFORM_BUFFER, gl_state->global_ubo);
     // TODO: not sure if 1024 bytes is enough
@@ -1396,15 +1433,15 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
     //glBindBufferRange(GL_UNIFORM_BUFFER, 0, gl_state->global_ubo, 0, 4);
     glBindBufferBase(GL_UNIFORM_BUFFER, 0, gl_state->global_ubo);
-    GLenum error = glGetError();
 
     uint32 shader_id = gl_use_shader(gl_state, "basic_3d");
-    error = glGetError();
     uint32 uniform_block_index = glGetUniformBlockIndex(shader_id, "shader_globals");
-    error = glGetError();
     glUniformBlockBinding(shader_id, uniform_block_index, 0);
     glUseProgram(0);
-    error = glGetError();
+
+    // NOTE: rendering textures
+    GL_Texture debug_texture = gl_load_texture(gl_state, "src/textures/lightbulb.png", true);
+    gl_state->light_icon_texture_id = gl_add_rendering_texture(gl_state, debug_texture);
 
     // NOTE: disable culling for now, just for easier debugging...
 #if 0
@@ -1614,14 +1651,56 @@ void gl_draw_quad_p(GL_State *gl_state,
     glBindVertexArray(0);
 }
 
+void gl_draw_constant_facing_quad_view_space(GL_State *gl_state,
+                                             Render_State *render_state,
+                                             Vec3 view_space_center_position,
+                                             real32 world_space_side_length,
+                                             int32 texture_id, bool32 is_rendering_texture=false) {
+    uint32 basic_shader_id = gl_use_shader(gl_state, "constant_facing_quad");
+    GL_Mesh quad_mesh = gl_use_rendering_mesh(gl_state, gl_state->quad_mesh_id);
+    if (is_rendering_texture) {
+        gl_use_rendering_texture(gl_state, texture_id);
+    } else {
+        gl_use_texture(gl_state, texture_id);
+    }
+
+    real32 quad_vertices[8] = {
+        -0.5f, -0.5f, // bottom left
+        -0.5f, 0.5f,  // top left
+        0.5f, 0.5f,   // top right
+        0.5f, -0.5f   // bottom right
+    };
+    glBindBuffer(GL_ARRAY_BUFFER, quad_mesh.vbo);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(quad_vertices), quad_vertices);
+
+    //Transform transform = make_transform();
+    //transform.position = view_space_center_position;
+    //Mat4 model = get_model_matrix(transform);
+    //gl_set_uniform_mat4(basic_shader_id, "model_matrix", &model);
+    //gl_set_uniform_mat4(basic_shader_id, "view_matrix", &render_state->view_matrix);
+
+    gl_set_uniform_vec3(basic_shader_id, "view_space_center", &view_space_center_position);
+    gl_set_uniform_mat4(basic_shader_id, "perspective_clip_matrix", &render_state->perspective_clip_matrix);
+    gl_set_uniform_float(basic_shader_id, "side_length", world_space_side_length);
+    //gl_set_uniform_mat4(basic_shader_id, "cpv_matrix", &render_state->cpv_matrix);
+
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    glUseProgram(0);
+    glBindVertexArray(0);
+}
+
 void gl_draw_quad(GL_State *gl_state,
                   Render_State *render_state,
                   real32 x_pos_pixels, real32 y_pos_pixels,
                   real32 width_pixels, real32 height_pixels,
-                  int32 texture_id) {
+                  int32 texture_id, bool32 is_rendering_texture=false) {
     uint32 basic_shader_id = gl_use_shader(gl_state, "basic2");
     GL_Mesh quad_mesh = gl_use_rendering_mesh(gl_state, gl_state->quad_mesh_id);
-    gl_use_texture(gl_state, texture_id);
+    if (is_rendering_texture) {
+        gl_use_rendering_texture(gl_state, texture_id);
+    } else {
+        gl_use_texture(gl_state, texture_id);
+    }
 
     real32 quad_vertices[8] = {
         x_pos_pixels, y_pos_pixels + height_pixels,               // bottom left
@@ -2764,6 +2843,41 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
         }
     }
 
+    // point light icons
+    if (game_state->mode == Game_Mode::EDITING) {
+        Marker m = begin_region();
+        Vec3 *positions = (Vec3 *) allocate((Allocator *) &memory.global_stack,
+                                            sizeof(Vec3)*level->point_light_entity_table.num_entries);
+        int32 current_index = 0;
+        FOR_ENTRY_POINTERS(int32, Point_Light_Entity, level->point_light_entity_table) {
+            Point_Light_Entity *entity = &entry->value;
+            positions[current_index++] = truncate_v4_to_v3(render_state->view_matrix *
+                                                           make_vec4(entity->transform.position, 1.0f));
+        }
+
+        // insertion sort
+        for (int32 i = 1; i < level->point_light_entity_table.num_entries; i++) {
+            Vec3 key = positions[i];
+            int32 j = i - 1;
+            for (; j >= 0 && (positions[j].z < key.z); j--) {
+                positions[j + 1] = positions[j];
+            }
+            positions[j + 1] = key;
+        }
+
+        glDepthMask(GL_FALSE);
+        for (int32 i = 0; i < level->point_light_entity_table.num_entries; i++) {
+            Vec3 view_space_position = positions[i];
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            gl_draw_constant_facing_quad_view_space(gl_state, render_state,
+                                                    view_space_position, 0.4f,
+                                                    gl_state->light_icon_texture_id, true);
+        }
+        glDepthMask(GL_TRUE);
+        end_region(m);
+    }
+
+
     glBindFramebuffer(GL_FRAMEBUFFER, gl_state->gizmo_framebuffer.fbo);
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -2931,6 +3045,11 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
                      0.5f * (display_output.height - hsv_quad_height),
                      hsv_quad_width, hsv_quad_height,
                      50);
+#endif
+
+#if 0
+    gl_draw_quad(gl_state, render_state,
+                 0.0f, 0.0f, 50.0f, 50.0f, gl_state->light_icon_texture_id, true);
 #endif
 
     glEnable(GL_DEPTH_TEST);

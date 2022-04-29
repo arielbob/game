@@ -763,6 +763,8 @@ void update_render_state(Render_State *render_state) {
     Mat4 view_matrix = get_view_matrix(camera);
     Mat4 perspective_clip_matrix = make_perspective_clip_matrix(camera.fov_x_degrees, camera.aspect_ratio,
                                                                 camera.near, camera.far);
+    render_state->view_matrix = view_matrix;
+    render_state->perspective_clip_matrix = perspective_clip_matrix;
     render_state->cpv_matrix = perspective_clip_matrix * view_matrix;
 
     Display_Output display_output = render_state->display_output;

@@ -161,6 +161,9 @@ struct GL_State {
     Hash_Table<int32, GL_Mesh> common_mesh_table;
     Hash_Table<int32, GL_Mesh> primitive_mesh_table;
 
+    // for GL specific textures
+    Hash_Table<int32, GL_Texture> rendering_texture_table;
+
     Hash_Table<String, uint32> font_texture_table;
 
     Hash_Table<int32, GL_Mesh> level_mesh_table;
@@ -179,6 +182,8 @@ struct GL_State {
     int32 glyph_quad_mesh_id;
     int32 line_mesh_id;
     int32 circle_mesh_id;
+
+    int32 light_icon_texture_id;
 };
 
 #endif

@@ -128,6 +128,8 @@ struct Camera {
 struct Render_State {
     Display_Output display_output;
     Camera camera;
+    Mat4 perspective_clip_matrix;
+    Mat4 view_matrix;
     Mat4 cpv_matrix;
     Mat4 ortho_clip_matrix;
 };
