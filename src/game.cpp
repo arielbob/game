@@ -610,10 +610,16 @@ bool32 get_walkable_triangle_on_mesh(Vec3 center, real32 radius,
         Vec3 triangle[3];
         get_triangle(mesh, i, triangle);
         transform_triangle(triangle, &object_to_world);
+        Vec3 triangle_normal = get_triangle_normal(triangle);
+        if (fabs(triangle_normal.y) < EPSILON) continue;
 
-        if (circle_intersects_triangle_on_xz_plane(center, radius, triangle)) {
-            Vec3 triangle_normal = get_triangle_normal(triangle);
-            if (fabs(triangle_normal.y) < EPSILON) continue;
+        // TODO: we could do a check for slope angle here instead of just checking for < 0.0f.
+        // NOTE: we check for < 0, since we only want to be standing on triangles if they're pointing up and if
+        //       y is negative, then it's pointing downwards and we only want to step on it if the mesh is
+        //       double sided.
+        if (!mesh->is_double_sided && triangle_normal.y < 0.0f) continue;
+
+        if (circle_intersects_triangle_on_xz_plane(center, radius, triangle, triangle_normal)) {
             Vec3 point_on_triangle_plane = get_point_on_plane_from_xz(center.x, center.z,
                                                                       triangle_normal, triangle[0]);
 
@@ -935,6 +941,22 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
         player->walk_state = new_walk_state;
         displacement_vector = grounded_position - player->position;
         player->is_grounded = true;
+        
+        Entity *entity = get_entity(&game_state->current_level,
+                                    new_walk_state.ground_entity_type, new_walk_state.ground_entity_index);
+        Mesh *mesh = get_mesh_pointer(game_state, &game_state->current_level,
+                                      entity->mesh_type, entity->mesh_id);
+
+        Vec3 triangle[3];
+        get_triangle(mesh, new_walk_state.triangle_index, triangle);
+        
+        Mat4 model = get_model_matrix(entity->transform);
+        transform_triangle(triangle, &model);
+
+        Vec4 triangle_color = make_vec4(0.0f, 1.0f, 1.0f, 1.0f);
+        add_debug_line(debug_state, triangle[0], triangle[1], triangle_color);
+        add_debug_line(debug_state, triangle[1], triangle[2], triangle_color);
+        add_debug_line(debug_state, triangle[2], triangle[0], triangle_color);
     } else {
         if (player->is_grounded) {
             player->is_grounded = false;

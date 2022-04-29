@@ -34,6 +34,7 @@ struct Mesh {
 
     bool32 is_loaded;
     bool32 should_unload;
+    bool32 is_double_sided;
 };
 
 #define MAX_TOKEN_TEXT_SIZE 1024

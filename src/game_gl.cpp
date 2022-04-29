@@ -200,7 +200,7 @@
 // TODO (done): optimize pick_entity() by checking against AABB before checking against triangles
 // TODO (done): replace ray_intersects_triangle with faster algorithm
 
-// TODO: walking on meshes
+// TODO (done): basic walking on meshes
 //       - TODO (done): add update_editor() procedure and move all editor updating code there
 //       - TODO (done): add keyboard shortcut to toggle between edit mode and play mode
 //       - TODO (done): don't render editor UI when in play mode
@@ -245,9 +245,32 @@
 // TODO (done): draw colliders
 // TODO (done): add is_walkable to entity boxes
 // TODO (done): add is_walkable to levels
+// TODO (done): fix bug where you can walk on the inside face of a mesh
+
+// TODO: entity deleting (probably have to replace entity arrays with free lists or a table)
+// TODO: editor undoing
+// TODO: prompt to save level if open pressed when changes have been made
+// TODO: make sure after we've added entity deleting, that when entities are deleted, if the entity was being
+//       used as a walk mesh, then the player's walk mesh properties are cleared. although, this might not be
+//       an issue if we constantly reset is_grounded to false whenever we switch from editor to play mode
+// TODO: be able to add point light entities, actually let's maybe wait until we replace the meshes with icons
+// TODO: limit movement dt
+
+// TODO: make struct that holds both the mesh type and mesh ID
+
+// TODO: better gizmo controls
+//       - TODO: scale gizmo
+//       - TODO: translation on a plane (little squares on the planes of the gizmo)
+//       - TODO: bigger hitboxes on the controls or just scale the meshes
+//       - TODO: maybe just draw lines for the rotation handles; i'm not sure why the 
+// TODO: maybe show lights as a light icon, so that they're easier to click on
+
+// TODO: texture creation
+// TODO: we can just add a star to the filename if a change has been made and needs to be saved
+// TODO: dialog prompts.. (just use windows for this maybe?)
+// TODO: keyboard shortcuts for level save/save as
 
 // TODO: add collider information to levels
-
 
 // TODO: implement granular steps if displacement vector is larger than some threshold value
 // TODO: replace is_walkable with Walkable_Entity structs, i.e. a new Entity type.
@@ -271,10 +294,6 @@
 // TODO: use a while loop in platform_set_cursor_visible to make the API set the visibility to whatever is passed
 //       in, since the current API is super annoying
 
-// TODO: make sure after we've added entity deleting, that when entities are deleted, if the entity was being
-//       used as a walk mesh, then the player's walk mesh properties are cleared. although, this might not be
-//       an issue if we constantly reset is_grounded to false whenever we switch from editor to play mode
-
 // TODO: change level loading to use format similar to WAIT_FOR_ENTITY_BOOL, so we don't have to keep adding
 //       new parser states for every property
 
@@ -296,11 +315,6 @@
 //       a bunch of memory at the beginning and allocate from that. it would be better if we had an actual
 //       memory monitoring gui.
 
-// TODO: entity deleting (probably have to replace entity arrays with free lists)
-
-// TODO: editor undoing
-// TODO: prompt to save level if open pressed when changes have been made
-
 // TODO: text truncation when its containing box is too small
 // TODO: don't allow quotes or brackets in any level strings, i.e. in level name, texture name, material name, etc.
 //       (requires text box validation)
@@ -313,18 +327,7 @@
 // TODO: add camera state to level
 //       - would have to add way to set initial camera state, since camera can move
 
-// TODO: texture creation
-// TODO: we can just add a star to the filename if a change has been made and needs to be saved
-// TODO: dialog prompts.. (just use windows for this maybe?)
-// TODO: keyboard shortcuts for level save/save as
-
 // TODO: add icons to some of the buttons for better recognition of buttons
-
-// TODO: better gizmo controls
-//       - TODO: scale gizmo
-//       - TODO: translation on a plane (little squares on the planes of the gizmo)
-//       - TODO: bigger hitboxes on the controls or just scale the meshes
-// TODO: maybe show lights as a light icon, so that they're easier to click on
 
 // TODO: click slider for manual value entry
 // TODO: slideable text boxes (after we do slider manual text entry)

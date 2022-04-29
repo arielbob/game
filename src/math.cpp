@@ -1252,7 +1252,7 @@ Vec3 get_point_on_plane_from_xz(real32 x, real32 z, Vec3 plane_normal, Vec3 some
     return make_vec3(x, projected_y, z);
 }
 
-bool32 circle_intersects_triangle_on_xz_plane(Vec3 center, real32 radius, Vec3 triangle[3]) {
+bool32 circle_intersects_triangle_on_xz_plane(Vec3 center, real32 radius, Vec3 triangle[3], Vec3 triangle_normal) {
     Vec3 p0 = triangle[0];
     Vec3 p1 = triangle[1];
     Vec3 p2 = triangle[2];
@@ -1264,9 +1264,11 @@ bool32 circle_intersects_triangle_on_xz_plane(Vec3 center, real32 radius, Vec3 t
     };
     
     Vec3 projected_center = make_vec3(center.x, 0.0f, center.z);
+
+    Vec3 projected_triangle_normal = normalize(make_vec3(0.0f, triangle_normal.y, 0.0f));
     Vec3 closest_point_on_triangle = get_closest_point_on_triangle_to_coplanar_point(projected_center,
                                                                                      projected_triangle,
-                                                                                     make_vec3(0.0f, 1.0f, 0.0f));
+                                                                                     projected_triangle_normal);
     Vec3 point_to_center = projected_center - closest_point_on_triangle;
     real32 radius_squared = radius*radius;
     if (dot(point_to_center, point_to_center) > radius_squared) {

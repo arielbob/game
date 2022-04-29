@@ -159,6 +159,8 @@ namespace Player_Constants {
     Vec3 forward = make_vec3(0.0f, 0.0f, 1.0f);
     Vec3 right = make_vec3(1.0f, 0.0f, 0.0f);
     Vec3 up = make_vec3(0.0f, 1.0f, 0.0f);
+
+    real32 initial_speed = 1.0f;
 };
 
 struct Walk_State {
@@ -178,7 +180,7 @@ struct Player {
     real32 roll;
 
     real32 height;
-    real32 speed = 5.0f;
+    real32 speed = Player_Constants::initial_speed;
 
     bool32 is_grounded;
     Walk_State walk_state;
