@@ -228,54 +228,59 @@ void export_level(Allocator *allocator, Game_State *game_state, Level *level, ch
     append_string(&working_buffer, "entities {\n");
 
     // NORMAL ENTITIES
-    for (int32 i = 0; i < level->num_normal_entities; i++) {
-        Normal_Entity *entity = &level->normal_entities[i];
+    {
+        FOR_ENTRY_POINTERS(int32, Normal_Entity, level->normal_entity_table) {
+            Normal_Entity *entity = &entry->value;
 
-        append_string(&working_buffer, "type normal\n");
-        append_default_entity_info(game_state, level, &working_buffer, (Entity *) entity);
-        append_string(&working_buffer, "is_walkable ");
-        append_string(&working_buffer, entity->is_walkable ? "1" : "0");
-        append_string(&working_buffer, "\n");
+            append_string(&working_buffer, "type normal\n");
+            append_default_entity_info(game_state, level, &working_buffer, (Entity *) entity);
+            append_string(&working_buffer, "is_walkable ");
+            append_string(&working_buffer, entity->is_walkable ? "1" : "0");
+            append_string(&working_buffer, "\n");
 
-        if (i < level->num_normal_entities - 1) append_string(&working_buffer, "\n");
+            if (!is_finished(iterator)) append_string(&working_buffer, "\n");
+        }
     }
 
-    if (level->num_point_lights > 0) append_string(&working_buffer, "\n");
+    if (level->point_light_entity_table.num_entries > 0) append_string(&working_buffer, "\n");
 
     // POINT LIGHT ENTITIES
-    for (int32 i = 0; i < level->num_point_lights; i++) {
-        Point_Light_Entity *entity = &level->point_lights[i];
+    {
+        FOR_ENTRY_POINTERS(int32, Point_Light_Entity, level->point_light_entity_table) {
+            Point_Light_Entity *entity = &entry->value;
 
-        append_string(&working_buffer, "type point_light\n");
-        append_default_entity_info(game_state, level, &working_buffer, (Entity *) entity);
+            append_string(&working_buffer, "type point_light\n");
+            append_default_entity_info(game_state, level, &working_buffer, (Entity *) entity);
 
-        Marker m = begin_region();
+            Marker m = begin_region();
 
-        append_string(&working_buffer, "light_color ");
-        char *light_color_string = (char *) region_push(temp_buffer_size);
-        string_format(light_color_string, temp_buffer_size, "%f %f %f",
-                      entity->light_color.x, entity->light_color.y, entity->light_color.z);
-        append_string(&working_buffer, light_color_string);
-        append_string(&working_buffer, "\n");
+            append_string(&working_buffer, "light_color ");
+            char *light_color_string = (char *) region_push(temp_buffer_size);
+            string_format(light_color_string, temp_buffer_size, "%f %f %f",
+                          entity->light_color.x, entity->light_color.y, entity->light_color.z);
+            append_string(&working_buffer, light_color_string);
+            append_string(&working_buffer, "\n");
 
-        append_string(&working_buffer, "falloff_start ");
-        char *falloff_start_string = (char *) region_push(temp_buffer_size);
-        string_format(falloff_start_string, temp_buffer_size, "%f",
-                      entity->falloff_start);
-        append_string(&working_buffer, falloff_start_string);
-        append_string(&working_buffer, "\n");
+            append_string(&working_buffer, "falloff_start ");
+            char *falloff_start_string = (char *) region_push(temp_buffer_size);
+            string_format(falloff_start_string, temp_buffer_size, "%f",
+                          entity->falloff_start);
+            append_string(&working_buffer, falloff_start_string);
+            append_string(&working_buffer, "\n");
 
-        append_string(&working_buffer, "falloff_end ");
-        char *falloff_end_string = (char *) region_push(temp_buffer_size);
-        string_format(falloff_end_string, temp_buffer_size, "%f",
-                      entity->falloff_end);
-        append_string(&working_buffer, falloff_end_string);
-        append_string(&working_buffer, "\n");
+            append_string(&working_buffer, "falloff_end ");
+            char *falloff_end_string = (char *) region_push(temp_buffer_size);
+            string_format(falloff_end_string, temp_buffer_size, "%f",
+                          entity->falloff_end);
+            append_string(&working_buffer, falloff_end_string);
+            append_string(&working_buffer, "\n");
 
-        end_region(m);
+            end_region(m);
 
-        if (i < level->num_point_lights - 1) append_string(&working_buffer, "\n");
+            if (!is_finished(iterator)) append_string(&working_buffer, "\n");
+        }
     }
+
     append_string(&working_buffer, "}\n");
 
 
@@ -295,9 +300,11 @@ void export_level(Allocator *allocator, Game_State *game_state, Level *level, ch
   reset the hash tables
  */
 
+#if 0
 inline bool32 mesh_exists(Level *level, int32 mesh_id) {
     return hash_table_exists(level->mesh_table, mesh_id);
 }
+#endif
 
 inline bool32 material_exists(Level *level, int32 material_id) {
     return hash_table_exists(level->material_table, material_id);
@@ -347,20 +354,20 @@ int32 get_texture_id_by_name(Level *level, String texture_name) {
     return -1;
 }
 
-int32 level_add_entity(Level *level, Normal_Entity entity) {
-    assert(level->num_normal_entities < MAX_ENTITIES);
-    assert(mesh_exists(level, entity.mesh_id));
+int32 level_add_entity(Game_State *game_state, Level *level, Normal_Entity entity) {
+    assert(mesh_exists(game_state, level, entity.mesh_type, entity.mesh_id));
     //assert(material_exists(level, entity.material_id));
-    int32 entity_index = level->num_normal_entities++;
-    level->normal_entities[entity_index] = entity;
-    return entity_index;
+    int32 entity_id = level->normal_entity_table.total_added_ever;
+    hash_table_add(&level->normal_entity_table, entity_id, entity);
+    return entity_id;
 }
 
-void level_add_point_light_entity(Level *level, Point_Light_Entity entity) {
-    assert(mesh_exists(level, entity.mesh_id));
-    assert(material_exists(level, entity.material_id));
-    assert(level->num_point_lights < MAX_POINT_LIGHTS);
-    level->point_lights[level->num_point_lights++] = entity;
+int32 level_add_point_light_entity(Game_State *game_state, Level *level, Point_Light_Entity entity) {
+    assert(mesh_exists(game_state, level, entity.mesh_type, entity.mesh_id));
+    //assert(material_exists(level, entity.material_id));
+    int32 entity_id = level->point_light_entity_table.total_added_ever;
+    hash_table_add(&level->point_light_entity_table, entity_id, entity);
+    return entity_id;
 }
 
 int32 level_add_material(Level *level, Material material) {
@@ -380,31 +387,39 @@ int32 level_add_texture(Level *level, Texture texture) {
 
 // NOTE: should only be called once, or at least make sure you deallocate everything before
 void load_default_level(Game_State *game_state, Level *level) {
-    // init tables
-    level->mesh_table = make_hash_table<int32, Mesh>((Allocator *) &memory.hash_table_stack,
-                                                     HASH_TABLE_SIZE,
-                                                     &int32_equals);
-    level->material_table = make_hash_table<int32, Material>((Allocator *) &memory.hash_table_stack,
-                                                             HASH_TABLE_SIZE,
-                                                             &int32_equals);
-    level->texture_table = make_hash_table<int32, Texture>((Allocator *) &memory.hash_table_stack,
-                                                           HASH_TABLE_SIZE,
-                                                           &int32_equals);
-
-    Allocator *mesh_allocator = (Allocator *) level->mesh_arena;
+    Allocator *arena_allocator = (Allocator *) level->arena;
     Allocator *filename_allocator = (Allocator *) level->filename_pool;
     Allocator *mesh_name_allocator = (Allocator *) level->string64_pool;
     Allocator *string64_allocator = (Allocator *) level->string64_pool;
 
+    // init tables
+    level->normal_entity_table = make_hash_table<int32, Normal_Entity>(arena_allocator,
+                                                                       MAX_ENTITIES,
+                                                                       &int32_equals);
+    level->point_light_entity_table = make_hash_table<int32, Point_Light_Entity>(arena_allocator,
+                                                                                 MAX_ENTITIES,
+                                                                                 &int32_equals);
+    level->mesh_table = make_hash_table<int32, Mesh>(arena_allocator,
+                                                     HASH_TABLE_SIZE,
+                                                     &int32_equals);
+    level->material_table = make_hash_table<int32, Material>(arena_allocator,
+                                                             HASH_TABLE_SIZE,
+                                                             &int32_equals);
+    level->texture_table = make_hash_table<int32, Texture>(arena_allocator,
+                                                           HASH_TABLE_SIZE,
+                                                           &int32_equals);
+
+    
+
     // add level meshes
     Mesh mesh;
-    mesh = read_and_load_mesh(mesh_allocator,
+    mesh = read_and_load_mesh(arena_allocator,
                               make_string_buffer(filename_allocator, "blender/suzanne2.mesh", PLATFORM_MAX_PATH),
                               make_string_buffer(mesh_name_allocator, "suzanne", MESH_NAME_MAX_SIZE));
     int32 suzanne_mesh_id = level_add_mesh(level, mesh);
     AABB suzanne_mesh_aabb = mesh.aabb;
     
-    mesh = read_and_load_mesh(mesh_allocator,
+    mesh = read_and_load_mesh(arena_allocator,
                               make_string_buffer(filename_allocator, "blender/sphere.mesh", PLATFORM_MAX_PATH),
                               make_string_buffer(mesh_name_allocator, "sphere", MESH_NAME_MAX_SIZE));
     int32 sphere_mesh_id = level_add_mesh(level, mesh);
@@ -465,7 +480,7 @@ void load_default_level(Game_State *game_state, Level *level) {
     AABB primitive_cube_mesh_aabb = (get_mesh(game_state, level, Mesh_Type::PRIMITIVE, primitive_cube_mesh_id)).aabb;
     entity = make_entity(Mesh_Type::PRIMITIVE, primitive_cube_mesh_id, shiny_monkey_material_id,
                          transform, primitive_cube_mesh_aabb, true);
-    level_add_entity(level, entity);
+    level_add_entity(game_state, level, entity);
 
     transform = {};
     transform.scale = make_vec3(5.0f, 0.1f, 5.0f);
@@ -473,7 +488,7 @@ void load_default_level(Game_State *game_state, Level *level) {
     transform.rotation = make_quaternion();
     entity = make_entity(Mesh_Type::PRIMITIVE, primitive_cube_mesh_id, plane_material_id,
                          transform, primitive_cube_mesh_aabb, true);
-    level_add_entity(level, entity);
+    level_add_entity(game_state, level, entity);
 
 #if 0
     transform = {};
@@ -481,7 +496,7 @@ void load_default_level(Game_State *game_state, Level *level) {
     transform.position = make_vec3(0.0f, 1.0f, 0.0f);
     transform.rotation = make_quaternion(45.0f, y_axis);
     entity = make_entity(gizmo_arrow_mesh_id, arrow_material_id, transform);
-    level_add_entity(level, entity);
+    level_add_entity(game_state, level, entity);
 #endif
 
     transform = {};
@@ -493,7 +508,7 @@ void load_default_level(Game_State *game_state, Level *level) {
     collider.circle = make_circle_collider(transform.position, 0.51f);
     entity = make_entity(Mesh_Type::LEVEL, sphere_mesh_id, diffuse_sphere_material_id,
                          transform, sphere_mesh_aabb, collider);
-    level_add_entity(level, entity);
+    level_add_entity(game_state, level, entity);
 
     Vec3 light_color;
     Point_Light_Entity point_light_entity;
@@ -508,7 +523,7 @@ void load_default_level(Game_State *game_state, Level *level) {
                                                  light_color,
                                                  0.0f, 3.0f,
                                                  transform, primitive_cube_mesh_aabb);
-    level_add_point_light_entity(level, point_light_entity);
+    level_add_point_light_entity(game_state, level, point_light_entity);
 
     transform = {};
     transform.scale = make_vec3(0.1f, 0.1f, 0.1f);
@@ -520,18 +535,20 @@ void load_default_level(Game_State *game_state, Level *level) {
                                                  light_color,
                                                  0.0f, 5.0f,
                                                  transform, primitive_cube_mesh_aabb);
-    level_add_point_light_entity(level, point_light_entity);
+    level_add_point_light_entity(game_state, level, point_light_entity);
 }
 
 void unload_level(Level *level) {
     level->should_clear_gpu_data = true;
 
-    level->num_normal_entities = 0;
-    level->num_point_lights = 0;
-    
-    clear_arena(level->mesh_arena);
+    clear_arena(level->arena);
     clear_pool(level->string64_pool);
     clear_pool(level->filename_pool);
+
+    // technically, we don't need to reset the hash tables if we're loading in a new level and making new
+    // tables, but if we're just creating a new level, then we need to reset the tables, so we keep this.
+    hash_table_reset(&level->normal_entity_table);
+    hash_table_reset(&level->point_light_entity_table);
     hash_table_reset(&level->mesh_table);
     hash_table_reset(&level->material_table);
     hash_table_reset(&level->texture_table);
@@ -1005,10 +1022,10 @@ bool32 Level_Loader::load_temp_level(Allocator *temp_allocator, Game_State *game
                         if (should_add_new_temp_entity) {
                             switch (temp_entity_type) {
                                 case ENTITY_NORMAL: {
-                                    level_add_entity(temp_level, temp_normal_entity);
+                                    level_add_entity(game_state, temp_level, temp_normal_entity);
                                 } break;
                                 case ENTITY_POINT_LIGHT: {
-                                    level_add_point_light_entity(temp_level, temp_point_light_entity);
+                                    level_add_point_light_entity(game_state, temp_level, temp_point_light_entity);
                                 } break;
                                 default: {
                                     assert(!"Unhandled entity type.");
@@ -1057,10 +1074,10 @@ bool32 Level_Loader::load_temp_level(Allocator *temp_allocator, Game_State *game
                     if (should_add_new_temp_entity) {
                         switch (temp_entity_type) {
                             case ENTITY_NORMAL: {
-                                level_add_entity(temp_level, temp_normal_entity);
+                                level_add_entity(game_state, temp_level, temp_normal_entity);
                             } break;
                             case ENTITY_POINT_LIGHT: {
-                                level_add_point_light_entity(temp_level, temp_point_light_entity);
+                                level_add_point_light_entity(game_state, temp_level, temp_point_light_entity);
                             } break;
                             default: {
                                 assert(!"Unhandled entity type.");
@@ -1207,7 +1224,7 @@ bool32 Level_Loader::load_temp_level(Allocator *temp_allocator, Game_State *game
 
 bool32 read_and_load_level(Game_State *game_state,
                            Level *level, char *filename,
-                           Arena_Allocator *mesh_arena,
+                           Arena_Allocator *arena,
                            Pool_Allocator *string64_pool,
                            Pool_Allocator *filename_pool) {
     Marker m = begin_region();
@@ -1216,6 +1233,13 @@ bool32 read_and_load_level(Game_State *game_state,
     File_Data level_file = platform_open_and_read_file(temp_allocator, filename);
 
     Level *temp_level = (Level *) allocate(temp_allocator, sizeof(Level), true);
+    temp_level->normal_entity_table = make_hash_table<int32, Normal_Entity>(temp_allocator,
+                                                                            level->normal_entity_table.max_entries,
+                                                                            level->normal_entity_table.key_equals);
+    temp_level->point_light_entity_table = make_hash_table<int32, Point_Light_Entity>(temp_allocator,
+                                                                                      level->point_light_entity_table.max_entries,
+                                                                                      level->point_light_entity_table.key_equals);
+
     temp_level->mesh_table = make_hash_table<int32, Mesh>(temp_allocator,
                                                           level->mesh_table.max_entries,
                                                           level->mesh_table.key_equals);
@@ -1231,7 +1255,7 @@ bool32 read_and_load_level(Game_State *game_state,
     if (load_temp_level_result) {
         unload_level(level);
 
-        Allocator *level_mesh_allocator = (Allocator *) mesh_arena;
+        Allocator *level_arena_allocator = (Allocator *) arena;
         Allocator *level_string64_allocator = (Allocator *) string64_pool;
         Allocator *level_filename_allocator = (Allocator *) filename_pool;
 
@@ -1247,12 +1271,17 @@ bool32 read_and_load_level(Game_State *game_state,
                                          make_string(temp_level->name),
                                          LEVEL_NAME_MAX_SIZE);
         // set allocators
-        level->mesh_arena = mesh_arena;
+        level->arena = arena;
         level->string64_pool = string64_pool;
         level->filename_pool = filename_pool;
 
-        // NOTE: copy_hash_table
-        level->mesh_table = copy_hash_table((Allocator *) &memory.hash_table_stack, temp_level->mesh_table);
+        // copy entity tables
+        level->normal_entity_table = copy_hash_table(level_arena_allocator, temp_level->normal_entity_table);
+        level->point_light_entity_table = copy_hash_table(level_arena_allocator,
+                                                          temp_level->point_light_entity_table);
+
+        // copy and load meshes
+        level->mesh_table = copy_hash_table(level_arena_allocator, temp_level->mesh_table);
         // copy mesh strings and load all the meshes
         int32 num_checked = 0;
         Hash_Table<int32, Mesh> temp_mesh_table = temp_level->mesh_table;
@@ -1267,14 +1296,14 @@ bool32 read_and_load_level(Game_State *game_state,
                 String_Buffer mesh_filename = make_string_buffer(level_filename_allocator,
                                                                  make_string(temp_mesh.filename),
                                                                  PLATFORM_MAX_PATH);
-                Mesh mesh = read_and_load_mesh(level_mesh_allocator, mesh_filename, mesh_name);
+                Mesh mesh = read_and_load_mesh(level_arena_allocator, mesh_filename, mesh_name);
                 mesh_table.entries[i].value = mesh;
 
                 num_checked++;
             }
         }
 
-        level->texture_table = copy_hash_table((Allocator *) &memory.hash_table_stack, temp_level->texture_table);
+        level->texture_table = copy_hash_table(level_arena_allocator, temp_level->texture_table);
         // copy all the textures
         num_checked = 0;
         Hash_Table<int32, Texture> temp_texture_table = temp_level->texture_table;
@@ -1300,7 +1329,7 @@ bool32 read_and_load_level(Game_State *game_state,
             }
         }
 
-        level->material_table = copy_hash_table((Allocator *) &memory.hash_table_stack, temp_level->material_table);
+        level->material_table = copy_hash_table(level_arena_allocator, temp_level->material_table);
         // copy all the material strings
         num_checked = 0;
         Hash_Table<int32, Material> temp_material_table = temp_level->material_table;
@@ -1322,16 +1351,20 @@ bool32 read_and_load_level(Game_State *game_state,
         }
 
         // set the AABBs
-        for (int32 i = 0; i < level->num_normal_entities; i++) {
-            Normal_Entity *entity = &level->normal_entities[i];
-            Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
-            entity->transformed_aabb = transform_aabb(mesh.aabb, entity->transform);
+        {
+            FOR_ENTRY_POINTERS(int32, Normal_Entity, level->normal_entity_table) {
+                Normal_Entity *entity = &entry->value;
+                Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
+                entity->transformed_aabb = transform_aabb(mesh.aabb, entity->transform);
+            }
         }
 
-        for (int32 i = 0; i < level->num_point_lights; i++) {
-            Point_Light_Entity *entity = &level->point_lights[i];
-            Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
-            entity->transformed_aabb = transform_aabb(mesh.aabb, entity->transform);
+        {
+            FOR_ENTRY_POINTERS(int32, Point_Light_Entity, level->point_light_entity_table) {
+                Point_Light_Entity *entity = &entry->value;
+                Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
+                entity->transformed_aabb = transform_aabb(mesh.aabb, entity->transform);
+            }
         }
         
         end_region(m);

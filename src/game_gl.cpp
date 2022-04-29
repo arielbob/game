@@ -247,7 +247,14 @@
 // TODO (done): add is_walkable to levels
 // TODO (done): fix bug where you can walk on the inside face of a mesh
 
-// TODO: entity deleting (probably have to replace entity arrays with free lists or a table)
+// TODO: entity deleting (probably have to replace entity arrays with free lists or tables)
+//       - TODO (done): replace normal_entities with table
+//       - TODO (done): replace point_light_entities with table
+//       - TODO: add delete entity button
+//       - TODO: add deallocate procedure for normal_entities, nothing to deallocate really, but hash_table
+//               needs one for deletion
+
+// TODO: fix issue where gizmo appears at last location for a frame before moving when adding a new entity
 // TODO: editor undoing
 // TODO: prompt to save level if open pressed when changes have been made
 // TODO: make sure after we've added entity deleting, that when entities are deleted, if the entity was being
@@ -278,6 +285,8 @@
 //       mesh. one that holds all the triangles so that we don't have to use indices. we also might use a BVH
 //       so we don't have to check every single triangle all the time.
 // TODO: cache triangles in a new array for walkable meshes (so that we don't have to use indices array)
+
+// TODO: capsule collision and resolution with objects
 // TODO: use oriented bounding boxes for collisions with objects instead of doing capsule vs triangle
 
 // TODO: fix behaviour of going to higher triangle that's on the other side of an entity, but is inside
@@ -2661,88 +2670,99 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
     Editor_State *editor_state = &game_state->editor_state;
 
     // point lights
-    for (int32 i = 0; i < level->num_point_lights; i++) {
-        Point_Light_Entity *entity = &level->point_lights[i];
-        int32 mesh_id = entity->mesh_id;
+    {
+        FOR_ENTRY_POINTERS(int32, Point_Light_Entity, level->point_light_entity_table) {
+            Point_Light_Entity *entity = &entry->value;
+            
+            int32 mesh_id = entity->mesh_id;
 
-        Material material;
-        if (entity->material_id >= 0) {
-            material = get_material(level, entity->material_id);
-        } else {
-            material = default_material;
-        }
+            Material material;
+            if (entity->material_id >= 0) {
+                material = get_material(level, entity->material_id);
+            } else {
+                material = default_material;
+            }
 
-        gl_draw_solid_mesh(gl_state, render_state,
-                           entity->mesh_type,
-                           mesh_id, material,
-                           entity->transform);
+            gl_draw_solid_mesh(gl_state, render_state,
+                               entity->mesh_type,
+                               mesh_id, material,
+                               entity->transform);
 
-        if (editor_state->show_wireframe &&
-            editor_state->selected_entity_type == ENTITY_POINT_LIGHT &&
-            editor_state->selected_entity_index == i) {
-            gl_draw_wireframe(gl_state, render_state, entity->mesh_type, mesh_id, entity->transform);
+            if (editor_state->show_wireframe &&
+                editor_state->selected_entity_type == ENTITY_POINT_LIGHT &&
+                editor_state->selected_entity_id == entry->key) {
+                gl_draw_wireframe(gl_state, render_state, entity->mesh_type, mesh_id, entity->transform);
+            }
         }
     }
 
     glBindBuffer(GL_UNIFORM_BUFFER, gl_state->global_ubo);
     int64 ubo_offset = 0;
-    glBufferSubData(GL_UNIFORM_BUFFER, (int32 *) ubo_offset, sizeof(int32), &level->num_point_lights);
+    // TODO: marker this has to be a pointer i think (the num entries part)
+    glBufferSubData(GL_UNIFORM_BUFFER, (int32 *) ubo_offset, sizeof(int32),
+                    &level->point_light_entity_table.num_entries);
     // NOTE: not sure why we use 16 here, instead of 32, which is the size of the GL_Point_Light struct.
     //       i think we just use the aligned offset of the first member of the struct, which is a vec4, so we offset
     //       by 16 since it's the closest multiple.
     ubo_offset += 16;
 
-    for (int32 i = 0; i < level->num_point_lights; i++) {
-        // TODO: we may just want to replace position and light_color with vec4s in Point_Light_Entity.
-        //       although this would be kind of annoying since we would have to modify the Transform struct.
-        GL_Point_Light gl_point_light = {
-            make_vec4(level->point_lights[i].transform.position, 1.0f),
-            make_vec4(level->point_lights[i].light_color, 1.0f),
-            level->point_lights[i].falloff_start,
-            level->point_lights[i].falloff_end
-        };
+    {
+        FOR_VALUE_POINTERS(int32, Point_Light_Entity, level->point_light_entity_table) {
+            Point_Light_Entity *entity = value;
+            // TODO: we may just want to replace position and light_color with vec4s in Point_Light_Entity.
+            //       although this would be kind of annoying since we would have to modify the Transform struct.
+            GL_Point_Light gl_point_light = {
+                make_vec4(entity->transform.position, 1.0f),
+                make_vec4(entity->light_color, 1.0f),
+                entity->falloff_start,
+                entity->falloff_end
+            };
 
-        glBufferSubData(GL_UNIFORM_BUFFER, (int32 *) ubo_offset,
-                        sizeof(GL_Point_Light), &gl_point_light);
-        ubo_offset += sizeof(GL_Point_Light) + 8; // add 8 bytes of padding so that it aligns to size of vec4
+            glBufferSubData(GL_UNIFORM_BUFFER, (int32 *) ubo_offset,
+                            sizeof(GL_Point_Light), &gl_point_light);
+            ubo_offset += sizeof(GL_Point_Light) + 8; // add 8 bytes of padding so that it aligns to size of vec4
+        }
     }
 
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
     // entities
-    for (int32 i = 0; i < level->num_normal_entities; i++) {
-        Normal_Entity *entity = &level->normal_entities[i];
-        int32 mesh_id = entity->mesh_id;
+    {
+        FOR_ENTRY_POINTERS(int32, Normal_Entity, level->normal_entity_table) {
+            Normal_Entity *entity = &entry->value;
 
-        Material material;
-        if (entity->material_id >= 0) {
-            material = get_material(level, entity->material_id);
-        } else {
-            material = default_material;
-        }
+            int32 mesh_id = entity->mesh_id;
 
-        gl_draw_mesh(gl_state, render_state,
-                     entity->mesh_type,
-                     mesh_id, material,
-                     entity->transform);
+            Material material;
+            if (entity->material_id >= 0) {
+                material = get_material(level, entity->material_id);
+            } else {
+                material = default_material;
+            }
 
-        if (game_state->mode == Game_Mode::EDITING &&
-            editor_state->show_wireframe &&
-            editor_state->selected_entity_type == ENTITY_NORMAL &&
-            editor_state->selected_entity_index == i) {
-            gl_draw_wireframe(gl_state, render_state, entity->mesh_type, mesh_id, entity->transform);
-        }
+            gl_draw_mesh(gl_state, render_state,
+                         entity->mesh_type,
+                         mesh_id, material,
+                         entity->transform);
 
-        if (game_state->mode == Game_Mode::EDITING &&
-            editor_state->show_colliders) {
-            gl_draw_collider(gl_state, render_state, entity->collider);
+            if (game_state->mode == Game_Mode::EDITING &&
+                editor_state->show_wireframe &&
+                editor_state->selected_entity_type == ENTITY_NORMAL &&
+                editor_state->selected_entity_id == entry->key) {
+                gl_draw_wireframe(gl_state, render_state, entity->mesh_type, mesh_id, entity->transform);
+            }
+
+            if (game_state->mode == Game_Mode::EDITING &&
+                editor_state->show_colliders) {
+                gl_draw_collider(gl_state, render_state, entity->collider);
+            }
         }
     }
 
     glBindFramebuffer(GL_FRAMEBUFFER, gl_state->gizmo_framebuffer.fbo);
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    if (game_state->mode == Game_Mode::EDITING && editor_state->selected_entity_index >= 0) {
+    if (game_state->mode == Game_Mode::EDITING && editor_state->selected_entity_id >= 0) {
         gl_draw_gizmo(gl_state, render_state, editor_state);
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);

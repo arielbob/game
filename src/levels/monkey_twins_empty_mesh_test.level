@@ -82,7 +82,7 @@ material "arrow_material"
 position -0.247847 0.062218 -0.176115
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 0.500000 0.500000 0.500000
-is_walkable 0
+is_walkable 1
 
 type normal
 mesh "suzanne"

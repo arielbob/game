@@ -11,13 +11,16 @@ struct Game_State;
 struct Level {
     String_Buffer name;
 
-    int32 num_normal_entities;
-    Normal_Entity normal_entities[MAX_ENTITIES];
+    Hash_Table<int32, Normal_Entity> normal_entity_table;
+    Hash_Table<int32, Point_Light_Entity> point_light_entity_table;
 
-    int32 num_point_lights;
-    Point_Light_Entity point_lights[MAX_POINT_LIGHTS];
+    //int32 num_normal_entities;
+    //Normal_Entity normal_entities[MAX_ENTITIES];
 
-    Arena_Allocator *mesh_arena;
+    //int32 num_point_lights;
+    //Point_Light_Entity point_lights[MAX_POINT_LIGHTS];
+
+    Arena_Allocator *arena;
     Pool_Allocator *string64_pool;
     Pool_Allocator *filename_pool;
 

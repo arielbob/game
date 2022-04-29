@@ -45,7 +45,7 @@ struct Memory {
     Arena_Allocator mesh_arena;
     Arena_Allocator frame_arena;
 
-    Arena_Allocator level_mesh_arena;
+    Arena_Allocator level_arena;
     Pool_Allocator level_string64_pool;
     Pool_Allocator level_filename_pool;
 

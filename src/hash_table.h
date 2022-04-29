@@ -5,6 +5,18 @@
 
 #define HASH_TABLE_SIZE 64
 
+#define FOR_ENTRY_POINTERS(key_type, value_type, hash_table)            \
+    Hash_Table_Iterator<key_type, value_type> iterator = make_hash_table_iterator(hash_table); \
+    for (Hash_Table_Entry<key_type, value_type> *entry = get_next_entry_pointer(&iterator); \
+         entry != NULL;                                                 \
+         entry = get_next_entry_pointer(&iterator))                     \
+
+#define FOR_VALUE_POINTERS(key_type, value_type, hash_table)            \
+    Hash_Table_Iterator<key_type, value_type> iterator = make_hash_table_iterator(hash_table); \
+    for (value_type *value = get_next_value_pointer(&iterator); \
+         value != NULL;                                                 \
+         value = get_next_value_pointer(&iterator))                     \
+
 bool32 int32_equals(int32 a, int32 b) {
     return a == b;
 }
@@ -68,6 +80,29 @@ Hash_Table_Entry<Key_Type, Value_Type> *get_next_entry_pointer(Hash_Table_Iterat
             iterator->index++;
 
             return entry_pointer;
+        }
+
+        iterator->index++;
+    }
+
+    return NULL;
+}
+
+template <class Key_Type, class Value_Type>
+Value_Type *get_next_value_pointer(Hash_Table_Iterator<Key_Type, Value_Type> *iterator) {
+    Hash_Table<Key_Type, Value_Type> hash_table = iterator->hash_table;
+    if ((iterator->index >= hash_table.max_entries) || (iterator->num_checked >= hash_table.num_entries)) {
+        return NULL;
+    }
+
+    while ((iterator->index < hash_table.max_entries) &&
+           (iterator->num_checked < hash_table.num_entries)) {
+        Hash_Table_Entry<Key_Type, Value_Type> *entry_pointer = &hash_table.entries[iterator->index];
+        if (entry_pointer->is_occupied) {
+            iterator->num_checked++;
+            iterator->index++;
+
+            return &entry_pointer->value;
         }
 
         iterator->index++;

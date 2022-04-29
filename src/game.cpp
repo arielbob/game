@@ -193,6 +193,22 @@ int32 get_mesh_id_by_name(Game_State *game_state, Level *level, Mesh_Type mesh_t
 }
 
 
+bool32 mesh_exists(Game_State *game_state, Level *level, Mesh_Type mesh_type, int32 mesh_id) {
+    bool32 mesh_exists = false;
+    switch (mesh_type) {
+        case Mesh_Type::LEVEL: {
+            mesh_exists = hash_table_exists(level->mesh_table, mesh_id);
+        } break;
+        case Mesh_Type::PRIMITIVE: {
+            mesh_exists = hash_table_exists(game_state->primitive_mesh_table, mesh_id);
+        } break;
+        default: {
+            assert(!"Unhandled mesh type.");
+        } break;
+    }
+    return mesh_exists;
+}
+
 Mesh get_mesh(Game_State *game_state, Level *level, Mesh_Type mesh_type, int32 mesh_id) {
     Mesh mesh = {};
     bool32 mesh_exists = false;
@@ -389,7 +405,7 @@ void init_game(Game_State *game_state,
     editor_state->gizmo.arrow_mesh_id = gizmo_arrow_mesh_id;
     editor_state->gizmo.ring_mesh_id = gizmo_ring_mesh_id;
     editor_state->gizmo.sphere_mesh_id = gizmo_sphere_mesh_id;
-    editor_state->selected_entity_index = -1;
+    editor_state->selected_entity_id = -1;
     editor_state->show_wireframe = true;
     editor_state->open_window_flags = 0;
     editor_state->is_new_level = true;
@@ -411,7 +427,7 @@ void init_game(Game_State *game_state,
     // init level
     Level *current_level = &game_state->current_level;
     current_level->name = make_string_buffer((Allocator *) &memory.level_string64_pool, LEVEL_NAME_MAX_SIZE);
-    current_level->mesh_arena = &memory.level_mesh_arena;
+    current_level->arena = &memory.level_arena;
     current_level->string64_pool = &memory.level_string64_pool;
     current_level->filename_pool = &memory.level_filename_pool;
     load_default_level(game_state, &game_state->current_level);
@@ -700,10 +716,10 @@ bool32 get_new_walk_state(Game_State *game_state, Walk_State current_walk_state,
     Vec3 triangle_normal = make_vec3();
     bool32 found_walkable_point = false;
     Entity_Type ground_entity_type = ENTITY_NONE;
-    int32 ground_entity_index = -1;
+    int32 ground_entity_id = -1;
 
-    for (int32 i = 0; i < level->num_normal_entities; i++) {
-        Normal_Entity *entity = &level->normal_entities[i];
+    FOR_ENTRY_POINTERS(int32, Normal_Entity, level->normal_entity_table) {
+        Normal_Entity *entity = &entry->value;
         if (entity->is_walkable) {
             Mesh *mesh = get_mesh_pointer(game_state, level, entity->mesh_type, entity->mesh_id);
             Get_Walkable_Triangle_On_Mesh_Result result;
@@ -719,7 +735,7 @@ bool32 get_new_walk_state(Game_State *game_state, Walk_State current_walk_state,
                 triangle_normal = result.triangle_normal;
 
                 ground_entity_type = entity->type;
-                ground_entity_index = i;
+                ground_entity_id = entry->key;
                 
                 found_walkable_point = true;
             }
@@ -730,7 +746,7 @@ bool32 get_new_walk_state(Game_State *game_state, Walk_State current_walk_state,
         walk_state_result->triangle_normal = triangle_normal;
         walk_state_result->triangle_index = triangle_index;
         walk_state_result->ground_entity_type = ground_entity_type;
-        walk_state_result->ground_entity_index = ground_entity_index;
+        walk_state_result->ground_entity_id = ground_entity_id;
         *grounded_position = highest_point;
 
 #if 1
@@ -756,17 +772,25 @@ void update_render_state(Render_State *render_state) {
     render_state->ortho_clip_matrix = ortho_clip_matrix;
 }
 
-Entity *get_entity(Level *level, Entity_Type entity_type, int32 entity_index) {
+Entity *get_entity(Level *level, Entity_Type entity_type, int32 entity_id) {
     Entity *entity = NULL;
 
     switch (entity_type) {
         case ENTITY_NORMAL:
         {
-            entity = (Entity *) &level->normal_entities[entity_index];
+            Normal_Entity *normal_entity;
+            bool32 found = hash_table_find_pointer(level->normal_entity_table,
+                                                   entity_id, &normal_entity);
+            assert(found);
+            entity = (Entity *) normal_entity;
         } break;
         case ENTITY_POINT_LIGHT:
         {
-            entity = (Entity *) &level->point_lights[entity_index];
+            Point_Light_Entity *point_light_entity;
+            bool32 found = hash_table_find_pointer(level->point_light_entity_table,
+                                                   entity_id, &point_light_entity);
+            assert(found);
+            entity = (Entity *) point_light_entity;
         } break;
         default: {
             assert(!"Unhandled entity type.");
@@ -780,7 +804,7 @@ Entity *get_selected_entity(Game_State *game_state) {
     Editor_State *editor_state = &game_state->editor_state;
 
     
-    int32 index = editor_state->selected_entity_index;
+    int32 index = editor_state->selected_entity_id;
 
     Level *level = &game_state->current_level;
 
@@ -841,16 +865,16 @@ void check_player_collisions(Game_State *game_state) {
                                player->position + make_vec3(0.0f, player->height, 0.0f),
                                1.0f };
 
-    for (int32 i = 0; i < level->num_normal_entities; i++) {
-        Normal_Entity *entity = &level->normal_entities[i];
-        if (!entity->is_walkable) {
-            Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
-            if (capsule_intersects_mesh(player_capsule, mesh, entity->transform)) {
-                char *buf = string_format((Allocator *) &memory.frame_arena, 128,
-                                          "capsule is intersecting: %s",
-                                          to_char_array((Allocator *) &memory.frame_arena, mesh.name));
-                do_text(&game_state->ui_manager, 5.0f, 650.0f, buf, "calibri14", "capsule_intersecting_mesh");
-            }
+        
+        
+    FOR_VALUE_POINTERS(int32, Normal_Entity, level->normal_entity_table) {
+        Normal_Entity *entity = value;
+        Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
+        if (capsule_intersects_mesh(player_capsule, mesh, entity->transform)) {
+            char *buf = string_format((Allocator *) &memory.frame_arena, 128,
+                                      "capsule is intersecting: %s",
+                                      to_char_array((Allocator *) &memory.frame_arena, mesh.name));
+            do_text(&game_state->ui_manager, 5.0f, 650.0f, buf, "calibri14", "capsule_intersecting_mesh");
         }
     }
 }
@@ -943,7 +967,7 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
         player->is_grounded = true;
         
         Entity *entity = get_entity(&game_state->current_level,
-                                    new_walk_state.ground_entity_type, new_walk_state.ground_entity_index);
+                                    new_walk_state.ground_entity_type, new_walk_state.ground_entity_id);
         Mesh *mesh = get_mesh_pointer(game_state, &game_state->current_level,
                                       entity->mesh_type, entity->mesh_id);
 

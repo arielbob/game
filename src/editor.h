@@ -67,10 +67,10 @@ struct Editor_State {
 
     bool32 use_freecam;
     
-    int32 selected_entity_index;
+    int32 selected_entity_id;
     Entity_Type selected_entity_type;
 
-    int32 last_selected_entity_index;
+    int32 last_selected_entity_id;
     Entity_Type last_selected_entity_type;
 
     Gizmo gizmo;

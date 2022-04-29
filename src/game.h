@@ -167,7 +167,7 @@ struct Walk_State {
     Vec3 triangle_normal;
     int32 triangle_index;
     Entity_Type ground_entity_type;
-    int32 ground_entity_index;
+    int32 ground_entity_id;
 };
 
 struct Player {
@@ -259,6 +259,7 @@ Font get_font(Game_State *game_state, char *font_name);
 //int32 add_mesh(Game_State *game_state, Mesh mesh);
 Mesh get_common_mesh(Game_State *game_state, int32 mesh_id);
 Mesh get_mesh(Game_State *game_state, Level *level, Mesh_Type mesh_type, int32 mesh_id);
+bool32 mesh_exists(Game_State *game_state, Level *level, Mesh_Type mesh_type, int32 mesh_id);
 int32 get_mesh_id_by_name(Game_State *game_state, Level *level, Mesh_Type mesh_type, String mesh_name);
 Mesh *get_mesh_pointer(Game_State *game_state, Level *level, Mesh_Type mesh_type, int32 mesh_id);
 void set_entity_mesh(Game_State *game_state, Level *level, Entity *entity, Mesh_Type mesh_type, int32 mesh_id);

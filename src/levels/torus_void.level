@@ -1,0 +1,28 @@
+level_info {
+level_name "torus_void"
+}
+
+meshes {
+mesh "suzanne" ".\blender\suzanne2.mesh"
+mesh "torus" ".\blender\torus.mesh"
+}
+
+textures {
+}
+
+materials {
+material "New Material"
+gloss 50.000000
+color_override 1.000000 1.000000 1.000000
+use_color_override 1
+}
+
+entities {
+type normal
+mesh "torus"
+material "New Material"
+position 2.856280 1.561484 0.000000
+rotation 0.907722 0.000000 0.419571 0.000000
+scale 1.000000 1.000000 1.000000
+is_walkable 1
+}

@@ -26,14 +26,14 @@ char *editor_font_name = "calibri14";
 
 // for comparing current to new
 bool32 selected_entity_changed(Editor_State *editor_state,
-                               int32 new_entity_index, Entity_Type new_entity_type) {
-    return ((new_entity_index != editor_state->selected_entity_index) ||
+                               int32 new_entity_id, Entity_Type new_entity_type) {
+    return ((new_entity_id != editor_state->selected_entity_id) ||
             (new_entity_type != editor_state->selected_entity_type));
 }
 
 // for comparing last to current
 bool32 selected_entity_changed(Editor_State *editor_state) {
-    return ((editor_state->selected_entity_index != editor_state->last_selected_entity_index) ||
+    return ((editor_state->selected_entity_id != editor_state->last_selected_entity_id) ||
             (editor_state->selected_entity_type != editor_state->last_selected_entity_type));
 }
 
@@ -1183,7 +1183,7 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
                                               editor_font_name, "new_level");
     if (new_level_clicked) {
         new_level(&game_state->current_level);
-        editor_state->selected_entity_index = -1;
+        editor_state->selected_entity_id = -1;
         editor_state->is_new_level = true;
     }
 
@@ -1204,13 +1204,13 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
                                       PLATFORM_MAX_PATH)) {
             bool32 result = read_and_load_level(game_state,
                                                 &game_state->current_level, absolute_filename,
-                                                &memory.level_mesh_arena,
+                                                &memory.level_arena,
                                                 &memory.level_string64_pool,
                                                 &memory.level_filename_pool);
             if (result) {
                 editor_state->is_new_level = false;
                 copy_string(&editor_state->current_level_filename, make_string(absolute_filename));
-                editor_state->selected_entity_index = -1;
+                editor_state->selected_entity_id = -1;
             }
         }
 
@@ -1316,7 +1316,7 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
     UI_Manager *ui_manager = &game_state->ui_manager;
     Render_State *render_state = &game_state->render_state;
 
-    if (editor_state->selected_entity_index >= 0) {
+    if (editor_state->selected_entity_id >= 0) {
         Entity *selected_entity = get_selected_entity(game_state);
         draw_entity_box(game_state, controller_state, selected_entity);
 
@@ -1393,9 +1393,9 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
         
         Normal_Entity new_entity = make_entity(Mesh_Type::PRIMITIVE, mesh_id, -1, make_transform(),
                                                primitive_cube_mesh_aabb);
-        int32 entity_id = level_add_entity(&game_state->current_level, new_entity);
+        int32 entity_id = level_add_entity(game_state, &game_state->current_level, new_entity);
         editor_state->selected_entity_type = ENTITY_NORMAL;
-        editor_state->selected_entity_index = entity_id;
+        editor_state->selected_entity_id = entity_id;
     }
 
     bool32 toggle_colliders_clicked = do_text_button(render_state->display_output.width - sidebar_button_width, y,
@@ -1418,22 +1418,26 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
                 buf, editor_font_name, default_text_style, "editor_current_level_filename");
     }
 
+#if 0
     Vec3 closest_point_below = make_vec3();
     bool32 found_closest_point = false;
     Vec3 camera_position = render_state->camera.position;
     Level *level = &game_state->current_level;
-    for (int32 i = 0; i < level->num_normal_entities; i++) {
-        Normal_Entity *entity = &level->normal_entities[i];
-        if (entity->is_walkable) {
-            Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
-            Vec3 result;
-            if (closest_point_below_on_mesh(camera_position, mesh, entity->transform, &result)) {
-                if (!found_closest_point) {
-                    closest_point_below = result;
-                    found_closest_point = true;
-                } else {
-                    if (result.y > closest_point_below.y) {
+
+    {
+        FOR_VALUE_POINTERS(int32, Normal_Entity, level->normal_entity_table) {
+            Normal_Entity *entity = value;
+            if (entity->is_walkable) {
+                Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
+                Vec3 result;
+                if (closest_point_below_on_mesh(camera_position, mesh, entity->transform, &result)) {
+                    if (!found_closest_point) {
                         closest_point_below = result;
+                        found_closest_point = true;
+                    } else {
+                        if (result.y > closest_point_below.y) {
+                            closest_point_below = result;
+                        }
                     }
                 }
             }
@@ -1456,6 +1460,7 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
     do_text(ui_manager,
             5.0f, render_state->display_output.height - 16.0f,
             buf, editor_font_name, default_text_style, "highest_triangle_point_below");
+#endif
 }
 
 int32 pick_entity(Game_State *game_state, Ray cursor_ray, Entity *entity_result, int32 *index_result) {
@@ -1464,44 +1469,49 @@ int32 pick_entity(Game_State *game_state, Ray cursor_ray, Entity *entity_result,
     Level *level = &game_state->current_level;
 
     Hash_Table<int32, Mesh> mesh_table = level->mesh_table;
-    Normal_Entity *normal_entities = level->normal_entities;
-    Point_Light_Entity *point_lights = level->point_lights;
 
     Entity *picked_entity = NULL;
-    int32 entity_index = -1;
+    //int32 entity_id = -1;
+    int32 entity_id = -1;
 
     real32 t_min = FLT_MAX;
-    for (int32 i = 0; i < level->num_normal_entities; i++) {
+    {
         real32 aabb_t;
-        Normal_Entity *entity = &normal_entities[i];
-        Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
-        if (ray_intersects_aabb(cursor_ray, entity->transformed_aabb, &aabb_t) && (aabb_t < t_min)) {
-            Ray_Intersects_Mesh_Result result;
-            if (ray_intersects_mesh(cursor_ray, mesh, entity->transform, true, &result) && (result.t < t_min)) {
-                t_min = result.t;
-                entity_index = i;
-                picked_entity = (Entity *) entity;
+        FOR_ENTRY_POINTERS(int32, Normal_Entity, level->normal_entity_table) {
+            Normal_Entity *entity = &entry->value;
+            Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
+            if (ray_intersects_aabb(cursor_ray, entity->transformed_aabb, &aabb_t) && (aabb_t < t_min)) {
+                Ray_Intersects_Mesh_Result result;
+                if (ray_intersects_mesh(cursor_ray, mesh, entity->transform, true, &result) &&
+                    (result.t < t_min)) {
+                    t_min = result.t;
+                    entity_id = entry->key;
+                    picked_entity = (Entity *) entity;
+                }
             }
         }
     }
 
-    for (int32 i = 0; i < level->num_point_lights; i++) {
+    {
         real32 aabb_t;
-        Point_Light_Entity *entity = &point_lights[i];
-        Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
-        if (ray_intersects_aabb(cursor_ray, entity->transformed_aabb, &aabb_t) && (aabb_t < t_min)) {
-            Ray_Intersects_Mesh_Result result;
-            if (ray_intersects_mesh(cursor_ray, mesh, entity->transform, true, &result) && (result.t < t_min)) {
-                t_min = result.t;
-                entity_index = i;
-                picked_entity = (Entity *) entity;
+        FOR_ENTRY_POINTERS(int32, Point_Light_Entity, level->point_light_entity_table) {
+            Point_Light_Entity *entity = &entry->value;
+            Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
+            if (ray_intersects_aabb(cursor_ray, entity->transformed_aabb, &aabb_t) && (aabb_t < t_min)) {
+                Ray_Intersects_Mesh_Result result;
+                if (ray_intersects_mesh(cursor_ray, mesh, entity->transform, true, &result) &&
+                    (result.t < t_min)) {
+                    t_min = result.t;
+                    entity_id = entry->key;
+                    picked_entity = (Entity *) entity;
+                }
             }
         }
     }
 
-    if (entity_index >= 0) {
+    if (entity_id >= 0) {
         *entity_result = *picked_entity;
-        *index_result = entity_index;
+        *index_result = entity_id;
         return true;
     }
 
@@ -1736,7 +1746,7 @@ void update_editor_camera(Camera *camera, Controller_State *controller_state,
 
 void update_gizmo(Game_State *game_state) {
     Editor_State *editor_state = &game_state->editor_state;
-    if (editor_state->selected_entity_index < 0) return;
+    if (editor_state->selected_entity_id < 0) return;
 
     Camera *camera = &game_state->render_state.camera;
     real32 gizmo_scale_factor = distance(editor_state->gizmo.transform.position - camera->position) /
@@ -1788,30 +1798,30 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
         !editor_state->use_freecam && was_clicked(controller_state->left_mouse)) {
         if (!editor_state->selected_gizmo_handle) {
             Entity entity;
-            int32 entity_index;
-            bool32 picked = pick_entity(game_state, cursor_ray, &entity, &entity_index);
+            int32 entity_id;
+            bool32 picked = pick_entity(game_state, cursor_ray, &entity, &entity_id);
             
             if (picked) {
-                if (selected_entity_changed(editor_state, entity_index, entity.type)) {
+                if (selected_entity_changed(editor_state, entity_id, entity.type)) {
                     editor_state->last_selected_entity_type = editor_state->selected_entity_type;
-                    editor_state->last_selected_entity_index = editor_state->selected_entity_index;
+                    editor_state->last_selected_entity_id = editor_state->selected_entity_id;
 
                     editor_state->selected_entity_type = entity.type;
-                    editor_state->selected_entity_index = entity_index;
+                    editor_state->selected_entity_id = entity_id;
 
                     editor_state->gizmo.transform = entity.transform;
 
                     reset_entity_editors(editor_state);
                 }
             } else {
-                editor_state->selected_entity_index = -1;
+                editor_state->selected_entity_id = -1;
             }
         }
     }
 
     update_gizmo(game_state);
 
-    if (editor_state->selected_entity_index >= 0 &&
+    if (editor_state->selected_entity_id >= 0 &&
         !ui_has_hot(ui_manager) &&
         !editor_state->selected_gizmo_handle) {
 
@@ -1857,7 +1867,8 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
 
     update_gizmo(game_state);
 
-    if (editor_state->selected_entity_index >= 0) {
+#if 0
+    if (editor_state->selected_entity_id >= 0) {
         Level *level = &game_state->current_level;
         Entity *entity = get_selected_entity(game_state);
         if (entity->type == ENTITY_NORMAL) {
@@ -1870,8 +1881,10 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
                 Vec3 triangle_normal;
                 bool32 found_walkable_point = false;
 
-                for (int32 i = 0; i < level->num_normal_entities; i++) {
-                    Normal_Entity *e = &level->normal_entities[i];
+                Hash_Table_Iterator<int32, Normal_Entity> iterator =
+                    make_hash_table_iterator(level->normal_entity_table);
+                Normal_Entity *e;
+                while (e = get_next_value_pointer(&iterator)) {
                     if (e->is_walkable) {
                         Mesh *mesh = get_mesh_pointer(game_state, level, e->mesh_type, e->mesh_id);
                         Get_Walkable_Triangle_On_Mesh_Result result;
@@ -1889,6 +1902,7 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
                         }
                     }
                 }
+
                 if (found_walkable_point) {
                     add_debug_line(&game_state->debug_state, entity->transform.position, highest_point,
                                    make_vec4(1.0f, 1.0f, 0.0f, 1.0f));
@@ -1896,4 +1910,5 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
             }
         }
     }
+#endif
 }

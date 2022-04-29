@@ -692,7 +692,7 @@ bool32 win32_init_memory() {
     uint32 filename_pool_size = MEGABYTES(8);
 
     // level memory
-    uint32 level_mesh_arena_size = MEGABYTES(64);
+    uint32 level_arena_size = MEGABYTES(64);
     uint32 level_string64_pool_size = MEGABYTES(64);
     uint32 level_filename_pool_size = MEGABYTES(64);
 
@@ -705,7 +705,7 @@ bool32 win32_init_memory() {
                                 frame_arena_size +
                                 string64_pool_size +
                                 filename_pool_size +
-                                level_mesh_arena_size +
+                                level_arena_size +
                                 level_string64_pool_size +
                                 level_filename_pool_size);
     void *memory_base = VirtualAlloc(0, total_memory_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
@@ -748,8 +748,8 @@ bool32 win32_init_memory() {
         memory.filename_pool = filename_pool;
         base = (uint8 *) base + filename_pool_size;
 
-        memory.level_mesh_arena = make_arena_allocator(base, level_mesh_arena_size);
-        base = (uint8 *) base + level_mesh_arena_size;
+        memory.level_arena = make_arena_allocator(base, level_arena_size);
+        base = (uint8 *) base + level_arena_size;
 
         memory.level_string64_pool = make_pool_allocator(base, 64, level_string64_pool_size);
         base = (uint8 *) base + level_string64_pool_size;
