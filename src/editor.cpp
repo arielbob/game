@@ -1402,13 +1402,13 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
 
     y += 120.0f;
 
-    bool32 add_entity_clicked = do_text_button(render_state->display_output.width - sidebar_button_width, y,
+    bool32 add_normal_entity_clicked = do_text_button(render_state->display_output.width - sidebar_button_width, y,
                                                sidebar_button_width, button_height,
                                                default_text_button_style, default_text_style,
-                                               "Add Entity",
+                                               "Add Normal Entity",
                                                button_font_name, "add_entity");
     y += button_height + button_gap;
-    if (add_entity_clicked) {
+    if (add_normal_entity_clicked) {
         int32 mesh_id = get_mesh_id_by_name(game_state,
                                             &game_state->current_level,
                                             Mesh_Type::PRIMITIVE,
@@ -1420,6 +1420,29 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
                                                primitive_cube_mesh_aabb);
         int32 entity_id = level_add_entity(game_state, &game_state->current_level, new_entity);
         editor_state->selected_entity_type = ENTITY_NORMAL;
+        editor_state->selected_entity_id = entity_id;
+    }
+
+    bool32 add_point_light_entity_clicked = do_text_button(render_state->display_output.width - sidebar_button_width, y,
+                                                      sidebar_button_width, button_height,
+                                                      default_text_button_style, default_text_style,
+                                                      "Add Point Light Entity",
+                                                      button_font_name, "add_point_light_entity");
+    y += button_height + button_gap;
+    if (add_point_light_entity_clicked) {
+        int32 mesh_id = get_mesh_id_by_name(game_state,
+                                            &game_state->current_level,
+                                            Mesh_Type::PRIMITIVE,
+                                            make_string("cube"));
+        AABB primitive_cube_mesh_aabb = (get_mesh(game_state, &game_state->current_level,
+                                                  Mesh_Type::PRIMITIVE, mesh_id)).aabb;
+        
+        Point_Light_Entity new_entity = make_point_light_entity(Mesh_Type::PRIMITIVE, mesh_id, -1,
+                                                                make_vec3(1.0f, 1.0f, 1.0f),
+                                                                0.0f, 5.0f, make_transform(),
+                                                                primitive_cube_mesh_aabb);
+        int32 entity_id = level_add_point_light_entity(game_state, &game_state->current_level, new_entity);
+        editor_state->selected_entity_type = new_entity.type;
         editor_state->selected_entity_id = entity_id;
     }
 

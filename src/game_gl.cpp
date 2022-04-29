@@ -254,6 +254,9 @@
 //       - TODO (done): add deallocate procedures for entities, nothing to deallocate really, but hash_table
 //                      needs one for deletion
 
+// TODO (done): be able to add point light entities
+// TODO: show lights as a light icon, so that they're easier to click on
+
 // TODO: fix issue where gizmo appears at last location for a frame before moving when adding a new entity
 // TODO: editor undoing
 // TODO: prompt to save level if open pressed when changes have been made
@@ -270,7 +273,8 @@
 //       - TODO: translation on a plane (little squares on the planes of the gizmo)
 //       - TODO: bigger hitboxes on the controls or just scale the meshes
 //       - TODO: maybe just draw lines for the rotation handles; i'm not sure why the 
-// TODO: maybe show lights as a light icon, so that they're easier to click on
+
+// TODO: mesh parenting
 
 // TODO: texture creation
 // TODO: we can just add a star to the filename if a change has been made and needs to be saved
@@ -323,6 +327,7 @@
 // TODO: for checking for memory leaks, it's actually kind of unreliable to use task manager, since we just take
 //       a bunch of memory at the beginning and allocate from that. it would be better if we had an actual
 //       memory monitoring gui.
+// TODO: show message if we've hit a limit, such as with adding entities
 
 // TODO: text truncation when its containing box is too small
 // TODO: don't allow quotes or brackets in any level strings, i.e. in level name, texture name, material name, etc.
