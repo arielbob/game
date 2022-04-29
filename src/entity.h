@@ -121,4 +121,12 @@ Point_Light_Entity make_point_light_entity(Mesh_Type mesh_type, int32 mesh_id,
     return entity;
 }
 
+void deallocate(Normal_Entity entity) {
+    // nothing to deallocate for now
+}
+
+void deallocate(Point_Light_Entity entity) {
+    // nothing to deallocate for now
+}
+
 #endif

@@ -362,6 +362,22 @@ int32 level_add_entity(Game_State *game_state, Level *level, Normal_Entity entit
     return entity_id;
 }
 
+int32 level_delete_entity(Level *level, Entity_Type type, int32 id) {
+    switch (type) {
+        case ENTITY_NORMAL: {
+            hash_table_remove(&level->normal_entity_table, id);
+        } break;
+        case ENTITY_POINT_LIGHT: {
+            hash_table_remove(&level->point_light_entity_table, id);
+        } break;
+        default: {
+            assert(!"Unhandled entity type");
+        } break;
+    }
+
+    return id;
+}
+
 int32 level_add_point_light_entity(Game_State *game_state, Level *level, Point_Light_Entity entity) {
     assert(mesh_exists(game_state, level, entity.mesh_type, entity.mesh_id));
     //assert(material_exists(level, entity.material_id));

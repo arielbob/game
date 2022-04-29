@@ -247,12 +247,12 @@
 // TODO (done): add is_walkable to levels
 // TODO (done): fix bug where you can walk on the inside face of a mesh
 
-// TODO: entity deleting (probably have to replace entity arrays with free lists or tables)
+// TODO (done): entity deleting (probably have to replace entity arrays with free lists or tables)
 //       - TODO (done): replace normal_entities with table
 //       - TODO (done): replace point_light_entities with table
-//       - TODO: add delete entity button
-//       - TODO: add deallocate procedure for normal_entities, nothing to deallocate really, but hash_table
-//               needs one for deletion
+//       - TODO (done): add delete entity button
+//       - TODO (done): add deallocate procedures for entities, nothing to deallocate really, but hash_table
+//                      needs one for deletion
 
 // TODO: fix issue where gizmo appears at last location for a frame before moving when adding a new entity
 // TODO: editor undoing

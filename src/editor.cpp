@@ -24,6 +24,11 @@ char *editor_font_name_bold = "courier16b";
 char *editor_font_name = "calibri14";
 #endif
 
+void deselect_entity(Editor_State *editor_state) {
+    editor_state->selected_entity_type = ENTITY_NONE;
+    editor_state->selected_entity_id = -1;
+}
+
 // for comparing current to new
 bool32 selected_entity_changed(Editor_State *editor_state,
                                int32 new_entity_id, Entity_Type new_entity_type) {
@@ -1146,6 +1151,26 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         y += row_height;
         draw_row_padding(x, &y, row_width, padding_y, row_color,
                          side_flags | SIDE_BOTTOM, row_id, row_index++);
+    }
+
+    // DELETE ENTITY
+    draw_row_padding(x, &y, row_width, padding_y, row_color,
+                     side_flags, row_id, row_index++);
+    draw_row(x, y, row_width, row_height, row_color, side_flags,
+             row_id, row_index++);
+    bool32 delete_entity_pressed = do_text_button(x + padding_left, y,
+                                                  100.0f, row_height,
+                                                  default_text_button_cancel_style, default_text_style,
+                                                  "Delete Entity",
+                                                  editor_font_name,
+                                                  false,
+                                                  "entity_box_delete_entity");
+    y += row_height;
+    draw_row_padding(x, &y, row_width, padding_y, row_color,
+                     side_flags | SIDE_BOTTOM, row_id, row_index++);
+    if (delete_entity_pressed) {
+        level_delete_entity(level, editor_state->selected_entity_type, editor_state->selected_entity_id);
+        deselect_entity(editor_state);
     }
 }
 
