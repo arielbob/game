@@ -256,8 +256,8 @@
 
 // TODO (done): be able to add point light entities
 // TODO (done): show lights as a light icon
+// TODO (done): make clickable region for point light entities match the icon size
 // TODO: remove meshes and materials from point light entities
-// TODO: make clickable region for point light entities match the icon size
 
 // TODO: be able to make entities invisible (for walk meshes)
 
@@ -2772,7 +2772,8 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
                                mesh_id, material,
                                entity->transform);
 
-            if (editor_state->show_wireframe &&
+            if (game_state->mode == Game_Mode::EDITING &&
+                editor_state->show_wireframe &&
                 editor_state->selected_entity_type == ENTITY_POINT_LIGHT &&
                 editor_state->selected_entity_id == entry->key) {
                 gl_draw_wireframe(gl_state, render_state, entity->mesh_type, mesh_id, entity->transform);
@@ -2870,7 +2871,7 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
             Vec3 view_space_position = positions[i];
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             gl_draw_constant_facing_quad_view_space(gl_state, render_state,
-                                                    view_space_position, 0.4f,
+                                                    view_space_position, Editor_Constants::point_light_side_length,
                                                     gl_state->light_icon_texture_id, true);
         }
         glDepthMask(GL_TRUE);

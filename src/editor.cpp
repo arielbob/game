@@ -1519,7 +1519,6 @@ int32 pick_entity(Game_State *game_state, Ray cursor_ray, Entity *entity_result,
     Hash_Table<int32, Mesh> mesh_table = level->mesh_table;
 
     Entity *picked_entity = NULL;
-    //int32 entity_id = -1;
     int32 entity_id = -1;
 
     real32 t_min = FLT_MAX;
@@ -1540,10 +1539,37 @@ int32 pick_entity(Game_State *game_state, Ray cursor_ray, Entity *entity_result,
         }
     }
 
+    // TODO: update this since we're removing meshes from point lights
+    //       - check if it intersects a plane who's normal faces the camera. use the camera's basis to calculate
+    //         the coordiantes on the plane's coordinate space. then check if it's within a box around the
+    //         point light's position that has the same dimensions as what we draw
     {
-        real32 aabb_t;
+        //real32 aabb_t;
+        Basis camera_basis = game_state->render_state.camera.current_basis;
+        Vec3 plane_normal = -camera_basis.forward;
         FOR_ENTRY_POINTERS(int32, Point_Light_Entity, level->point_light_entity_table) {
             Point_Light_Entity *entity = &entry->value;
+            
+            real32 plane_d = dot(entity->transform.position, plane_normal);
+            real32 t;
+            if (ray_intersects_plane(cursor_ray, plane_normal, plane_d, &t)) {
+                Vec3 hit_position = cursor_ray.origin + t*cursor_ray.direction;
+                real32 plane_space_hit_x = dot(hit_position - entity->transform.position, camera_basis.right);
+                real32 plane_space_hit_y = dot(hit_position - entity->transform.position, camera_basis.up);
+
+                real32 icon_side_length = Editor_Constants::point_light_side_length;
+                real32 offset = 0.5f * icon_side_length;
+                if (plane_space_hit_x > -offset && plane_space_hit_x < offset &&
+                    plane_space_hit_y > -offset && plane_space_hit_y < offset) {
+                    if (t < t_min) {
+                        t_min = t;
+                        entity_id = entry->key;
+                        picked_entity = (Entity *) entity;
+                    }
+                }
+            }
+
+#if 0
             Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
             if (ray_intersects_aabb(cursor_ray, entity->transformed_aabb, &aabb_t) && (aabb_t < t_min)) {
                 Ray_Intersects_Mesh_Result result;
@@ -1554,6 +1580,7 @@ int32 pick_entity(Game_State *game_state, Ray cursor_ray, Entity *entity_result,
                     picked_entity = (Entity *) entity;
                 }
             }
+#endif
         }
     }
 
