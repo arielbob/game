@@ -1539,12 +1539,7 @@ int32 pick_entity(Game_State *game_state, Ray cursor_ray, Entity *entity_result,
         }
     }
 
-    // TODO: update this since we're removing meshes from point lights
-    //       - check if it intersects a plane who's normal faces the camera. use the camera's basis to calculate
-    //         the coordiantes on the plane's coordinate space. then check if it's within a box around the
-    //         point light's position that has the same dimensions as what we draw
     {
-        //real32 aabb_t;
         Basis camera_basis = game_state->render_state.camera.current_basis;
         Vec3 plane_normal = -camera_basis.forward;
         FOR_ENTRY_POINTERS(int32, Point_Light_Entity, level->point_light_entity_table) {
@@ -1568,19 +1563,6 @@ int32 pick_entity(Game_State *game_state, Ray cursor_ray, Entity *entity_result,
                     }
                 }
             }
-
-#if 0
-            Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
-            if (ray_intersects_aabb(cursor_ray, entity->transformed_aabb, &aabb_t) && (aabb_t < t_min)) {
-                Ray_Intersects_Mesh_Result result;
-                if (ray_intersects_mesh(cursor_ray, mesh, entity->transform, true, &result) &&
-                    (result.t < t_min)) {
-                    t_min = result.t;
-                    entity_id = entry->key;
-                    picked_entity = (Entity *) entity;
-                }
-            }
-#endif
         }
     }
 
