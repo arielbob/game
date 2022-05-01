@@ -91,23 +91,6 @@ void append_string_add_quotes(String_Buffer *buffer, char *string) {
 }
 
 void append_default_entity_info(Game_State *game_state, Level *level, String_Buffer *buffer, Entity *entity) {
-    if (entity->mesh_type == Mesh_Type::PRIMITIVE) {
-        append_string(buffer, "mesh_primitive ");
-    } else {
-        append_string(buffer, "mesh ");
-    }
-    
-    Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
-    append_string_add_quotes(buffer, mesh.name);
-    append_string(buffer, "\n");
-
-    if (entity->material_id >= 0) {
-        append_string(buffer, "material ");
-        Material material = get_material(level, entity->material_id);
-        append_string_add_quotes(buffer, material.name);
-        append_string(buffer, "\n");
-    }
-
     int32 temp_buffer_size = 128;
 
     Marker m = begin_region();
@@ -234,6 +217,23 @@ void export_level(Allocator *allocator, Game_State *game_state, Level *level, ch
 
             append_string(&working_buffer, "type normal\n");
             append_default_entity_info(game_state, level, &working_buffer, (Entity *) entity);
+            if (entity->mesh_type == Mesh_Type::PRIMITIVE) {
+                append_string(&working_buffer, "mesh_primitive ");
+            } else {
+                append_string(&working_buffer, "mesh ");
+            }
+    
+            Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
+            append_string_add_quotes(&working_buffer, mesh.name);
+            append_string(&working_buffer, "\n");
+
+            if (entity->material_id >= 0) {
+                append_string(&working_buffer, "material ");
+                Material material = get_material(level, entity->material_id);
+                append_string_add_quotes(&working_buffer, material.name);
+                append_string(&working_buffer, "\n");
+            }
+            
             append_string(&working_buffer, "is_walkable ");
             append_string(&working_buffer, entity->is_walkable ? "1" : "0");
             append_string(&working_buffer, "\n");
@@ -379,8 +379,6 @@ int32 level_delete_entity(Level *level, Entity_Type type, int32 id) {
 }
 
 int32 level_add_point_light_entity(Game_State *game_state, Level *level, Point_Light_Entity entity) {
-    assert(mesh_exists(game_state, level, entity.mesh_type, entity.mesh_id));
-    //assert(material_exists(level, entity.material_id));
     int32 entity_id = level->point_light_entity_table.total_added_ever;
     hash_table_add(&level->point_light_entity_table, entity_id, entity);
     return entity_id;
@@ -534,11 +532,9 @@ void load_default_level(Game_State *game_state, Level *level) {
     transform.position = make_vec3(0.8f, 1.8f, -2.3f);
     transform.rotation = make_quaternion();
     light_color = make_vec3(0.8f, 0.8f, 0.8f);
-    point_light_entity = make_point_light_entity(Mesh_Type::PRIMITIVE, primitive_cube_mesh_id,
-                                                 white_light_material_id,
-                                                 light_color,
+    point_light_entity = make_point_light_entity(light_color,
                                                  0.0f, 3.0f,
-                                                 transform, primitive_cube_mesh_aabb);
+                                                 transform);
     level_add_point_light_entity(game_state, level, point_light_entity);
 
     transform = {};
@@ -546,11 +542,9 @@ void load_default_level(Game_State *game_state, Level *level) {
     transform.position = make_vec3(-1.0f, 1.5f, 0.0f);
     transform.rotation = make_quaternion();
     light_color = make_vec3(0.0f, 0.0f, 1.0f);
-    point_light_entity = make_point_light_entity(Mesh_Type::PRIMITIVE, primitive_cube_mesh_id,
-                                                 blue_light_material_id,
-                                                 light_color,
+    point_light_entity = make_point_light_entity(light_color,
                                                  0.0f, 5.0f,
-                                                 transform, primitive_cube_mesh_aabb);
+                                                 transform);
     level_add_point_light_entity(game_state, level, point_light_entity);
 }
 
@@ -1016,10 +1010,7 @@ bool32 Level_Loader::load_temp_level(Allocator *temp_allocator, Game_State *game
                         state = WAIT_FOR_ENTITY_PROPERTY_NAME_OR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE;
                         should_add_new_temp_entity = true;
                     } else if (string_equals(token.string, "point_light")) {
-                        temp_point_light_entity = make_point_light_entity(Mesh_Type:: NONE,
-                                                                          -1, -1,
-                                                                          make_vec3(), 0.0f, 0.0f, make_transform(),
-                                                                          {});
+                        temp_point_light_entity = make_point_light_entity(make_vec3(), 0.0f, 0.0f, make_transform());
                         temp_entity_type = ENTITY_POINT_LIGHT;
                         temp_entity = (Entity *) &temp_point_light_entity;
                         state = WAIT_FOR_ENTITY_PROPERTY_NAME_OR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE;
@@ -1050,14 +1041,7 @@ bool32 Level_Loader::load_temp_level(Allocator *temp_allocator, Game_State *game
                         }
 
                         state = WAIT_FOR_ENTITY_TYPE_VALUE;
-                    } else if (string_equals(token.string, "mesh")) {
-                        state = WAIT_FOR_ENTITY_MESH_NAME_STRING;
-                        temp_entity->mesh_type = Mesh_Type::LEVEL;
-                    } else if (string_equals(token.string, "mesh_primitive")) {
-                        state = WAIT_FOR_ENTITY_MESH_NAME_STRING;
-                        temp_entity->mesh_type = Mesh_Type::PRIMITIVE;
-                    } else if (string_equals(token.string, "material")) {
-                        state = WAIT_FOR_ENTITY_MATERIAL_NAME_STRING;
+
                     } else if (string_equals(token.string, "position")) {
                         num_values_read = 0;
                         state = WAIT_FOR_ENTITY_POSITION_VEC3;
@@ -1067,9 +1051,19 @@ bool32 Level_Loader::load_temp_level(Allocator *temp_allocator, Game_State *game
                     } else if (string_equals(token.string, "scale")) {
                         num_values_read = 0;
                         state = WAIT_FOR_ENTITY_SCALE_VEC3;
-                    } else if (string_equals(token.string, "is_walkable")) {
-                        bool_to_edit = &temp_normal_entity.is_walkable;
-                        state = WAIT_FOR_ENTITY_BOOL;
+                    } else if (temp_entity_type == ENTITY_NORMAL) {
+                        if (string_equals(token.string, "mesh")) {
+                            state = WAIT_FOR_NORMAL_ENTITY_MESH_NAME_STRING;
+                            temp_normal_entity.mesh_type = Mesh_Type::LEVEL;
+                        } else if (string_equals(token.string, "mesh_primitive")) {
+                            state = WAIT_FOR_NORMAL_ENTITY_MESH_NAME_STRING;
+                            temp_normal_entity.mesh_type = Mesh_Type::PRIMITIVE;
+                        } else if (string_equals(token.string, "material")) {
+                            state = WAIT_FOR_NORMAL_ENTITY_MATERIAL_NAME_STRING;                        
+                        } else if (string_equals(token.string, "is_walkable")) {
+                            bool_to_edit = &temp_normal_entity.is_walkable;
+                            state = WAIT_FOR_ENTITY_BOOL;
+                        }
                     } else if (temp_entity_type == ENTITY_POINT_LIGHT) {
                         if (string_equals(token.string, "light_color")) {
                             num_values_read = 0;
@@ -1103,13 +1097,13 @@ bool32 Level_Loader::load_temp_level(Allocator *temp_allocator, Game_State *game
                     state = FINISHED;
                 }
             } break;
-            case WAIT_FOR_ENTITY_MESH_NAME_STRING: {
+            case WAIT_FOR_NORMAL_ENTITY_MESH_NAME_STRING: {
                 if (token.type == STRING) {
                     assert(token.string.length <= MESH_NAME_MAX_SIZE);
 
-                    int32 mesh_id = get_mesh_id_by_name(game_state, temp_level, temp_entity->mesh_type, token.string);
+                    int32 mesh_id = get_mesh_id_by_name(game_state, temp_level, temp_normal_entity.mesh_type, token.string);
                     if (mesh_id >= 0) {
-                        temp_entity->mesh_id = mesh_id;
+                        temp_normal_entity.mesh_id = mesh_id;
                         state = WAIT_FOR_ENTITY_PROPERTY_NAME_OR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE;
                     } else {
                         assert(!"Mesh not found.");
@@ -1118,13 +1112,13 @@ bool32 Level_Loader::load_temp_level(Allocator *temp_allocator, Game_State *game
                     assert(!"Expected string for entity mesh name.");
                 }
             } break;
-            case WAIT_FOR_ENTITY_MATERIAL_NAME_STRING: {
+            case WAIT_FOR_NORMAL_ENTITY_MATERIAL_NAME_STRING: {
                 if (token.type == STRING) {
                     assert(token.string.length <= MATERIAL_NAME_MAX_SIZE);
 
                     int32 material_id = get_material_id_by_name(temp_level, token.string);
                     if (material_id >= 0) {
-                        temp_entity->material_id = material_id;
+                        temp_normal_entity.material_id = material_id;
                         state = WAIT_FOR_ENTITY_PROPERTY_NAME_OR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE;
                     } else {
                         assert(!"Material not found.");
@@ -1370,14 +1364,6 @@ bool32 read_and_load_level(Game_State *game_state,
         {
             FOR_ENTRY_POINTERS(int32, Normal_Entity, level->normal_entity_table) {
                 Normal_Entity *entity = &entry->value;
-                Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
-                entity->transformed_aabb = transform_aabb(mesh.aabb, entity->transform);
-            }
-        }
-
-        {
-            FOR_ENTRY_POINTERS(int32, Point_Light_Entity, level->point_light_entity_table) {
-                Point_Light_Entity *entity = &entry->value;
                 Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
                 entity->transformed_aabb = transform_aabb(mesh.aabb, entity->transform);
             }

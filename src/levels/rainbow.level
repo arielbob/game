@@ -86,8 +86,6 @@ scale 1.000000 1.000000 1.000000
 is_walkable 0
 
 type point_light
-mesh_primitive "cube"
-material "white_light"
 position 0.800000 1.800000 -2.300000
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 0.100000 0.100000 0.100000
@@ -96,8 +94,6 @@ falloff_start 0.000000
 falloff_end 3.000000
 
 type point_light
-mesh_primitive "cube"
-material "blue_light"
 position -1.000000 1.500000 0.000000
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 0.100000 0.100000 0.100000
@@ -106,8 +102,6 @@ falloff_start 0.000000
 falloff_end 5.000000
 
 type point_light
-mesh_primitive "cube"
-material "white_light"
 position -3.870535 2.679159 0.000000
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
@@ -116,7 +110,6 @@ falloff_start 0.000000
 falloff_end 4.854370
 
 type point_light
-mesh_primitive "cube"
 position 5.265507 0.000000 0.000000
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
@@ -125,7 +118,6 @@ falloff_start 0.000000
 falloff_end 5.000000
 
 type point_light
-mesh_primitive "cube"
 position 0.000000 0.000000 7.492577
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
@@ -134,7 +126,6 @@ falloff_start 0.000000
 falloff_end 5.000000
 
 type point_light
-mesh_primitive "cube"
 position 0.000000 0.000000 -4.586646
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
@@ -143,7 +134,6 @@ falloff_start 0.000000
 falloff_end 5.000000
 
 type point_light
-mesh_primitive "cube"
 position -3.908582 0.000000 -3.790836
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
@@ -152,7 +142,6 @@ falloff_start 0.000000
 falloff_end 5.339807
 
 type point_light
-mesh_primitive "cube"
 position -3.984671 0.000000 0.000000
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
@@ -161,7 +150,6 @@ falloff_start 0.000000
 falloff_end 5.000000
 
 type point_light
-mesh_primitive "cube"
 position 2.535510 0.000000 -4.517696
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
@@ -170,7 +158,6 @@ falloff_start 0.000000
 falloff_end 5.000000
 
 type point_light
-mesh_primitive "cube"
 position -2.126903 0.000000 -4.601583
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
@@ -179,7 +166,6 @@ falloff_start 0.000000
 falloff_end 5.000000
 
 type point_light
-mesh_primitive "cube"
 position 1.781886 0.000000 4.171795
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
@@ -188,7 +174,6 @@ falloff_start 0.000000
 falloff_end 5.000000
 
 type point_light
-mesh_primitive "cube"
 position 0.000000 3.554870 -0.087621
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000

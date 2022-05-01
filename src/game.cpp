@@ -817,14 +817,36 @@ Entity *get_selected_entity(Game_State *game_state) {
     return entity;
 }
 
+Mesh *get_entity_mesh_pointer(Game_State *game_state, Level *level, Entity *entity) {
+    if (entity->type == ENTITY_NORMAL) {
+        Normal_Entity *normal_entity = (Normal_Entity *) entity;
+        Mesh *mesh = get_mesh_pointer(game_state, level, normal_entity->mesh_type, normal_entity->mesh_id);
+        return mesh;
+    }
+
+    return NULL;
+}
+
+void update_entity_aabb(Game_State *game_state, Level *level, Entity *entity) {
+    Mesh *mesh = get_entity_mesh_pointer(game_state, level, entity);
+    if (mesh) {
+        if (entity->type == ENTITY_NORMAL) {
+            Normal_Entity *normal_entity = (Normal_Entity *) entity;
+            normal_entity->transformed_aabb = transform_aabb(mesh->aabb, get_model_matrix(entity->transform));
+        } else {
+            assert(!"Unhandled entity type with mesh and AABB");
+        }
+    }
+}
+
 // TODO: we probably don't always need to update the AABB in some cases; well, idk, there might be uses for AABBs
 //       outside of the editor, but that's the only place we're using them right now. although, it is convenient
 //       that as long as we use these procedures when transforming entities, the entities will always have an
 //       up to date AABB.
 void update_entity_position(Game_State *game_state, Entity *entity, Vec3 new_position) {
     entity->transform.position = new_position;
-    Mesh *mesh = get_mesh_pointer(game_state, &game_state->current_level, entity->mesh_type, entity->mesh_id);
-    entity->transformed_aabb = transform_aabb(mesh->aabb, get_model_matrix(entity->transform));
+
+    update_entity_aabb(game_state, &game_state->current_level, entity);
 
     if (entity->type == ENTITY_NORMAL) {
         Normal_Entity *normal_entity = (Normal_Entity *) entity;
@@ -843,15 +865,54 @@ void update_entity_position(Game_State *game_state, Entity *entity, Vec3 new_pos
 
 void update_entity_rotation(Game_State *game_state, Entity *entity, Quaternion new_rotation) {
     entity->transform.rotation = new_rotation;
-    Mesh *mesh = get_mesh_pointer(game_state, &game_state->current_level, entity->mesh_type, entity->mesh_id);
-    entity->transformed_aabb = transform_aabb(mesh->aabb, get_model_matrix(entity->transform));
+    update_entity_aabb(game_state, &game_state->current_level, entity);
+}
+
+Material *get_entity_material(Level *level, Entity *entity) {
+    // TODO: maybe just return NULL here instead of asserting
+    assert(entity->type == ENTITY_NORMAL);
+
+    // TODO: entities other than normal entities will have materials
+    Normal_Entity *normal_entity = (Normal_Entity *) entity;
+    Material *selected_material;
+    bool32 material_exists = hash_table_find_pointer(level->material_table,
+                                                     normal_entity->material_id,
+                                                     &selected_material);
+    assert(material_exists);
+    return selected_material;
 }
 
 void set_entity_mesh(Game_State *game_state, Level *level, Entity *entity, Mesh_Type mesh_type, int32 mesh_id) {
+    // TODO: we'll probably add entities other than normal entities in the future that have meshes, but for now just check
+    //       for ENTITY_NORMAL
+    assert(entity->type == ENTITY_NORMAL);
     Mesh mesh = get_mesh(game_state, level, mesh_type, mesh_id);
-    entity->mesh_type = mesh_type;
-    entity->mesh_id = mesh_id;
-    entity->transformed_aabb = transform_aabb(mesh.aabb, entity->transform);
+
+    switch (entity->type) {
+        case ENTITY_NORMAL: {
+            Normal_Entity *normal_entity = (Normal_Entity *) entity;
+            normal_entity->mesh_type = mesh_type;
+            normal_entity->mesh_id = mesh_id;
+            normal_entity->transformed_aabb = transform_aabb(mesh.aabb, entity->transform);
+        } break;
+        default: {
+            assert(!"Unhandled entity with mesh type");
+        } break;
+    }
+}
+
+void set_entity_material(Entity *entity, int32 material_id) {
+    assert(entity->type == ENTITY_NORMAL);
+
+    switch (entity->type) {
+        case ENTITY_NORMAL: {
+            Normal_Entity *normal_entity = (Normal_Entity *) entity;
+            normal_entity->material_id = material_id;
+        } break;
+        default: {
+            assert(!"Unhandled entity with material type");
+        } break;
+    }
 }
 
 void add_debug_line(Debug_State *debug_state, Vec3 start, Vec3 end, Vec4 color) {
@@ -970,8 +1031,9 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
         
         Entity *entity = get_entity(&game_state->current_level,
                                     new_walk_state.ground_entity_type, new_walk_state.ground_entity_id);
-        Mesh *mesh = get_mesh_pointer(game_state, &game_state->current_level,
-                                      entity->mesh_type, entity->mesh_id);
+        Mesh *mesh = get_entity_mesh_pointer(game_state, &game_state->current_level,
+                                             entity);
+        assert(mesh);
 
         Vec3 triangle[3];
         get_triangle(mesh, new_walk_state.triangle_index, triangle);

@@ -61,83 +61,95 @@ use_color_override 1
 
 entities {
 type normal
-mesh "suzanne"
-material "matte monkey"
-position 2.000000 2.187745 2.573651
+position 2.289248 2.286629 2.862899
 rotation 0.917390 -0.109309 0.379995 0.045277
 scale 1.000000 1.000000 1.000000
+mesh "suzanne"
+material "matte monkey"
 is_walkable 0
 
 type normal
-mesh_primitive "cube"
-material "diffuse_plane"
 position 0.000000 -0.225005 0.000000
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 5.000000 0.100000 5.000000
+mesh_primitive "cube"
+material "diffuse_plane"
 is_walkable 1
 
 type normal
-mesh "torus"
-material "arrow_material"
 position -0.247847 0.062218 -0.176115
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 0.500000 0.500000 0.500000
+mesh "torus"
+material "arrow_material"
 is_walkable 1
 
 type normal
-mesh "suzanne"
-material "matte monkey"
-position 3.470665 2.749200 0.000000
+position 3.652449 2.749200 0.000000
 rotation 0.710590 -0.160558 0.663082 0.172062
 scale 1.000000 1.000000 1.000000
+mesh "suzanne"
+material "matte monkey"
 is_walkable 0
 
 type normal
-mesh "suzanne"
 position -3.580600 2.257501 2.056933
 rotation 0.857867 -0.137453 -0.488912 -0.078337
 scale 1.000000 1.000000 1.000000
+mesh "suzanne"
 is_walkable 0
 
 type normal
-mesh "suzanne"
-material "monkey_4_material"
 position -2.186320 2.843973 -2.621594
 rotation 0.284026 -0.093312 -0.906592 -0.297846
 scale 1.000000 1.000000 1.000000
+mesh "suzanne"
+material "monkey_4_material"
 is_walkable 0
 
 type normal
-mesh_primitive "cube"
 position 3.001881 -0.633788 0.000000
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
+mesh_primitive "cube"
 is_walkable 1
 
 type normal
-mesh_primitive "cube"
 position 2.999367 -0.557520 -0.886218
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
+mesh_primitive "cube"
 is_walkable 1
 
 type point_light
-mesh_primitive "cube"
-material "white_light"
 position 0.015596 1.800000 -0.397868
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 0.100000 0.100000 0.100000
-light_color 0.800000 0.800000 0.800000
+light_color 0.485000 0.485000 0.485000
 falloff_start 0.000000
 falloff_end 3.883495
 
 type point_light
-mesh_primitive "cube"
-material "blue_light"
 position -1.715704 1.500000 2.293433
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 0.100000 0.100000 0.100000
 light_color 0.000000 0.000000 1.000000
 falloff_start 0.000000
 falloff_end 5.000000
+
+type point_light
+position 3.985460 1.729952 -3.260393
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+light_color 0.045000 0.045000 0.045000
+falloff_start 0.000000
+falloff_end 18.559326
+
+type point_light
+position 6.381989 3.559226 2.355271
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+light_color 1.000000 1.000000 1.000000
+falloff_start 0.000000
+falloff_end 4.237289
 }

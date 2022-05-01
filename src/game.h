@@ -264,7 +264,9 @@ Mesh get_mesh(Game_State *game_state, Level *level, Mesh_Type mesh_type, int32 m
 bool32 mesh_exists(Game_State *game_state, Level *level, Mesh_Type mesh_type, int32 mesh_id);
 int32 get_mesh_id_by_name(Game_State *game_state, Level *level, Mesh_Type mesh_type, String mesh_name);
 Mesh *get_mesh_pointer(Game_State *game_state, Level *level, Mesh_Type mesh_type, int32 mesh_id);
+Material *get_entity_material(Level *level, Entity *entity);
 void set_entity_mesh(Game_State *game_state, Level *level, Entity *entity, Mesh_Type mesh_type, int32 mesh_id);
+void set_entity_material(Entity *entity, int32 material_id);
 void update_render_state(Render_State *render_state);
 Vec3 cursor_pos_to_world_space(Vec2 cursor_pos, Render_State *render_state);
 void update_entity_position(Game_State *game_state, Entity *entity, Vec3 new_position);

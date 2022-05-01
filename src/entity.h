@@ -16,10 +16,6 @@ enum Entity_Type {
 #define ENTITY_HEADER                           \
     Entity_Type type;                           \
     Transform transform;                        \
-    Mesh_Type mesh_type;                        \
-    int32 mesh_id;                              \
-    int32 material_id;                          \
-    AABB transformed_aabb;
 
 struct Entity {
     ENTITY_HEADER
@@ -28,6 +24,10 @@ struct Entity {
 struct Normal_Entity {
     ENTITY_HEADER
 
+    Mesh_Type mesh_type;
+    int32 mesh_id;
+    int32 material_id;
+    AABB transformed_aabb;
     Collider_Variant collider;
     bool32 is_walkable;
 };
@@ -107,16 +107,10 @@ Texture make_texture(String_Buffer texture_name, String_Buffer filename) {
     return texture;
 }
 
-Point_Light_Entity make_point_light_entity(Mesh_Type mesh_type, int32 mesh_id,
-                                           int32 material_id,
-                                           Vec3 light_color,
+Point_Light_Entity make_point_light_entity(Vec3 light_color,
                                            real32 d_min, real32 d_max,
-                                           Transform transform, AABB aabb) {
-    AABB transformed_aabb = transform_aabb(aabb, get_model_matrix(transform));
+                                           Transform transform) {
     Point_Light_Entity entity = { ENTITY_POINT_LIGHT, transform,
-                                  mesh_type, mesh_id,
-                                  material_id,
-                                  transformed_aabb,
                                   light_color, d_min, d_max };
     return entity;
 }

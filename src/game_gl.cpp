@@ -257,7 +257,14 @@
 // TODO (done): be able to add point light entities
 // TODO (done): show lights as a light icon
 // TODO (done): make clickable region for point light entities match the icon size
-// TODO: remove meshes and materials from point light entities
+// TODO (done): remove meshes and materials from point light entities
+
+// TODO: texture adding
+// TODO: texture deletion
+// TODO: delete textures and fonts in OpenGL state if the texture or font no longer exists in the game state
+// TODO: figure out a way to set and get meshes and materials easily of different entity types
+//       - think we can just add get_mesh and set_mesh and pass in an entity then just do a switch block on
+//         its type. that seems like the simplest solution.
 
 // TODO: be able to make entities invisible (for walk meshes)
 
@@ -282,7 +289,6 @@
 
 // TODO: mesh parenting
 
-// TODO: texture creation
 // TODO: we can just add a star to the filename if a change has been made and needs to be saved
 // TODO: dialog prompts.. (just use windows for this maybe?)
 // TODO: keyboard shortcuts for level save/save as
@@ -368,8 +374,6 @@
 // TODO: material deletion
 // TODO: handle entities with no material (just make them black or something)
 //       - this would happen if you were to delete a material that an entity was using
-// TODO: texture deletion
-// TODO: delete textures and fonts in OpenGL state if the texture or font no longer exists in the game state
 
 // TODO: mesh library
 // TODO: scrollable UI region (mainly for material and texture libraries)
@@ -2752,34 +2756,6 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
     t += 0.01f;
 
     Editor_State *editor_state = &game_state->editor_state;
-
-    // point lights
-    {
-        FOR_ENTRY_POINTERS(int32, Point_Light_Entity, level->point_light_entity_table) {
-            Point_Light_Entity *entity = &entry->value;
-            
-            int32 mesh_id = entity->mesh_id;
-
-            Material material;
-            if (entity->material_id >= 0) {
-                material = get_material(level, entity->material_id);
-            } else {
-                material = default_material;
-            }
-
-            gl_draw_solid_mesh(gl_state, render_state,
-                               entity->mesh_type,
-                               mesh_id, material,
-                               entity->transform);
-
-            if (game_state->mode == Game_Mode::EDITING &&
-                editor_state->show_wireframe &&
-                editor_state->selected_entity_type == ENTITY_POINT_LIGHT &&
-                editor_state->selected_entity_id == entry->key) {
-                gl_draw_wireframe(gl_state, render_state, entity->mesh_type, mesh_id, entity->transform);
-            }
-        }
-    }
 
     glBindBuffer(GL_UNIFORM_BUFFER, gl_state->global_ubo);
     int64 ubo_offset = 0;
