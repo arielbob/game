@@ -241,6 +241,10 @@ void *pool_push(Pool_Allocator *pool, uint32 size, bool32 zero_memory = false) {
 }
 
 void pool_remove(Pool_Allocator *pool, void *block_address) {
+    // NOTE: we don't have to worry about whether or not block_address is the address of the data (i.e. no
+    //       padding, or the start of the block (with padding), since pool entries are a constant size,
+    //       contiguous, and of a power of 2 size, so as long as the first one is aligned, the rest will also
+    //       be aligned. (see also the NOTE above make_pool_allocator())
     // the removed block becomes the first to be returned on the next allocation and the old first
     // is stored in the removed block.
     void **block_pointer = (void **) block_address;
@@ -262,13 +266,6 @@ void clear_pool(Pool_Allocator *pool) {
     *current = NULL;
 
 }
-
-#if 0
-void *get_block(Pool_Allocator *pool, uint32 index) {
-    assert(index < pool
-    return pool->base + (pool->block_size * index);
-}
-#endif
 
 void *allocate(Allocator *allocator, uint32 size, bool32 zero_memory) {
     switch (allocator->type) {
@@ -294,6 +291,27 @@ void *allocate(Allocator *allocator, uint32 size, bool32 zero_memory) {
     }
 
     return NULL;
+}
+
+void deallocate(Allocator *allocator, void *address) {
+    switch (allocator->type) {
+        case STACK_ALLOCATOR: {
+            assert(!"Stacks are cleared using end_region()");
+            return;
+        } break;
+        case ARENA_ALLOCATOR: {
+            assert(!"Arenas are cleared all at once using clear_arena()");
+            return;
+        } break; 
+        case POOL_ALLOCATOR: {
+            Pool_Allocator *pool = (Pool_Allocator *) allocator;
+            return pool_remove(pool, address);
+        }
+        default: {
+            assert(!"Unhandled allocator type.");
+            return;
+        } break;
+    }
 }
 
 // #define allocate(allocator, size) _allocate((Allocator *) allocator, size)

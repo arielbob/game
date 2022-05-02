@@ -409,6 +409,10 @@ int32 level_add_texture(Level *level, Texture texture) {
     return texture_id;
 }
 
+void level_delete_texture(Level *level, int32 texture_id) {
+    hash_table_remove(&level->texture_table, texture_id);
+}
+
 // NOTE: should only be called once, or at least make sure you deallocate everything before
 void load_default_level(Game_State *game_state, Level *level) {
     Allocator *arena_allocator = (Allocator *) level->arena;

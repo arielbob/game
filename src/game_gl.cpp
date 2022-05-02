@@ -259,11 +259,14 @@
 // TODO (done): make clickable region for point light entities match the icon size
 // TODO (done): remove meshes and materials from point light entities
 
-// TODO: texture adding
+// TODO (done): texture adding
 //       - TODO (done): add an add texture button
 //       - TODO (done): add texture image with file dialog
-//       - TODO: texture name editing
+//       - TODO (done): texture name editing
 // TODO: texture deletion
+//       - TODO (done): add delete texture button
+//       - TODO (done): delete texture when clicked
+//       - TODO: fix assert fail when deleting a texture that multiple materials use
 // TODO: delete textures and fonts in OpenGL state if the texture or font no longer exists in the game state
 // TODO: figure out a way to set and get meshes and materials easily of different entity types
 //       - think we can just add get_mesh and set_mesh and pass in an entity then just do a switch block on

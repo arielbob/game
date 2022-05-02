@@ -123,4 +123,9 @@ void deallocate(Point_Light_Entity entity) {
     // nothing to deallocate for now
 }
 
+void deallocate(Texture texture) {
+    delete_string_buffer(texture.name);
+    delete_string_buffer(texture.filename);
+}
+
 #endif

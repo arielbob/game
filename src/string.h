@@ -29,6 +29,7 @@ struct String_Buffer {
     char *contents;
     int32 current_length;
     int32 size;
+    Allocator *allocator;
 };
 
 struct String_Iterator {
@@ -88,6 +89,9 @@ String_Buffer make_empty_string_buffer(char *buffer, uint32 size_of_buffer) {
     result.contents = buffer;
     result.current_length = 0;
     result.size = size_of_buffer;
+    // deallocate shouldn't be called on these string buffers, since it's assumed that buffer is handling
+    // the allocation and deallocation of the memory
+    result.allocator = NULL;
     return result;
 }
 
@@ -97,6 +101,7 @@ String_Buffer make_string_buffer(Allocator *allocator, uint32 size) {
     buffer.contents = contents;
     buffer.current_length = 0;
     buffer.size = size;
+    buffer.allocator = allocator;
     return buffer;
 }
 
@@ -114,6 +119,7 @@ String_Buffer make_string_buffer(Allocator *allocator, char *string, uint32 size
     buffer.contents = contents;
     buffer.current_length = length;
     buffer.size = size;
+    buffer.allocator = allocator;
 
     return buffer;
 }
@@ -127,10 +133,15 @@ String_Buffer make_string_buffer(Allocator *allocator, String initial_value, int
     char *contents = (char *) allocate(allocator, size);
     buffer.contents = contents;
     buffer.size = size;
+    buffer.allocator = allocator;
 
     copy_string(&buffer, initial_value);
 
     return buffer;
+}
+
+void delete_string_buffer(String_Buffer string_buffer) {
+    deallocate(string_buffer.allocator, string_buffer.contents);
 }
 
 String make_string(char *contents, uint32 length) {

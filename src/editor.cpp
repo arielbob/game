@@ -22,6 +22,7 @@ char *editor_font_name = "courier16";
 char *editor_font_name_bold = "courier16b";
 #else
 char *editor_font_name = "calibri14";
+char *editor_font_name_bold = "calibri14b";
 #endif
 
 void deselect_entity(Editor_State *editor_state) {
@@ -1020,14 +1021,37 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                  "Texture", editor_font_name, text_style);
 
             x += right_column_offset;
+            bool32 has_texture = material->texture_id >= 0;
+
+            real32 choose_texture_button_width = edit_box_width;
+            if (has_texture) choose_texture_button_width -= small_button_width;
+
             bool32 choose_texture_pressed = do_text_button(x, y,
-                                                           edit_box_width, row_height,
+                                                           choose_texture_button_width, row_height,
                                                            button_style, default_text_style,
                                                            texture_name, editor_font_name, "choose_texture");
             if (!editor_state->open_window_flags && choose_texture_pressed) {
                 editor_state->open_window_flags |= TEXTURE_LIBRARY_WINDOW;
             }
-            x += edit_box_width + padding_left;
+            x += choose_texture_button_width;
+
+            if (has_texture) {
+                bool32 delete_texture_pressed = do_text_button(x, y,
+                                                               small_button_width, row_height,
+                                                               default_text_button_cancel_style, default_text_style,
+                                                               "-", editor_font_name, "delete_texture");
+                if (delete_texture_pressed) {
+                    level_delete_texture(level, material->texture_id);
+                    material->texture_id = -1;
+                    has_texture = false;
+                }
+
+                x += small_button_width;
+            }
+            
+
+            x += padding_left;
+
             bool32 add_texture_pressed = do_text_button(x, y,
                                                         small_button_width, row_height,
                                                         button_style, default_text_style,
@@ -1041,8 +1065,6 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                     editor_state->editing_selected_entity_texture = true;
                 }
             }
-
-            bool32 has_texture = material->texture_id >= 0;
 
             x += small_button_width + padding_left;
             real32 edit_texture_button_width = row_width - (x - initial_x) - padding_right;

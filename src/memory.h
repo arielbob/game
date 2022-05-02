@@ -59,5 +59,6 @@ struct Memory {
 };
 
 void *allocate(Allocator *allocator, uint32 size, bool32 zero_memory = true);
+void deallocate(Allocator *allocator, void *address);
 
 #endif
