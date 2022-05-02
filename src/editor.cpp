@@ -48,11 +48,13 @@ void reset_entity_editors(Editor_State *editor_state) {
     editor_state->color_picker.parent_ui_id = {};
 }
 
-bool32 editor_add_mesh_press(Allocator *string_allocator, Allocator *filename_allocator,
-                             Level *level, Entity *entity) {
+bool32 editor_add_mesh_press(Level *level, Entity *entity) {
     Marker m = begin_region();
     char *absolute_filename = (char *) region_push(PLATFORM_MAX_PATH);
         
+    Allocator *string_allocator = (Allocator *) level->string64_pool_pointer;
+    Allocator *filename_allocator = (Allocator *) level->filename_pool_pointer;
+
     if (platform_open_file_dialog(absolute_filename, PLATFORM_MAX_PATH)) {
         String_Buffer new_mesh_name_buffer = make_string_buffer(string_allocator, 64);
             
@@ -77,13 +79,16 @@ bool32 editor_add_mesh_press(Allocator *string_allocator, Allocator *filename_al
     return false;
 }
 
-bool32 editor_add_texture_press(Allocator *string_allocator, Allocator *filename_allocator,
-                                Level *level, Material *material) {
+bool32 editor_add_texture_press(Level *level, Material *material) {
     Marker m = begin_region();
     char *absolute_filename = (char *) region_push(PLATFORM_MAX_PATH);
         
+    Allocator *string_allocator = (Allocator *) level->string64_pool_pointer;
+    Allocator *filename_allocator = (Allocator *) level->filename_pool_pointer;
+
     if (platform_open_file_dialog(absolute_filename, PLATFORM_MAX_PATH)) {
-        String_Buffer new_texture_name_buffer = make_string_buffer(string_allocator, TEXTURE_NAME_MAX_SIZE);
+        String_Buffer new_texture_name_buffer = make_string_buffer(string_allocator,
+                                                                   TEXTURE_NAME_MAX_SIZE);
 
         char *relative_filename = (char *) region_push(PLATFORM_MAX_PATH);
         platform_get_relative_path(absolute_filename, relative_filename, PLATFORM_MAX_PATH);
@@ -829,10 +834,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         x += add_mesh_button_width + padding_left;
 
         if (add_mesh_pressed) {
-            Allocator *string64_allocator = (Allocator *) &memory.string64_pool;
-            Allocator *filename_allocator = (Allocator *) &memory.filename_pool;
-            bool32 mesh_added = editor_add_mesh_press(string64_allocator, filename_allocator,
-                                                      &game_state->current_level, entity);
+            bool32 mesh_added = editor_add_mesh_press(&game_state->current_level, entity);
             if (mesh_added) {
                 editor_state->editing_selected_entity_mesh = true;
             }
@@ -1042,7 +1044,6 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                                                "-", editor_font_name, "delete_texture");
                 if (delete_texture_pressed) {
                     level_delete_texture(level, material->texture_id);
-                    material->texture_id = -1;
                     has_texture = false;
                 }
 
@@ -1057,10 +1058,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                                         button_style, default_text_style,
                                                         "+", editor_font_name, "add_texture");
             if (add_texture_pressed) {
-                Allocator *string64_allocator = (Allocator *) &memory.string64_pool;
-                Allocator *filename_allocator = (Allocator *) &memory.filename_pool;
-                bool32 texture_added = editor_add_texture_press(string64_allocator, filename_allocator,
-                                                                &game_state->current_level, material);
+                bool32 texture_added = editor_add_texture_press(&game_state->current_level, material);
                 if (texture_added) {
                     editor_state->editing_selected_entity_texture = true;
                 }

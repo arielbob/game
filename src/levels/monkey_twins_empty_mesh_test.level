@@ -11,7 +11,6 @@ mesh "torus" ".\blender\torus.mesh"
 textures {
 texture "debug" "src/textures/debug_texture.png"
 texture "white" "src/textures/white.bmp"
-texture "random screenshot" "..\..\Pictures\test.png"
 }
 
 materials {
@@ -22,8 +21,8 @@ color_override 0.600000 0.600000 0.600000
 use_color_override 1
 
 material "diffuse_plane"
-texture "random screenshot"
-gloss 87.893204
+texture "debug"
+gloss 100.000000
 color_override 0.900000 0.900000 0.900000
 use_color_override 0
 
@@ -113,6 +112,7 @@ position 3.001881 -0.633788 0.000000
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
 mesh_primitive "cube"
+material "diffuse_plane"
 is_walkable 1
 
 type normal
@@ -120,6 +120,7 @@ position 2.999367 -0.557520 -0.886218
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
 mesh_primitive "cube"
+material "diffuse_plane"
 is_walkable 1
 
 type point_light
@@ -144,7 +145,7 @@ rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
 light_color 0.045000 0.045000 0.045000
 falloff_start 0.000000
-falloff_end 18.559322
+falloff_end 18.559319
 
 type point_light
 position 6.381989 3.559226 2.355271

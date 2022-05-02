@@ -427,9 +427,9 @@ void init_game(Game_State *game_state,
     // init level
     Level *current_level = &game_state->current_level;
     current_level->name = make_string_buffer((Allocator *) &memory.level_string64_pool, LEVEL_NAME_MAX_SIZE);
-    current_level->arena = &memory.level_arena;
-    current_level->string64_pool = &memory.level_string64_pool;
-    current_level->filename_pool = &memory.level_filename_pool;
+    current_level->arena_pointer = &memory.level_arena;
+    current_level->string64_pool_pointer = &memory.level_string64_pool;
+    current_level->filename_pool_pointer = &memory.level_filename_pool;
     load_default_level(game_state, &game_state->current_level);
 
     game_state->is_initted = true;
@@ -1171,6 +1171,12 @@ void update(Game_State *game_state,
     do_text(ui_manager, 500.0f, 48.0f, buf, "times24", "pool->first");
     buf = (char *) arena_push(&memory.frame_arena, 128);
     
+    buf = (char *) arena_push(&memory.frame_arena, 128);
+    string_format(buf, 128, "level string64_pool->first: %p",
+                  game_state->current_level.string64_pool_pointer->first);
+    do_text(ui_manager, 500.0f, 72.0f, buf, "times24", "pool->first");
+    buf = (char *) arena_push(&memory.frame_arena, 128);
+
     fill_sound_buffer_with_audio(sound_output, game_state->is_playing_music, &game_state->music, num_samples);
 
     clear_hot_if_gone(ui_manager);

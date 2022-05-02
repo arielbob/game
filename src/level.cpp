@@ -411,14 +411,21 @@ int32 level_add_texture(Level *level, Texture texture) {
 
 void level_delete_texture(Level *level, int32 texture_id) {
     hash_table_remove(&level->texture_table, texture_id);
+    FOR_ENTRY_POINTERS(int32, Material, level->material_table) {
+        Material *material = &entry->value;
+        if (material->texture_id == texture_id) {
+            material->texture_id = -1;
+            material->use_color_override = true;
+        }
+    }
 }
 
 // NOTE: should only be called once, or at least make sure you deallocate everything before
 void load_default_level(Game_State *game_state, Level *level) {
-    Allocator *arena_allocator = (Allocator *) level->arena;
-    Allocator *filename_allocator = (Allocator *) level->filename_pool;
-    Allocator *mesh_name_allocator = (Allocator *) level->string64_pool;
-    Allocator *string64_allocator = (Allocator *) level->string64_pool;
+    Allocator *arena_allocator = (Allocator *) level->arena_pointer;
+    Allocator *filename_allocator = (Allocator *) level->filename_pool_pointer;
+    Allocator *mesh_name_allocator = (Allocator *) level->string64_pool_pointer;
+    Allocator *string64_allocator = (Allocator *) level->string64_pool_pointer;
 
     // init tables
     level->normal_entity_table = make_hash_table<int32, Normal_Entity>(arena_allocator,
@@ -565,9 +572,9 @@ void load_default_level(Game_State *game_state, Level *level) {
 void unload_level(Level *level) {
     level->should_clear_gpu_data = true;
 
-    clear_arena(level->arena);
-    clear_pool(level->string64_pool);
-    clear_pool(level->filename_pool);
+    clear_arena(level->arena_pointer);
+    clear_pool(level->string64_pool_pointer);
+    clear_pool(level->filename_pool_pointer);
 
     // technically, we don't need to reset the hash tables if we're loading in a new level and making new
     // tables, but if we're just creating a new level, then we need to reset the tables, so we keep this.
@@ -580,7 +587,7 @@ void unload_level(Level *level) {
 
 void new_level(Level *current_level) {
     unload_level(current_level);
-    current_level->name = make_string_buffer((Allocator *) current_level->string64_pool, LEVEL_NAME_MAX_SIZE);
+    current_level->name = make_string_buffer((Allocator *) current_level->string64_pool_pointer, LEVEL_NAME_MAX_SIZE);
 }
 
 inline Level_Loader::Token Level_Loader::make_token(Token_Type type, char *contents, int32 length) {
@@ -1295,9 +1302,9 @@ bool32 read_and_load_level(Game_State *game_state,
                                          make_string(temp_level->name),
                                          LEVEL_NAME_MAX_SIZE);
         // set allocators
-        level->arena = arena;
-        level->string64_pool = string64_pool;
-        level->filename_pool = filename_pool;
+        level->arena_pointer = arena;
+        level->string64_pool_pointer = string64_pool;
+        level->filename_pool_pointer = filename_pool;
 
         // copy entity tables
         level->normal_entity_table = copy_hash_table(level_arena_allocator, temp_level->normal_entity_table);

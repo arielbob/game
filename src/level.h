@@ -14,15 +14,9 @@ struct Level {
     Hash_Table<int32, Normal_Entity> normal_entity_table;
     Hash_Table<int32, Point_Light_Entity> point_light_entity_table;
 
-    //int32 num_normal_entities;
-    //Normal_Entity normal_entities[MAX_ENTITIES];
-
-    //int32 num_point_lights;
-    //Point_Light_Entity point_lights[MAX_POINT_LIGHTS];
-
-    Arena_Allocator *arena;
-    Pool_Allocator *string64_pool;
-    Pool_Allocator *filename_pool;
+    Arena_Allocator *arena_pointer;
+    Pool_Allocator *string64_pool_pointer;
+    Pool_Allocator *filename_pool_pointer;
 
     Hash_Table<int32, Mesh> mesh_table;
     Hash_Table<int32, Material> material_table;

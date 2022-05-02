@@ -263,11 +263,11 @@
 //       - TODO (done): add an add texture button
 //       - TODO (done): add texture image with file dialog
 //       - TODO (done): texture name editing
-// TODO: texture deletion
+// TODO (done): texture deletion
 //       - TODO (done): add delete texture button
 //       - TODO (done): delete texture when clicked
-//       - TODO: fix assert fail when deleting a texture that multiple materials use
-// TODO: delete textures and fonts in OpenGL state if the texture or font no longer exists in the game state
+//       - TODO (done): fix assert fail when deleting a texture that multiple materials use
+//       - TODO (done): delete texture in OpenGL state if the texture no longer exists in the level
 // TODO: figure out a way to set and get meshes and materials easily of different entity types
 //       - think we can just add get_mesh and set_mesh and pass in an entity then just do a switch block on
 //         its type. that seems like the simplest solution.
@@ -2536,6 +2536,11 @@ void gl_draw_framebuffer(GL_State *gl_state, GL_Framebuffer framebuffer) {
     glBindVertexArray(0);
 }
 
+void deallocate(GL_Texture gl_texture) {
+    // nothing to deallocate - we call gl_delete_texture separately, which unloads it from the GPU, which
+    // i don't think we should call "deallocation"
+}
+
 void gl_render(GL_State *gl_state, Game_State *game_state,
                Controller_State *controller_state,
                Display_Output display_output, Win32_Sound_Output *win32_sound_output) {
@@ -2679,6 +2684,19 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
             }
 
             game_texture->is_loaded = true;
+        }
+    }
+
+    // delete textures
+    // loop through the OpenGL level texture table and unload any textures that no longer exist in the
+    // game level's texture table
+    {
+        FOR_ENTRY_POINTERS(int32, GL_Texture, gl_state->level_texture_table) {
+            int32 texture_key = entry->key;
+            if (!hash_table_exists(level->texture_table, texture_key)) {
+                hash_table_remove(&gl_state->level_texture_table, texture_key);
+                gl_delete_texture(entry->value);
+            }
         }
     }
 
