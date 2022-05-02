@@ -76,6 +76,34 @@ bool32 editor_add_mesh_press(Allocator *string_allocator, Allocator *filename_al
     return false;
 }
 
+bool32 editor_add_texture_press(Allocator *string_allocator, Allocator *filename_allocator,
+                                Level *level, Material *material) {
+    Marker m = begin_region();
+    char *absolute_filename = (char *) region_push(PLATFORM_MAX_PATH);
+        
+    if (platform_open_file_dialog(absolute_filename, PLATFORM_MAX_PATH)) {
+        String_Buffer new_texture_name_buffer = make_string_buffer(string_allocator, TEXTURE_NAME_MAX_SIZE);
+
+        char *relative_filename = (char *) region_push(PLATFORM_MAX_PATH);
+        platform_get_relative_path(absolute_filename, relative_filename, PLATFORM_MAX_PATH);
+        String_Buffer new_texture_filename_buffer = make_string_buffer(filename_allocator,
+                                                                       relative_filename, PLATFORM_MAX_PATH);
+
+        Texture new_texture = make_texture(new_texture_name_buffer,
+                                           new_texture_filename_buffer);
+        int32 texture_id = level_add_texture(level, new_texture);
+        material->texture_id = texture_id;
+
+        end_region(m);
+        return true;
+    }
+
+    // TODO: error handling (after in-game console implementation)
+
+    end_region(m);
+    return false;
+}
+
 void draw_row_line(real32 x, real32 *y,
                    real32 row_width, bool32 draw_outside_row = true) {
     Vec4 line_color = make_vec4(0.3f, 0.3f, 0.3f, 1.0f);
@@ -429,7 +457,8 @@ void draw_texture_library(Material *selected_material) {
 
     int32 num_items_per_row = 5;
     real32 item_width = 100.0f;
-    real32 item_height = 120.0f;
+    real32 item_height = 100.0f;
+    
 
     real32 window_width = padding_x * 2 + x_gap * (num_items_per_row - 1) + num_items_per_row*item_width;
 
@@ -474,7 +503,10 @@ void draw_texture_library(Material *selected_material) {
     y += padding_y;
 
     UI_Image_Button_Style image_button_style = default_image_button_style;
-    image_button_style.image_constraint_flags = CONSTRAINT_FILL_BUTTON_WIDTH | CONSTRAINT_KEEP_IMAGE_PROPORTIONS;
+    image_button_style.image_constraint_flags = (CONSTRAINT_FILL_BUTTON_WIDTH |
+                                                 CONSTRAINT_FILL_BUTTON_HEIGHT |
+        CONSTRAINT_KEEP_IMAGE_PROPORTIONS);
+                                                 
 
     Hash_Table<int32, Texture> *texture_table = &game_state->current_level.texture_table;
     char *button_id_string = "texture_library_item";
@@ -753,7 +785,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
 
     real32 wide_button_width = 200.0f;
     real32 small_button_width = 30.0f;
-    real32 edit_box_width = wide_button_width + padding_left + small_button_width;
+    real32 edit_box_width = wide_button_width - small_button_width;
     
     if (entity->type == ENTITY_NORMAL) {
         Normal_Entity *normal_entity = (Normal_Entity *) entity;
@@ -986,14 +1018,31 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                      row_id, row_index++);
             draw_v_centered_text(x + padding_left, y, row_height,
                                  "Texture", editor_font_name, text_style);
-            bool32 choose_texture_pressed = do_text_button(x + right_column_offset, y,
+
+            x += right_column_offset;
+            bool32 choose_texture_pressed = do_text_button(x, y,
                                                            edit_box_width, row_height,
                                                            button_style, default_text_style,
                                                            texture_name, editor_font_name, "choose_texture");
             if (!editor_state->open_window_flags && choose_texture_pressed) {
                 editor_state->open_window_flags |= TEXTURE_LIBRARY_WINDOW;
             }
+            x += + edit_box_width + padding_left;
+            bool32 add_texture_pressed = do_text_button(x, y,
+                                                        small_button_width, row_height,
+                                                        button_style, default_text_style,
+                                                        "+", editor_font_name, "add_texture");
+            if (add_texture_pressed) {
+                Allocator *string64_allocator = (Allocator *) &memory.string64_pool;
+                Allocator *filename_allocator = (Allocator *) &memory.filename_pool;
+                bool32 texture_added = editor_add_texture_press(string64_allocator, filename_allocator,
+                                                                &game_state->current_level, material);
+                if (texture_added) {
+                    editor_state->editing_selected_entity_texture = true;
+                }
+            }
 
+            x = initial_x;
             y += row_height;
             draw_row_padding(x, &y, row_width, padding_y, row_color,
                              side_flags, row_id, row_index++);

@@ -86,6 +86,7 @@ struct Editor_State {
     uint32 open_window_flags;
     Mesh_Type mesh_library_filter;
     bool32 editing_selected_entity_material;
+    bool32 editing_selected_entity_texture;
     bool32 editing_selected_entity_mesh;
 
     bool32 is_new_level;

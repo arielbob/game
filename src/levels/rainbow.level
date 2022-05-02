@@ -20,9 +20,10 @@ color_override 0.600000 0.600000 0.600000
 use_color_override 1
 
 material "diffuse_plane"
+texture "debug"
 gloss 1.000000
 color_override 0.900000 0.900000 0.900000
-use_color_override 1
+use_color_override 0
 
 material "arrow_material"
 gloss 100.000000
@@ -47,42 +48,42 @@ use_color_override 1
 
 entities {
 type normal
-mesh_primitive "cube"
-material "shiny_monkey"
 position 2.000000 3.543534 0.000000
 rotation 0.923880 0.000000 0.382683 0.000000
 scale 1.000000 1.000000 1.000000
+mesh_primitive "cube"
+material "shiny_monkey"
 is_walkable 1
 
 type normal
-mesh_primitive "cube"
-material "diffuse_plane"
 position 0.000000 0.000000 0.000000
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 5.000000 0.100000 5.000000
+mesh_primitive "cube"
+material "diffuse_plane"
 is_walkable 1
 
 type normal
-mesh "sphere"
-material "diffuse_sphere"
 position -1.500000 1.500000 -1.000000
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 0.500000 0.500000 0.500000
+mesh "sphere"
+material "diffuse_sphere"
 is_walkable 0
 
 type normal
-mesh_primitive "cube"
 position 0.000000 2.904233 2.219453
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
+mesh_primitive "cube"
 is_walkable 1
 
 type normal
-mesh "suzanne"
-material "shiny_monkey"
 position 1.853723 1.338732 0.000000
 rotation 0.849999 0.216340 0.465470 -0.118470
 scale 1.000000 1.000000 1.000000
+mesh "suzanne"
+material "shiny_monkey"
 is_walkable 0
 
 type point_light
@@ -107,7 +108,7 @@ rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
 light_color 0.785000 0.137375 0.137375
 falloff_start 0.000000
-falloff_end 4.854370
+falloff_end 4.854371
 
 type point_light
 position 5.265507 0.000000 0.000000
@@ -118,7 +119,7 @@ falloff_start 0.000000
 falloff_end 5.000000
 
 type point_light
-position 0.000000 0.000000 7.492577
+position 0.000000 0.000000 7.492578
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
 light_color 1.000000 0.010000 0.010000
@@ -139,7 +140,7 @@ rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
 light_color 0.238900 1.000000 0.115000
 falloff_start 0.000000
-falloff_end 5.339807
+falloff_end 5.339808
 
 type point_light
 position -3.984671 0.000000 0.000000

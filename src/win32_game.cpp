@@ -1259,8 +1259,8 @@ int WinMain(HINSTANCE hInstance,
                     real32 target_frame_time = 1.0f / TARGET_FRAMERATE;
                     if (work_time < target_frame_time) {
                         if (sleep_is_granular) {
-                            DWORD sleep_ms = (DWORD) ((target_frame_time - work_time) * 1000);
-                            Sleep(sleep_ms);
+                            //DWORD sleep_ms = (DWORD) ((target_frame_time - work_time) * 1000);
+                            //Sleep(sleep_ms);
                         } else {
                             while (work_time < target_frame_time) {
                                 work_time = win32_get_elapsed_time(last_perf_counter);

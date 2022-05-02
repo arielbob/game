@@ -260,11 +260,16 @@
 // TODO (done): remove meshes and materials from point light entities
 
 // TODO: texture adding
+//       - TODO (done): add an add texture button
+//       - TODO (done): add texture image with file dialog
+//       - TODO: texture name editing
 // TODO: texture deletion
 // TODO: delete textures and fonts in OpenGL state if the texture or font no longer exists in the game state
 // TODO: figure out a way to set and get meshes and materials easily of different entity types
 //       - think we can just add get_mesh and set_mesh and pass in an entity then just do a switch block on
 //         its type. that seems like the simplest solution.
+
+// TODO: profiling (editor mode is super slow, most of the time is spent drawing UI)
 
 // TODO: be able to make entities invisible (for walk meshes)
 
@@ -660,7 +665,7 @@ GL_Texture gl_load_texture(GL_State *gl_state, Texture texture, bool32 has_alpha
 
     // TODO: we may want to be able to modify these parameters
     glBindTexture(GL_TEXTURE_2D, texture_id);
-    if (has_alpha) {
+    if (num_channels == 4) {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
     } else {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
@@ -1448,7 +1453,7 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
     gl_state->light_icon_texture_id = gl_add_rendering_texture(gl_state, debug_texture);
 
     // NOTE: disable culling for now, just for easier debugging...
-#if 0
+#if 1
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
     glFrontFace(GL_CW);
@@ -2004,7 +2009,7 @@ void gl_draw_ui_image_button(GL_State *gl_state, Game_State *game_state,
     }
 
     gl_draw_quad(gl_state, render_state, button.x, button.y,
-                 button.width, button.height, color);
+                 button.width, button.height + style.footer_height, color);
 
     GL_Texture texture;
     uint32 texture_exists = hash_table_find(gl_state->level_texture_table, button.texture_id, &texture);
@@ -2013,16 +2018,20 @@ void gl_draw_ui_image_button(GL_State *gl_state, Game_State *game_state,
     real32 width_to_height_ratio = (real32) texture.width / texture.height;
 
     uint32 image_constraint_flags = style.image_constraint_flags;
+
+    real32 inner_image_width = button.width - style.padding_x * 2;
+    real32 inner_image_height = button.height - style.padding_y * 2;
+
     real32 image_width = (real32) texture.width;
     real32 image_height = (real32) texture.height;
     if (image_constraint_flags & CONSTRAINT_FILL_BUTTON_WIDTH) {
-        image_width = button.width - style.padding_x * 2;
+        image_width = inner_image_width;
         if (image_constraint_flags & CONSTRAINT_KEEP_IMAGE_PROPORTIONS) {
             image_height = image_width / width_to_height_ratio;
         }
     }
     if (image_constraint_flags & CONSTRAINT_FILL_BUTTON_HEIGHT) {
-        image_height = button.height - style.padding_y * 2;
+        image_height = inner_image_height;
         if (image_constraint_flags & CONSTRAINT_KEEP_IMAGE_PROPORTIONS) {
             image_width = image_height * width_to_height_ratio;
         }
@@ -2032,7 +2041,7 @@ void gl_draw_ui_image_button(GL_State *gl_state, Game_State *game_state,
                  image_width, image_height, button.texture_id);
 
     if (button.has_text) {
-        real32 footer_height = button.height - image_height - style.padding_y;
+        real32 footer_height = style.footer_height + style.padding_y;
         assert(footer_height >= 0);
 
         Font font = get_font(game_state, button.font);
@@ -2046,7 +2055,7 @@ void gl_draw_ui_image_button(GL_State *gl_state, Game_State *game_state,
         UI_Text_Style text_style = button.text_style;
 
         real32 text_x = button.x;
-        real32 text_y = button.y + style.padding_y + image_height;
+        real32 text_y = button.y + image_height + style.padding_y;
         
         if (text_style.use_offset_shadow) {
             gl_draw_text(gl_state, &game_state->render_state, &font,
@@ -2419,77 +2428,6 @@ void gl_draw_ui(GL_State *gl_state, Game_State *game_state,
             current_layer++;
         }
     }
-
-#if 0
-    while (((uint8 *) element) < ((uint8 *) push_buffer->base + push_buffer->used)) {
-        if (element->layer != current_layer) {
-            element = next_element(element, push_buffer);
-            continue;
-        }
-        
-        switch (element->type) {
-            case UI_TEXT: {
-                UI_Text *ui_text = (UI_Text *) element;
-                gl_draw_ui_text(gl_state, game_state, ui_manager, *ui_text);
-                address += sizeof(UI_Text);
-            } break;
-            case UI_TEXT_BUTTON: {
-                UI_Text_Button *ui_text_button = (UI_Text_Button *) element;
-                gl_draw_ui_text_button(gl_state, game_state, ui_manager, *ui_text_button);
-                address += sizeof(UI_Text_Button);
-            } break;
-            case UI_IMAGE_BUTTON: {
-                UI_Image_Button *ui_image_button = (UI_Image_Button *) element;
-                gl_draw_ui_image_button(gl_state, game_state, ui_manager, *ui_image_button);
-                address += sizeof(UI_Image_Button);
-            } break;
-            case UI_COLOR_BUTTON: {
-                UI_Color_Button *ui_color_button = (UI_Color_Button *) element;
-                gl_draw_ui_color_button(gl_state, render_state, ui_manager, *ui_color_button);
-                address += sizeof(UI_Color_Button);
-            } break;
-            case UI_TEXT_BOX: {
-                UI_Text_Box *ui_text_box = (UI_Text_Box *) element;
-                gl_draw_ui_text_box(gl_state, game_state, display_output, ui_manager, *ui_text_box);
-                address += sizeof(UI_Text_Box);
-            } break;
-            case UI_SLIDER: {
-                UI_Slider *ui_slider = (UI_Slider *) element;
-                gl_draw_ui_slider(gl_state, game_state, display_output, ui_manager, *ui_slider);
-                address += sizeof(UI_Slider);
-            } break;
-            case UI_BOX: {
-                UI_Box *ui_box = (UI_Box *) element;
-                gl_draw_ui_box(gl_state, render_state, ui_manager, *ui_box);
-                address += sizeof(UI_Box);
-            } break;
-            case UI_LINE: {
-                UI_Line *ui_line = (UI_Line *) element;
-                gl_draw_ui_line(gl_state, display_output, ui_manager, *ui_line);
-                address += sizeof(UI_Line);
-            } break;
-            case UI_HUE_SLIDER: {
-                UI_Hue_Slider *ui_hue_slider = (UI_Hue_Slider *) element;
-                gl_draw_ui_hue_slider(gl_state, render_state, ui_manager, *ui_hue_slider);
-                address += sizeof(UI_Hue_Slider);
-            } break;
-            case UI_HSV_PICKER: {
-                UI_HSV_Picker *ui_hsv_picker = (UI_HSV_Picker *) element;
-                gl_draw_ui_hsv_picker(gl_state, render_state, ui_manager, *ui_hsv_picker);
-                address += sizeof(UI_HSV_Picker);
-            } break;
-            case UI_COLOR_PICKER: {
-                UI_Color_Picker *ui_color_picker = (UI_Color_Picker *) element;
-                address += sizeof(UI_Color_Picker);
-            } break;
-            default: {
-                assert(!"Unhandled UI element type.");
-            }
-        }
-
-        element = (UI_Element *) address;
-    }
-#endif
 }
 
 void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Editor_State *editor_state) {
@@ -2975,59 +2913,9 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
 
     gl_draw_framebuffer(gl_state, gl_state->gizmo_framebuffer);
 
+    // TODO: for some reason, if we comment out this line, nothing renders at all, other than the gizmos
+    //       if we happen to click in an area where there is an entity
     gl_draw_ui(gl_state, game_state,  &game_state->ui_manager, display_output);
-
-#if 0
-    Vec3 triangle[3] = {
-        make_vec3(20.0f, 15.0f, 0.0f),
-        make_vec3(20.0f, 500.0f, 0.0f),
-        make_vec3(80.0f, 400.0f, 0.0f)
-    };
-#endif
-#if 0
-    Vec2 triangle[3] = {
-        make_vec2(0.0f, 0.0f),
-        make_vec2(1280.0f, 0.0f),
-        make_vec2(1280.0f, 720.0f)
-    };
-    for (int32 i = 0; i < 3; i++) {
-        Vec2 start = triangle[i];
-        Vec2 end = triangle[(i + 1) % 3];
-        gl_draw_line(gl_state, display_output, start, end, make_vec3(1.0f, 0.0f, 0.0f));
-    }
-
-    if (in_triangle(controller_state->current_mouse, triangle)) {
-        Font font = get_font(game_state, "times24");
-        gl_draw_text(gl_state, render_state, &font,
-                     0.0f, 720.0f,
-                     "inside triangle",
-                     make_vec4(text_color, 1.0f));
-    }
-#endif
-
-#if 0
-    real32 hsv_quad_width = 20.0f;
-    real32 hsv_quad_height = 500.0f;
-    gl_draw_hue_slider_quad(gl_state, render_state,
-                     0.5f * (display_output.width - hsv_quad_width),
-                     0.5f * (display_output.height - hsv_quad_height),
-                     hsv_quad_width, hsv_quad_height);
-#endif
-
-#if 0
-    real32 hsv_quad_width = 500.0f;
-    real32 hsv_quad_height = 500.0f;
-    gl_draw_hsv_quad(gl_state, render_state,
-                     0.5f * (display_output.width - hsv_quad_width),
-                     0.5f * (display_output.height - hsv_quad_height),
-                     hsv_quad_width, hsv_quad_height,
-                     50);
-#endif
-
-#if 0
-    gl_draw_quad(gl_state, render_state,
-                 0.0f, 0.0f, 50.0f, 50.0f, gl_state->light_icon_texture_id, true);
-#endif
 
     glEnable(GL_DEPTH_TEST);
 }

@@ -162,7 +162,7 @@ namespace Player_Constants {
     Vec3 right = make_vec3(1.0f, 0.0f, 0.0f);
     Vec3 up = make_vec3(0.0f, 1.0f, 0.0f);
 
-    real32 initial_speed = 1.0f;
+    real32 initial_speed = 1.5f;
 };
 
 struct Walk_State {

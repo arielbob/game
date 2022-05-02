@@ -31,7 +31,7 @@ UI_Slider_Style default_slider_style = { rgb_to_vec4(33, 62, 69),
                                          rgb_to_vec4(158, 158, 186),
                                          rgb_to_vec4(186, 45, 47) };
 
-UI_Image_Button_Style default_image_button_style = { 5.0f, 5.0f,
+UI_Image_Button_Style default_image_button_style = { 5.0f, 5.0f, 15.0f,
                                                      CONSTRAINT_FILL_BUTTON_WIDTH | CONSTRAINT_FILL_BUTTON_HEIGHT,
                                                      rgb_to_vec4(33, 62, 69),
                                                      rgb_to_vec4(47, 84, 102),
@@ -97,11 +97,11 @@ inline real32 get_center_x_offset(real32 container_width, real32 element_width) 
 // this is different from get_center_y_offset because text is drawn from the bottom left corner and goes up
 // i.e. it's drawn going up from its baseline, instead of like for quads from the top left going down
 inline real32 get_center_baseline_offset(real32 container_height, real32 text_height) {
-    return (0.5f * (container_height + text_height));
+    return 0.5f * (container_height + text_height);
 }
 
 inline real32 get_center_y_offset(real32 height, real32 box_height) {
-    return (height / 2.0f) - (box_height / 2.0f);
+    return 0.5f * (height - box_height);
 }
     
 void clear_push_buffer(UI_Push_Buffer *buffer) {
@@ -496,7 +496,8 @@ bool32 do_image_button(real32 x_px, real32 y_px,
 
     Vec2 current_mouse = controller_state->current_mouse;
     if (!ui_manager->is_disabled &&
-        in_bounds_on_layer(ui_manager, current_mouse, x_px, x_px + width, y_px, y_px + height)) {
+        in_bounds_on_layer(ui_manager, current_mouse,
+                           x_px, x_px + width, y_px, y_px + height + style.footer_height)) {
         set_hot(ui_manager, button.id);
         
         if (controller_state->left_mouse.is_down && !controller_state->left_mouse.was_down) {

@@ -138,8 +138,10 @@ UI_Text_Button make_ui_text_button(real32 x, real32 y, real32 width, real32 heig
 }
 
 struct UI_Image_Button_Style {
+    // padding is NOT added to total width or height; it is assumed to be included
     real32 padding_x;
     real32 padding_y;
+    real32 footer_height; // footer height is added onto the total height
 
     uint32 image_constraint_flags;
 
