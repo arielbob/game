@@ -268,6 +268,38 @@
 //       - TODO (done): delete texture when clicked
 //       - TODO (done): fix assert fail when deleting a texture that multiple materials use
 //       - TODO (done): delete texture in OpenGL state if the texture no longer exists in the level
+
+// TODO: mesh deleting
+// NOTE: i think it's fine if we just load all the meshes into an arena, even if they get deleted.
+//       meshes will not be deleted when you're actually playing the game. we can just clear the arena and then
+//       load all the meshes required for a certain level.
+// TODO: material deletion
+// TODO: handle entities with no material (just make them black or something)
+//       - this would happen if you were to delete a material that an entity was using
+
+// TODO: click slider for manual value entry
+// TODO: slideable text boxes (after we do slider manual text entry)
+//       - may just be able to add a parameter to sliders that hide the slider and removes bounds
+// TODO: replace the transform values in the entity box with slideable text boxes
+
+
+// TODO: maybe we don't even need UI state.. we may be able to just hold the State structs ourselves and pass them
+//       to the do_* procedures and those procedures will return the new State structs.
+// TODO: some type of messaging system that isn't in the game console, like toasts kind of (messages that appear
+//       then disappear after a few seconds). this would be nice for some type of feedback like for file saving.
+// TODO: material name/texture strings validation
+//       check for duplicates and empties. it matters that we don't have duplicates since texture names are used
+//       as keys in the opengl code. we don't store material structs in the opengl code, but it's better to be
+//       consistent. show a message using the messaging system.
+// TODO: for checking for memory leaks, it's actually kind of unreliable to use task manager, since we just take
+//       a bunch of memory at the beginning and allocate from that. it would be better if we had an actual
+//       memory monitoring gui.
+// TODO: show message if we've hit a limit, such as with adding entities
+
+// TODO: we could have a basic free list for meshes. just allocate a big block, when you deallocate, go through
+//       all the free blocks and check if any of them end where you started, and if they do, then join the
+//       free blocks and if the one after starts where the deallocated block ends, then join the end to that start
+
 // TODO: figure out a way to set and get meshes and materials easily of different entity types
 //       - think we can just add get_mesh and set_mesh and pass in an entity then just do a switch block on
 //         its type. that seems like the simplest solution.
@@ -336,19 +368,6 @@
 //               the actual color with a line - we can just add a hitbox around where the current value is in
 //               do_hue_slider(), and then when we draw it, draw arrows within that hitbox.
 
-// TODO: maybe we don't even need UI state.. we may be able to just hold the State structs ourselves and pass them
-//       to the do_* procedures and those procedures will return the new State structs.
-// TODO: some type of messaging system that isn't in the game console, like toasts kind of (messages that appear
-//       then disappear after a few seconds). this would be nice for some type of feedback like for file saving.
-// TODO: material name/texture strings validation
-//       check for duplicates and empties. it matters that we don't have duplicates since texture names are used
-//       as keys in the opengl code. we don't store material structs in the opengl code, but it's better to be
-//       consistent. show a message using the messaging system.
-// TODO: for checking for memory leaks, it's actually kind of unreliable to use task manager, since we just take
-//       a bunch of memory at the beginning and allocate from that. it would be better if we had an actual
-//       memory monitoring gui.
-// TODO: show message if we've hit a limit, such as with adding entities
-
 // TODO: text truncation when its containing box is too small
 // TODO: don't allow quotes or brackets in any level strings, i.e. in level name, texture name, material name, etc.
 //       (requires text box validation)
@@ -363,27 +382,12 @@
 
 // TODO: add icons to some of the buttons for better recognition of buttons
 
-// TODO: click slider for manual value entry
-// TODO: slideable text boxes (after we do slider manual text entry)
-//       - may just be able to add a parameter to sliders that hide the slider and removes bounds
-// TODO: replace the transform values in the entity box with slideable text boxes
-
-// TODO: mesh deleting
-// NOTE: i think it's fine if we just load all the meshes into an arena, even if they get deleted.
-//       meshes will not be deleted when you're actually playing the game. we can just clear the arena and then
-//       load all the meshes required for a certain level.
-
 // TODO: in-game console for outputting messages
 // NOTE: we should not add functions to get materials or textures by their name, since, at least right now, their
 //       names are NOT unique.
 // TODO: error handling for mesh loading (should use in-game console when that's implemented)
 // TODO: error handling for level loading
 
-// TODO: material deletion
-// TODO: handle entities with no material (just make them black or something)
-//       - this would happen if you were to delete a material that an entity was using
-
-// TODO: mesh library
 // TODO: scrollable UI region (mainly for material and texture libraries)
 
 // TODO: slider UI element
@@ -426,7 +430,6 @@
 //       it would be nice to have material parameters in general, so that multiple entities can have the same
 //       material, but look slightly different.
 // TODO: nicer UI (start with window to display selected entity properties)
-// TODO: maybe make game_state and controller_state global variables
 // TODO: directional light (sun light)
 
 // TODO: maybe use a push buffer for entities? and use an Entity_Type enum to differentiate between entities?
@@ -439,7 +442,6 @@
 //       we could do a combination. we could create an Entity struct which contains all the shared fields.
 //       then just add a get_selected_entity procedure that just returns an Entity struct. if you need more
 //       specific details, then you can check entity.entity_type and cast it to the correct object.
-// TODO: be able to draw debug lines
 // TODO: window resize handling (recreate framebuffer, modify display_output)
 
 // TODO: typing in text box

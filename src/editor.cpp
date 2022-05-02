@@ -801,9 +801,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         row_id = "mesh_properties_line";
     
         // MESH PROPERTIES
-        real32 choose_mesh_button_width = 200.0f;
-        real32 add_mesh_button_width = 30.0f;
-        choose_mesh_button_width -= add_mesh_button_width;
+        real32 choose_mesh_button_width = edit_box_width - small_button_width;
 
         char *mesh_name = to_char_array(allocator, mesh->name);
         draw_row_padding(x, &y, row_width, padding_top, row_color, side_flags,
@@ -825,13 +823,23 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         if (!editor_state->open_window_flags && choose_mesh_pressed) {
             editor_state->open_window_flags |= MESH_LIBRARY_WINDOW;
         }
-        x += choose_mesh_button_width + padding_left;
+        x += choose_mesh_button_width;
+
+        bool32 delete_mesh_pressed = do_text_button(x, y,
+                                                    small_button_width, row_height,
+                                                    default_text_button_cancel_style, default_text_style,
+                                                    "-", editor_font_name,
+                                                    normal_entity->mesh_type == Mesh_Type::PRIMITIVE,
+                                                    "delete_mesh");
+
+        x += small_button_width + padding_left;
 
         bool32 add_mesh_pressed = do_text_button(x, y,
-                                                 add_mesh_button_width, row_height,
+                                                 small_button_width, row_height,
                                                  button_style, default_text_style,
-                                                 "+", editor_font_name, "add_mesh");
-        x += add_mesh_button_width + padding_left;
+                                                 "+", editor_font_name,
+                                                 "add_mesh");
+        x += small_button_width + padding_left;
 
         if (add_mesh_pressed) {
             bool32 mesh_added = editor_add_mesh_press(&game_state->current_level, entity);
@@ -1045,6 +1053,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                 if (delete_texture_pressed) {
                     level_delete_texture(level, material->texture_id);
                     has_texture = false;
+                    editor_state->editing_selected_entity_texture = false;
                 }
 
                 x += small_button_width;

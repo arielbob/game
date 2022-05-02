@@ -16,7 +16,8 @@ UI_Text_Button_Style default_text_button_style = { TEXT_ALIGN_X | TEXT_ALIGN_Y,
 UI_Text_Button_Style default_text_button_cancel_style = { TEXT_ALIGN_X | TEXT_ALIGN_Y,
                                                           rgb_to_vec4(140, 38, 60),
                                                           rgb_to_vec4(199, 66, 103),
-                                                          rgb_to_vec4(102, 22, 45) };
+                                                          rgb_to_vec4(102, 22, 45),
+                                                          rgb_to_vec4(102, 102, 102) };
 
 UI_Text_Button_Style default_text_button_save_style = { TEXT_ALIGN_X | TEXT_ALIGN_Y,
                                                         rgb_to_vec4(37, 179, 80),
