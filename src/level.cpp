@@ -78,6 +78,16 @@ Texture get_texture(Level *level, int32 texture_id) {
     return texture;
 }
 
+Texture *get_texture_pointer(Level *level, int32 texture_id) {
+    assert(texture_id >= 0);
+    Texture *texture_pointer;
+    bool32 texture_exists = hash_table_find_pointer(level->texture_table,
+                                                    texture_id,
+                                                    &texture_pointer);
+    assert(texture_exists);
+    return texture_pointer;
+}
+
 void append_string_add_quotes(String_Buffer *buffer, String_Buffer string) {
     append_string(buffer, "\"");
     append_string(buffer, string);
