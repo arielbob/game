@@ -269,10 +269,16 @@
 //       - TODO (done): fix assert fail when deleting a texture that multiple materials use
 //       - TODO (done): delete texture in OpenGL state if the texture no longer exists in the level
 
-// TODO: mesh deleting
+// TODO (done): mesh deleting
 // NOTE: i think it's fine if we just load all the meshes into an arena, even if they get deleted.
 //       meshes will not be deleted when you're actually playing the game. we can just clear the arena and then
 //       load all the meshes required for a certain level.
+// TODO: add basic free list for meshes
+//       - TODO: just allocate a big block, when you deallocate, go through
+//       all the free blocks and check if any of them end where you started, and if they do, then join the
+//       free blocks and if the one after starts where the deallocated block ends, then join the end to that start
+//       - we can use this to store mesh.data and mesh.indices, and just store a pointer to the allocator in Mesh
+
 // TODO: material deletion
 // TODO: handle entities with no material (just make them black or something)
 //       - this would happen if you were to delete a material that an entity was using
@@ -281,7 +287,6 @@
 // TODO: slideable text boxes (after we do slider manual text entry)
 //       - may just be able to add a parameter to sliders that hide the slider and removes bounds
 // TODO: replace the transform values in the entity box with slideable text boxes
-
 
 // TODO: maybe we don't even need UI state.. we may be able to just hold the State structs ourselves and pass them
 //       to the do_* procedures and those procedures will return the new State structs.
@@ -295,10 +300,6 @@
 //       a bunch of memory at the beginning and allocate from that. it would be better if we had an actual
 //       memory monitoring gui.
 // TODO: show message if we've hit a limit, such as with adding entities
-
-// TODO: we could have a basic free list for meshes. just allocate a big block, when you deallocate, go through
-//       all the free blocks and check if any of them end where you started, and if they do, then join the
-//       free blocks and if the one after starts where the deallocated block ends, then join the end to that start
 
 // TODO: figure out a way to set and get meshes and materials easily of different entity types
 //       - think we can just add get_mesh and set_mesh and pass in an entity then just do a switch block on
@@ -2538,6 +2539,10 @@ void gl_draw_framebuffer(GL_State *gl_state, GL_Framebuffer framebuffer) {
     glBindVertexArray(0);
 }
 
+void deallocate(GL_Mesh gl_mesh) {
+    // nothing to deallocate
+}
+
 void deallocate(GL_Texture gl_texture) {
     // nothing to deallocate - we call gl_delete_texture separately, which unloads it from the GPU, which
     // i don't think we should call "deallocation"
@@ -2645,6 +2650,17 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
             }
 
             mesh->is_loaded = true;
+        }
+    }
+
+    // delete level meshes
+    {
+        FOR_ENTRY_POINTERS(int32, GL_Mesh, gl_state->level_mesh_table) {
+            int32 mesh_key = entry->key;
+            if (!hash_table_exists(level->mesh_table, mesh_key)) {
+                hash_table_remove(&gl_state->level_mesh_table, mesh_key);
+                gl_delete_mesh(entry->value);
+            }
         }
     }
 

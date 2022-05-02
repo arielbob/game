@@ -330,6 +330,21 @@ int32 level_add_mesh(Level *level, Mesh mesh) {
     return mesh_id;
 }
 
+// you can only delete level meshes, so we assume the mesh type is always LEVEL
+void level_delete_mesh(Game_State *game_state, Level *level, int32 mesh_id) {
+    hash_table_remove(&level->mesh_table, mesh_id);
+    // remove the mesh from normal entities
+
+    int32 default_mesh_id =  get_mesh_id_by_name(game_state, level, Mesh_Type::PRIMITIVE, make_string("cube"));
+
+    FOR_ENTRY_POINTERS(int32, Normal_Entity, level->normal_entity_table) {
+        Normal_Entity *entity = &entry->value;
+        if (entity->mesh_type == Mesh_Type::LEVEL && entity->mesh_id == mesh_id) {
+            set_entity_mesh(game_state, level, (Entity *) entity, Mesh_Type::PRIMITIVE, default_mesh_id);
+        }
+    }
+}
+
 // TODO: same TODO as get_mesh_id_by_name
 int32 get_material_id_by_name(Level *level, String material_name) {
     int32 num_checked = 0;

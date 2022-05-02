@@ -4,6 +4,8 @@
 #include "math.h"
 #include "string.h"
 
+#define MAX_TOKEN_TEXT_SIZE 1024
+
 enum class Mesh_Type { NONE, LEVEL, PRIMITIVE };
 
 // TODO: we need more types of Mesh objects. since not all meshes require all the data. for example, a nav mesh
@@ -37,6 +39,10 @@ struct Mesh {
     bool32 is_double_sided;
 };
 
-#define MAX_TOKEN_TEXT_SIZE 1024
+void deallocate(Mesh mesh) {
+    delete_string_buffer(mesh.name);
+    delete_string_buffer(mesh.filename);
+    // TODO: deallocate mesh.data and mesh.indices
+}
 
 #endif

@@ -1,0 +1,88 @@
+level_info {
+level_name "suzanne_hi_and_low"
+}
+
+meshes {
+mesh "suzanne1" ".\blender\suzanne.mesh"
+mesh "suzanne2" ".\blender\suzanne2.mesh"
+}
+
+textures {
+texture "debug" "src/textures/debug_texture.png"
+texture "white" "src/textures/white.bmp"
+}
+
+materials {
+material "shiny_monkey"
+texture "debug"
+gloss 100.000000
+color_override 0.600000 0.600000 0.600000
+use_color_override 1
+
+material "diffuse_plane"
+gloss 1.000000
+color_override 0.900000 0.900000 0.900000
+use_color_override 1
+
+material "arrow_material"
+gloss 100.000000
+color_override 1.000000 0.000000 0.000000
+use_color_override 1
+
+material "white_light"
+gloss 0.000000
+color_override 1.000000 1.000000 1.000000
+use_color_override 1
+
+material "blue_light"
+gloss 0.000000
+color_override 0.000000 0.000000 1.000000
+use_color_override 1
+
+material "diffuse_sphere"
+gloss 5.000000
+color_override 0.690196 0.690196 0.690196
+use_color_override 1
+}
+
+entities {
+type normal
+position 2.000000 1.000000 0.000000
+rotation 0.913877 0.135582 0.378540 -0.056160
+scale 1.000000 1.000000 1.000000
+mesh "suzanne1"
+material "shiny_monkey"
+is_walkable 1
+
+type normal
+position 0.000000 0.000000 0.000000
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 5.000000 0.100000 5.000000
+mesh_primitive "cube"
+material "diffuse_plane"
+is_walkable 1
+
+type normal
+position -1.500000 1.500000 -1.000000
+rotation 0.911412 0.000000 -0.411494 0.000000
+scale 0.500000 0.500000 0.500000
+mesh "suzanne2"
+material "diffuse_sphere"
+is_walkable 0
+
+type point_light
+position 0.800000 1.800000 -2.300000
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 0.100000 0.100000 0.100000
+light_color 0.800000 0.800000 0.800000
+falloff_start 0.000000
+falloff_end 3.000000
+
+type point_light
+position -1.000000 1.500000 0.000000
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 0.100000 0.100000 0.100000
+light_color 0.000000 0.000000 1.000000
+falloff_start 0.000000
+falloff_end 5.000000
+}

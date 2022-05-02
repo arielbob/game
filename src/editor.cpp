@@ -832,6 +832,12 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                                     normal_entity->mesh_type == Mesh_Type::PRIMITIVE,
                                                     "delete_mesh");
 
+        if (delete_mesh_pressed) {
+            assert(normal_entity->mesh_type == Mesh_Type::LEVEL);
+            level_delete_mesh(game_state, level, normal_entity->mesh_id);
+            editor_state->editing_selected_entity_mesh = false;
+        }
+
         x += small_button_width + padding_left;
 
         bool32 add_mesh_pressed = do_text_button(x, y,
@@ -862,7 +868,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
 
         y += row_height;
         x = initial_x;
-        if (editor_state->editing_selected_entity_mesh) {
+        if (normal_entity->mesh_type == Mesh_Type::LEVEL && editor_state->editing_selected_entity_mesh) {
             draw_row_padding(x, &y, row_width, padding_y, row_color, side_flags,
                              row_id, row_index++);
             UI_Text_Box_Style text_box_style = default_text_box_style;
