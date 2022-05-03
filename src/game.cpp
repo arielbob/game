@@ -294,6 +294,21 @@ void init_camera(Camera *camera, Display_Output *display_output) {
 
 void init_game(Game_State *game_state,
                Sound_Output *sound_output, uint32 num_samples) {
+    Heap_Allocator *heap = &memory.level_mesh_heap;
+    void *a = heap_allocate(heap, 8);
+    void *b = heap_allocate(heap, 2);
+    void *c = heap_allocate(heap, 4);
+
+    heap_deallocate(heap, b);
+    heap_deallocate(heap, c);
+
+#if 0
+    heap_deallocate(heap, b);
+    heap_deallocate(heap, c);
+    heap_deallocate(heap, a);
+    heap_allocate(heap, 2);
+#endif
+
 #if 0
     char *buf = (char *) pool_push(&memory.string64_pool);
     string_format(buf, 64, "%s", "hello, world!");

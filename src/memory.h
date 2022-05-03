@@ -4,7 +4,8 @@
 enum Allocator_Type {
     STACK_ALLOCATOR,
     ARENA_ALLOCATOR,
-    POOL_ALLOCATOR
+    POOL_ALLOCATOR,
+    HEAP_ALLOCATOR
 };
 
 struct Allocator {
@@ -38,6 +39,19 @@ struct Pool_Allocator {
     uint32 max_blocks;
 };
 
+struct Heap_Block {
+    Heap_Block *next;
+    uint32 size;
+};
+
+struct Heap_Allocator {
+    Allocator_Type type;
+    void *base;
+    uint32 size;
+    //uint32 used;
+    Heap_Block *first_block;
+};
+
 struct Memory {
     bool32 is_initted;
     Arena_Allocator game_data;
@@ -48,6 +62,7 @@ struct Memory {
     Arena_Allocator level_arena;
     Pool_Allocator level_string64_pool;
     Pool_Allocator level_filename_pool;
+    Heap_Allocator level_mesh_heap;
 
     Arena_Allocator string_arena; 
     Stack_Allocator global_stack;

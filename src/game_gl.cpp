@@ -278,6 +278,7 @@
 //       all the free blocks and check if any of them end where you started, and if they do, then join the
 //       free blocks and if the one after starts where the deallocated block ends, then join the end to that start
 //       - we can use this to store mesh.data and mesh.indices, and just store a pointer to the allocator in Mesh
+//       - TODO: fix bug where deallocating b overwrites c's header
 
 // TODO: material deletion
 // TODO: handle entities with no material (just make them black or something)
