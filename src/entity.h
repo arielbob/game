@@ -128,4 +128,8 @@ void deallocate(Texture texture) {
     delete_string_buffer(texture.filename);
 }
 
+void deallocate(Material material) {
+    delete_string_buffer(material.name);
+}
+
 #endif

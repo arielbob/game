@@ -30,16 +30,6 @@ gloss 100.000000
 color_override 1.000000 0.000000 0.000000
 use_color_override 1
 
-material "white_light"
-gloss 0.000000
-color_override 1.000000 1.000000 1.000000
-use_color_override 1
-
-material "blue_light"
-gloss 0.000000
-color_override 0.000000 0.000000 1.000000
-use_color_override 1
-
 material "diffuse_sphere"
 gloss 5.000000
 color_override 0.690196 0.690196 0.690196
@@ -108,7 +98,7 @@ rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
 light_color 0.785000 0.137375 0.137375
 falloff_start 0.000000
-falloff_end 4.854371
+falloff_end 4.854372
 
 type point_light
 position 5.265507 0.000000 0.000000
@@ -119,7 +109,7 @@ falloff_start 0.000000
 falloff_end 5.000000
 
 type point_light
-position 0.000000 0.000000 7.492578
+position 0.000000 0.000000 7.492579
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
 light_color 1.000000 0.010000 0.010000

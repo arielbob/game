@@ -944,9 +944,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         side_flags = SIDE_LEFT | SIDE_RIGHT;
 
         
-        real32 choose_material_button_width = wide_button_width;
-        real32 add_material_button_width = small_button_width;
-        choose_material_button_width -= add_material_button_width;
+
 
         x += right_column_offset;
         Material *material = NULL;
@@ -956,6 +954,12 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
             material = get_material_pointer(level, normal_entity->material_id);
             material_name = to_char_array(allocator, material->name);
         }
+
+        real32 choose_material_button_width = edit_box_width - small_button_width;
+        if (!has_material) {
+            choose_material_button_width += small_button_width;
+        }
+
         bool32 choose_material_pressed = do_text_button(x, y,
                                                         choose_material_button_width, row_height,
                                                         button_style, default_text_style,
@@ -965,8 +969,26 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         if (!editor_state->open_window_flags && choose_material_pressed) {
             editor_state->open_window_flags |= MATERIAL_LIBRARY_WINDOW;
         }
-        x += choose_material_button_width + padding_left;
+        x += choose_material_button_width;
 
+        if (has_material) {
+            bool32 delete_material_pressed = do_text_button(x, y,
+                                                            small_button_width, row_height,
+                                                            default_text_button_cancel_style, default_text_style,
+                                                            "-", editor_font_name,
+                                                            "delete_material");
+
+            if (delete_material_pressed) {
+                level_delete_material(game_state, level, normal_entity->material_id);
+                editor_state->editing_selected_entity_material = false;
+            }
+
+            x += small_button_width;
+        }
+
+        x += padding_left;
+
+        real32 add_material_button_width = small_button_width;
         bool32 add_material_pressed = do_text_button(x, y,
                                                      add_material_button_width, row_height,
                                                      button_style, default_text_style,

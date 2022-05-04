@@ -279,9 +279,7 @@
 //       - TODO (done): store level meshes in heap
 //       - TODO (done): clear heap on level unload
 
-// TODO: material deletion
-// TODO: handle entities with no material (just make them black or something)
-//       - this would happen if you were to delete a material that an entity was using
+// TODO (done): material deletion
 
 // TODO: click slider for manual value entry
 // TODO: slideable text boxes (after we do slider manual text entry)
@@ -2968,6 +2966,8 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
 
     // TODO: for some reason, if we comment out this line, nothing renders at all, other than the gizmos
     //       if we happen to click in an area where there is an entity
+    //       - pretty sure it has to do with gl_draw_text(), since if we never call that, then nothing
+    //         renders
     gl_draw_ui(gl_state, game_state,  &game_state->ui_manager, display_output);
 
     glEnable(GL_DEPTH_TEST);

@@ -320,6 +320,17 @@ inline bool32 material_exists(Level *level, int32 material_id) {
     return hash_table_exists(level->material_table, material_id);
 }
 
+void level_delete_material(Game_State *game_state, Level *level, int32 material_id) {
+    hash_table_remove(&level->material_table, material_id);
+
+    FOR_ENTRY_POINTERS(int32, Normal_Entity, level->normal_entity_table) {
+        Normal_Entity *entity = &entry->value;
+        if (entity->material_id == material_id) {
+            set_entity_material((Entity *) entity, -1);
+        }
+    }
+}
+
 inline bool32 texture_exists(Level *level, int32 texture_id) {
     return hash_table_exists(level->texture_table, texture_id);
 }
