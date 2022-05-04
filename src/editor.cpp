@@ -63,7 +63,7 @@ bool32 editor_add_mesh_press(Level *level, Entity *entity) {
         String_Buffer new_mesh_filename_buffer = make_string_buffer(filename_allocator,
                                                                     relative_filename, PLATFORM_MAX_PATH);
 
-        Mesh new_mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena,
+        Mesh new_mesh = read_and_load_mesh((Allocator *) &memory.level_mesh_heap,
                                            new_mesh_filename_buffer,
                                            new_mesh_name_buffer);
         int32 mesh_id = level_add_mesh(level, new_mesh);
@@ -1351,6 +1351,7 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
             bool32 result = read_and_load_level(game_state,
                                                 &game_state->current_level, absolute_filename,
                                                 &memory.level_arena,
+                                                &memory.level_mesh_heap,
                                                 &memory.level_string64_pool,
                                                 &memory.level_filename_pool);
             if (result) {

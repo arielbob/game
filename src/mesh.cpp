@@ -420,10 +420,18 @@ Mesh read_and_load_mesh(Allocator *allocator,
     File_Data mesh_file = platform_open_and_read_file(global_stack, filename);
 
     Mesh mesh = Mesh_Loader::load_mesh(mesh_file, allocator);
+    mesh.allocator = allocator;
     mesh.filename = filename_buffer;
     mesh.name = name_buffer;
     
     end_region(m);
     
     return mesh;
+}
+
+void deallocate(Mesh mesh) {
+    delete_string_buffer(mesh.name);
+    delete_string_buffer(mesh.filename);
+    deallocate(mesh.allocator, mesh.data);
+    deallocate(mesh.allocator, mesh.indices);
 }

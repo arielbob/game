@@ -15,6 +15,8 @@ struct Mesh {
     String_Buffer name;
     String_Buffer filename;
 
+    Allocator *allocator;
+
     real32 *data;
     uint32 num_vertices;
     // size of data in bytes
@@ -38,11 +40,5 @@ struct Mesh {
     bool32 should_unload;
     bool32 is_double_sided;
 };
-
-void deallocate(Mesh mesh) {
-    delete_string_buffer(mesh.name);
-    delete_string_buffer(mesh.filename);
-    // TODO: deallocate mesh.data and mesh.indices
-}
 
 #endif

@@ -685,12 +685,12 @@ bool32 win32_init_memory() {
     uint32 hash_table_stack_size = MEGABYTES(8);
     uint32 game_data_arena_size = GIGABYTES(1);
     uint32 font_arena_size = MEGABYTES(64);
-    uint32 mesh_arena_size = MEGABYTES(64);
+    uint32 common_mesh_arena_size = MEGABYTES(8);
     uint32 string_arena_size = MEGABYTES(64);
     uint32 frame_arena_size = MEGABYTES(64);
     uint32 string64_pool_size = MEGABYTES(64);
     uint32 filename_pool_size = MEGABYTES(8);
-    uint32 level_mesh_heap_size = 256;
+    uint32 level_mesh_heap_size = MEGABYTES(64);
 
     // level memory
     uint32 level_arena_size = MEGABYTES(64);
@@ -701,7 +701,7 @@ bool32 win32_init_memory() {
                                 hash_table_stack_size +
                                 game_data_arena_size +
                                 font_arena_size +
-                                mesh_arena_size +
+                                common_mesh_arena_size +
                                 string_arena_size +
                                 frame_arena_size +
                                 string64_pool_size +
@@ -730,9 +730,9 @@ bool32 win32_init_memory() {
         memory.font_arena = font_arena;
         base = (uint8 *) base + font_arena_size;
 
-        Arena_Allocator mesh_arena = make_arena_allocator(base, mesh_arena_size);
-        memory.mesh_arena = mesh_arena;
-        base = (uint8 *) base + mesh_arena_size;
+        Arena_Allocator common_mesh_arena = make_arena_allocator(base, common_mesh_arena_size);
+        memory.common_mesh_arena = common_mesh_arena;
+        base = (uint8 *) base + common_mesh_arena_size;
 
         Arena_Allocator string_arena = make_arena_allocator(base, string_arena_size);
         memory.string_arena = string_arena;

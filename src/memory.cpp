@@ -257,9 +257,7 @@ void clear_pool(Pool_Allocator *pool) {
 #define HEAP_HEADER_ALIGNMENT_BYTES 8
 #define MIN_HEAP_SIZE sizeof(Heap_Block) + HEAP_BLOCK_ALIGNMENT_BYTES
 
-Heap_Allocator make_heap_allocator(void *base, uint32 size, bool32 zero_memory = true, uint32 alignment_bytes = 8) {
-    assert(((alignment_bytes) & (alignment_bytes - 1)) == 0); // ensure that alignment_bytes is a power of 2
-
+Heap_Allocator make_heap_allocator(void *base, uint32 size) {
     // +8 for alignment
     // this ensures that we can at least store the data for a heap block, but doesn't really say anything about
     // whether we can actually store anything in it, which is fine, since we'll always allocate enough memory
@@ -268,7 +266,7 @@ Heap_Allocator make_heap_allocator(void *base, uint32 size, bool32 zero_memory =
 
     uint32 align_mask = HEAP_BLOCK_ALIGNMENT_BYTES - 1;
     uint32 misalignment = ((uint64) ((uint8 *) base) & align_mask);
-    uint32 align_offset = align_offset = alignment_bytes - misalignment;
+    uint32 align_offset = HEAP_BLOCK_ALIGNMENT_BYTES - misalignment;
 
     base = (void *) ((uint8 *) base + align_offset);
 
@@ -286,10 +284,14 @@ Heap_Allocator make_heap_allocator(void *base, uint32 size, bool32 zero_memory =
     return heap;
 }
 
+inline uint8 *heap_get_unaligned_address(void *aligned_address) {
+    uint8 align_offset = *((uint8 *) aligned_address - 1);
+    uint8 *unaligned_start = (uint8 *) aligned_address - align_offset;
+    return unaligned_start;
+}
+
 inline uint8 *get_block_unaligned_address(void *block) {
-    uint8 block_offset = *((uint8 *) block - 1);
-    uint8 *block_start = (uint8 *) block - block_offset;
-    return block_start;
+    return heap_get_unaligned_address(block);
 }
 
 void heap_coalesce_blocks(Heap_Allocator *heap) {
@@ -320,7 +322,7 @@ void heap_coalesce_blocks(Heap_Allocator *heap) {
     }
 }
 
-void *heap_allocate(Heap_Allocator *heap, uint32 size, uint32 alignment_bytes = 8) {
+void *heap_allocate(Heap_Allocator *heap, uint32 size, bool32 zero_memory = false, uint32 alignment_bytes = 8) {
     assert(alignment_bytes >= 4);
     assert(((alignment_bytes) & (alignment_bytes - 1)) == 0); // ensure that alignment_bytes is a power of 2
 
@@ -419,6 +421,10 @@ void *heap_allocate(Heap_Allocator *heap, uint32 size, uint32 alignment_bytes = 
         *((uint32 *) (header_address)) = aligned_size;
         *((uint8 *) ((uint8 *) header_address - 1)) = (uint8) header_align_offset;
 
+        if (zero_memory) {
+            platform_zero_memory(data_address, data_aligned_size);
+        }
+
         if (previous_block == NULL) {
             heap->first_block = next_block;
         } else {
@@ -484,6 +490,26 @@ void heap_deallocate(Heap_Allocator *heap, void *address) {
     heap_coalesce_blocks(heap);
 }
 
+void clear_heap(Heap_Allocator *heap) {
+    void *unaligned_base = heap_get_unaligned_address(heap->base);
+
+    uint32 align_mask = HEAP_BLOCK_ALIGNMENT_BYTES - 1;
+    uint32 misalignment = ((uint64) ((uint8 *) unaligned_base) & align_mask);
+    uint32 align_offset = HEAP_BLOCK_ALIGNMENT_BYTES - misalignment;
+
+    void *base = (void *) ((uint8 *) unaligned_base + align_offset);
+
+    heap->used = 0;
+
+    assert(base == heap->base);
+    Heap_Block *first_block = (Heap_Block *) base;
+    *((uint8 *) first_block - 1) = (uint8) align_offset;
+    first_block->next = NULL;
+    first_block->size = heap->size;
+    heap->first_block = first_block;
+}
+
+// TODO: should have alignment parameter too, i think
 void *allocate(Allocator *allocator, uint32 size, bool32 zero_memory) {
     switch (allocator->type) {
         case STACK_ALLOCATOR:
@@ -503,7 +529,8 @@ void *allocate(Allocator *allocator, uint32 size, bool32 zero_memory) {
         }
         case HEAP_ALLOCATOR:
         {
-            
+            Heap_Allocator *heap = (Heap_Allocator *) allocator;
+            return heap_allocate(heap, size, zero_memory);
         }
         default:
         {
@@ -519,14 +546,18 @@ void deallocate(Allocator *allocator, void *address) {
         case STACK_ALLOCATOR: {
             assert(!"Stacks are cleared using end_region()");
             return;
-        } break;
+        }
         case ARENA_ALLOCATOR: {
             assert(!"Arenas are cleared all at once using clear_arena()");
             return;
-        } break; 
+        }
         case POOL_ALLOCATOR: {
             Pool_Allocator *pool = (Pool_Allocator *) allocator;
             return pool_remove(pool, address);
+        }
+        case HEAP_ALLOCATOR: {
+            Heap_Allocator *heap = (Heap_Allocator *) allocator;
+            return heap_deallocate(heap, address);
         }
         default: {
             assert(!"Unhandled allocator type.");

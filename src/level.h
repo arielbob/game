@@ -17,6 +17,7 @@ struct Level {
     Arena_Allocator *arena_pointer;
     Pool_Allocator *string64_pool_pointer;
     Pool_Allocator *filename_pool_pointer;
+    Heap_Allocator *mesh_heap_pointer;
 
     Hash_Table<int32, Mesh> mesh_table;
     Hash_Table<int32, Material> material_table;
@@ -101,7 +102,8 @@ namespace Level_Loader {
 
 bool32 read_and_load_level(Game_State *game_state,
                            Level *level, char *filename,
-                           Arena_Allocator *mesh_arena,
+                           Arena_Allocator *arena,
+                           Heap_Allocator *mesh_heap,
                            Pool_Allocator *string64_pool,
                            Pool_Allocator *filename_pool);
 

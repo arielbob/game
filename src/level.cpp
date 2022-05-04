@@ -437,6 +437,7 @@ void level_delete_texture(Level *level, int32 texture_id) {
 
 // NOTE: should only be called once, or at least make sure you deallocate everything before
 void load_default_level(Game_State *game_state, Level *level) {
+    Allocator *mesh_allocator = (Allocator *) level->mesh_heap_pointer;
     Allocator *arena_allocator = (Allocator *) level->arena_pointer;
     Allocator *filename_allocator = (Allocator *) level->filename_pool_pointer;
     Allocator *mesh_name_allocator = (Allocator *) level->string64_pool_pointer;
@@ -463,13 +464,13 @@ void load_default_level(Game_State *game_state, Level *level) {
 
     // add level meshes
     Mesh mesh;
-    mesh = read_and_load_mesh(arena_allocator,
+    mesh = read_and_load_mesh(mesh_allocator,
                               make_string_buffer(filename_allocator, "blender/suzanne2.mesh", PLATFORM_MAX_PATH),
                               make_string_buffer(mesh_name_allocator, "suzanne", MESH_NAME_MAX_SIZE));
     int32 suzanne_mesh_id = level_add_mesh(level, mesh);
     AABB suzanne_mesh_aabb = mesh.aabb;
     
-    mesh = read_and_load_mesh(arena_allocator,
+    mesh = read_and_load_mesh(mesh_allocator,
                               make_string_buffer(filename_allocator, "blender/sphere.mesh", PLATFORM_MAX_PATH),
                               make_string_buffer(mesh_name_allocator, "sphere", MESH_NAME_MAX_SIZE));
     int32 sphere_mesh_id = level_add_mesh(level, mesh);
@@ -519,7 +520,6 @@ void load_default_level(Game_State *game_state, Level *level) {
     // add level entities
     Transform transform = {};
     Normal_Entity entity;
-    
     
     transform.scale = make_vec3(1.0f, 1.0f, 1.0f);
     transform.position = make_vec3(2.0f, 1.0f, 0.0f);
@@ -588,6 +588,7 @@ void unload_level(Level *level) {
     level->should_clear_gpu_data = true;
 
     clear_arena(level->arena_pointer);
+    clear_heap(level->mesh_heap_pointer);
     clear_pool(level->string64_pool_pointer);
     clear_pool(level->filename_pool_pointer);
 
@@ -1271,6 +1272,7 @@ bool32 Level_Loader::load_temp_level(Allocator *temp_allocator, Game_State *game
 bool32 read_and_load_level(Game_State *game_state,
                            Level *level, char *filename,
                            Arena_Allocator *arena,
+                           Heap_Allocator *mesh_heap,
                            Pool_Allocator *string64_pool,
                            Pool_Allocator *filename_pool) {
     Marker m = begin_region();
@@ -1300,8 +1302,9 @@ bool32 read_and_load_level(Game_State *game_state,
 
     if (load_temp_level_result) {
         unload_level(level);
-
+        
         Allocator *level_arena_allocator = (Allocator *) arena;
+        Allocator *level_mesh_allocator = (Allocator *) mesh_heap;
         Allocator *level_string64_allocator = (Allocator *) string64_pool;
         Allocator *level_filename_allocator = (Allocator *) filename_pool;
 
@@ -1318,6 +1321,7 @@ bool32 read_and_load_level(Game_State *game_state,
                                          LEVEL_NAME_MAX_SIZE);
         // set allocators
         level->arena_pointer = arena;
+        level->mesh_heap_pointer = mesh_heap;
         level->string64_pool_pointer = string64_pool;
         level->filename_pool_pointer = filename_pool;
 
@@ -1327,6 +1331,8 @@ bool32 read_and_load_level(Game_State *game_state,
                                                           temp_level->point_light_entity_table);
 
         // copy and load meshes
+        // level_arena_allocator is not a typo; that is where the hash table entries are stored.
+        // the actual mesh data is loaded below and is stored in level_mesh_allocator
         level->mesh_table = copy_hash_table(level_arena_allocator, temp_level->mesh_table);
         // copy mesh strings and load all the meshes
         int32 num_checked = 0;
@@ -1342,7 +1348,7 @@ bool32 read_and_load_level(Game_State *game_state,
                 String_Buffer mesh_filename = make_string_buffer(level_filename_allocator,
                                                                  make_string(temp_mesh.filename),
                                                                  PLATFORM_MAX_PATH);
-                Mesh mesh = read_and_load_mesh(level_arena_allocator, mesh_filename, mesh_name);
+                Mesh mesh = read_and_load_mesh(level_mesh_allocator, mesh_filename, mesh_name);
                 mesh_table.entries[i].value = mesh;
 
                 num_checked++;

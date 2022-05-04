@@ -387,22 +387,22 @@ void init_game(Game_State *game_state,
     // NOTE: we just use the string_arena here since we're never going to need to remove these meshes
     Allocator *mesh_name_allocator = (Allocator *) &memory.string_arena;
     Mesh mesh;
-    mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena,
+    mesh = read_and_load_mesh((Allocator *) &memory.common_mesh_arena,
                               make_string_buffer(filename_allocator, "blender/gizmo_arrow.mesh", PLATFORM_MAX_PATH),
                               make_string_buffer(mesh_name_allocator, "gizmo_arrow", MESH_NAME_MAX_SIZE));
     int32 gizmo_arrow_mesh_id = add_common_mesh(game_state, mesh);
 
-    mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena,
+    mesh = read_and_load_mesh((Allocator *) &memory.common_mesh_arena,
                               make_string_buffer(filename_allocator, "blender/gizmo_ring.mesh", PLATFORM_MAX_PATH),
                               make_string_buffer(mesh_name_allocator, "gizmo_ring", MESH_NAME_MAX_SIZE));
     int32 gizmo_ring_mesh_id = add_common_mesh(game_state, mesh);
 
-    mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena,
+    mesh = read_and_load_mesh((Allocator *) &memory.common_mesh_arena,
                               make_string_buffer(filename_allocator, "blender/gizmo_sphere.mesh", PLATFORM_MAX_PATH),
                               make_string_buffer(mesh_name_allocator, "gizmo_sphere", MESH_NAME_MAX_SIZE));
     int32 gizmo_sphere_mesh_id = add_common_mesh(game_state, mesh);
 
-    mesh = read_and_load_mesh((Allocator *) &memory.mesh_arena,
+    mesh = read_and_load_mesh((Allocator *) &memory.common_mesh_arena,
                               make_string_buffer(filename_allocator, "blender/cube.mesh", PLATFORM_MAX_PATH),
                               make_string_buffer(mesh_name_allocator, "cube", MESH_NAME_MAX_SIZE));
     add_primitive_mesh(game_state, mesh);
@@ -439,6 +439,7 @@ void init_game(Game_State *game_state,
     // init level
     Level *current_level = &game_state->current_level;
     current_level->name = make_string_buffer((Allocator *) &memory.level_string64_pool, LEVEL_NAME_MAX_SIZE);
+    current_level->mesh_heap_pointer = &memory.level_mesh_heap;
     current_level->arena_pointer = &memory.level_arena;
     current_level->string64_pool_pointer = &memory.level_string64_pool;
     current_level->filename_pool_pointer = &memory.level_filename_pool;
