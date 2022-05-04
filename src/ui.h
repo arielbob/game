@@ -334,7 +334,7 @@ struct UI_Slider {
     real32 width;
     real32 height;
 
-    char *text;
+    String_Buffer buffer;
     char *font;
     
     UI_Slider_Style style;
@@ -344,35 +344,6 @@ struct UI_Slider {
     real32 max;
     real32 value;
 };
-
-UI_Slider make_ui_slider(real32 x, real32 y,
-                         real32 width, real32 height,
-                         char *text, char *font,
-                         real32 min, real32 max, real32 value,
-                         UI_Slider_Style style, UI_Text_Style text_style,
-                         int32 layer, char *id, int32 index = 0) {
-    UI_Slider slider;
-
-    slider.type = UI_SLIDER;
-    slider.layer = layer;
-
-    slider.x = x;
-    slider.y = y;
-    slider.width = width;
-    slider.height = height;
-    slider.text = text;
-    slider.font = font;
-    slider.style = style;
-    slider.text_style = text_style;
-    slider.min = min;
-    slider.max = max;
-    slider.value = value;
-    
-    UI_id slider_id = { UI_SLIDER, id, index };
-    slider.id = slider_id;
-
-    return slider;
-}
 // end slider
 
 // start box
@@ -580,21 +551,33 @@ UI_Color_Picker make_ui_color_picker(real32 x, real32 y,
 // end color picker
 
 // UI element states
-enum UI_Element_State_Type {
-    UI_STATE_NONE,
-    UI_STATE_SLIDER
+enum class UI_Element_State_Type {
+    NONE,
+    SLIDER
+};
+
+#define UI_ELEMENT_STATE_HEADER \
+    UI_Element_State_Type type;
+
+struct UI_Element_State {
+    UI_ELEMENT_STATE_HEADER
 };
 
 struct UI_Slider_State {
+    UI_ELEMENT_STATE_HEADER
     String_Buffer buffer;
 };
 
-struct UI_State_Variant {
-    UI_Element_State_Type type;
-    union {
-        UI_Slider_State slider_state;
-    };
+UI_Slider_State make_ui_slider_state(Allocator *string_allocator, char *text) {
+    UI_Slider_State state;
+    state.type = UI_Element_State_Type::SLIDER;
+    state.buffer = make_string_buffer(string_allocator, make_string(text), 64);
+    return state;
 };
+
+void deallocate(UI_Slider_State state) {
+    delete_string_buffer(state.buffer);
+}
 
 struct UI_Push_Buffer {
     void *base;
@@ -612,7 +595,9 @@ struct UI_Manager {
     int32 current_layer;
 
     UI_Push_Buffer push_buffer;
-    Hash_Table<UI_id, UI_State_Variant> state_table;
+
+    Heap_Allocator *heap_pointer;
+    Hash_Table<UI_id, UI_Element_State *> state_table;
 
     bool32 is_disabled;
     

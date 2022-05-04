@@ -49,6 +49,40 @@ UI_Text_Box_Style default_text_box_style = { TEXT_ALIGN_Y,
                                              rgb_to_vec4(47, 84, 102),
                                              rgb_to_vec4(33, 62, 69), };
 
+inline UI_id make_ui_id(UI_Type type, void *id, int32 index) {
+    UI_id ui_id = { type, id, index };
+    return ui_id;
+}
+                                             
+UI_Slider make_ui_slider(real32 x, real32 y,
+                         real32 width, real32 height,
+                         String_Buffer buffer, char *font,
+                         real32 min, real32 max, real32 value,
+                         UI_Slider_Style style, UI_Text_Style text_style,
+                         int32 layer, char *id, int32 index = 0) {
+    UI_Slider slider;
+
+    slider.type = UI_SLIDER;
+    slider.layer = layer;
+
+    slider.x = x;
+    slider.y = y;
+    slider.width = width;
+    slider.height = height;
+    slider.buffer = buffer;
+    slider.font = font;
+    slider.style = style;
+    slider.text_style = text_style;
+    slider.min = min;
+    slider.max = max;
+    slider.value = value;
+    
+    UI_id slider_id = make_ui_id(UI_SLIDER, id, index);
+    slider.id = slider_id;
+
+    return slider;
+}
+
 // TODO: store UI element state in a hash table, so we can do things like fading transitions.
 //       this requires some thought since we would like to remove elements from the hash table if
 //       the element is no longer being displayed. we want this while retaining the nice
@@ -188,12 +222,12 @@ uint32 get_hash(UI_id id, uint32 bucket_size) {
     return hash;
 }
 
-bool32 get_state(UI_Manager *manager, UI_id id, UI_State_Variant **result) {
-    bool32 state_exists = hash_table_find_pointer<UI_id, UI_State_Variant>(manager->state_table, id, result);
+bool32 get_state(UI_Manager *manager, UI_id id, UI_Element_State **result) {
+    bool32 state_exists = hash_table_find<UI_id, UI_Element_State *>(manager->state_table, id, result);
     return state_exists;
 };
 
-void add_state(UI_Manager *manager, UI_id id, UI_State_Variant state) {
+void add_state(UI_Manager *manager, UI_id id, UI_Element_State *state) {
     hash_table_add(&manager->state_table, id, state);
 }
 
@@ -308,22 +342,21 @@ UI_Element *next_element(UI_Element *current_element, UI_Push_Buffer *push_buffe
     }
 }
 
-void deallocate(UI_State_Variant variant) {
-    switch (variant.type) {
-        case UI_STATE_NONE: {
-            assert(!"Variant cannot exist without a UI state type.");
-            return;
-        }
-        case UI_STATE_SLIDER: {
-            UI_Slider_State state = variant.slider_state;
-            pool_remove(&memory.string64_pool, state.buffer.contents);
-            return;
-        }
+void deallocate(UI_Element_State *untyped_state) {
+    switch (untyped_state->type) {
+        case UI_Element_State_Type::NONE: {
+            assert(!"UI_Element_State does not have a type.");
+        } break;
+        case UI_Element_State_Type::SLIDER: {
+            UI_Slider_State *state = (UI_Slider_State *) untyped_state;
+            deallocate(*state);
+        } break;
         default: {
             assert("!Unhandled UI state type");
-            return;
-        }
+        } break;
     }
+
+    heap_deallocate(Context::ui_manager->heap_pointer, untyped_state);
 }
 
 // NOTE: since in immediate-mode GUIs, we only update hot if we call the do_ procedure for some element,
@@ -371,12 +404,12 @@ void delete_state_if_gone(UI_Manager *manager) {
     UI_Push_Buffer *push_buffer = &manager->push_buffer;
     UI_Element *element = next_element(NULL, push_buffer);
 
-    Hash_Table<UI_id, UI_State_Variant> *state_table = &manager->state_table;
+    Hash_Table<UI_id, UI_Element_State*> *state_table = &manager->state_table;
 
     // loop through all the state entries and look if they're in the UI push buffer this frame.
     // if they aren't, then the element is gone and its state should be deleted from state_table.
     for (int32 i = 0; i < state_table->max_entries; i++) {
-        Hash_Table_Entry<UI_id, UI_State_Variant> *entry = &state_table->entries[i];
+        Hash_Table_Entry<UI_id, UI_Element_State*> *entry = &state_table->entries[i];
         if (!entry->is_occupied) continue;
 
         bool32 exists_this_frame = false;
@@ -640,6 +673,19 @@ void do_text_box(UI_Manager *manager, Controller_State *controller_state,
 }
 #endif
 
+#if 0
+void do_text_box_with_state(real32 x, real32 y,
+                            real32 width, real32 height,
+                            String_Buffer initial_text,
+                            char *font,
+                            UI_Text_Box_Style style, UI_Text_Style text_style,
+                            char *id_string, int32 index = 0) {
+    using namespace Context;
+
+    
+}
+#endif
+
 void do_text_box(real32 x, real32 y,
                  real32 width, real32 height,
                  String_Buffer *buffer,
@@ -704,30 +750,40 @@ void do_text_box(real32 x, real32 y,
 
 real32 do_slider(real32 x, real32 y,
                  real32 width, real32 height,
-                 char *text, char *font,
+                 char *font,
                  real32 min, real32 max, real32 value,
                  UI_Slider_Style style, UI_Text_Style text_style,
                  char *id_string, int32 index = 0) {
     using namespace Context;
-    UI_Slider slider =  make_ui_slider(x, y, width, height,
-                                       text, font,
-                                       min, max, value,
-                                       style, text_style,
-                                       ui_manager->current_layer, id_string, index);
-    
-    UI_State_Variant *state_variant;
-    bool32 state_exists = get_state(ui_manager, slider.id, &state_variant);
+
+    UI_id slider_id = make_ui_id(UI_SLIDER, id_string, index);
+
+    // TODO: it's annoying to constantly have to cast it back and forth, figure out something better - maybe use
+    //       macros
+    UI_Element_State *untyped_state;
+    bool32 state_exists = get_state(ui_manager, slider_id, &untyped_state);
     if (!state_exists) {
-        UI_Slider_State new_slider_state = {
-            make_string_buffer((Allocator *) &memory.string64_pool, text, 64)
-        };
-        UI_State_Variant new_state = {};
-        new_state.type = UI_STATE_SLIDER;
-        new_state.slider_state = new_slider_state;
-        
-        add_state(ui_manager, slider.id, new_state);
+        UI_Slider_State *slider_state = (UI_Slider_State *) heap_allocate(ui_manager->heap_pointer,
+                                                                          sizeof(UI_Slider_State));
+
+        Marker m = begin_region();
+        // technically, again, we are not using up the entire 64 character limit, since 64 in string_format
+        // is the buffer size, which includes the null terminator, so 63 actual characters.
+        char *buf = string_format((Allocator *) &memory.global_stack, 64, "%f", value);
+        *slider_state = make_ui_slider_state((Allocator *) &memory.string64_pool, buf);
+        end_region(m);
+
+        untyped_state = (UI_Element_State *) slider_state;
+        add_state(ui_manager, slider_id, untyped_state);
     }
-    UI_Slider_State *state = &state_variant->slider_state;
+    assert(untyped_state->type == UI_Element_State_Type::SLIDER);
+    UI_Slider_State *state = (UI_Slider_State *) untyped_state;
+
+    UI_Slider slider = make_ui_slider(x, y, width, height,
+                                      state->buffer, font,
+                                      min, max, value,
+                                      style, text_style,
+                                      ui_manager->current_layer, id_string, index);
 
     Vec2 current_mouse = controller_state->current_mouse;
     if (!ui_manager->is_disabled && in_bounds_on_layer(ui_manager, current_mouse, x, x + width, y, y + height)) {
@@ -784,6 +840,11 @@ real32 do_slider(real32 x, real32 y,
         value = min(max, value);
         value = max(min, value);
     }
+
+    Marker m = begin_region();
+    char *buf = string_format((Allocator *) &memory.global_stack, 64, "%f", value);
+    set_string_buffer_text(&state->buffer, buf);
+    end_region(m);
 
     ui_add_slider(ui_manager, slider);
 

@@ -281,13 +281,19 @@
 
 // TODO (done): material deletion
 
+// TODO (done): use heap for UI states
+// TODO (done): use state for sliders
+// TODO: add text box element that uses state
+
+// TODO: maybe we don't even need UI state.. we may be able to just hold the State structs ourselves and pass them
+//       to the do_* procedures and those procedures will return the new State structs.
+
 // TODO: click slider for manual value entry
 // TODO: slideable text boxes (after we do slider manual text entry)
 //       - may just be able to add a parameter to sliders that hide the slider and removes bounds
 // TODO: replace the transform values in the entity box with slideable text boxes
 
-// TODO: maybe we don't even need UI state.. we may be able to just hold the State structs ourselves and pass them
-//       to the do_* procedures and those procedures will return the new State structs.
+
 // TODO: some type of messaging system that isn't in the game console, like toasts kind of (messages that appear
 //       then disappear after a few seconds). this would be nice for some type of feedback like for file saving.
 // TODO: material name/texture strings validation
@@ -2213,19 +2219,19 @@ void gl_draw_ui_slider(GL_State *gl_state, Game_State *game_state,
     UI_Text_Style text_style = slider.text_style;
     Font font = get_font(game_state, slider.font);
     real32 adjusted_text_height = font.height_pixels - font.scale_for_pixel_height * (font.ascent + font.descent);
-    real32 text_width = get_width(font, slider.text);
+    real32 text_width = get_width(font, slider.buffer);
     real32 text_x = slider.x + 0.5f*slider.width - 0.5f*text_width;
     real32 text_y = slider.y + 0.5f*slider.height + 0.5f*adjusted_text_height;
 
     if (text_style.use_offset_shadow) {
         gl_draw_text(gl_state, &game_state->render_state, &font,
                      text_x, text_y,
-                     slider.text, text_style.color,
+                     slider.buffer, text_style.color,
                      text_style.offset_shadow_color, TEXT_SHADOW_OFFSET);
     } else {
         gl_draw_text(gl_state, &game_state->render_state, &font,
                      text_x, text_y,
-                     slider.text, text_style.color);
+                     slider.buffer, text_style.color);
     }
 }
 

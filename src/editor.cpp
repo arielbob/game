@@ -1043,6 +1043,14 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                         text_box_style, default_text_style,
                         "material_name_text_box");
 
+#if 0
+            String_Buffer text_result = do_text_box(x + right_column_offset, y,
+                                                    edit_box_width, row_height,
+                                                    &material->name, editor_font_name,
+                                                    text_box_style, default_text_style,
+                                                    "material_name_text_box");
+#endif
+
             y += row_height;
             draw_row_padding(x, &y, row_width, padding_y, row_color,
                              side_flags, row_id, row_index++);
@@ -1143,12 +1151,11 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
             // GLOSS
             draw_row(x, y, row_width, row_height, row_color, side_flags,
                      row_id, row_index++);
-            buf = string_format(allocator, buffer_size, "%f", material->gloss);
             draw_v_centered_text(x + padding_left, y, row_height,
                                  "Gloss", editor_font_name, text_style);
             material->gloss = do_slider(x+right_column_offset, y,
                                         edit_box_width, row_height,
-                                        buf, editor_font_name,
+                                        editor_font_name,
                                         0.0f, 100.0f, material->gloss,
                                         default_slider_style, default_text_style,
                                         "edit_material_gloss_slider");
@@ -1266,12 +1273,11 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                          side_flags, row_id, row_index++);
         draw_row(x, y, row_width, row_height, row_color, side_flags,
                  row_id, row_index++);
-        buf = string_format(allocator, buffer_size, "%f", point_light->falloff_start);
         draw_v_centered_text(x + padding_left, y, row_height,
                              "Falloff Start", editor_font_name, text_style);
         point_light->falloff_start = do_slider(x+right_column_offset, y,
                                                edit_box_width, row_height,
-                                               buf, editor_font_name,
+                                               editor_font_name,
                                                0.0f, 100.0f, point_light->falloff_start,
                                                default_slider_style, default_text_style,
                                                "edit_material_gloss_slider");
@@ -1282,12 +1288,11 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         // LIGHT MAX DISTANCE
         draw_row(x, y, row_width, row_height, row_color, side_flags,
                  row_id, row_index++);
-        buf = string_format(allocator, buffer_size, "%f", point_light->falloff_end);
         draw_v_centered_text(x + padding_left, y, row_height,
                              "Falloff Distance", editor_font_name, text_style);
         point_light->falloff_end = do_slider(x+right_column_offset, y,
                                              edit_box_width, row_height,
-                                             buf, editor_font_name,
+                                             editor_font_name,
                                              0.0f, 100.0f, point_light->falloff_end,
                                              default_slider_style, default_text_style,
                                              "edit_material_gloss_slider");

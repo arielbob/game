@@ -432,8 +432,11 @@ void init_game(Game_State *game_state,
     ui_push_buffer.used = 0;
     ui_manager->push_buffer = ui_push_buffer;
     ui_manager->current_layer = 0;
-    ui_manager->state_table = make_hash_table<UI_id, UI_State_Variant>((Allocator *) &memory.hash_table_stack,
-                                                                       HASH_TABLE_SIZE, &ui_id_equals);
+    // ui_manager->state_table = make_hash_table<UI_id, UI_State_Variant>((Allocator *) &memory.hash_table_stack,
+    //                                                                    HASH_TABLE_SIZE, &ui_id_equals);
+    ui_manager->heap_pointer = &memory.ui_state_heap;
+    ui_manager->state_table = make_hash_table<UI_id, UI_Element_State *>((Allocator *) &memory.hash_table_stack,
+                                                                         HASH_TABLE_SIZE, &ui_id_equals);
     Context::ui_manager = ui_manager;
 
     // init level

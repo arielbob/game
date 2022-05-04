@@ -11,7 +11,7 @@
 //       to have a null-terminator or allocating memory and doing a copy and adding a null-terminator
 //       there.
 
-uint32 string_length(char* str) {
+int32 string_length(char* str) {
     if (!str) return 0;
     int32 count = 0;
     while (*(str++) != '\0') {
@@ -45,7 +45,7 @@ inline bool32 is_empty(String_Buffer string) {
 // NOTE: copies a null-terminated src string into a buffer, dest, of size max_size
 //       for example, if dest is 5 bytes, max_size = 5, and src is a null-terminated char array hello\0,
 //       this is fine. i.e. destination does NOT need to include space for the null-terminator.
-void copy_string(char *dest, char *src, uint32 max_size) {
+void copy_string(char *dest, char *src, int32 max_size) {
     assert(string_length(src) <= max_size);
     while (*src) {
         *dest = *src;
@@ -138,6 +138,14 @@ String_Buffer make_string_buffer(Allocator *allocator, String initial_value, int
     copy_string(&buffer, initial_value);
 
     return buffer;
+}
+
+void set_string_buffer_text(String_Buffer *string_buffer, char *text) {
+    int32 len = string_length(text);
+    assert(len < string_buffer->size);
+
+    memcpy(string_buffer->contents, text, len);
+    string_buffer->current_length = len;
 }
 
 void delete_string_buffer(String_Buffer string_buffer) {

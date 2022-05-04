@@ -71,6 +71,7 @@ struct Memory {
     Stack_Allocator hash_table_stack;
     Pool_Allocator string64_pool;
     Pool_Allocator filename_pool;
+    Heap_Allocator ui_state_heap;
 };
 
 void *allocate(Allocator *allocator, uint32 size, bool32 zero_memory = true);
