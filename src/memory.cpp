@@ -252,52 +252,39 @@ void clear_pool(Pool_Allocator *pool) {
 
 }
 
+#define HEAP_BLOCK_ALIGNMENT_BYTES 8
+#define HEAP_HEADER_SIZE sizeof(uint32)
+#define HEAP_HEADER_ALIGNMENT_BYTES 8
+#define MIN_HEAP_SIZE sizeof(Heap_Block) + HEAP_BLOCK_ALIGNMENT_BYTES
+
 Heap_Allocator make_heap_allocator(void *base, uint32 size, bool32 zero_memory = true, uint32 alignment_bytes = 8) {
     assert(((alignment_bytes) & (alignment_bytes - 1)) == 0); // ensure that alignment_bytes is a power of 2
 
     // +8 for alignment
-    assert(size >= sizeof(Heap_Block) + 8);
+    // this ensures that we can at least store the data for a heap block, but doesn't really say anything about
+    // whether we can actually store anything in it, which is fine, since we'll always allocate enough memory
+    // for a large heap
+    assert(size >= MIN_HEAP_SIZE);
 
-    uint32 align_mask = alignment_bytes - 1;
+    uint32 align_mask = HEAP_BLOCK_ALIGNMENT_BYTES - 1;
     uint32 misalignment = ((uint64) ((uint8 *) base) & align_mask);
     uint32 align_offset = align_offset = alignment_bytes - misalignment;
 
-    //size -= align_offset;
     base = (void *) ((uint8 *) base + align_offset);
 
     Heap_Allocator heap;
     heap.type = HEAP_ALLOCATOR;
     heap.base = base;
     heap.size = size;
-    //heap.used = 0;
+    heap.used = 0;
     
     Heap_Block *first_block = (Heap_Block *) base;
     *((uint8 *) first_block - 1) = (uint8) align_offset;
     first_block->next = NULL;
     first_block->size = size;
     heap.first_block = first_block;
-    //heap.end = (uint8 *) heap.base + size;
     return heap;
 }
-
-#if 0
-void heap_sort_block_free_list(Heap_Allocator *heap) {
-    Heap_Block *sorted_head = heap->first_block;
-
-    Heap_Block *block = sorted_head;
-    while (block) {
-        Heap_Block *sorted_block = sorted_head;
-        while (sorted_block) {
-            if (sorted_block->next == NULL || sorted_block->next > block) {
-                block->next = sorted_block->next;
-                sorted_block->next = block;
-                // skip over the block we just added, i.e. go to the original sorted_block->next
-                block = block->next;
-            }
-        }
-    }
-}
-#endif
 
 inline uint8 *get_block_unaligned_address(void *block) {
     uint8 block_offset = *((uint8 *) block - 1);
@@ -333,8 +320,6 @@ void heap_coalesce_blocks(Heap_Allocator *heap) {
     }
 }
 
-#define HEAP_HEADER_SIZE sizeof(uint32)
-
 void *heap_allocate(Heap_Allocator *heap, uint32 size, uint32 alignment_bytes = 8) {
     assert(alignment_bytes >= 4);
     assert(((alignment_bytes) & (alignment_bytes - 1)) == 0); // ensure that alignment_bytes is a power of 2
@@ -353,11 +338,6 @@ void *heap_allocate(Heap_Allocator *heap, uint32 size, uint32 alignment_bytes = 
         // an unaligned access, although this does cause alignment_bytes to have to be >= 4, since
         // header_size is sizeof(uint32) = 4. we don't have to do this to access the offset, because
         // offset is stored in a single byte, and any address % 1 = 0, so that won't cause unaligned access.
-        uint32 aligned_size = size;
-
-        uint8 block_offset = *((uint8 *) block - 1);
-        uint8 *unaligned_start = (uint8 *) block - block_offset;
-        uint8 *current_address = unaligned_start;
 
         /*
           [padding (header_align_offset bytes)] [size header (4 bytes)] [padding (data_align_offset bytes)] [data]
@@ -374,21 +354,32 @@ void *heap_allocate(Heap_Allocator *heap, uint32 size, uint32 alignment_bytes = 
           if we want an alignment larger than 8 bytes.
          */
 
+        uint32 aligned_size = 0;
+        uint8 *unaligned_start = get_block_unaligned_address(block);
+        uint8 *current_address = unaligned_start;
+
         // align the header
-        uint32 align_mask = HEAP_HEADER_SIZE - 1; // align_mask should be less than 8, i think?
-        uint32 misalignment = ((uint64) current_address) & align_mask;
-        uint32 header_align_offset = HEAP_HEADER_SIZE - misalignment;
-        aligned_size += header_align_offset + HEAP_HEADER_SIZE;
-        current_address += header_align_offset + HEAP_HEADER_SIZE;
+        uint32 header_aligned_size, header_align_offset;
+        void *header_address = get_aligned_address(current_address, HEAP_HEADER_SIZE,
+                                                   &header_aligned_size, &header_align_offset);
+        aligned_size += header_aligned_size;
+        current_address += header_aligned_size;
         
         // align the data
-        align_mask = alignment_bytes - 1;
-        misalignment = ((uint64) (current_address)) & align_mask;
-        uint32 data_align_offset = alignment_bytes - misalignment;
-        aligned_size += data_align_offset;
-        current_address += data_align_offset;
+        uint32 data_aligned_size, data_align_offset;
+        void *data_address = get_aligned_address(current_address, size,
+                                                 &data_aligned_size, &data_align_offset);
+        aligned_size += data_aligned_size;
+        current_address += data_aligned_size;
 
-        start_byte = current_address;
+        // when we deallocate this block, we need to put a Heap_Block struct here, so we make sure
+        // that we allocate enough space to do that.
+        uint32 free_block_aligned_size, free_block_align_offset;
+        void *free_block_address = get_aligned_address(unaligned_start, sizeof(Heap_Block),
+                                                       &free_block_aligned_size, &free_block_align_offset);
+        aligned_size = max(aligned_size, free_block_aligned_size);
+
+        start_byte = data_address;
 
         if (block->size < aligned_size) {
             block = block->next;
@@ -403,43 +394,38 @@ void *heap_allocate(Heap_Allocator *heap, uint32 size, uint32 alignment_bytes = 
         void *aligned_block_address = get_aligned_address(allocated_end, sizeof(Heap_Block),
                                                           &new_block_aligned_size, &new_block_offset);
 
+        Heap_Block *next_block = NULL;
         if (remaining_bytes_in_block < new_block_aligned_size) {
             // if we can't get another block out of the remaining bytes of the block we're using, then
             // just absorb that extra space, since we would have no way of keeping track of all those tiny
             // regions (since they wouldn't be included in the free list, since we can't fit a Heap_Block in them)
             aligned_size += remaining_bytes_in_block;
             allocated_end = (uint8 *) unaligned_start + aligned_size;
-        }
-        
-        Heap_Block *original_block_next = block->next;
-
-        // store the align offset a single byte before the returned memory address, so that when we deallocate
-        // we can just look one byte before to see how far we need to go backwards to find the beginning of
-        // the block
-        *((uint8 *) start_byte - 1) = (uint8) data_align_offset;
-        *((uint32 *) ((uint8 *) start_byte - data_align_offset - HEAP_HEADER_SIZE)) = aligned_size;
-        *((uint8 *) ((uint8 *) start_byte - data_align_offset - HEAP_HEADER_SIZE - 1)) = (uint8) header_align_offset;
-
-        if (remaining_bytes_in_block >= new_block_aligned_size) {
+            
+            next_block = block->next;
+        } else {
             // store a new block
-            Heap_Block *next_block = (Heap_Block *) aligned_block_address;
+            next_block = (Heap_Block *) aligned_block_address;
             *((uint8 *) aligned_block_address - 1) = (uint8) new_block_offset;
             
             next_block->size = remaining_bytes_in_block;
-            next_block->next = original_block_next;
-
-            if (previous_block == NULL) {
-                heap->first_block = next_block;
-            } else {
-                previous_block->next = next_block;
-            }
-        } else {
-            if (previous_block == NULL) {
-                heap->first_block = original_block_next;
-            } else {
-                previous_block->next = original_block_next;
-            }
+            next_block->next = block->next;
         }
+        
+        // store the align offset a single byte before the returned memory address, so that when we deallocate
+        // we can just look one byte before to see how far we need to go backwards to find the beginning of
+        // the block
+        *((uint8 *) data_address - 1) = (uint8) data_align_offset;
+        *((uint32 *) (header_address)) = aligned_size;
+        *((uint8 *) ((uint8 *) header_address - 1)) = (uint8) header_align_offset;
+
+        if (previous_block == NULL) {
+            heap->first_block = next_block;
+        } else {
+            previous_block->next = next_block;
+        }
+
+        heap->used += aligned_size;
 
         break;
     }
@@ -453,32 +439,41 @@ void *heap_allocate(Heap_Allocator *heap, uint32 size, uint32 alignment_bytes = 
 }
 
 void heap_deallocate(Heap_Allocator *heap, void *address) {
-    uint8 align_offset = *((uint8 *) address - 1);
-    uint8 *header_address = (uint8 *) address - align_offset - HEAP_HEADER_SIZE;
+    // get header
+    uint8 data_align_offset = *((uint8 *) address - 1);
+    uint8 *header_address = (uint8 *) address - data_align_offset - HEAP_HEADER_SIZE;
     uint32 size = *((uint32 *) header_address);
+
+    // get unaligned start of block
     uint8 header_align_offset = *(header_address - 1);
     uint8 *unaligned_block_address = header_address - header_align_offset;
     
-    uint32 aligned_block_size, block_align_offset;
-    Heap_Block *block_to_add = (Heap_Block *) get_aligned_address(unaligned_block_address, sizeof(Heap_Block),
-                                                                  &aligned_block_size, &block_align_offset);
-    block_to_add->size = size;
-    *((uint8 *) block_to_add - 1) = (uint8) block_align_offset;
+    uint32 aligned_free_block_size, free_block_align_offset;
+    Heap_Block *free_block = (Heap_Block *) get_aligned_address(unaligned_block_address, sizeof(Heap_Block),
+                                                                &aligned_free_block_size, &free_block_align_offset);
+    free_block->size = size;
+    heap->used -= size;
+
+    // make sure that the size of the block metadata struct is less or equal to the size we just deallocated
+    assert(aligned_free_block_size <= size);
+
+    // store the block metadata alignment
+    *((uint8 *) free_block - 1) = (uint8) free_block_align_offset;
 
     Heap_Block *block = heap->first_block;
     // insert the block such that the free list is in ascending order.
     // this makes coalescing much simpler.
     if (block == NULL) {
-        block_to_add->next = NULL;
-        heap->first_block = block_to_add;
-    } else if (block > block_to_add) {
-        block_to_add->next = block;
-        heap->first_block = block_to_add;
+        free_block->next = NULL;
+        heap->first_block = free_block;
+    } else if (block > free_block) {
+        free_block->next = block;
+        heap->first_block = free_block;
     } else {
         while (block != NULL) {
-            if (block->next == NULL || block->next > block_to_add) {
-                block_to_add->next = block->next;
-                block->next = block_to_add;
+            if (block->next == NULL || block->next > free_block) {
+                free_block->next = block->next;
+                block->next = free_block;
                 break;
             } else {
                 block = block->next;
@@ -505,6 +500,10 @@ void *allocate(Allocator *allocator, uint32 size, bool32 zero_memory) {
         {
             Pool_Allocator *pool = (Pool_Allocator *) allocator;
             return pool_push(pool, size, zero_memory);
+        }
+        case HEAP_ALLOCATOR:
+        {
+            
         }
         default:
         {

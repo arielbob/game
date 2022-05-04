@@ -690,7 +690,7 @@ bool32 win32_init_memory() {
     uint32 frame_arena_size = MEGABYTES(64);
     uint32 string64_pool_size = MEGABYTES(64);
     uint32 filename_pool_size = MEGABYTES(8);
-    uint32 level_mesh_heap_size = 64;
+    uint32 level_mesh_heap_size = 256;
 
     // level memory
     uint32 level_arena_size = MEGABYTES(64);

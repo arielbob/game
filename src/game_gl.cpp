@@ -273,12 +273,12 @@
 // NOTE: i think it's fine if we just load all the meshes into an arena, even if they get deleted.
 //       meshes will not be deleted when you're actually playing the game. we can just clear the arena and then
 //       load all the meshes required for a certain level.
-// TODO: add basic free list for meshes
-//       - TODO: just allocate a big block, when you deallocate, go through
+// TODO (done): add basic free list for meshes
+//       - TODO (done): just allocate a big block, when you deallocate, go through
 //       all the free blocks and check if any of them end where you started, and if they do, then join the
 //       free blocks and if the one after starts where the deallocated block ends, then join the end to that start
 //       - we can use this to store mesh.data and mesh.indices, and just store a pointer to the allocator in Mesh
-//       - TODO: fix bug where deallocating b overwrites c's header
+//       - TODO (done): fix bug where deallocating b overwrites c's header
 
 // TODO: material deletion
 // TODO: handle entities with no material (just make them black or something)

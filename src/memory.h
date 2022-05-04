@@ -48,7 +48,7 @@ struct Heap_Allocator {
     Allocator_Type type;
     void *base;
     uint32 size;
-    //uint32 used;
+    uint32 used;
     Heap_Block *first_block;
 };
 
