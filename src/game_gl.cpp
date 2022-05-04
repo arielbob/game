@@ -1014,7 +1014,9 @@ void copy_aligned_quad_to_arrays(stbtt_aligned_quad q, real32 *vertices, real32 
 void gl_draw_text(GL_State *gl_state, Render_State *render_state,
                   Font *font,
                   real32 x_pos_pixels, real32 y_pos_pixels,
-                  char *text, Vec4 color) {
+                  char *text, int32 num_chars, bool32 is_null_terminated,
+                  Vec4 color,
+                  bool32 has_shadow, Vec4 shadow_color, real32 shadow_offset) {
     uint32 text_shader_id;
     uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("text"), &text_shader_id);
     assert(shader_exists);
@@ -1029,6 +1031,12 @@ void gl_draw_text(GL_State *gl_state, Render_State *render_state,
 
     gl_set_uniform_mat4(text_shader_id, "cpv_matrix", &render_state->ortho_clip_matrix);
     gl_set_uniform_vec4(text_shader_id, "color", &color);
+    gl_set_uniform_int(text_shader_id, "has_shadow", has_shadow);
+
+    if (has_shadow) {
+        gl_set_uniform_vec4(text_shader_id, "shadow_color", &shadow_color);
+        gl_set_uniform_float(text_shader_id, "shadow_offset", shadow_offset);
+    }
 
     // NOTE: we disable depth test so that overlapping characters such as the "o" in "fo" doesn't cover the
     //       quad of the previous character, causing a cut off look.
@@ -1044,7 +1052,8 @@ void gl_draw_text(GL_State *gl_state, Render_State *render_state,
     real32 quad_uvs[8];
     real32 line_advance = font->scale_for_pixel_height * (font->ascent - font->descent + font->line_gap);
     real32 start_x_pos_pixels = x_pos_pixels;
-    while (*text) {
+    int32 i = 0;
+    while (*text && (is_null_terminated || (i < num_chars))) {
         if (*text >= 32 && *text < 128 || *text == '-') {
             stbtt_aligned_quad q;
             stbtt_GetBakedQuad(font->cdata, 512, 512, *text - 32, &x_pos_pixels, &y_pos_pixels, &q, 1);
@@ -1054,13 +1063,18 @@ void gl_draw_text(GL_State *gl_state, Render_State *render_state,
             glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(quad_vertices), quad_vertices);
             glBufferSubData(GL_ARRAY_BUFFER, (int *) sizeof(quad_vertices), sizeof(quad_uvs), quad_uvs);
 
-            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            if (has_shadow) {
+                glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, 2);
+            } else {
+                glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, 1);
+            }
         } else if (*text == '\n') {
             x_pos_pixels = start_x_pos_pixels;
             y_pos_pixels += line_advance;
         }
         
-        ++text;
+        text++;
+        i++;
     }
 
     //glEnable(GL_DEPTH_TEST);
@@ -1068,56 +1082,51 @@ void gl_draw_text(GL_State *gl_state, Render_State *render_state,
     glBindVertexArray(0);
 }
 
+
+void gl_draw_text(GL_State *gl_state, Render_State *render_state,
+                  Font *font,
+                  real32 x_pos_pixels, real32 y_pos_pixels,
+                  char *text, Vec4 color,
+                  Vec4 shadow_color, real32 shadow_offset) {
+    return gl_draw_text(gl_state, render_state,
+                        font,
+                        x_pos_pixels, y_pos_pixels,
+                        text, 0, true, color,
+                        true, shadow_color, shadow_offset);
+}
+
+void gl_draw_text(GL_State *gl_state, Render_State *render_state,
+                  Font *font,
+                  real32 x_pos_pixels, real32 y_pos_pixels,
+                  String_Buffer buffer, Vec4 color,
+                  Vec4 shadow_color, real32 shadow_offset) {
+    return gl_draw_text(gl_state, render_state,
+                        font,
+                        x_pos_pixels, y_pos_pixels,
+                        buffer.contents, buffer.current_length, false, color,
+                        true, shadow_color, shadow_offset);
+}
+
+void gl_draw_text(GL_State *gl_state, Render_State *render_state,
+                  Font *font,
+                  real32 x_pos_pixels, real32 y_pos_pixels,
+                  char *text, Vec4 color) {
+    return gl_draw_text(gl_state, render_state,
+                        font,
+                        x_pos_pixels, y_pos_pixels,
+                        text, 0, true, color,
+                        false, {}, 0);
+}
+
 void gl_draw_text(GL_State *gl_state, Render_State *render_state,
                   Font *font,
                   real32 x_pos_pixels, real32 y_pos_pixels,
                   String_Buffer buffer, Vec4 color) {
-    uint32 text_shader_id = gl_use_shader(gl_state, "text");
-    GL_Mesh glyph_mesh = gl_use_rendering_mesh(gl_state, gl_state->glyph_quad_mesh_id);
-    gl_use_font_texture(gl_state, make_string(font->name));
-
-    gl_set_uniform_mat4(text_shader_id, "cpv_matrix", &render_state->ortho_clip_matrix);
-    gl_set_uniform_vec4(text_shader_id, "color", &color);
-
-    // NOTE: we disable depth test so that overlapping characters such as the "o" in "fo" doesn't cover the
-    //       quad of the previous character, causing a cut off look.
-    // NOTE: we assume that GL_DEPTH_TEST is disabled
-    //glDisable(GL_DEPTH_TEST);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glEnable(GL_TEXTURE_2D);
-    glBindBuffer(GL_ARRAY_BUFFER, glyph_mesh.vbo);
-
-    real32 quad_vertices[8];
-    real32 quad_uvs[8];
-    real32 line_advance = font->scale_for_pixel_height * (font->ascent - font->descent + font->line_gap);
-    real32 start_x_pos_pixels = x_pos_pixels;
-    
-    char *text = buffer.contents;
-    int32 i = 0;
-    while (*text && i < buffer.current_length) {
-        if (*text >= 32 && *text < 128 || *text == '-') {
-            stbtt_aligned_quad q;
-            stbtt_GetBakedQuad(font->cdata, 512, 512, *text - 32, &x_pos_pixels, &y_pos_pixels, &q, 1);
-
-            copy_aligned_quad_to_arrays(q, quad_vertices, quad_uvs);
-
-            glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(quad_vertices), quad_vertices);
-            glBufferSubData(GL_ARRAY_BUFFER, (int *) sizeof(quad_vertices), sizeof(quad_uvs), quad_uvs);
-
-            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-        } else if (*text == '\n') {
-            x_pos_pixels = start_x_pos_pixels;
-            y_pos_pixels += line_advance;
-        }
-        
-        ++text;
-        ++i;
-    }
-
-    //glEnable(GL_DEPTH_TEST);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glBindVertexArray(0);
+    return gl_draw_text(gl_state, render_state,
+                        font,
+                        x_pos_pixels, y_pos_pixels,
+                        buffer.contents, buffer.current_length, false, color,
+                        false, {}, 0);
 }
 
 GL_Framebuffer gl_make_framebuffer(int32 width, int32 height) {
@@ -1938,13 +1947,14 @@ void gl_draw_ui_text(GL_State *gl_state, Game_State *game_state,
 
     if (style.use_offset_shadow) {
         gl_draw_text(gl_state, &game_state->render_state, &font,
-                     ui_text.x, ui_text.y + TEXT_SHADOW_OFFSET,
-                     ui_text.text, style.offset_shadow_color);
+                     ui_text.x, ui_text.y,
+                     ui_text.text, style.color,
+                     style.offset_shadow_color, TEXT_SHADOW_OFFSET);
+    } else {
+        gl_draw_text(gl_state, &game_state->render_state, &font,
+                     ui_text.x, ui_text.y,
+                     ui_text.text, style.color);
     }
-
-    gl_draw_text(gl_state, &game_state->render_state, &font,
-                 ui_text.x, ui_text.y,
-                 ui_text.text, style.color);
 }
 
 void gl_draw_ui_text_button(GL_State *gl_state, Game_State *game_state,
@@ -1989,13 +1999,14 @@ void gl_draw_ui_text_button(GL_State *gl_state, Game_State *game_state,
 
     if (text_style.use_offset_shadow) {
         gl_draw_text(gl_state, &game_state->render_state, &font,
-                     button.x + x_offset, button.y + y_offset + TEXT_SHADOW_OFFSET,
-                     button.text, text_style.offset_shadow_color);
+                     button.x + x_offset, button.y + y_offset,
+                     button.text, text_style.color,
+                     text_style.offset_shadow_color, TEXT_SHADOW_OFFSET);
+    } else {
+        gl_draw_text(gl_state, &game_state->render_state, &font,
+                     button.x + x_offset, button.y + y_offset,
+                     button.text, text_style.color);
     }
-
-    gl_draw_text(gl_state, &game_state->render_state, &font,
-                 button.x + x_offset, button.y + y_offset,
-                 button.text, text_style.color);
 }
 
 void gl_draw_ui_image_button(GL_State *gl_state, Game_State *game_state,
@@ -2065,13 +2076,14 @@ void gl_draw_ui_image_button(GL_State *gl_state, Game_State *game_state,
         
         if (text_style.use_offset_shadow) {
             gl_draw_text(gl_state, &game_state->render_state, &font,
-                         text_x + x_offset, text_y + y_offset + TEXT_SHADOW_OFFSET,
-                         button.text, text_style.offset_shadow_color);
+                         text_x + x_offset, text_y + y_offset,
+                         button.text, text_style.color,
+                         text_style.offset_shadow_color, TEXT_SHADOW_OFFSET);
+        } else {
+            gl_draw_text(gl_state, &game_state->render_state, &font,
+                         text_x + x_offset, text_y + y_offset,
+                         button.text, text_style.color);        
         }
-
-        gl_draw_text(gl_state, &game_state->render_state, &font,
-                     text_x + x_offset, text_y + y_offset,
-                     button.text, text_style.color);        
     }
 }
 
@@ -2133,13 +2145,14 @@ void gl_draw_ui_text_box(GL_State *gl_state, Game_State *game_state,
 
     if (text_style.use_offset_shadow) {
         gl_draw_text(gl_state, &game_state->render_state, &font,
-                     text_box.x + style.padding_x, text_y + TEXT_SHADOW_OFFSET,
-                     text_box.buffer, text_style.offset_shadow_color);
+                     text_box.x + style.padding_x, text_y,
+                     text_box.buffer, text_style.color,
+                     text_style.offset_shadow_color, TEXT_SHADOW_OFFSET);
+    } else {
+        gl_draw_text(gl_state, &game_state->render_state, &font,
+                     text_box.x + style.padding_x, text_y,
+                     text_box.buffer, text_style.color);
     }
-
-    gl_draw_text(gl_state, &game_state->render_state, &font,
-                 text_box.x + style.padding_x, text_y,
-                 text_box.buffer, text_style.color);
     
     glDisable(GL_SCISSOR_TEST);
 
@@ -2208,13 +2221,14 @@ void gl_draw_ui_slider(GL_State *gl_state, Game_State *game_state,
 
     if (text_style.use_offset_shadow) {
         gl_draw_text(gl_state, &game_state->render_state, &font,
-                     text_x, text_y + TEXT_SHADOW_OFFSET,
-                     slider.text, text_style.offset_shadow_color);
+                     text_x, text_y,
+                     slider.text, text_style.color,
+                     text_style.offset_shadow_color, TEXT_SHADOW_OFFSET);
+    } else {
+        gl_draw_text(gl_state, &game_state->render_state, &font,
+                     text_x, text_y,
+                     slider.text, text_style.color);
     }
-
-    gl_draw_text(gl_state, &game_state->render_state, &font,
-                 text_x, text_y,
-                 slider.text, text_style.color);
 }
 
 void gl_draw_ui_hue_slider(GL_State *gl_state, Render_State *render_state,

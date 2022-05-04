@@ -103,6 +103,7 @@ typedef void GL_UNIFORM_BLOCK_BINDING (GLuint program, GLuint uniformBlockIndex,
 typedef void GL_BIND_BUFFER_RANGE (GLenum target, GLuint index, GLuint buffer, GLintptr offset, GLsizeiptr size);
 typedef void GL_DELETE_BUFFERS (GLsizei n, const GLuint *buffers);
 typedef void GL_DELETE_VERTEX_ARRAYS (GLsizei n, const GLuint *arrays);
+typedef void GL_DRAW_ELEMENTS_INSTANCED (GLenum mode, GLsizei count, GLenum type, const void *indices, GLsizei instancecount);
 
 GL_GEN_VERTEX_ARRAYS *glGenVertexArrays;
 GL_GEN_BUFFERS *glGenBuffers;
@@ -146,6 +147,7 @@ GL_UNIFORM_BLOCK_BINDING *glUniformBlockBinding;
 GL_BIND_BUFFER_RANGE *glBindBufferRange;
 GL_DELETE_BUFFERS *glDeleteBuffers;
 GL_DELETE_VERTEX_ARRAYS *glDeleteVertexArrays;
+GL_DRAW_ELEMENTS_INSTANCED *glDrawElementsInstanced;
 
 #include "game_gl.cpp"
 
@@ -382,7 +384,7 @@ internal bool32 win32_init_opengl(HDC hdc) {
                     glBindBufferRange = (GL_BIND_BUFFER_RANGE *) wglGetProcAddress("glBindBufferRange");
                     glDeleteBuffers = (GL_DELETE_BUFFERS *) wglGetProcAddress("glDeleteBuffers");
                     glDeleteVertexArrays = (GL_DELETE_VERTEX_ARRAYS *) wglGetProcAddress("glDeleteVertexArrays");
-
+                    glDrawElementsInstanced = (GL_DRAW_ELEMENTS_INSTANCED *) wglGetProcAddress("glDrawElementsInstanced");
                   
                     return true;
                 } else {
