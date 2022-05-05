@@ -48,37 +48,6 @@ void reset_entity_editors(Editor_State *editor_state) {
     editor_state->color_picker.parent_ui_id = {};
 }
 
-bool32 editor_add_mesh_press(Level *level, Entity *entity) {
-    Marker m = begin_region();
-    char *absolute_filename = (char *) region_push(PLATFORM_MAX_PATH);
-        
-    Allocator *string_allocator = (Allocator *) level->string64_pool_pointer;
-    Allocator *filename_allocator = (Allocator *) level->filename_pool_pointer;
-
-    if (platform_open_file_dialog(absolute_filename, PLATFORM_MAX_PATH)) {
-        String_Buffer new_mesh_name_buffer = make_string_buffer(string_allocator, 64);
-            
-        char *relative_filename = (char *) region_push(PLATFORM_MAX_PATH);
-        platform_get_relative_path(absolute_filename, relative_filename, PLATFORM_MAX_PATH);
-        String_Buffer new_mesh_filename_buffer = make_string_buffer(filename_allocator,
-                                                                    relative_filename, PLATFORM_MAX_PATH);
-
-        Mesh new_mesh = read_and_load_mesh((Allocator *) &memory.level_mesh_heap,
-                                           new_mesh_filename_buffer,
-                                           new_mesh_name_buffer);
-        int32 mesh_id = level_add_mesh(level, new_mesh);
-
-        set_entity_mesh(Context::game_state, level, entity, Mesh_Type::LEVEL, mesh_id);
-        end_region(m);
-        return true;
-    }
-
-    // TODO: error handling (after in-game console implementation)
-
-    end_region(m);
-    return false;
-}
-
 void generate_material_name(Level *level, String_Buffer *buffer) {
     int32 num_attempts = 0;
     while (num_attempts < MAX_MATERIALS + 1) {
@@ -115,6 +84,57 @@ void generate_texture_name(Level *level, String_Buffer *buffer) {
     }
 
     assert(!"Could not generate texture name.");
+}
+
+void generate_mesh_name(Game_State *game_state, Level *level, String_Buffer *buffer) {
+    int32 num_attempts = 0;
+    while (num_attempts < MAX_MESHES + 1) {
+        Marker m = begin_region();
+        char *format = (num_attempts == 0) ? "New Mesh" : "New Mesh %d";
+        char *buf = string_format((Allocator *) &memory.global_stack, buffer->size, format, num_attempts + 1);
+        if (!mesh_name_exists(game_state, level, make_string(buf))) {
+            set_string_buffer_text(buffer, buf);
+            end_region(m);
+            return;
+        }
+
+        num_attempts++;
+        end_region(m);
+    }
+
+    assert(!"Could not generate mesh name.");
+}
+
+bool32 editor_add_mesh_press(Game_State *game_state, Level *level, Entity *entity) {
+    Marker m = begin_region();
+    char *absolute_filename = (char *) region_push(PLATFORM_MAX_PATH);
+        
+    Allocator *string_allocator = (Allocator *) level->string64_pool_pointer;
+    Allocator *filename_allocator = (Allocator *) level->filename_pool_pointer;
+
+    if (platform_open_file_dialog(absolute_filename, PLATFORM_MAX_PATH)) {
+        String_Buffer new_mesh_name = make_string_buffer(string_allocator, 64);
+        generate_mesh_name(game_state, level, &new_mesh_name);
+
+        char *relative_filename = (char *) region_push(PLATFORM_MAX_PATH);
+        platform_get_relative_path(absolute_filename, relative_filename, PLATFORM_MAX_PATH);
+        String_Buffer new_mesh_filename = make_string_buffer(filename_allocator,
+                                                             relative_filename, PLATFORM_MAX_PATH);
+
+        Mesh new_mesh = read_and_load_mesh((Allocator *) &memory.level_mesh_heap,
+                                           new_mesh_filename,
+                                           new_mesh_name);
+        int32 mesh_id = level_add_mesh(level, new_mesh);
+
+        set_entity_mesh(Context::game_state, level, entity, Mesh_Type::LEVEL, mesh_id);
+        end_region(m);
+        return true;
+    }
+
+    // TODO: error handling (after in-game console implementation)
+
+    end_region(m);
+    return false;
 }
 
 bool32 editor_add_texture_press(Level *level, Material *material) {
@@ -889,7 +909,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         x += small_button_width + padding_left;
 
         if (add_mesh_pressed) {
-            bool32 mesh_added = editor_add_mesh_press(&game_state->current_level, entity);
+            bool32 mesh_added = editor_add_mesh_press(game_state, &game_state->current_level, entity);
             if (mesh_added) {
                 editor_state->editing_selected_entity_mesh = true;
             }
@@ -922,11 +942,26 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                      row_id, row_index++);
             draw_v_centered_text(x + padding_left + Editor_Constants::x_nested_offset, y, row_height,
                                  "Mesh Name", editor_font_name, default_text_style);
-            do_text_box(x + right_column_offset, y,
-                        edit_box_width, row_height,
-                        &mesh->name, editor_font_name,
-                        text_box_style, default_text_style,
-                        "mesh_name_text_box");
+
+            UI_Text_Box_Result result = do_text_box(x + right_column_offset, y,
+                                                    edit_box_width, row_height,
+                                                    &mesh->name, editor_font_name,
+                                                    text_box_style, default_text_style,
+                                                    true,
+                                                    "mesh_name_text_box", normal_entity->mesh_id);
+            if (result.submitted) {
+                String new_name = make_string(result.buffer);
+                if (is_empty(new_name)) {
+                    add_message(&game_state->message_manager, make_string("Mesh name cannot be empty!"));
+                } else if (!string_equals(make_string(mesh->name), new_name)) {
+                    if (!mesh_name_exists(game_state, level, new_name)) {
+                        copy_string(&mesh->name, new_name);
+                    } else {
+                        add_message(&game_state->message_manager, make_string("Mesh name already exists!"));
+                    }
+                }
+            }
+
             y += row_height;
         
             row_color = Editor_Constants::row_color;

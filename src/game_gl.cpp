@@ -304,7 +304,7 @@
 //       - TODO (done): deallocate strings when gone
 //       - TODO (done): styling - maybe center justify the text? and maybe use smaller font..
 
-// TODO: material/texture/mesh name strings validation
+// TODO (done): material/texture/mesh name strings validation
 //       check for duplicates and empties. it matters that we don't have duplicates since texture names are used
 //       as keys in the opengl code. we don't store material structs in the opengl code, but it's better to bea
 //       consistent. show a message using the messaging system.
@@ -314,7 +314,8 @@
 //       - TODO (done): add texture name exists procedure
 //       - TODO (done): use textbox with state with texture name box
 //       - TODO (done): texture name validation
-//       - TODO: mesh name validation
+//       - TODO (done): mesh name validation
+// TODO: don't allow quotes or brackets in any level strings, i.e. in level name, texture name, material name, etc.
 
 
 // TODO: change do_text to use Strings?
@@ -406,8 +407,6 @@
 //               do_hue_slider(), and then when we draw it, draw arrows within that hitbox.
 
 // TODO: text truncation when its containing box is too small
-// TODO: don't allow quotes or brackets in any level strings, i.e. in level name, texture name, material name, etc.
-//       (requires text box validation)
 
 // TODO: change mesh parser to use new tokenizer_equals procedures, since we can actually read past bounds, since
 //       file_contents is not null-terminated. when we read the file in, the size is just the size of the file,

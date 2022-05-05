@@ -305,5 +305,6 @@ void add_debug_line(Debug_State *debug_state, Vec3 start, Vec3 end, Vec4 color);
 void add_message(Message_Manager *manager, String text);
 bool32 material_name_exists(Level *level, String name);
 bool32 texture_name_exists(Level *level, String name);
+bool32 mesh_name_exists(Game_State *game_state, Level *level, String name);
 
 #endif

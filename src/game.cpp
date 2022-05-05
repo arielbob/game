@@ -144,6 +144,26 @@ bool32 texture_name_exists(Level *level, String name) {
     return false;
 }
 
+bool32 mesh_name_exists(Game_State *game_state, Level *level, String name) {
+    {
+        FOR_VALUE_POINTERS(int32, Mesh, game_state->primitive_mesh_table) {
+            if (string_equals(make_string(value->name), name)) {
+                return true;
+            }
+        }
+    }
+
+    {
+        FOR_VALUE_POINTERS(int32, Mesh, level->mesh_table) {
+            if (string_equals(make_string(value->name), name)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 int32 add_common_mesh(Game_State *game_state, Mesh mesh) {
     int32 mesh_id = game_state->common_mesh_table.total_added_ever;
     hash_table_add(&game_state->common_mesh_table, mesh_id, mesh);
