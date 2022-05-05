@@ -222,6 +222,15 @@ uint32 get_hash(UI_id id, uint32 bucket_size) {
     return hash;
 }
 
+UI_Element_State *get_state(UI_Manager *manager, UI_id id) {
+    UI_Element_State *result;
+    bool32 state_exists = hash_table_find<UI_id, UI_Element_State *>(manager->state_table, id, &result);
+
+    if (!state_exists) return NULL;
+
+    return result;
+};
+
 bool32 get_state(UI_Manager *manager, UI_id id, UI_Element_State **result) {
     bool32 state_exists = hash_table_find<UI_id, UI_Element_State *>(manager->state_table, id, result);
     return state_exists;
@@ -352,7 +361,8 @@ void deallocate(UI_Element_State *untyped_state) {
             deallocate(*state);
         } break;
         default: {
-            assert("!Unhandled UI state type");
+            UI_Text_Box_State *state = (UI_Text_Box_State *) untyped_state;
+            deallocate(*state);
         } break;
     }
 
@@ -686,18 +696,48 @@ void do_text_box_with_state(real32 x, real32 y,
 }
 #endif
 
-void do_text_box(real32 x, real32 y,
-                 real32 width, real32 height,
-                 String_Buffer *buffer,
-                 char *font,
-                 UI_Text_Box_Style style, UI_Text_Style text_style,
-                 char *id_string, int32 index = 0) {
+UI_Text_Box_State *add_ui_text_box_state(UI_Manager *manager, UI_id id) {
+    UI_Text_Box_State *state = (UI_Text_Box_State *) heap_allocate(manager->heap_pointer, sizeof(UI_Text_Box_State));
+    hash_table_add(&manager->state_table, id, (UI_Element_State *) state);
+    return state;
+}
+
+// NOTE: this returns the state's buffer if use_state = true, otherwise, it returns the passed in buffer.
+//       
+UI_Text_Box_Result do_text_box(real32 x, real32 y,
+                               real32 width, real32 height,
+                               String_Buffer *buffer,
+                               char *font,
+                               UI_Text_Box_Style style, UI_Text_Style text_style,
+                               bool32 use_state,
+                               char *id_string, int32 index = 0) {
     using namespace Context;
+
+    UI_id text_box_id = make_ui_id(UI_TEXT_BOX, id_string, index);
+    UI_Text_Box_State *state = (UI_Text_Box_State *) get_state(ui_manager, text_box_id);
+    if (state) {
+        // use_state should not change over the lifetime of the text box
+        assert(use_state);
+    }
+
+    if (use_state) {
+        if (!state) {
+            UI_Text_Box_State *new_state = add_ui_text_box_state(ui_manager, text_box_id);
+            *new_state = make_ui_text_box_state((Allocator *) &memory.string64_pool,
+                                                make_string(*buffer), buffer->size);
+            state = new_state;
+        }
+
+        buffer = &state->buffer;
+    }
+
     UI_Text_Box text_box =  make_ui_text_box(x, y, width, height,
                                              *buffer,
                                              font,
                                              style, text_style,
                                              ui_manager->current_layer, id_string, index);
+
+    bool32 submitted = false;
 
     Vec2 current_mouse = controller_state->current_mouse;
     if (!ui_manager->is_disabled && in_bounds_on_layer(ui_manager, current_mouse, x, x + width, y, y + height)) {
@@ -723,13 +763,14 @@ void do_text_box(real32 x, real32 y,
             !controller_state->left_mouse.was_down) {
             ui_manager->active = {};
             ui_manager->focus_cursor_index = 0;
+            submitted = true;
         }
     }
 
     if (ui_id_equals(ui_manager->active, text_box.id)) {
         for (int32 i = 0; i < controller_state->num_pressed_chars; i++) {
             char c = controller_state->pressed_chars[i];
-            if (c == '\b') {
+            if (c == '\b') { // backspace key
                 ui_manager->focus_cursor_index--;
                 if (ui_manager->focus_cursor_index < 0) {
                     ui_manager->focus_cursor_index = 0;
@@ -741,11 +782,22 @@ void do_text_box(real32 x, real32 y,
                 buffer->contents[ui_manager->focus_cursor_index] = c;
                 ui_manager->focus_cursor_index++;
                 buffer->current_length++;
+            } else if (c == '\r') { // enter key
+                submitted = true;
+                if (ui_id_equals(ui_manager->active, text_box.id)) {
+                    ui_manager->active = {};
+                }
             }
         }
     }
 
     ui_add_text_box(ui_manager, text_box);
+
+    UI_Text_Box_Result result = {};
+    result.submitted = submitted;
+    result.buffer = *buffer;
+
+    return result;
 }
 
 real32 do_slider(real32 x, real32 y,

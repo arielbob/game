@@ -881,6 +881,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                         edit_box_width, row_height,
                         &mesh->name, editor_font_name,
                         text_box_style, default_text_style,
+                        false,
                         "mesh_name_text_box");
             y += row_height;
         
@@ -1037,11 +1038,16 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                      row_id, row_index++);
             draw_v_centered_text(x + padding_left, y, row_height,
                                  "Material Name", editor_font_name, default_text_style);
-            do_text_box(x + right_column_offset, y,
-                        edit_box_width, row_height,
-                        &material->name, editor_font_name,
-                        text_box_style, default_text_style,
-                        "material_name_text_box");
+            UI_Text_Box_Result material_name_text_box_result = do_text_box(x + right_column_offset, y,
+                                                                           edit_box_width, row_height,
+                                                                           &material->name, editor_font_name,
+                                                                           text_box_style, default_text_style,
+                                                                           true,
+                                                                           "material_name_text_box");
+            if (material_name_text_box_result.submitted) {
+                // TODO: validation before setting
+                copy_string(&material->name, &material_name_text_box_result.buffer);
+            }
 
 #if 0
             String_Buffer text_result = do_text_box(x + right_column_offset, y,
@@ -1139,6 +1145,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                             edit_box_width, row_height,
                             &texture->name, editor_font_name,
                             text_box_style, default_text_style,
+                            false,
                             "texture_name_text_box");
 
                 y += row_height;
@@ -1409,6 +1416,7 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
                 row_width - padding_x*2, row_height,
                 &game_state->current_level.name, editor_font_name,
                 default_text_box_style, default_text_style,
+                false,
                 "level_name_text_box");
     y += row_height;
     draw_row_padding(x, &y, row_width, padding_y, row_color, side_flags, row_id, row_index);

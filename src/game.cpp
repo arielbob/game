@@ -1196,6 +1196,10 @@ void update(Game_State *game_state,
     fill_sound_buffer_with_audio(sound_output, game_state->is_playing_music, &game_state->music, num_samples);
 
     clear_hot_if_gone(ui_manager);
+
+    // NOTE: it's fine to call delete_state_if_gone() here. this won't cause any accesses of deallocated memory
+    //       when we render the UI, since if some element isn't in the push_buffer, which is also the condition
+    //       that we delete its state, it won't be rendered.
     delete_state_if_gone(ui_manager);
     assert(ui_manager->current_layer == 0);
 }

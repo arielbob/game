@@ -283,23 +283,26 @@
 
 // TODO (done): use heap for UI states
 // TODO (done): use state for sliders
-// TODO: add text box element that uses state
-
-// TODO: maybe we don't even need UI state.. we may be able to just hold the State structs ourselves and pass them
-//       to the do_* procedures and those procedures will return the new State structs.
+// TODO (done): add text box element that uses state
+//       - i think we can just create a do_text_box_with_state procedure that just calls do_text_box, but passes
+//         in its state's buffer, actually idk, if we should do that. we may want to update state depending on
+//         whether or not the text box is active/hot and so that logic has to be hoisted out of do_text_box.
+//       - although, i think we can use make_ui_text_box, since that's just for rendering
+//       - we could actually just modify do_text_box to accept an argument called use_state
+// TODO (done): modify material name box to use text box with state
+// TODO: use textbox with state with texture name box
+// TODO: material name/texture strings validation
+//       check for duplicates and empties. it matters that we don't have duplicates since texture names are used
+//       as keys in the opengl code. we don't store material structs in the opengl code, but it's better to be
+//       consistent. show a message using the messaging system.
+// TODO: some type of messaging system that isn't in the game console, like toasts kind of (messages that appear
+//       then disappear after a few seconds). this would be nice for some type of feedback like for file saving.
 
 // TODO: click slider for manual value entry
 // TODO: slideable text boxes (after we do slider manual text entry)
 //       - may just be able to add a parameter to sliders that hide the slider and removes bounds
 // TODO: replace the transform values in the entity box with slideable text boxes
 
-
-// TODO: some type of messaging system that isn't in the game console, like toasts kind of (messages that appear
-//       then disappear after a few seconds). this would be nice for some type of feedback like for file saving.
-// TODO: material name/texture strings validation
-//       check for duplicates and empties. it matters that we don't have duplicates since texture names are used
-//       as keys in the opengl code. we don't store material structs in the opengl code, but it's better to be
-//       consistent. show a message using the messaging system.
 // TODO: for checking for memory leaks, it's actually kind of unreliable to use task manager, since we just take
 //       a bunch of memory at the beginning and allocate from that. it would be better if we had an actual
 //       memory monitoring gui.

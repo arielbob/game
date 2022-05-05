@@ -552,8 +552,7 @@ UI_Color_Picker make_ui_color_picker(real32 x, real32 y,
 
 // UI element states
 enum class UI_Element_State_Type {
-    NONE,
-    SLIDER
+    NONE, SLIDER, TEXT_BOX
 };
 
 #define UI_ELEMENT_STATE_HEADER \
@@ -561,6 +560,23 @@ enum class UI_Element_State_Type {
 
 struct UI_Element_State {
     UI_ELEMENT_STATE_HEADER
+};
+
+struct UI_Text_Box_State {
+    UI_ELEMENT_STATE_HEADER
+    String_Buffer buffer;
+};
+
+struct UI_Text_Box_Result {
+    bool32 submitted;
+    String_Buffer buffer;
+};
+
+UI_Text_Box_State make_ui_text_box_state(Allocator *string_allocator, String initial_string, int32 size) {
+    UI_Text_Box_State state;
+    state.type = UI_Element_State_Type::TEXT_BOX;
+    state.buffer = make_string_buffer(string_allocator, initial_string, size);
+    return state;
 };
 
 struct UI_Slider_State {
@@ -576,6 +592,10 @@ UI_Slider_State make_ui_slider_state(Allocator *string_allocator, char *text) {
 };
 
 void deallocate(UI_Slider_State state) {
+    delete_string_buffer(state.buffer);
+}
+
+void deallocate(UI_Text_Box_State state) {
     delete_string_buffer(state.buffer);
 }
 
