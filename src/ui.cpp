@@ -801,6 +801,21 @@ UI_Text_Box_Result do_text_box(real32 x, real32 y,
     return result;
 }
 
+UI_Text_Box_Result do_text_box(real32 x, real32 y,
+                               real32 width, real32 height,
+                               String_Buffer *buffer,
+                               char *font,
+                               UI_Text_Box_Style style, UI_Text_Style text_style,
+                               char *id_string, int32 index = 0) {
+    return do_text_box(x, y,
+                       width, height,
+                       buffer,
+                       font,
+                       style, text_style,
+                       false,
+                       id_string, index);
+}
+
 real32 do_slider(real32 x, real32 y,
                  real32 width, real32 height,
                  char *font,

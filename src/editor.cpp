@@ -79,6 +79,25 @@ bool32 editor_add_mesh_press(Level *level, Entity *entity) {
     return false;
 }
 
+void generate_material_name(Level *level, String_Buffer *buffer) {
+    int32 num_attempts = 0;
+    while (num_attempts < MAX_MATERIALS + 1) {
+        Marker m = begin_region();
+        char *format = (num_attempts == 0) ? "New Material" : "New Material %d";
+        char *buf = string_format((Allocator *) &memory.global_stack, 64, format, num_attempts + 1);
+        if (!material_name_exists(level, make_string(buf))) {
+            set_string_buffer_text(buffer, buf);
+            end_region(m);
+            return;
+        }
+
+        num_attempts++;
+        end_region(m);
+    }
+
+    assert(!"Could not generate material name.");
+}
+
 bool32 editor_add_texture_press(Level *level, Material *material) {
     Marker m = begin_region();
     char *absolute_filename = (char *) region_push(PLATFORM_MAX_PATH);
@@ -281,7 +300,7 @@ void draw_mesh_library(Game_State *game_state, Controller_State *controller_stat
 
     real32 title_row_height = 50.0f;
     Vec4 title_row_color = make_vec4(0.05f, 0.2f, 0.5f, 1.0f);
-    Vec4 row_color = make_vec4(0.1f, 0.1f, 0.1f, 1.0f);
+    Vec4 row_color = Editor_Constants::row_color;
 
     Font font = get_font(game_state, editor_font_name);
     real32 button_padding_x = 15.0f;
@@ -470,8 +489,8 @@ void draw_texture_library(Material *selected_material) {
 
     real32 title_row_height = 50.0f;
     Vec4 title_row_color = make_vec4(0.05f, 0.2f, 0.5f, 1.0f);
-    Vec4 row_color = make_vec4(0.1f, 0.1f, 0.1f, 1.0f);
-
+    Vec4 row_color = Editor_Constants::row_color;
+    
     char *row_id = "texture_library_row";
     int32 row_index = 0;
 
@@ -571,7 +590,7 @@ void draw_material_library(Game_State *game_state, Controller_State *controller_
 
     real32 title_row_height = 50.0f;
     Vec4 title_row_color = make_vec4(0.05f, 0.2f, 0.5f, 1.0f);
-    Vec4 row_color = make_vec4(0.1f, 0.1f, 0.1f, 1.0f);
+    Vec4 row_color = Editor_Constants::row_color;
 
     char *row_id = "material_library_row";
     int32 row_index = 0;
@@ -881,7 +900,6 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                         edit_box_width, row_height,
                         &mesh->name, editor_font_name,
                         text_box_style, default_text_style,
-                        false,
                         "mesh_name_text_box");
             y += row_height;
         
@@ -999,8 +1017,12 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         if (add_material_pressed) {
             Pool_Allocator *string64_pool = &memory.string64_pool;
 
+            String_Buffer new_material_name = make_string_buffer((Allocator *) string64_pool,
+                                                                 MATERIAL_STRING_MAX_SIZE);
+            generate_material_name(level, &new_material_name);
+
             Material new_material = { 
-                make_string_buffer((Allocator *) string64_pool, "New Material", MATERIAL_STRING_MAX_SIZE),
+                new_material_name,
                 -1,
                 50.0f,
                 make_vec4(0.0f, 0.0f, 0.0f, 1.0f),
@@ -1010,6 +1032,9 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
             int32 material_id = level_add_material(level, new_material);
             normal_entity->material_id = material_id;
             editor_state->editing_selected_entity_material = true;
+
+            // update the material variable with the new material
+            material = get_material_pointer(level, normal_entity->material_id);
         }
 
         real32 edit_material_button_width = row_width - (x - initial_x) - padding_right;
@@ -1038,15 +1063,29 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                      row_id, row_index++);
             draw_v_centered_text(x + padding_left, y, row_height,
                                  "Material Name", editor_font_name, default_text_style);
+            // NOTE: we pass in normal_entity->material_id as the text button's index, because if the material id
+            //       changes, for example, from switching materials or creating a new material, AND the name
+            //       editing panel is still open, then we want the state to be reset. since the material_id's are
+            //       always different from each other (since they're created from an incrementing int), the text
+            //       box state will automatically be regenerated if the entity's material changes.
             UI_Text_Box_Result material_name_text_box_result = do_text_box(x + right_column_offset, y,
                                                                            edit_box_width, row_height,
                                                                            &material->name, editor_font_name,
                                                                            text_box_style, default_text_style,
                                                                            true,
-                                                                           "material_name_text_box");
+                                                                           "material_name_text_box",
+                                                                           normal_entity->material_id);
             if (material_name_text_box_result.submitted) {
-                // TODO: validation before setting
-                copy_string(&material->name, &material_name_text_box_result.buffer);
+                String new_name = make_string(material_name_text_box_result.buffer);
+                if (is_empty(new_name)) {
+                    add_message(&game_state->message_manager, make_string("Material name cannot be empty!"));
+                } else if (!string_equals(make_string(material->name), new_name)) {
+                    if (!material_name_exists(level, new_name)) {
+                        copy_string(&material->name, new_name);
+                    } else {
+                        add_message(&game_state->message_manager, make_string("Material name already exists!"));
+                    }
+                }
             }
 
 #if 0
@@ -1145,7 +1184,6 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                             edit_box_width, row_height,
                             &texture->name, editor_font_name,
                             text_box_style, default_text_style,
-                            false,
                             "texture_name_text_box");
 
                 y += row_height;
@@ -1416,7 +1454,6 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
                 row_width - padding_x*2, row_height,
                 &game_state->current_level.name, editor_font_name,
                 default_text_box_style, default_text_style,
-                false,
                 "level_name_text_box");
     y += row_height;
     draw_row_padding(x, &y, row_width, padding_y, row_color, side_flags, row_id, row_index);

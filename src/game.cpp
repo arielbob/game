@@ -123,6 +123,17 @@ Texture get_texture(Game_State *game_state, int32 texture_id) {
 }
 #endif
 
+bool32 material_name_exists(Level *level, String name) {
+    FOR_VALUE_POINTERS(int32, Material, level->material_table) {
+        Material *material = value;
+        if (string_equals(make_string(value->name), name)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 int32 add_common_mesh(Game_State *game_state, Mesh mesh) {
     int32 mesh_id = game_state->common_mesh_table.total_added_ever;
     hash_table_add(&game_state->common_mesh_table, mesh_id, mesh);

@@ -39,6 +39,10 @@ struct String_Iterator {
     int32 index;
 };
 
+inline bool32 is_empty(String string) {
+    return (string.length == 0);
+}
+
 inline bool32 is_empty(String_Buffer string) {
     return (string.current_length == 0);
 }
@@ -165,6 +169,7 @@ String make_string(String_Buffer string_buffer) {
     String result = {};
     result.contents = string_buffer.contents;
     result.length = string_buffer.current_length;
+    result.allocator = string_buffer.allocator;
     return result;
 }
 

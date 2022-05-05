@@ -302,5 +302,6 @@ bool32 get_walkable_triangle_on_mesh(Vec3 center, real32 radius,
                                      Get_Walkable_Triangle_On_Mesh_Result *result);
 void add_debug_line(Debug_State *debug_state, Vec3 start, Vec3 end, Vec4 color);
 void add_message(Message_Manager *manager, String text);
+bool32 material_name_exists(Level *level, String name);
 
 #endif
