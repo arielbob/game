@@ -3,6 +3,7 @@
 
 #define LEVEL_FILE_FILTER_TITLE "Levels (*.level)"
 #define LEVEL_FILE_FILTER_TYPE "level"
+#define SAVE_SUCCESS_MESSAGE "Level saved!"
 
 //enum class Editor_Color_Picker { NONE = 0, MATERIAL_COLOR_OVERRIDE, POINT_LIGHT_COLOR };
 

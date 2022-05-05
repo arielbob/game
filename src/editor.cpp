@@ -1448,11 +1448,14 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
                 export_level((Allocator *) &memory.global_stack, game_state, &game_state->current_level, filename);
                 copy_string(&editor_state->current_level_filename, make_string(filename));
                 editor_state->is_new_level = false;
+                
+                add_message(&game_state->message_manager, make_string(SAVE_SUCCESS_MESSAGE));
             }
         } else {
             char *level_filename = to_char_array((Allocator *) &memory.global_stack,
                                                  editor_state->current_level_filename);
             export_level((Allocator *) &memory.global_stack, game_state, &game_state->current_level, level_filename);
+            add_message(&game_state->message_manager, make_string(SAVE_SUCCESS_MESSAGE));
         }
         
         end_region(m);
@@ -1482,6 +1485,7 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
             export_level((Allocator *) &memory.global_stack, game_state, &game_state->current_level, filename);
             copy_string(&editor_state->current_level_filename, make_string(filename));
             editor_state->is_new_level = false;
+            add_message(&game_state->message_manager, make_string(SAVE_SUCCESS_MESSAGE));
         }
         
         end_region(m);
@@ -1617,6 +1621,7 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
                 buf, editor_font_name, default_text_style, "editor_current_level_filename");
     }
 
+#if 0
     bool32 add_message_clicked = do_text_button(render_state->display_output.width - sidebar_button_width,
                                                 render_state->display_output.height - button_height,
                                                 sidebar_button_width, button_height,
@@ -1637,6 +1642,7 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
 
         add_message(&game_state->message_manager, string);
     }
+#endif
 
 
 #if 0

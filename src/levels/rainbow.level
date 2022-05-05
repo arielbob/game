@@ -98,7 +98,7 @@ rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
 light_color 0.785000 0.137375 0.137375
 falloff_start 0.000000
-falloff_end 4.854372
+falloff_end 4.854373
 
 type point_light
 position 5.265507 0.000000 0.000000

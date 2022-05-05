@@ -23,12 +23,12 @@ real32 get_width(Font font, char *text) {
     return width;
 }
 
-real32 get_width(Font font, String_Buffer buffer) {
+real32 get_width(Font font, String string) {
     real32 width = 0;
 
     int32 i = 0;
-    char *text = buffer.contents;
-    while (*text && i < buffer.current_length) {
+    char *text = string.contents;
+    while (*text && i < string.length) {
         int32 advance, left_side_bearing;
         stbtt_GetCodepointHMetrics(&font.font_info, *text, &advance, &left_side_bearing);
         width += (advance) * font.scale_for_pixel_height;
@@ -43,6 +43,10 @@ real32 get_width(Font font, String_Buffer buffer) {
     }
     
     return width;
+}
+
+inline real32 get_width(Font font, String_Buffer buffer) {
+    return get_width(font, make_string(buffer));
 }
 
 Font load_font(Game_State *game_state,

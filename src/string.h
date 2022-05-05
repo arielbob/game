@@ -162,7 +162,7 @@ String make_string(char *contents, uint32 length) {
 }
 
 String make_string(String_Buffer string_buffer) {
-    String result;
+    String result = {};
     result.contents = string_buffer.contents;
     result.length = string_buffer.current_length;
     return result;
@@ -178,7 +178,7 @@ String make_string(char *contents) {
 
 // this copies
 String make_string(Allocator *allocator, char *contents) {
-    String result;
+    String result = {};
     result.allocator = allocator;
 
     int32 len = string_length(contents);

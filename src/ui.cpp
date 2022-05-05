@@ -4,7 +4,8 @@
 UI_Text_Style default_text_style = {
     make_vec4(1.0f, 1.0f, 1.0f, 1.0f),
     true,
-    make_vec4(0.0f, 0.0f, 0.0f, 1.0f)
+    make_vec4(0.0f, 0.0f, 0.0f, 1.0f),
+    0
 };
 
 UI_Text_Button_Style default_text_button_style = { TEXT_ALIGN_X | TEXT_ALIGN_Y,

@@ -378,6 +378,9 @@ void init_game(Game_State *game_state,
     font = load_font(game_state, "c:/windows/fonts/calibrib.ttf", "calibri14b", 14.0f, 512, 512);
     add_font(game_state, font);
 
+    font = load_font(game_state, "c:/windows/fonts/calibrib.ttf", "calibri24b", 24.0f, 512, 512);
+    add_font(game_state, font);
+
 #if 0
     font = load_font(game_state, "c:/windows/fonts/courbd.ttf", "courier16", 16.0f, 512, 512);
     add_font(game_state, font);
@@ -1124,6 +1127,11 @@ void update_messages(Message_Manager *manager, real32 dt) {
     int32 original_num_messages = manager->num_messages;
     int32 index = (MAX_MESSAGES + (manager->current_message_index - 1)) % MAX_MESSAGES;
     Message *messages = manager->messages;
+
+    // sometimes dt can be very large, such as when execution stops due to a dialog being opened, so we cap dt
+    // to prevent the message from disappearing instantly after one of those events
+    dt = min(1.0f / TARGET_FRAMERATE, dt);
+
     for (int32 messages_visited = 0; messages_visited < original_num_messages; messages_visited++) {
         messages[index].timer += dt;
         if (messages[index].timer >= manager->message_time_limit) {
@@ -1131,8 +1139,11 @@ void update_messages(Message_Manager *manager, real32 dt) {
             // one message fades away and is deallocated, we don't deallocate it again if we overwrite it when
             // adding a new message
             manager->num_messages--;
-            deallocate(messages[index].text);
-            messages[index].is_deallocated = true;
+
+            if (messages[index].text.allocator) {
+                deallocate(messages[index].text);
+                messages[index].is_deallocated = true;
+            }
         }
         index = (MAX_MESSAGES + (index - 1)) % MAX_MESSAGES;
     }
@@ -1141,14 +1152,15 @@ void update_messages(Message_Manager *manager, real32 dt) {
 void draw_messages(Message_Manager *manager, real32 x_start, real32 y_start) {
     int32 index = (MAX_MESSAGES + (manager->current_message_index - 1)) % MAX_MESSAGES;
     Message *messages = manager->messages;
-    real32 y_offset = 40.0f;
+    real32 y_offset = 30.0f;
 
     UI_Text_Style text_style;
     // TODO: convert to linear before mixing colors
     text_style.color = make_vec4(1.0f, 1.0f, 1.0f, 1.0f);
     text_style.use_offset_shadow = true;
     text_style.offset_shadow_color = make_vec4(0.0f, 0.0f, 0.0f, 1.0f);
-    
+    text_style.text_align_flags = TEXT_JUSTIFY_CENTER;
+
     Allocator *frame_allocator = (Allocator *) &memory.frame_arena;
     for (int32 messages_visited = 0; messages_visited < manager->num_messages; messages_visited++) {
         Message *message = &messages[index];
@@ -1161,7 +1173,7 @@ void draw_messages(Message_Manager *manager, real32 x_start, real32 y_start) {
         text_style.offset_shadow_color.w = opacity;
 
         do_text(Context::ui_manager, x_start, y_start + messages_visited*y_offset,
-                string, "times32", text_style,
+                string, "calibri24b", text_style,
                 "message_text", index);
                 
         index = (MAX_MESSAGES + (index - 1)) % MAX_MESSAGES;
@@ -1276,7 +1288,7 @@ void update(Game_State *game_state,
     fill_sound_buffer_with_audio(sound_output, game_state->is_playing_music, &game_state->music, num_samples);
 
     update_messages(&game_state->message_manager, dt);
-    draw_messages(&game_state->message_manager, 600.0f, 300.0f);
+    draw_messages(&game_state->message_manager, display_output->width / 2.0f, display_output->height / 2.0f);
 
     clear_hot_if_gone(ui_manager);
 

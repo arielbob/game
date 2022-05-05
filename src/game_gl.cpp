@@ -302,7 +302,7 @@
 //       - TODO (done): add a button that creates messages
 //       - TODO (done): show message in reverse chronological order, i.e. newest messages are at the top
 //       - TODO (done): deallocate strings when gone
-//       - TODO: styling - maybe center justify the text? and maybe use smaller font..
+//       - TODO (done): styling - maybe center justify the text? and maybe use smaller font..
 
 // TODO: use textbox with state with texture name box
 // TODO: material name/texture strings validation
@@ -1074,6 +1074,7 @@ void gl_draw_text(GL_State *gl_state, Render_State *render_state,
     real32 quad_uvs[8];
     real32 line_advance = font->scale_for_pixel_height * (font->ascent - font->descent + font->line_gap);
     real32 start_x_pos_pixels = x_pos_pixels;
+
     int32 i = 0;
     while (*text && (is_null_terminated || (i < num_chars))) {
         if (*text >= 32 && *text < 128 || *text == '-') {
@@ -1967,14 +1968,20 @@ void gl_draw_ui_text(GL_State *gl_state, Game_State *game_state,
 
     Font font = get_font(game_state, ui_text.font);
 
+    real32 x = ui_text.x;
+
+    if (style.text_align_flags & TEXT_JUSTIFY_CENTER) {
+        x -= 0.5f * get_width(font, ui_text.text);
+    }
+
     if (style.use_offset_shadow) {
         gl_draw_text(gl_state, &game_state->render_state, &font,
-                     ui_text.x, ui_text.y,
+                     x, ui_text.y,
                      ui_text.text, style.color,
                      style.offset_shadow_color, TEXT_SHADOW_OFFSET);
     } else {
         gl_draw_text(gl_state, &game_state->render_state, &font,
-                     ui_text.x, ui_text.y,
+                     x, ui_text.y,
                      ui_text.text, style.color);
     }
 }

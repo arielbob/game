@@ -19,6 +19,8 @@ enum UI_Type {
 #define TEXT_ALIGN_X 0x1
 #define TEXT_ALIGN_Y 0x2
 
+#define TEXT_JUSTIFY_CENTER 0x1
+
 #define SIDE_LEFT   0x1
 #define SIDE_RIGHT  0x2
 #define SIDE_TOP    0x4
@@ -54,6 +56,7 @@ struct UI_Text_Style {
     Vec4 color;
     bool32 use_offset_shadow;
     Vec4 offset_shadow_color;
+    uint32 text_align_flags;
 };
 
 struct UI_Text {
