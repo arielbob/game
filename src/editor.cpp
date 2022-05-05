@@ -84,7 +84,7 @@ void generate_material_name(Level *level, String_Buffer *buffer) {
     while (num_attempts < MAX_MATERIALS + 1) {
         Marker m = begin_region();
         char *format = (num_attempts == 0) ? "New Material" : "New Material %d";
-        char *buf = string_format((Allocator *) &memory.global_stack, 64, format, num_attempts + 1);
+        char *buf = string_format((Allocator *) &memory.global_stack, buffer->size, format, num_attempts + 1);
         if (!material_name_exists(level, make_string(buf))) {
             set_string_buffer_text(buffer, buf);
             end_region(m);
@@ -98,6 +98,25 @@ void generate_material_name(Level *level, String_Buffer *buffer) {
     assert(!"Could not generate material name.");
 }
 
+void generate_texture_name(Level *level, String_Buffer *buffer) {
+    int32 num_attempts = 0;
+    while (num_attempts < MAX_TEXTURES + 1) {
+        Marker m = begin_region();
+        char *format = (num_attempts == 0) ? "New Texture" : "New Texture %d";
+        char *buf = string_format((Allocator *) &memory.global_stack, buffer->size, format, num_attempts + 1);
+        if (!texture_name_exists(level, make_string(buf))) {
+            set_string_buffer_text(buffer, buf);
+            end_region(m);
+            return;
+        }
+
+        num_attempts++;
+        end_region(m);
+    }
+
+    assert(!"Could not generate texture name.");
+}
+
 bool32 editor_add_texture_press(Level *level, Material *material) {
     Marker m = begin_region();
     char *absolute_filename = (char *) region_push(PLATFORM_MAX_PATH);
@@ -106,16 +125,18 @@ bool32 editor_add_texture_press(Level *level, Material *material) {
     Allocator *filename_allocator = (Allocator *) level->filename_pool_pointer;
 
     if (platform_open_file_dialog(absolute_filename, PLATFORM_MAX_PATH)) {
-        String_Buffer new_texture_name_buffer = make_string_buffer(string_allocator,
+        String_Buffer new_texture_name = make_string_buffer(string_allocator,
                                                                    TEXTURE_NAME_MAX_SIZE);
+        generate_texture_name(level, &new_texture_name);
 
         char *relative_filename = (char *) region_push(PLATFORM_MAX_PATH);
         platform_get_relative_path(absolute_filename, relative_filename, PLATFORM_MAX_PATH);
-        String_Buffer new_texture_filename_buffer = make_string_buffer(filename_allocator,
-                                                                       relative_filename, PLATFORM_MAX_PATH);
+        String_Buffer new_texture_filename = make_string_buffer(filename_allocator,
+                                                                relative_filename, PLATFORM_MAX_PATH);
 
-        Texture new_texture = make_texture(new_texture_name_buffer,
-                                           new_texture_filename_buffer);
+        Texture new_texture = make_texture(new_texture_name,
+                                           new_texture_filename);
+
         int32 texture_id = level_add_texture(level, new_texture);
         material->texture_id = texture_id;
 
@@ -1180,11 +1201,25 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                          row_id, row_index++);
                 draw_v_centered_text(x + padding_left, y, row_height,
                                      "Texture Name", editor_font_name, default_text_style);
-                do_text_box(x + right_column_offset, y,
-                            edit_box_width, row_height,
-                            &texture->name, editor_font_name,
-                            text_box_style, default_text_style,
-                            "texture_name_text_box");
+                UI_Text_Box_Result result = do_text_box(x + right_column_offset, y,
+                                                        edit_box_width, row_height,
+                                                        &texture->name, editor_font_name,
+                                                        text_box_style, default_text_style,
+                                                        true,
+                                                        "texture_name_text_box", material->texture_id);
+
+                if (result.submitted) {
+                    String new_name = make_string(result.buffer);
+                    if (is_empty(new_name)) {
+                        add_message(&game_state->message_manager, make_string("Texture name cannot be empty!"));
+                    } else if (!string_equals(make_string(texture->name), new_name)) {
+                        if (!texture_name_exists(level, new_name)) {
+                            copy_string(&texture->name, new_name);
+                        } else {
+                            add_message(&game_state->message_manager, make_string("Texture name already exists!"));
+                        }
+                    }
+                }
 
                 y += row_height;
             }

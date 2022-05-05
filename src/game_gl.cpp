@@ -311,12 +311,20 @@
 //       - TODO (done): add material name exists procedure
 //       - TODO (done): show message if material name is invalid
 //       - TODO (done): give new materials default names
+//       - TODO: add texture name exists procedure
 //       - TODO: use textbox with state with texture name box
 //       - TODO: texture strings validation
 
 
 // TODO: change do_text to use Strings?
 // TODO: convert text colors to linear space in draw_messages before fading, then convert back to gamma-space
+
+// TODO: the UX of deleting materials and textures is kind of weird when an entity can have no material or texture
+//       - the minus button can seem like you're removing the material/texture from the entity, but it's actually
+//         deleting the material/texture. maybe we can make the minus button remove it from the entity, but if we
+//         want to remove the material/texture, we do that from the material/texture library that opens when you
+//         click the choose button
+// TODO: use the MAX_* constants when we generate level tables for meshes/textures/materials
 
 // TODO: click slider for manual value entry
 // TODO: slideable text boxes (after we do slider manual text entry)

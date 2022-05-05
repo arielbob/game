@@ -3,6 +3,7 @@
 
 #define MAX_MESHES 64
 #define MAX_MATERIALS 64
+#define MAX_TEXTURES 64
 #define MAX_ENTITIES 64
 #define MAX_POINT_LIGHTS 16
 #define MAX_FONTS 64
@@ -303,5 +304,6 @@ bool32 get_walkable_triangle_on_mesh(Vec3 center, real32 radius,
 void add_debug_line(Debug_State *debug_state, Vec3 start, Vec3 end, Vec4 color);
 void add_message(Message_Manager *manager, String text);
 bool32 material_name_exists(Level *level, String name);
+bool32 texture_name_exists(Level *level, String name);
 
 #endif
