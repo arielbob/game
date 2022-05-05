@@ -1617,6 +1617,28 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
                 buf, editor_font_name, default_text_style, "editor_current_level_filename");
     }
 
+    bool32 add_message_clicked = do_text_button(render_state->display_output.width - sidebar_button_width,
+                                                render_state->display_output.height - button_height,
+                                                sidebar_button_width, button_height,
+                                                default_text_button_style, default_text_style,
+                                                "Add Message",
+                                                button_font_name, "add_message");
+
+    static int32 num_messages_added_so_far = 0;
+    if (add_message_clicked) {
+        num_messages_added_so_far++;
+
+        Marker m = begin_region();
+        // store it in temp
+        char *buf = string_format((Allocator *) &memory.global_stack, 64, "Message %d", num_messages_added_so_far);
+        // copy it
+        String string = make_string((Allocator *) &memory.string64_pool, buf);
+        end_region(m);
+
+        add_message(&game_state->message_manager, string);
+    }
+
+
 #if 0
     Vec3 closest_point_below = make_vec3();
     bool32 found_closest_point = false;

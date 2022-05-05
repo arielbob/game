@@ -36,6 +36,7 @@ struct Pool_Allocator {
     void *first;
     uint32 size;
     uint32 block_size;
+    uint32 blocks_used;
     uint32 max_blocks;
 };
 

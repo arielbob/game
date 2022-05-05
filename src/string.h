@@ -21,6 +21,8 @@ int32 string_length(char* str) {
 }
 
 struct String {
+    // allocator should be NULL when contents are in read-only memory
+    Allocator *allocator = NULL;
     char *contents;
     int32 length;
 };
@@ -174,6 +176,25 @@ String make_string(char *contents) {
     return result;
 }
 
+// this copies
+String make_string(Allocator *allocator, char *contents) {
+    String result;
+    result.allocator = allocator;
+
+    int32 len = string_length(contents);
+    result.length = len;
+
+    char *buf = (char *) allocate(allocator, len);
+    memcpy(buf, contents, len);
+    result.contents = buf;
+
+    return result;
+}
+
+void deallocate(String string) {
+    deallocate(string.allocator, string.contents);
+}
+
 String_Iterator make_string_iterator(String string) {
     String_Iterator it = {};
     it.string = string;
@@ -245,6 +266,7 @@ void append_string(String_Buffer *buffer, String to_append) {
     buffer->current_length += to_append.length;
 }
 
+// TODO: append_string() above copies, but this one doesn't - i think both should copy
 inline void append_string(String_Buffer *buffer, char *to_append_c_str) {
     String to_append = make_string(to_append_c_str);
     append_string(buffer, to_append);
@@ -262,6 +284,15 @@ void to_char_array(String string, char *buffer, int32 buffer_size) {
     }
     
     buffer[string.length] = '\0';
+}
+
+char *to_char_array(Allocator *allocator, String string) {
+    char *buf = (char *) allocate(allocator, string.length + 1);
+
+    memcpy(buf, string.contents, string.length);
+    buf[string.length] = '\0';
+
+    return buf;
 }
 
 char *to_char_array(Allocator *allocator, String_Buffer string) {

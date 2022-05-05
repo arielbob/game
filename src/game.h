@@ -149,6 +149,25 @@ struct Debug_State {
     int32 num_debug_lines;
 };
 
+// first one added is always the one that gets shown first
+#define MAX_MESSAGES 8
+#define MESSAGE_TIME_LIMIT 1.8f
+#define MESSAGE_FADE_START 1.5f
+struct Message {
+    bool32 is_deallocated;
+    real32 timer;
+    String text;
+};
+
+struct Message_Manager {
+    Message messages[MAX_MESSAGES]; // NOTE: should be zero-initialized
+    int32 num_messages;
+    //int32 first_message_index;
+    int32 current_message_index; // index of the next message to be added
+    real32 message_time_limit;
+    real32 fade_start;
+};
+
 namespace Player_Constants {
     // maximum distance below the player position where the player will instantly walk; if the
     // ground is a larger distance away than this, then the player will fall instead.
@@ -204,6 +223,8 @@ struct Game_State {
     Editor_State editor_state;
     Debug_State debug_state;
 
+    Message_Manager message_manager;
+
     Audio_Source music;
     bool32 is_playing_music; // debugging
     UI_Manager ui_manager;
@@ -226,6 +247,7 @@ namespace Context {
     Editor_State *editor_state;
     Controller_State *controller_state;
     UI_Manager *ui_manager;
+    Message_Manager *message_manager;
 };
 
 struct Ray_Intersects_Mesh_Result {
@@ -279,5 +301,6 @@ bool32 get_walkable_triangle_on_mesh(Vec3 center, real32 radius,
                                      real32 min_y, real32 max_y,
                                      Get_Walkable_Triangle_On_Mesh_Result *result);
 void add_debug_line(Debug_State *debug_state, Vec3 start, Vec3 end, Vec4 color);
+void add_message(Message_Manager *manager, String text);
 
 #endif

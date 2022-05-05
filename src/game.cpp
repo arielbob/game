@@ -338,6 +338,11 @@ void init_game(Game_State *game_state,
     Camera *camera = &game_state->render_state.camera;
     Display_Output *display_output = &game_state->render_state.display_output;
 
+    // init message manager
+    game_state->message_manager = {};
+    game_state->message_manager.message_time_limit = MESSAGE_TIME_LIMIT;
+    Context::message_manager = &game_state->message_manager;
+
     // string pool allocators
     Allocator *string64_allocator = (Allocator *) &memory.string64_pool;
     Allocator *filename_allocator = (Allocator *) &memory.filename_pool;
@@ -1096,6 +1101,73 @@ void update_camera(Camera *camera, Vec3 position, real32 heading, real32 pitch, 
     camera->current_basis = current_basis;
 }
 
+void add_message(Message_Manager *manager, String text) {
+    Message message;
+    message.is_deallocated = false;
+    message.timer = 0.0f;
+    message.text = text;
+
+    Message *messages = manager->messages;
+    Message existing = messages[manager->current_message_index];
+    if (!existing.is_deallocated && existing.text.allocator) {
+        // if we're overwriting, deallocate whatever's there.
+        deallocate(messages[manager->current_message_index].text);
+        existing.is_deallocated = true;
+    }
+    messages[manager->current_message_index] = message;
+    manager->num_messages++;
+    manager->num_messages = min(manager->num_messages, MAX_MESSAGES);
+    manager->current_message_index = (manager->current_message_index + 1) % MAX_MESSAGES;
+}
+
+void update_messages(Message_Manager *manager, real32 dt) {
+    int32 original_num_messages = manager->num_messages;
+    int32 index = (MAX_MESSAGES + (manager->current_message_index - 1)) % MAX_MESSAGES;
+    Message *messages = manager->messages;
+    for (int32 messages_visited = 0; messages_visited < original_num_messages; messages_visited++) {
+        messages[index].timer += dt;
+        if (messages[index].timer >= manager->message_time_limit) {
+            // we have an is_deallocated flag so that in the case where the message array is filled, when
+            // one message fades away and is deallocated, we don't deallocate it again if we overwrite it when
+            // adding a new message
+            manager->num_messages--;
+            deallocate(messages[index].text);
+            messages[index].is_deallocated = true;
+        }
+        index = (MAX_MESSAGES + (index - 1)) % MAX_MESSAGES;
+    }
+}
+
+void draw_messages(Message_Manager *manager, real32 x_start, real32 y_start) {
+    int32 index = (MAX_MESSAGES + (manager->current_message_index - 1)) % MAX_MESSAGES;
+    Message *messages = manager->messages;
+    real32 y_offset = 40.0f;
+
+    UI_Text_Style text_style;
+    // TODO: convert to linear before mixing colors
+    text_style.color = make_vec4(1.0f, 1.0f, 1.0f, 1.0f);
+    text_style.use_offset_shadow = true;
+    text_style.offset_shadow_color = make_vec4(0.0f, 0.0f, 0.0f, 1.0f);
+    
+    Allocator *frame_allocator = (Allocator *) &memory.frame_arena;
+    for (int32 messages_visited = 0; messages_visited < manager->num_messages; messages_visited++) {
+        Message *message = &messages[index];
+        char *string = to_char_array(frame_allocator, message->text);
+
+        real32 total_fade_time = MESSAGE_TIME_LIMIT - MESSAGE_FADE_START;
+        real32 unclamped_opacity = 1.0f - ((message->timer - MESSAGE_FADE_START) / total_fade_time);
+        real32 opacity = clamp(unclamped_opacity, 0.0f, 1.0f);
+        text_style.color.w = opacity;
+        text_style.offset_shadow_color.w = opacity;
+
+        do_text(Context::ui_manager, x_start, y_start + messages_visited*y_offset,
+                string, "times32", text_style,
+                "message_text", index);
+                
+        index = (MAX_MESSAGES + (index - 1)) % MAX_MESSAGES;
+    }
+}
+
 void update(Game_State *game_state,
             Controller_State *controller_state,
             Sound_Output *sound_output, uint32 num_samples) {
@@ -1188,12 +1260,23 @@ void update(Game_State *game_state,
     buf = (char *) arena_push(&memory.frame_arena, 128);
     
     buf = (char *) arena_push(&memory.frame_arena, 128);
+    string_format(buf, 128, "pool->blocks_used: %d",
+                  memory.string64_pool.blocks_used);
+    do_text(ui_manager, 500.0f, 72.0f, buf, "times24", "pool->blocks_used");
+    buf = (char *) arena_push(&memory.frame_arena, 128);
+
+#if 0
+    buf = (char *) arena_push(&memory.frame_arena, 128);
     string_format(buf, 128, "level string64_pool->first: %p",
                   game_state->current_level.string64_pool_pointer->first);
     do_text(ui_manager, 500.0f, 72.0f, buf, "times24", "pool->first");
     buf = (char *) arena_push(&memory.frame_arena, 128);
+#endif
 
     fill_sound_buffer_with_audio(sound_output, game_state->is_playing_music, &game_state->music, num_samples);
+
+    update_messages(&game_state->message_manager, dt);
+    draw_messages(&game_state->message_manager, 600.0f, 300.0f);
 
     clear_hot_if_gone(ui_manager);
 

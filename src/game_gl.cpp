@@ -290,13 +290,28 @@
 //       - although, i think we can use make_ui_text_box, since that's just for rendering
 //       - we could actually just modify do_text_box to accept an argument called use_state
 // TODO (done): modify material name box to use text box with state
+
+// TODO (done): some type of messaging system that isn't in the game console, like toasts (messages that appear
+//       then disappear after a few seconds). this would be nice for some type of feedback like for file saving.
+//       - i don't think this needs to be part of the immediate mode UI, since we won't interact with it; they'll
+//         just appear and disappear
+//       - TODO (done): make message that disappears after a certain time
+//       - TODO (done): have multiple messages disappear
+//       - TODO (done): add a message manager to game_state and context, so other things can access it
+//       - TODO (done): init the message manager
+//       - TODO (done): add a button that creates messages
+//       - TODO (done): show message in reverse chronological order, i.e. newest messages are at the top
+//       - TODO (done): deallocate strings when gone
+//       - TODO: styling - maybe center justify the text? and maybe use smaller font..
+
 // TODO: use textbox with state with texture name box
 // TODO: material name/texture strings validation
 //       check for duplicates and empties. it matters that we don't have duplicates since texture names are used
 //       as keys in the opengl code. we don't store material structs in the opengl code, but it's better to be
 //       consistent. show a message using the messaging system.
-// TODO: some type of messaging system that isn't in the game console, like toasts kind of (messages that appear
-//       then disappear after a few seconds). this would be nice for some type of feedback like for file saving.
+
+// TODO: change do_text to use Strings?
+// TODO: convert text colors to linear space in draw_messages before fading, then convert back to gamma-space
 
 // TODO: click slider for manual value entry
 // TODO: slideable text boxes (after we do slider manual text entry)

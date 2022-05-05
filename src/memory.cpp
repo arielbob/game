@@ -194,6 +194,7 @@ Pool_Allocator make_pool_allocator(void *base, uint32 block_size, uint32 size, u
     pool_allocator.base = base;
     pool_allocator.first = base;
     pool_allocator.max_blocks = size / block_size;
+    pool_allocator.blocks_used = 0;
 
     // initialize the free list
     void **current = (void **) pool_allocator.base;
@@ -222,6 +223,8 @@ void *pool_push(Pool_Allocator *pool, uint32 size, bool32 zero_memory = false) {
         platform_zero_memory(base, pool->block_size);
     }
 
+    pool->blocks_used++;
+
     return base;
 }
 
@@ -235,11 +238,11 @@ void pool_remove(Pool_Allocator *pool, void *block_address) {
     void **block_pointer = (void **) block_address;
     *block_pointer = pool->first;
     pool->first = block_pointer;
+    pool->blocks_used--;
 }
 
 void clear_pool(Pool_Allocator *pool) {
     pool->first = pool->base;
-
 
     // initialize the free list
     void **current = (void **) pool->base;
@@ -249,7 +252,7 @@ void clear_pool(Pool_Allocator *pool) {
     }
     
     *current = NULL;
-
+    pool->blocks_used = 0;
 }
 
 #define HEAP_BLOCK_ALIGNMENT_BYTES 8
