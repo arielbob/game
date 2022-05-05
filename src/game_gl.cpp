@@ -304,16 +304,17 @@
 //       - TODO (done): deallocate strings when gone
 //       - TODO (done): styling - maybe center justify the text? and maybe use smaller font..
 
-// TODO: material name/texture strings validation
+// TODO: material/texture/mesh name strings validation
 //       check for duplicates and empties. it matters that we don't have duplicates since texture names are used
 //       as keys in the opengl code. we don't store material structs in the opengl code, but it's better to bea
 //       consistent. show a message using the messaging system.
 //       - TODO (done): add material name exists procedure
 //       - TODO (done): show message if material name is invalid
 //       - TODO (done): give new materials default names
-//       - TODO: add texture name exists procedure
-//       - TODO: use textbox with state with texture name box
-//       - TODO: texture strings validation
+//       - TODO (done): add texture name exists procedure
+//       - TODO (done): use textbox with state with texture name box
+//       - TODO (done): texture name validation
+//       - TODO: mesh name validation
 
 
 // TODO: change do_text to use Strings?

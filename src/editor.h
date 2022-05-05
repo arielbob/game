@@ -32,13 +32,15 @@ struct Gizmo {
 namespace Editor_Constants {
     real32 point_light_side_length = 0.4f;
     real32 camera_speed = 19.0f;
-    Vec4 row_color = make_vec4(0.1f, 0.1f, 0.1f, 0.9f);
+    Vec4 row_color = make_vec4(0.12f, 0.12f, 0.12f, 0.9f);
+    Vec4 darkened_row_color = make_vec4(0.0f, 0.0f, 0.0f, 0.9f);
     Vec4 border_color = make_vec4(0.3f, 0.3f, 0.3f, 1.0f);
     real32 hsv_picker_width = 200.0f;
     real32 hsv_picker_height = 200.0f;
     real32 hue_slider_width = 20.0f;
     real32 small_padding_x = 6.0f;
     real32 small_padding_y = 6.0f;
+    real32 x_nested_offset = 10.0f;
     real32 color_picker_width = (small_padding_x +
                                  hsv_picker_width + small_padding_x +
                                  hue_slider_width + small_padding_x);

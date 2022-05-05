@@ -718,7 +718,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     real32 padding_top = padding_left;
     real32 padding_bottom = padding_left;
     real32 padding_y = padding_top;
-    real32 right_column_offset = padding_left + 120.0f;
+    real32 right_column_offset = padding_left + 130.0f;
     real32 small_spacing = 20.0f;
 
     real32 initial_row_height = 22.0f;
@@ -727,7 +727,8 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     real32 row_width = 400.0f;
 
     Vec4 title_row_color = make_vec4(0.05f, 0.2f, 0.5f, 1.0f);
-    Vec4 row_color = make_vec4(0.1f, 0.1f, 0.1f, 0.9f);
+    Vec4 row_color = Editor_Constants::row_color;
+    Vec4 darkened_row_color = Editor_Constants::darkened_row_color;
 
     real32 initial_x = box_x;
     real32 x = box_x;
@@ -911,11 +912,15 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         if (normal_entity->mesh_type == Mesh_Type::LEVEL && editor_state->editing_selected_entity_mesh) {
             draw_row_padding(x, &y, row_width, padding_y, row_color, side_flags,
                              row_id, row_index++);
+
+            row_color = Editor_Constants::darkened_row_color;
+            draw_row_padding(x, &y, row_width, padding_y, row_color, side_flags,
+                             row_id, row_index++);
             UI_Text_Box_Style text_box_style = default_text_box_style;
 
             draw_row(x, y, row_width, row_height, row_color, side_flags,
                      row_id, row_index++);
-            draw_v_centered_text(x + padding_left, y, row_height,
+            draw_v_centered_text(x + padding_left + Editor_Constants::x_nested_offset, y, row_height,
                                  "Mesh Name", editor_font_name, default_text_style);
             do_text_box(x + right_column_offset, y,
                         edit_box_width, row_height,
@@ -924,6 +929,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                         "mesh_name_text_box");
             y += row_height;
         
+            row_color = Editor_Constants::row_color;
         }
         draw_row_padding(x, &y, row_width, padding_y, row_color,
                          side_flags | SIDE_BOTTOM,
@@ -982,9 +988,6 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                              "Material", editor_font_name, text_style);
 
         side_flags = SIDE_LEFT | SIDE_RIGHT;
-
-        
-
 
         x += right_column_offset;
         Material *material = NULL;
@@ -1076,13 +1079,21 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         if (has_material && editor_state->editing_selected_entity_material) {
             draw_row_padding(x, &y, row_width, padding_y, row_color,
                              side_flags, row_id, row_index++);
+            row_color = Editor_Constants::darkened_row_color;
+
+            draw_row_padding(x, &y, row_width, padding_y, row_color,
+                             side_flags, row_id, row_index++);
 
             UI_Text_Box_Style text_box_style = default_text_box_style;
+
+            real32 x_nested_offset = Editor_Constants::x_nested_offset;
+            real32 label_x = x + padding_left + x_nested_offset;
+
 
             // MATERIAL NAME
             draw_row(x, y, row_width, row_height, row_color, side_flags,
                      row_id, row_index++);
-            draw_v_centered_text(x + padding_left, y, row_height,
+            draw_v_centered_text(label_x, y, row_height,
                                  "Material Name", editor_font_name, default_text_style);
             // NOTE: we pass in normal_entity->material_id as the text button's index, because if the material id
             //       changes, for example, from switching materials or creating a new material, AND the name
@@ -1129,7 +1140,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
             }
             draw_row(x, y, row_width, row_height, row_color, side_flags,
                      row_id, row_index++);
-            draw_v_centered_text(x + padding_left, y, row_height,
+            draw_v_centered_text(label_x, y, row_height,
                                  "Texture", editor_font_name, text_style);
 
             x += right_column_offset;
@@ -1197,9 +1208,9 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                  side_flags, row_id, row_index++);
 
                 // TEXTURE NAME
-                draw_row(x, y, row_width, row_height, row_color, side_flags,
+                draw_row(x, y, row_width, row_height, darkened_row_color, side_flags,
                          row_id, row_index++);
-                draw_v_centered_text(x + padding_left, y, row_height,
+                draw_v_centered_text(label_x + x_nested_offset, y, row_height,
                                      "Texture Name", editor_font_name, default_text_style);
                 UI_Text_Box_Result result = do_text_box(x + right_column_offset, y,
                                                         edit_box_width, row_height,
@@ -1231,7 +1242,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
             // GLOSS
             draw_row(x, y, row_width, row_height, row_color, side_flags,
                      row_id, row_index++);
-            draw_v_centered_text(x + padding_left, y, row_height,
+            draw_v_centered_text(label_x, y, row_height,
                                  "Gloss", editor_font_name, text_style);
             material->gloss = do_slider(x+right_column_offset, y,
                                         edit_box_width, row_height,
@@ -1247,7 +1258,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
             draw_row(x, y, row_width, row_height, row_color, side_flags,
                      row_id, row_index++);
             buf = string_format(allocator, buffer_size, "%f", material->gloss);
-            draw_v_centered_text(x + padding_left, y, row_height,
+            draw_v_centered_text(label_x, y, row_height,
                                  "Color Override", editor_font_name, text_style);
             UI_id color_override_button_id;
             bool32 color_override_pressed = do_color_button(x + right_column_offset, y,
@@ -1279,7 +1290,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
             // USE COLOR OVERRIDE
             draw_row(x, y, row_width, row_height, row_color, side_flags,
                      row_id, row_index++);
-            draw_v_centered_text(x + padding_left, y, row_height,
+            draw_v_centered_text(label_x, y, row_height,
                                  "Use Color Override", editor_font_name, text_style);
             bool32 toggle_color_override_pressed = do_text_button(x + right_column_offset, y,
                                                                   100.0f, row_height,
@@ -1299,6 +1310,8 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         }
         draw_row_padding(x, &y, row_width, padding_y, row_color,
                          side_flags | SIDE_BOTTOM, row_id, row_index++);
+
+        row_color = Editor_Constants::row_color;
     }
     
     if (entity->type == ENTITY_POINT_LIGHT) {
