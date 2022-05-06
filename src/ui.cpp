@@ -64,13 +64,38 @@ inline UI_id make_ui_id(UI_Type type, void *id, int32 index) {
     UI_id ui_id = { type, id, index };
     return ui_id;
 }
-          
 
+UI_Text_Box make_ui_text_box(real32 x, real32 y,
+                             real32 width, real32 height,
+                             String_Buffer buffer,
+                             char *font,
+                             UI_Text_Box_Style style, UI_Text_Style text_style,
+                             int32 layer, char *id, int32 index = 0) {
+    UI_Text_Box text_box = {};
+
+    text_box.type = UI_TEXT_BOX;
+    text_box.layer = layer;
+
+    text_box.x = x;
+    text_box.y = y;
+    text_box.width = width;
+    text_box.height = height;
+    text_box.buffer = buffer;
+    text_box.font = font;
+    text_box.style = style;
+    text_box.text_style = text_style;
+
+    UI_id text_box_id = { UI_TEXT_BOX, id, index };
+    text_box.id = text_box_id;
+
+    return text_box;
+}
                                    
 UI_Slider make_ui_slider(real32 x, real32 y,
                          real32 width, real32 height,
                          String_Buffer buffer, char *font,
                          real32 min, real32 max, real32 value,
+                         bool32 is_text_box,
                          UI_Slider_Style style, UI_Text_Style text_style,
                          int32 layer, char *id, int32 index = 0) {
     UI_Slider slider;
@@ -89,6 +114,7 @@ UI_Slider make_ui_slider(real32 x, real32 y,
     slider.min = min;
     slider.max = max;
     slider.value = value;
+    slider.is_text_box = is_text_box;
     
     UI_id slider_id = make_ui_id(UI_SLIDER, id, index);
     slider.id = slider_id;
@@ -894,50 +920,50 @@ real32 do_slider(real32 x, real32 y,
         state = new_state;
     }
 
-    UI_Slider slider = make_ui_slider(x, y, width, height,
-                                      state->buffer, font,
-                                      min, max, value,
-                                      style, text_style,
-                                      ui_manager->current_layer, id_string, index);
-
     Vec2 current_mouse = controller_state->current_mouse;
 
     if (!state->is_text_box) {
         if (!ui_manager->is_disabled && in_bounds_on_layer(ui_manager, current_mouse, x, x + width, y, y + height)) {
-            set_hot(ui_manager, slider.id);
+            set_hot(ui_manager, slider_id);
 
             if (controller_state->left_mouse.is_down && !controller_state->left_mouse.was_down) {
-                ui_manager->active = slider.id;
+                ui_manager->active = slider_id;
                 ui_manager->active_initial_position = controller_state->current_mouse;
                 ui_manager->active_initial_time = platform_get_wall_clock_time();
             }
 
             if (!controller_state->left_mouse.is_down) {
-                if (ui_id_equals(ui_manager->active, slider.id)) {
+                if (ui_id_equals(ui_manager->active, slider_id)) {
                     ui_manager->active = {};
                 }
 
-                real32 deadzone_time = 0.5;
-                real32 time_since_first_active = (real32) (platform_get_wall_clock_time() - ui_manager->active_initial_time);
+                if (controller_state->left_mouse.was_down) {
+                    real32 deadzone_time = 0.5;
+                    real32 time_since_first_active = (real32) (platform_get_wall_clock_time() - ui_manager->active_initial_time);
+                    real32 pixel_deadzone_radius = 5.0f;
 
-                if (time_since_first_active < deadzone_time) {
-                    state->is_text_box = true;
-                    ui_manager->active = slider.id;
-                } else {
-                    ui_manager->active = {};
+                    if (fabsf(controller_state->current_mouse.x - ui_manager->active_initial_position.x) <
+                        pixel_deadzone_radius) {
+                        if (time_since_first_active < deadzone_time) {
+                            state->is_text_box = true;
+                            ui_manager->active = slider_id;
+                        } else {
+                            ui_manager->active = {};
+                        }
+                    }
                 }
             }
         } else {
-            if (ui_id_equals(ui_manager->hot, slider.id)) {
+            if (ui_id_equals(ui_manager->hot, slider_id)) {
                 clear_hot(ui_manager);
             }
 
-            if (ui_id_equals(ui_manager->active, slider.id) && !controller_state->left_mouse.is_down) {
+            if (ui_id_equals(ui_manager->active, slider_id) && !controller_state->left_mouse.is_down) {
                 ui_manager->active = {};
             }
         }
 
-        if (ui_id_equals(ui_manager->active, slider.id) && being_held(controller_state->left_mouse)) {
+        if (ui_id_equals(ui_manager->active, slider_id) && being_held(controller_state->left_mouse)) {
 #if 0
             real32 pixel_deadzone_radius = 5.0f;
             real64 deadzone_time = 0.5;
@@ -956,13 +982,26 @@ real32 do_slider(real32 x, real32 y,
             value = max(min, value);
         }
     } else {
-
+        do_text_box_logic(ui_manager, controller_state, slider_id,
+                          x, y, width, height,
+                          &state->buffer);
+        if (!ui_id_equals(ui_manager->active, slider_id)) {
+            state->is_text_box = false;
+        }
     }
     
     Marker m = begin_region();
     char *buf = string_format((Allocator *) &memory.global_stack, 64, "%f", value);
     set_string_buffer_text(&state->buffer, buf);
     end_region(m);
+
+    // TODO: the buffer will be different if we're not a text box
+    UI_Slider slider = make_ui_slider(x, y, width, height,
+                                      state->buffer, font,
+                                      min, max, value,
+                                      state->is_text_box,
+                                      style, text_style,
+                                      ui_manager->current_layer, id_string, index);
 
     ui_add_slider(ui_manager, slider);
 

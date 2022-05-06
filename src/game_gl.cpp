@@ -322,7 +322,9 @@
 // TODO: click slider for manual value entry
 //       - TODO (done): make slider set state.is_text_box to true when clicked
 //       - TODO (done): move text box UI logic to separate procedure
-//       - TODO: use text box UI logic when slider is a text box
+//       - TODO (done): use text box UI logic when slider is a text box
+//       - TODO (done): render text box instead of slider when slider is a text box
+//       - TODO: fix typing in text box
 
 
 // TODO: change do_text to use Strings?
@@ -2206,7 +2208,7 @@ void gl_draw_ui_text_box(GL_State *gl_state, Game_State *game_state,
     
     glDisable(GL_SCISSOR_TEST);
 
-    real32 cursor_width = get_width(font, "M");
+    real32 cursor_width = get_width(font, "I");
 
     if (ui_id_equals(ui_manager->active, text_box.id)) {
         // TODO: this cursor should actually be calculated using focus_cursor_index. we need to
@@ -2227,6 +2229,19 @@ void gl_draw_ui_slider(GL_State *gl_state, Game_State *game_state,
                        Display_Output display_output,
                        UI_Manager *ui_manager, UI_Slider slider) {
     UI_Slider_Style style = slider.style;
+
+    if (slider.is_text_box) {
+        UI_Text_Box_Style text_box_style = { TEXT_ALIGN_X | TEXT_ALIGN_Y, 5.0f, 5.0f,
+                                             style.normal_color, style.hot_color, style.normal_color };
+
+        UI_Text_Box text_box = make_ui_text_box(slider.x, slider.y, slider.width, slider.height,
+                                                slider.buffer, slider.font,
+                                                text_box_style, slider.text_style,
+                                                slider.layer, (char *) slider.id.string_ptr, slider.id.index);
+
+        gl_draw_ui_text_box(gl_state, game_state, display_output, ui_manager, text_box);
+        return;
+    }
 
     // background box
     Vec4 color = style.normal_color;

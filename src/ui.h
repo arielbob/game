@@ -291,32 +291,6 @@ struct UI_Text_Box {
     char *font;
 };
 
-UI_Text_Box make_ui_text_box(real32 x, real32 y,
-                             real32 width, real32 height,
-                             String_Buffer buffer,
-                             char *font,
-                             UI_Text_Box_Style style, UI_Text_Style text_style,
-                             int32 layer, char *id, int32 index = 0) {
-    UI_Text_Box text_box = {};
-
-    text_box.type = UI_TEXT_BOX;
-    text_box.layer = layer;
-
-    text_box.x = x;
-    text_box.y = y;
-    text_box.width = width;
-    text_box.height = height;
-    text_box.buffer = buffer;
-    text_box.font = font;
-    text_box.style = style;
-    text_box.text_style = text_style;
-
-    UI_id text_box_id = { UI_TEXT_BOX, id, index };
-    text_box.id = text_box_id;
-
-    return text_box;
-}
-
 // start slider
 struct UI_Slider_Style {
     Vec4 normal_color;
@@ -346,6 +320,8 @@ struct UI_Slider {
     real32 min;
     real32 max;
     real32 value;
+
+    bool32 is_text_box;
 };
 // end slider
 
