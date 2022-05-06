@@ -317,6 +317,7 @@ struct UI_Slider {
     UI_Slider_Style style;
     UI_Text_Style text_style;
 
+    bool32 is_bounded;
     real32 min;
     real32 max;
     real32 value;

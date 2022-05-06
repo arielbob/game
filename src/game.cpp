@@ -931,6 +931,30 @@ void update_entity_position(Game_State *game_state, Entity *entity, Vec3 new_pos
 void update_entity_rotation(Game_State *game_state, Entity *entity, Quaternion new_rotation) {
     entity->transform.rotation = new_rotation;
     update_entity_aabb(game_state, &game_state->current_level, entity);
+
+    // TODO: modify colliders when rotating
+}
+
+void update_entity_scale(Game_State *game_state, Entity *entity, Vec3 new_scale) {
+    entity->transform.scale = new_scale;
+    update_entity_aabb(game_state, &game_state->current_level, entity);
+
+    // TODO: modify colliders when scaling
+#if 0
+    if (entity->type == ENTITY_NORMAL) {
+        Normal_Entity *normal_entity = (Normal_Entity *) entity;
+        Collider_Variant *collider = &normal_entity->collider;
+        switch (collider->type) {
+            case Collider_Type::NONE: break;
+            case Collider_Type::CIRCLE: {
+                collider->circle.center = new_position;
+            } break;
+            default: {
+                assert(!"Unhandled collider type.");
+            } break;
+        }
+    }
+#endif
 }
 
 Material *get_entity_material(Level *level, Entity *entity) {

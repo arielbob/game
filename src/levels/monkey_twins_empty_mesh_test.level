@@ -62,6 +62,11 @@ material "matter monkey"
 gloss 0.500000
 color_override 0.840000 0.840000 0.840000
 use_color_override 1
+
+material "big monkey"
+gloss 0.239283
+color_override 0.485000 0.485000 0.485000
+use_color_override 1
 }
 
 entities {
@@ -76,7 +81,7 @@ is_walkable 0
 type normal
 position 0.000000 -0.225005 0.000000
 rotation 1.000000 0.000000 0.000000 0.000000
-scale 5.000000 0.100000 5.000000
+scale 500.000000 0.100000 500.000000
 mesh_primitive "cube"
 material "diffuse_plane"
 is_walkable 1
@@ -128,6 +133,14 @@ mesh_primitive "cube"
 material "diffuse_plane"
 is_walkable 1
 
+type normal
+position 0.000000 150.489777 190.789200
+rotation 0.945157 -0.326614 0.000000 0.000000
+scale 100.000000 100.000000 100.000000
+mesh "suzanne"
+material "big monkey"
+is_walkable 0
+
 type point_light
 position 0.015596 1.800000 -0.397868
 rotation 1.000000 0.000000 0.000000 0.000000
@@ -159,4 +172,12 @@ scale 1.000000 1.000000 1.000000
 light_color 1.000000 1.000000 1.000000
 falloff_start 0.000000
 falloff_end 4.237289
+
+type point_light
+position 0.000000 36.837246 99.261597
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+light_color 1.000000 1.000000 1.000000
+falloff_start 0.000000
+falloff_end 100.000000
 }

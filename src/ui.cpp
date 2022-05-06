@@ -94,7 +94,8 @@ UI_Text_Box make_ui_text_box(real32 x, real32 y,
 UI_Slider make_ui_slider(real32 x, real32 y,
                          real32 width, real32 height,
                          String_Buffer buffer, char *font,
-                         real32 min, real32 max, real32 value,
+                         bool32 is_bounded, real32 min, real32 max,
+                         real32 value,
                          bool32 is_text_box,
                          UI_Slider_Style style, UI_Text_Style text_style,
                          int32 layer, char *id, int32 index = 0) {
@@ -111,6 +112,7 @@ UI_Slider make_ui_slider(real32 x, real32 y,
     slider.font = font;
     slider.style = style;
     slider.text_style = text_style;
+    slider.is_bounded = is_bounded;
     slider.min = min;
     slider.max = max;
     slider.value = value;
@@ -910,7 +912,8 @@ UI_Text_Box_Result do_text_box(real32 x, real32 y,
 real32 do_slider(real32 x, real32 y,
                  real32 width, real32 height,
                  char *font,
-                 real32 min, real32 max, real32 value,
+                 bool32 is_bounded, real32 min, real32 max,
+                 real32 value,
                  UI_Slider_Style style, UI_Text_Style text_style,
                  char *id_string, int32 index = 0) {
     using namespace Context;
@@ -992,12 +995,23 @@ real32 do_slider(real32 x, real32 y,
                 value = max(min, value);
             }
 #endif
-            real32 delta_pixels = (controller_state->current_mouse - controller_state->last_mouse).x;
-            real32 rate = (max - min) / width;
+            real32 delta_pixels = current_mouse.x - controller_state->last_mouse.x;
+            real32 y_distance_from_start = current_mouse.y - ui_manager->active_initial_position.y;
+            real32 rate = 0.5f;
+            if (is_bounded) {
+                rate = (max - min) / width;
+            }
 
+            real32 absolute_y_distance_from_start = fabsf(y_distance_from_start);
+            if (absolute_y_distance_from_start > EPSILON) {
+                rate = 1.0f / absolute_y_distance_from_start;
+            }
+            
             value += delta_pixels * rate;
-            value = min(max, value);
-            value = max(min, value);
+
+            if (is_bounded) {
+                value = clamp(value, min, max);
+            }
         }
     }
 
@@ -1011,7 +1025,11 @@ real32 do_slider(real32 x, real32 y,
             real32 result;
             m = begin_region();
             if (string_to_real32(make_string(state->buffer), &result)) {
-                value = clamp(result, min, max);
+                if (is_bounded) {
+                    value = clamp(result, min, max);
+                } else {
+                    value = result;
+                }
             }
 
             char *buf = string_format((Allocator *) &memory.global_stack, 64, "%f", value);
@@ -1023,7 +1041,7 @@ real32 do_slider(real32 x, real32 y,
     
     UI_Slider slider = make_ui_slider(x, y, width, height,
                                       state->buffer, font,
-                                      min, max, value,
+                                      is_bounded, min, max, value,
                                       state->is_text_box,
                                       style, text_style,
                                       ui_manager->current_layer, id_string, index);
@@ -1031,6 +1049,36 @@ real32 do_slider(real32 x, real32 y,
     ui_add_slider(ui_manager, slider);
 
     return value;
+}
+
+inline real32 do_slider(real32 x, real32 y,
+                        real32 width, real32 height,
+                        char *font,
+                        real32 min, real32 max, real32 value,
+                        UI_Slider_Style style, UI_Text_Style text_style,
+                        char *id_string, int32 index = 0) {
+    return do_slider(x, y,
+                     width, height,
+                     font,
+                     true, min, max,
+                     value,
+                     style, text_style,
+                     id_string, index);
+}
+
+inline real32 do_slider(real32 x, real32 y,
+                        real32 width, real32 height,
+                        char *font,
+                        real32 value,
+                        UI_Slider_Style style, UI_Text_Style text_style,
+                        char *id_string, int32 index = 0) {
+    return do_slider(x, y,
+                     width, height,
+                     font,
+                     false, 0.0f, 0.0f,
+                     value,
+                     style, text_style,
+                     id_string, index);
 }
 
 // we keep border_flags out of UI_Box_Style, since boxes can often have the same style, but have different

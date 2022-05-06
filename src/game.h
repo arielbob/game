@@ -294,6 +294,7 @@ void update_render_state(Render_State *render_state);
 Vec3 cursor_pos_to_world_space(Vec2 cursor_pos, Render_State *render_state);
 void update_entity_position(Game_State *game_state, Entity *entity, Vec3 new_position);
 void update_entity_rotation(Game_State *game_state, Entity *entity, Quaternion new_rotation);
+void update_entity_scale(Game_State *game_state, Entity *entity, Vec3 new_scale);
 int32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, bool32 include_backside,
                           Ray_Intersects_Mesh_Result *result);
 bool32 closest_point_below_on_mesh(Vec3 point, Mesh mesh, Transform transform, Vec3 *result);

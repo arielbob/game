@@ -333,6 +333,24 @@
 //               - just clamp the text box result for now, although i think we will want to sometimes just be able to
 //                 manually enter any value, even if it's outside of the initial bounds of the sliders
 
+// TODO: replace the transform values in the entity box with slideable text boxes
+//       - TODO (done): create do_slider with no limits, would have to hide the slider when rendering
+//       - TODO (done): replace position and scale texts
+// TODO: show an image button for the texture instead of a regular button under material properties
+
+// TODO: editor undoing
+// TODO: better gizmo controls
+//       - TODO: scale gizmo
+//       - TODO: translation on a plane (little squares on the planes of the gizmo)
+//       - TODO: bigger hitboxes on the controls or just scale the meshes
+//       - TODO: maybe just draw lines for the rotation handles. this makes it kind of hard to select a handle
+//               when the normal of the rotation plane is orthogonal to the view vector, but it's hard to control
+//               the rotation at that angle anyways. the way you would do the picking is you do a ray vs plane and
+//               then check if the intersection point is within some bounds of the circle, using the circle's
+//               radius. in the orthogonal case, we may just want to hide the handle, like how blender does it.
+//       - TODO: keyboard controls for switching between gizmos
+
+// TODO: euler angle entry in entity box
 
 // TODO: change do_text to use Strings?
 //       - idk, i think it's fine that we use the frame arena, since it's guaranteed that the char array will still
@@ -345,10 +363,6 @@
 //         want to remove the material/texture, we do that from the material/texture library that opens when you
 //         click the choose button
 // TODO: use the MAX_* constants when we generate level tables for meshes/textures/materials
-
-// TODO: slideable text boxes (after we do slider manual text entry)
-//       - may just be able to add a parameter to sliders that hide the slider and removes bounds
-// TODO: replace the transform values in the entity box with slideable text boxes
 
 // TODO: for checking for memory leaks, it's actually kind of unreliable to use task manager, since we just take
 //       a bunch of memory at the beginning and allocate from that. it would be better if we had an actual
@@ -366,7 +380,6 @@
 // TODO: entity list view
 
 // TODO: fix issue where gizmo appears at last location for a frame before moving when adding a new entity
-// TODO: editor undoing
 // TODO: prompt to save level if open pressed when changes have been made
 // TODO: make sure after we've added entity deleting, that when entities are deleted, if the entity was being
 //       used as a walk mesh, then the player's walk mesh properties are cleared. although, this might not be
@@ -375,12 +388,6 @@
 // TODO: limit movement dt
 
 // TODO: make struct that holds both the mesh type and mesh ID
-
-// TODO: better gizmo controls
-//       - TODO: scale gizmo
-//       - TODO: translation on a plane (little squares on the planes of the gizmo)
-//       - TODO: bigger hitboxes on the controls or just scale the meshes
-//       - TODO: maybe just draw lines for the rotation handles; i'm not sure why the 
 
 // TODO: mesh parenting
 
@@ -443,9 +450,7 @@
 
 // TODO: scrollable UI region (mainly for material and texture libraries)
 
-// TODO: slider UI element
-
-// TODO: make textbox use the string pool allocator and use UI states so we don't have to handle making the
+// TODO (done): make textbox use the string pool allocator and use UI states so we don't have to handle making the
 //       string buffer ourselves
 //       - this also allows us to validate the text box without having to create a temp buffer ourselves
 //         (we would just validate the String_Buffer from the text box's state)
@@ -485,19 +490,8 @@
 // TODO: nicer UI (start with window to display selected entity properties)
 // TODO: directional light (sun light)
 
-// TODO: maybe use a push buffer for entities? and use an Entity_Type enum to differentiate between entities?
-//       the upside is that we don't waste space when the amount of one entity type far exceeds another entity
-//       type.
-//       but the thing is is that we often do need to do operations concerning only a single type of entity.
-//       and that could become more complicated if we use a push buffer.
-//       not using a push buffer is very annoying when trying to access entities by index. you have to constantly
-//       check entity type and then access the correct array.
-//       we could do a combination. we could create an Entity struct which contains all the shared fields.
-//       then just add a get_selected_entity procedure that just returns an Entity struct. if you need more
-//       specific details, then you can check entity.entity_type and cast it to the correct object.
 // TODO: window resize handling (recreate framebuffer, modify display_output)
 
-// TODO: typing in text box
 // TODO: game should have different Entity structs that have platform-independent data
 //       that is then used by game_gl to render that data. for example: Text_Entity, which
 //       is just some text with a font name and the game renders that.
@@ -508,11 +502,7 @@
 //       the alternative is to just have fixed size arrays for each entity type. the upside to that is that it's
 //       less complex and most likely faster. the downside is that if the amounts of entity types that exist at
 //       a given time differ by a large amount, you'll end up with a lot of unused memory.
-// TODO: interface for loading meshes with file explorer
 
-// TODO: create an entity list
-// TODO: create a mesh list
-// TODO: replace entity and mesh arrays in game_state with free lists
 // TODO: unicode support in win32 code
 // TODO: unicode support with text drawing?
 
@@ -2264,24 +2254,26 @@ void gl_draw_ui_slider(GL_State *gl_state, Game_State *game_state,
                  color);
 
     // slider bar
-    glEnable(GL_SCISSOR_TEST);
-    glScissor((int32) (slider.x),
-              (int32) (display_output.height - slider.y - slider.height),
-              (int32) slider.width, (int32) slider.height);
+    if (slider.is_bounded) {
+        glEnable(GL_SCISSOR_TEST);
+        glScissor((int32) (slider.x),
+                  (int32) (display_output.height - slider.y - slider.height),
+                  (int32) slider.width, (int32) slider.height);
     
-    Vec4 slider_color = style.slider_normal_color;
-    if (ui_id_equals(ui_manager->hot, slider.id)) {
-        slider_color = style.slider_hot_color;
-    }
-    if (ui_id_equals(ui_manager->active, slider.id)) {
-        slider_color = style.slider_active_color;
-    }
+        Vec4 slider_color = style.slider_normal_color;
+        if (ui_id_equals(ui_manager->hot, slider.id)) {
+            slider_color = style.slider_hot_color;
+        }
+        if (ui_id_equals(ui_manager->active, slider.id)) {
+            slider_color = style.slider_active_color;
+        }
 
-    real32 bar_width = (slider.value / (slider.max - slider.min)) * slider.width;
-    gl_draw_quad(gl_state, &game_state->render_state, slider.x, slider.y,
-                 bar_width, slider.height,
-                 slider_color);
-    glDisable(GL_SCISSOR_TEST);
+        real32 bar_width = (slider.value / (slider.max - slider.min)) * slider.width;
+        gl_draw_quad(gl_state, &game_state->render_state, slider.x, slider.y,
+                     bar_width, slider.height,
+                     slider_color);
+        glDisable(GL_SCISSOR_TEST);
+    }
 
     // text
     UI_Text_Style text_style = slider.text_style;

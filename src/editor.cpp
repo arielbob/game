@@ -769,28 +769,44 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     char *buf;
     int32 buffer_size = 16;
     
+    Allocator *persistent_string_allocator = (Allocator *) &memory.string64_pool;
+
     // POSITION
     draw_row(x, y, row_width, small_row_height, row_color, side_flags, row_id, row_index++);
     draw_v_centered_text(x+padding_left, y, small_row_height,
                          "Position", editor_font_name, text_style);
     // x
-    buf = string_format(allocator, buffer_size, "%f", transform.position.x);
-    draw_labeled_text(x+right_column_offset, y, small_row_height,
-                      editor_font_name, "x", editor_font_name, buf, text_style);
+    //buf = string_format(allocator, buffer_size, "%f", transform.position.x);
+    x += right_column_offset;
+    real32 transform_button_width = 80.0f;
+    real32 new_x = do_slider(x, y,
+                             transform_button_width, small_row_height,
+                             editor_font_name,
+                             transform.position.x,
+                             default_slider_style, default_text_style,
+                             "x", entity_id);
+    x += transform_button_width + 5.0f;
+
+    real32 new_y = do_slider(x, y,
+                             transform_button_width, small_row_height,
+                             editor_font_name,
+                             transform.position.y,
+                             default_slider_style, default_text_style,
+                             "y", entity_id);
+    x += transform_button_width + 5.0f;
+
+    real32 new_z = do_slider(x, y,
+                             transform_button_width, small_row_height,
+                             editor_font_name,
+                             transform.position.z,
+                             default_slider_style, default_text_style,
+                             "z", entity_id);
+    x += transform_button_width + 5.0f;
+
+    update_entity_position(game_state, entity, make_vec3(new_x, new_y, new_z));
+
     y += small_row_height;
-    // y
-    draw_row(x, y, row_width, small_row_height, row_color, side_flags, row_id, row_index++);
-    buf = string_format(allocator, buffer_size, "%f", transform.position.y);
-    draw_labeled_text(x + right_column_offset, y, small_row_height,
-                      editor_font_name, "y", editor_font_name, buf, text_style);
-    y += small_row_height;
-    // z
-    draw_row(x, y, row_width, small_row_height, row_color, side_flags,
-             row_id, row_index++);
-    buf = string_format(allocator, buffer_size, "%f", transform.position.z);
-    draw_labeled_text(x + right_column_offset, y, small_row_height,
-                      editor_font_name, "z", editor_font_name, buf, text_style);
-    y += small_row_height;    
+    x = initial_x;
 
     draw_row_line(x, &y, row_width);
 
@@ -829,24 +845,35 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     draw_row(x, y, row_width, small_row_height, row_color, side_flags, row_id, row_index++);
     draw_v_centered_text(x+padding_left, y, small_row_height,
                          "Scale", editor_font_name, text_style);
-    // x
-    buf = string_format(allocator, buffer_size, "%f", transform.scale.x);
-    draw_labeled_text(x + right_column_offset, y, small_row_height,
-                      editor_font_name, "x", editor_font_name, buf, text_style);
+    x += right_column_offset;
+    real32 new_scale_x = do_slider(x, y,
+                                   transform_button_width, small_row_height,
+                                   editor_font_name,
+                                   transform.scale.x,
+                                   default_slider_style, default_text_style,
+                                   "scale_x", entity_id);
+    x += transform_button_width + 5.0f;
+
+    real32 new_scale_y = do_slider(x, y,
+                                   transform_button_width, small_row_height,
+                                   editor_font_name,
+                                   transform.scale.y,
+                                   default_slider_style, default_text_style,
+                                   "scale_y", entity_id);
+    x += transform_button_width + 5.0f;
+
+    real32 new_scale_z = do_slider(x, y,
+                                   transform_button_width, small_row_height,
+                                   editor_font_name,
+                                   transform.scale.z,
+                                   default_slider_style, default_text_style,
+                                   "scale_z", entity_id);
+    x += transform_button_width + 5.0f;
+
+    update_entity_scale(game_state, entity, make_vec3(new_scale_x, new_scale_y, new_scale_z));
+
     y += small_row_height;
-    // y
-    draw_row(x, y, row_width, small_row_height, row_color, side_flags, row_id, row_index++);
-    buf = string_format(allocator, buffer_size, "%f", transform.scale.y);
-    draw_labeled_text(x + right_column_offset, y, small_row_height,
-                      editor_font_name, "y", editor_font_name, buf, text_style);
-    y += small_row_height;
-    // z
-    draw_row(x, y, row_width, small_row_height, row_color, side_flags | SIDE_BOTTOM,
-             row_id, row_index++);
-    buf = string_format(allocator, buffer_size, "%f", transform.scale.z);
-    draw_labeled_text(x + right_column_offset, y, small_row_height,
-                      editor_font_name, "z", editor_font_name, buf, text_style);
-    y += small_row_height;
+    x = initial_x;
 
     draw_row_line(x, &y, row_width);
 
