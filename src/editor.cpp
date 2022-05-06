@@ -967,12 +967,17 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
             }
 
             y += row_height;
-        
+
+            draw_row_padding(x, &y, row_width, padding_y, row_color,
+                             side_flags | SIDE_BOTTOM,
+                             row_id, row_index++);
             row_color = Editor_Constants::row_color;
+        } else {
+            draw_row_padding(x, &y, row_width, padding_y, row_color,
+                             side_flags | SIDE_BOTTOM,
+                             row_id, row_index++);
         }
-        draw_row_padding(x, &y, row_width, padding_y, row_color,
-                         side_flags | SIDE_BOTTOM,
-                         row_id, row_index++);
+        
 
         x = initial_x;
 

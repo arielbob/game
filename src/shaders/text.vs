@@ -9,8 +9,6 @@ uniform vec4 shadow_color;
 layout (location = 0) in vec2 window_pos;
 layout (location = 1) in vec2 _uv;
 
-in int gl_InstanceID;
-
 out vec4 frag_color;
 out vec2 uv;
 out int instance_id;
@@ -27,8 +25,5 @@ void main() {
 
     gl_Position = cpv_matrix * vec4(window_pos.x, y_pos, 0.0, 1.0);
     
-    //frag_color = color;
-
     uv = _uv;
-    //instance_id = gl_InstanceID;
 }
