@@ -334,8 +334,8 @@ void *heap_allocate(Heap_Allocator *heap, uint32 size, bool32 zero_memory = fals
     Heap_Block *previous_block = NULL;
     while (block != NULL) {
         if (block->size < size) {
-            block = block->next;
             previous_block = block;
+            block = block->next;
             continue;
         }
 
@@ -387,8 +387,8 @@ void *heap_allocate(Heap_Allocator *heap, uint32 size, bool32 zero_memory = fals
         start_byte = data_address;
 
         if (block->size < aligned_size) {
-            block = block->next;
             previous_block = block;
+            block = block->next;
             continue;
         }
 
@@ -462,6 +462,8 @@ void heap_deallocate(Heap_Allocator *heap, void *address) {
     Heap_Block *free_block = (Heap_Block *) get_aligned_address(unaligned_block_address, sizeof(Heap_Block),
                                                                 &aligned_free_block_size, &free_block_align_offset);
     free_block->size = size;
+
+    assert(heap->used >= size);
     heap->used -= size;
 
     // make sure that the size of the block metadata struct is less or equal to the size we just deallocated
@@ -476,6 +478,9 @@ void heap_deallocate(Heap_Allocator *heap, void *address) {
     if (block == NULL) {
         free_block->next = NULL;
         heap->first_block = free_block;
+
+        assert(free_block == heap->base);
+
     } else if (block > free_block) {
         free_block->next = block;
         heap->first_block = free_block;
@@ -491,6 +496,7 @@ void heap_deallocate(Heap_Allocator *heap, void *address) {
         }
     }
 
+    assert(heap->used < heap->size);
     assert(free_block != free_block->next);
 
     heap_coalesce_blocks(heap);

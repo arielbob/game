@@ -996,8 +996,6 @@ real32 do_slider(real32 x, real32 y,
             real32 rate = (max - min) / width;
 
             value += delta_pixels * rate;
-            max = max(max, value);
-            min = min(min, value);
             value = min(max, value);
             value = max(min, value);
         }
@@ -1013,7 +1011,7 @@ real32 do_slider(real32 x, real32 y,
             real32 result;
             m = begin_region();
             if (string_to_real32(make_string(state->buffer), &result)) {
-                value = result;
+                value = clamp(result, min, max);
             }
 
             char *buf = string_format((Allocator *) &memory.global_stack, 64, "%f", value);

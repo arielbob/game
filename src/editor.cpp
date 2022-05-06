@@ -707,7 +707,7 @@ void open_color_picker(Editor_Color_Picker *editor_color_picker, UI_id parent_id
                                                             Editor_Constants::hsv_picker_height);
 }
                        
-void draw_entity_box(Game_State *game_state, Controller_State *controller_state, Entity *entity) {
+void draw_entity_box(Game_State *game_state, Controller_State *controller_state, int32 entity_id, Entity *entity) {
     int32 row_index = 0;
 
     UI_Manager *ui_manager = &game_state->ui_manager;
@@ -1301,7 +1301,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                         editor_font_name,
                                         0.0f, 100.0f, material->gloss,
                                         default_slider_style, default_text_style,
-                                        "edit_material_gloss_slider");
+                                        "edit_material_gloss_slider", normal_entity->material_id);
             y += row_height;
             draw_row_padding(x, &y, row_width, padding_y, row_color,
                              side_flags, row_id, row_index++);
@@ -1425,7 +1425,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                                editor_font_name,
                                                0.0f, 100.0f, point_light->falloff_start,
                                                default_slider_style, default_text_style,
-                                               "edit_material_gloss_slider");
+                                               "edit_point_light_falloff_start_slider", entity_id);
         y += row_height;
         draw_row_padding(x, &y, row_width, padding_y, row_color,
                          side_flags, row_id, row_index++);
@@ -1440,7 +1440,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                              editor_font_name,
                                              0.0f, 100.0f, point_light->falloff_end,
                                              default_slider_style, default_text_style,
-                                             "edit_material_gloss_slider");
+                                             "edit_point_light_falloff_end_slider", entity_id);
         y += row_height;
         draw_row_padding(x, &y, row_width, padding_y, row_color,
                          side_flags | SIDE_BOTTOM, row_id, row_index++);
@@ -1660,7 +1660,7 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
 
     if (editor_state->selected_entity_id >= 0) {
         Entity *selected_entity = get_selected_entity(game_state);
-        draw_entity_box(game_state, controller_state, selected_entity);
+        draw_entity_box(game_state, controller_state, editor_state->selected_entity_id, selected_entity);
 
         if (editor_state->open_window_flags & MATERIAL_LIBRARY_WINDOW) {
             draw_material_library(game_state, controller_state, selected_entity);
@@ -1844,6 +1844,15 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
             5.0f, render_state->display_output.height - 16.0f,
             buf, editor_font_name, default_text_style, "highest_triangle_point_below");
 #endif
+    char *buf = string_format((Allocator *) &memory.frame_arena, 64, "heap size: %d", ui_manager->heap_pointer->size);
+    do_text(ui_manager,
+            5.0f, render_state->display_output.height - 62.0f,
+            buf, editor_font_name, default_text_style, "heap size");
+
+    buf = string_format((Allocator *) &memory.frame_arena, 64, "heap used: %d", ui_manager->heap_pointer->used);
+    do_text(ui_manager,
+            5.0f, render_state->display_output.height - 48.0f,
+            buf, editor_font_name, default_text_style, "heap used");
 }
 
 int32 pick_entity(Game_State *game_state, Ray cursor_ray, Entity *entity_result, int32 *index_result) {

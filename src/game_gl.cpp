@@ -319,14 +319,19 @@
 // TODO (done): level name validation
 //       - TODO (done): reset the state of the text box when a new level loads
 
-// TODO: click slider for manual value entry
+// TODO (done): click slider for manual value entry
 //       - TODO (done): make slider set state.is_text_box to true when clicked
 //       - TODO (done): move text box UI logic to separate procedure
 //       - TODO (done): use text box UI logic when slider is a text box
 //       - TODO (done): render text box instead of slider when slider is a text box
 //       - TODO (done): fix typing in text box
 //       - TODO (done): fix value not getting set to text box value
-//       - TODO: fix heap allocation bug when deallocating slider state from the UI heap
+//       - TODO (done): fix heap allocation bug when deallocating slider state from the UI heap
+//               - happens randomly, just open slider and do manual entry on a bunch of entities and try to
+//                 get it
+//       - TODO (done): figure out how we want to handle slider min/max changing due to text box entry leaving bounds
+//               - just clamp the text box result for now, although i think we will want to sometimes just be able to
+//                 manually enter any value, even if it's outside of the initial bounds of the sliders
 
 
 // TODO: change do_text to use Strings?
