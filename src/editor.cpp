@@ -1544,12 +1544,29 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
 
     // level name text box
     draw_row(x, y, row_width, row_height, row_color, side_flags, row_id, row_index++);
-    do_text_box(x + padding_x,
-                y,
-                row_width - padding_x*2, row_height,
-                &game_state->current_level.name, editor_font_name,
-                default_text_box_style, default_text_style,
-                "level_name_text_box");
+    UI_Text_Box_Result level_name_result = do_text_box(x + padding_x,
+                                                       y,
+                                                       row_width - padding_x*2, row_height,
+                                                       &game_state->current_level.name, editor_font_name,
+                                                       default_text_box_style, default_text_style,
+                                                       true,
+                                                       "level_name_text_box");
+    String new_level_name = make_string(level_name_result.buffer);
+    if (level_name_result.submitted) {
+        if (is_empty(new_level_name)) {
+            add_message(&game_state->message_manager, make_string("Level name cannot be empty!"));
+        } else if (string_contains(new_level_name,
+                                   Editor_Constants::disallowed_chars,
+                                   Editor_Constants::num_disallowed_chars)) {
+            add_message(&game_state->message_manager, make_string("Level name cannot contain {, }, or double quotes!"));
+        } else {
+            copy_string(&game_state->current_level.name, new_level_name);
+        }
+    }
+
+    bool32 level_name_is_valid = (!is_empty(game_state->current_level.name) &&
+                                  string_equals(make_string(game_state->current_level.name), new_level_name));
+
     y += row_height;
     draw_row_padding(x, &y, row_width, padding_y, row_color, side_flags, row_id, row_index);
 
@@ -1562,7 +1579,7 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
                                                default_text_button_style, default_text_style,
                                                "Save",
                                                editor_font_name,
-                                               is_empty(game_state->current_level.name),
+                                               !level_name_is_valid,
                                                "save_level");
 
     if (save_level_clicked) {
@@ -1600,7 +1617,7 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
                                                   default_text_button_style, default_text_style,
                                                   "Save As...",
                                                   editor_font_name,
-                                                  is_empty(game_state->current_level.name),
+                                                  !level_name_is_valid,
                                                   "save_as_level");
 
     if (save_as_level_clicked) {
