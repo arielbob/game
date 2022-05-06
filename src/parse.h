@@ -78,7 +78,7 @@ bool32 string_to_real32(char *str, uint32 length, real32 *real32_result) {
     
     for (uint32 i = 0; i < length; i++) {
         char c = str[i];
-        if (!is_digit(c) || c != '-' || c != '.') return false;
+        if (!is_digit(c) && (c != '-') && (c != '.')) return false;
 
         if (c == '.') {
             if (has_decimal) return false;

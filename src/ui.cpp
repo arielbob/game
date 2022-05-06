@@ -130,6 +130,10 @@ UI_Slider_State make_ui_slider_state(Allocator *string_allocator, char *text) {
     return state;
 };
 
+void deallocate(UI_Text_Box_State state) {
+    delete_string_buffer(state.buffer);
+}
+
 void deallocate(UI_Slider_State state) {
     delete_string_buffer(state.buffer);
 }
@@ -411,9 +415,12 @@ void deallocate(UI_Element_State *untyped_state) {
             UI_Slider_State *state = (UI_Slider_State *) untyped_state;
             deallocate(*state);
         } break;
-        default: {
+        case UI_Element_State_Type::TEXT_BOX: {
             UI_Text_Box_State *state = (UI_Text_Box_State *) untyped_state;
             deallocate(*state);
+        } break;
+        default: {
+            assert(!"Unhandled UI element state type.");
         } break;
     }
 
@@ -911,14 +918,20 @@ real32 do_slider(real32 x, real32 y,
     UI_id slider_id = make_ui_id(UI_SLIDER, id_string, index);
 
     UI_Slider_State *state = (UI_Slider_State *) get_state(ui_manager, slider_id);
+
+    Marker m = begin_region();
     if (!state) {
         UI_Slider_State *new_state = add_ui_slider_state(ui_manager, slider_id);
-        Marker m = begin_region();
         char *buf = string_format((Allocator *) &memory.global_stack, 64, "%f", value);
         *new_state = make_ui_slider_state((Allocator *) &memory.string64_pool, buf);
-        end_region(m);
         state = new_state;
+    } else {
+        if (!state->is_text_box) {
+            char *buf = string_format((Allocator *) &memory.global_stack, 64, "%f", value);
+            set_string_buffer_text(&state->buffer, buf);
+        }
     }
+    end_region(m);
 
     Vec2 current_mouse = controller_state->current_mouse;
 
@@ -949,7 +962,7 @@ real32 do_slider(real32 x, real32 y,
                             ui_manager->active = slider_id;
                             // we need to set these here, since do_text_box_logic uses different criteria for when
                             // a text box should be active. (it sets active when the mouse first presses down, but
-                            // with the slider, we only set it to a text box when the mouse is lifted)
+                            // with the slider, we only set it to a text box when the mouse is lifted
                             ui_manager->focus_timer = platform_get_wall_clock_time();
                             ui_manager->focus_cursor_index = state->buffer.current_length;
                         } else {
@@ -983,6 +996,8 @@ real32 do_slider(real32 x, real32 y,
             real32 rate = (max - min) / width;
 
             value += delta_pixels * rate;
+            max = max(max, value);
+            min = min(min, value);
             value = min(max, value);
             value = max(min, value);
         }
@@ -996,7 +1011,7 @@ real32 do_slider(real32 x, real32 y,
             state->is_text_box = false;
             // if it's bad, then we just set the buffer to the original
             real32 result;
-            Marker m = begin_region();
+            m = begin_region();
             if (string_to_real32(make_string(state->buffer), &result)) {
                 value = result;
             }
@@ -1008,7 +1023,6 @@ real32 do_slider(real32 x, real32 y,
         }
     }
     
-    // TODO: the buffer will be different if we're not a text box
     UI_Slider slider = make_ui_slider(x, y, width, height,
                                       state->buffer, font,
                                       min, max, value,

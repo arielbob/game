@@ -22,7 +22,7 @@ use_color_override 1
 
 material "diffuse_plane"
 texture "debug"
-gloss 100.000000
+gloss 45.882347
 color_override 0.900000 0.900000 0.900000
 use_color_override 0
 
@@ -49,13 +49,18 @@ use_color_override 1
 
 material "matte monkey"
 texture "white"
-gloss 0.485447
+gloss 20.000000
 color_override 0.858824 0.976471 0.890196
 use_color_override 1
 
 material "monkey_4_material"
 gloss 0.970874
 color_override 1.000000 0.000000 0.000000
+use_color_override 1
+
+material "matter monkey"
+gloss 0.500000
+color_override 0.840000 0.840000 0.840000
 use_color_override 1
 }
 
@@ -65,7 +70,7 @@ position 2.289248 2.286629 2.862899
 rotation 0.917390 -0.109309 0.379995 0.045277
 scale 1.000000 1.000000 1.000000
 mesh "suzanne"
-material "matte monkey"
+material "matter monkey"
 is_walkable 0
 
 type normal
@@ -140,12 +145,12 @@ falloff_start 0.000000
 falloff_end 5.000000
 
 type point_light
-position 3.985460 1.729952 -3.260393
+position 0.937128 1.729952 -3.260393
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
-light_color 0.045000 0.045000 0.045000
+light_color 0.685000 0.685000 0.685000
 falloff_start 0.000000
-falloff_end 18.559319
+falloff_end 5.000000
 
 type point_light
 position 6.381989 3.559226 2.355271

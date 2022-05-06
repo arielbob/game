@@ -435,6 +435,7 @@ void *heap_allocate(Heap_Allocator *heap, uint32 size, bool32 zero_memory = fals
         }
 
         heap->used += aligned_size;
+        assert(heap->used < heap->size);
 
         break;
     }
@@ -489,6 +490,8 @@ void heap_deallocate(Heap_Allocator *heap, void *address) {
             }
         }
     }
+
+    assert(free_block != free_block->next);
 
     heap_coalesce_blocks(heap);
 }

@@ -564,10 +564,6 @@ struct UI_Slider_State {
     bool32 is_text_box;
 };
 
-void deallocate(UI_Text_Box_State state) {
-    delete_string_buffer(state.buffer);
-}
-
 struct UI_Push_Buffer {
     void *base;
     uint32 size;
