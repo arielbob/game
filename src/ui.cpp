@@ -720,7 +720,7 @@ UI_Text_Box_Result do_text_box(real32 x, real32 y,
                                String_Buffer *buffer,
                                char *font,
                                UI_Text_Box_Style style, UI_Text_Style text_style,
-                               bool32 use_state,
+                               bool32 use_state, bool32 reset_state,
                                char *id_string, int32 index = 0) {
     using namespace Context;
 
@@ -737,6 +737,10 @@ UI_Text_Box_Result do_text_box(real32 x, real32 y,
             *new_state = make_ui_text_box_state((Allocator *) &memory.string64_pool,
                                                 make_string(*buffer), buffer->size);
             state = new_state;
+        }
+
+        if (reset_state) {
+            copy_string(&state->buffer, buffer);
         }
 
         buffer = &state->buffer;
@@ -816,13 +820,29 @@ UI_Text_Box_Result do_text_box(real32 x, real32 y,
                                String_Buffer *buffer,
                                char *font,
                                UI_Text_Box_Style style, UI_Text_Style text_style,
+                               bool32 use_state,
                                char *id_string, int32 index = 0) {
     return do_text_box(x, y,
                        width, height,
                        buffer,
                        font,
                        style, text_style,
-                       false,
+                       use_state, false,
+                       id_string, index);
+}
+
+UI_Text_Box_Result do_text_box(real32 x, real32 y,
+                               real32 width, real32 height,
+                               String_Buffer *buffer,
+                               char *font,
+                               UI_Text_Box_Style style, UI_Text_Style text_style,
+                               char *id_string, int32 index = 0) {
+    return do_text_box(x, y,
+                       width, height,
+                       buffer,
+                       font,
+                       style, text_style,
+                       false, false,
                        id_string, index);
 }
 

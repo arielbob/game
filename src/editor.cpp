@@ -1513,6 +1513,7 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
                                                default_text_button_style, default_text_style,
                                                "Open",
                                                editor_font_name, "open_level");
+    bool32 just_loaded_level = false;
     if (open_level_clicked) {
         Marker m = begin_region();
         char *absolute_filename = (char *) region_push(PLATFORM_MAX_PATH);
@@ -1530,6 +1531,7 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
                 editor_state->is_new_level = false;
                 copy_string(&editor_state->current_level_filename, make_string(absolute_filename));
                 editor_state->selected_entity_id = -1;
+                just_loaded_level = true;
             }
         }
 
@@ -1538,7 +1540,7 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
 
     y += button_height;
     x = initial_x;
-    draw_row_padding(x, &y, row_width, padding_y, row_color, side_flags, row_id, row_index);
+    draw_row_padding(x, &y, row_width, padding_y, row_color, side_flags, row_id, row_index++);
 
     // level name text
     real32 label_row_height = 18.0f;
@@ -1554,7 +1556,7 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
                                                        row_width - padding_x*2, row_height,
                                                        &game_state->current_level.name, editor_font_name,
                                                        default_text_box_style, default_text_style,
-                                                       true,
+                                                       true, just_loaded_level,
                                                        "level_name_text_box");
     String new_level_name = make_string(level_name_result.buffer);
     if (level_name_result.submitted) {

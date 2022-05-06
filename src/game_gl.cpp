@@ -316,10 +316,8 @@
 //       - TODO (done): texture name validation
 //       - TODO (done): mesh name validation
 // TODO (done): don't allow quotes or brackets in any level strings, i.e. in texture name, material name, etc.
-// TODO: level name validation
-//       - TODO: figure out a way to reset the state of the text box when a new level loads - i think we can just
-//               do the reset_state bool thing in do_text_box, and store a bool in game state that is true for the
-//               first frame of a level load.
+// TODO (done): level name validation
+//       - TODO (done): reset the state of the text box when a new level loads
 
 // TODO: change do_text to use Strings?
 // TODO: convert text colors to linear space in draw_messages before fading, then convert back to gamma-space
