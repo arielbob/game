@@ -315,8 +315,8 @@
 //       - TODO (done): use textbox with state with texture name box
 //       - TODO (done): texture name validation
 //       - TODO (done): mesh name validation
-// TODO: don't allow quotes or brackets in any level strings, i.e. in level name, texture name, material name, etc.
-
+// TODO (done): don't allow quotes or brackets in any level strings, i.e. in texture name, material name, etc.
+// TODO: level name validation
 
 // TODO: change do_text to use Strings?
 // TODO: convert text colors to linear space in draw_messages before fading, then convert back to gamma-space

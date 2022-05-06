@@ -249,6 +249,16 @@ inline bool32 string_equals(String a, char *b) {
     return string_equals(a, make_string(b));
 }
 
+bool32 string_contains(String string, char chars[], int32 num_chars) {
+    for (int32 i = 0; i < string.length; i++) {
+        for (int32 j = 0; j < num_chars; j++) {
+            if (string.contents[i] == chars[j]) return true;
+        }
+    }
+
+    return false;
+}
+
 void append_string(String *result, String a, String b, uint32 max_size) {
     uint32 final_length = a.length + b.length;
     assert(final_length <= max_size);

@@ -953,6 +953,10 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                 String new_name = make_string(result.buffer);
                 if (is_empty(new_name)) {
                     add_message(&game_state->message_manager, make_string("Mesh name cannot be empty!"));
+                } else if (string_contains(new_name,
+                                           Editor_Constants::disallowed_chars,
+                                           Editor_Constants::num_disallowed_chars)) {
+                    add_message(&game_state->message_manager, make_string("Mesh name cannot contain {, }, or double quotes!"));
                 } else if (!string_equals(make_string(mesh->name), new_name)) {
                     if (!mesh_name_exists(game_state, level, new_name)) {
                         copy_string(&mesh->name, new_name);
@@ -1146,6 +1150,10 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                 String new_name = make_string(material_name_text_box_result.buffer);
                 if (is_empty(new_name)) {
                     add_message(&game_state->message_manager, make_string("Material name cannot be empty!"));
+                } else if (string_contains(new_name,
+                                           Editor_Constants::disallowed_chars,
+                                           Editor_Constants::num_disallowed_chars)) {
+                    add_message(&game_state->message_manager, make_string("Material name cannot contain {, }, or double quotes!"));
                 } else if (!string_equals(make_string(material->name), new_name)) {
                     if (!material_name_exists(level, new_name)) {
                         copy_string(&material->name, new_name);
@@ -1258,6 +1266,10 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                     String new_name = make_string(result.buffer);
                     if (is_empty(new_name)) {
                         add_message(&game_state->message_manager, make_string("Texture name cannot be empty!"));
+                    } else if (string_contains(new_name,
+                                               Editor_Constants::disallowed_chars,
+                                               Editor_Constants::num_disallowed_chars)) {
+                        add_message(&game_state->message_manager, make_string("Texture name cannot contain {, }, or double quotes!"));
                     } else if (!string_equals(make_string(texture->name), new_name)) {
                         if (!texture_name_exists(level, new_name)) {
                             copy_string(&texture->name, new_name);

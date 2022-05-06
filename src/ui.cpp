@@ -50,6 +50,16 @@ UI_Text_Box_Style default_text_box_style = { TEXT_ALIGN_Y,
                                              rgb_to_vec4(47, 84, 102),
                                              rgb_to_vec4(33, 62, 69), };
 
+bool32 char_is_in_array(char c, char array[], int32 num_chars) {
+    for (int32 i = 0; i < num_chars; i++) {
+        if (c == array[i]) {
+            return true;
+        } 
+    }
+
+    return false;
+}
+
 inline UI_id make_ui_id(UI_Type type, void *id, int32 index) {
     UI_id ui_id = { type, id, index };
     return ui_id;

@@ -46,6 +46,9 @@ namespace Editor_Constants {
                                  hue_slider_width + small_padding_x);
     real32 color_picker_height = 200.0f + small_padding_y*2;
 
+    char disallowed_chars[] = {'{', '}', '"'};
+    int32 num_disallowed_chars = array_length(disallowed_chars);
+
     UI_Color_Picker_Style color_picker_style = {
         color_picker_width, color_picker_height,
         hsv_picker_width, hsv_picker_height,
