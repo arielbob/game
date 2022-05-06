@@ -319,7 +319,15 @@
 // TODO (done): level name validation
 //       - TODO (done): reset the state of the text box when a new level loads
 
+// TODO: click slider for manual value entry
+//       - TODO (done): make slider set state.is_text_box to true when clicked
+//       - TODO (done): move text box UI logic to separate procedure
+//       - TODO: use text box UI logic when slider is a text box
+
+
 // TODO: change do_text to use Strings?
+//       - idk, i think it's fine that we use the frame arena, since it's guaranteed that the char array will still
+//         exist when we go to render it
 // TODO: convert text colors to linear space in draw_messages before fading, then convert back to gamma-space
 
 // TODO: the UX of deleting materials and textures is kind of weird when an entity can have no material or texture
@@ -329,7 +337,6 @@
 //         click the choose button
 // TODO: use the MAX_* constants when we generate level tables for meshes/textures/materials
 
-// TODO: click slider for manual value entry
 // TODO: slideable text boxes (after we do slider manual text entry)
 //       - may just be able to add a parameter to sliders that hide the slider and removes bounds
 // TODO: replace the transform values in the entity box with slideable text boxes

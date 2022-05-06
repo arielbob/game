@@ -585,18 +585,8 @@ UI_Text_Box_State make_ui_text_box_state(Allocator *string_allocator, String ini
 struct UI_Slider_State {
     UI_ELEMENT_STATE_HEADER
     String_Buffer buffer;
+    bool32 is_text_box;
 };
-
-UI_Slider_State make_ui_slider_state(Allocator *string_allocator, char *text) {
-    UI_Slider_State state;
-    state.type = UI_Element_State_Type::SLIDER;
-    state.buffer = make_string_buffer(string_allocator, make_string(text), 64);
-    return state;
-};
-
-void deallocate(UI_Slider_State state) {
-    delete_string_buffer(state.buffer);
-}
 
 void deallocate(UI_Text_Box_State state) {
     delete_string_buffer(state.buffer);

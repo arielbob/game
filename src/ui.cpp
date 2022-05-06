@@ -64,7 +64,9 @@ inline UI_id make_ui_id(UI_Type type, void *id, int32 index) {
     UI_id ui_id = { type, id, index };
     return ui_id;
 }
-                                             
+          
+
+                                   
 UI_Slider make_ui_slider(real32 x, real32 y,
                          real32 width, real32 height,
                          String_Buffer buffer, char *font,
@@ -92,6 +94,18 @@ UI_Slider make_ui_slider(real32 x, real32 y,
     slider.id = slider_id;
 
     return slider;
+}
+
+UI_Slider_State make_ui_slider_state(Allocator *string_allocator, char *text) {
+    UI_Slider_State state;
+    state.type = UI_Element_State_Type::SLIDER;
+    state.buffer = make_string_buffer(string_allocator, make_string(text), 64);
+    state.is_text_box = false;
+    return state;
+};
+
+void deallocate(UI_Slider_State state) {
+    delete_string_buffer(state.buffer);
 }
 
 // TODO: store UI element state in a hash table, so we can do things like fading transitions.
@@ -707,10 +721,76 @@ void do_text_box_with_state(real32 x, real32 y,
 }
 #endif
 
+UI_Slider_State *add_ui_slider_state(UI_Manager *manager, UI_id id) {
+    UI_Slider_State *state = (UI_Slider_State *) heap_allocate(manager->heap_pointer, sizeof(UI_Slider_State));
+    hash_table_add(&manager->state_table, id, (UI_Element_State *) state);
+    return state;
+}
+
 UI_Text_Box_State *add_ui_text_box_state(UI_Manager *manager, UI_id id) {
     UI_Text_Box_State *state = (UI_Text_Box_State *) heap_allocate(manager->heap_pointer, sizeof(UI_Text_Box_State));
     hash_table_add(&manager->state_table, id, (UI_Element_State *) state);
     return state;
+}
+
+bool32 do_text_box_logic(UI_Manager *ui_manager, Controller_State *controller_state, UI_id id,
+                         real32 x, real32 y, real32 width, real32 height,
+                         String_Buffer *buffer) {
+    Vec2 current_mouse = controller_state->current_mouse;
+    bool32 submitted = false;
+
+    if (!ui_manager->is_disabled && in_bounds_on_layer(ui_manager, current_mouse, x, x + width, y, y + height)) {
+        set_hot(ui_manager, id);
+
+        if (controller_state->left_mouse.is_down && !controller_state->left_mouse.was_down) {
+            ui_manager->active = id;
+            ui_manager->focus_timer = platform_get_wall_clock_time();
+            ui_manager->focus_cursor_index = buffer->current_length;
+        }
+    } else {
+        // FIXME: this isn't really a bug (other programs seem to behave this way), but i'm not sure
+        //        why it's happening: if you hold down a key in the textbox and you click outside of the textbox,
+        //        the textbox should lose focus and text should no longer be inputted. but, for some reason it
+        //        keeps focus after clicking outside of the textbox and characters keep getting inputted.
+        //        actually, i think it's because we're doing while(PeekMessage...).
+        if (ui_id_equals(ui_manager->hot, id)) {
+            clear_hot(ui_manager);
+        }
+
+        if (ui_id_equals(ui_manager->active, id) &&
+            controller_state->left_mouse.is_down &&
+            !controller_state->left_mouse.was_down) {
+            ui_manager->active = {};
+            ui_manager->focus_cursor_index = 0;
+            submitted = true;
+        }
+    }
+
+    if (ui_id_equals(ui_manager->active, id)) {
+        for (int32 i = 0; i < controller_state->num_pressed_chars; i++) {
+            char c = controller_state->pressed_chars[i];
+            if (c == '\b') { // backspace key
+                ui_manager->focus_cursor_index--;
+                if (ui_manager->focus_cursor_index < 0) {
+                    ui_manager->focus_cursor_index = 0;
+                }
+                buffer->current_length = ui_manager->focus_cursor_index;
+            } else if (ui_manager->focus_cursor_index < buffer->size &&
+                       c >= 32 &&
+                       c <= 126) {
+                buffer->contents[ui_manager->focus_cursor_index] = c;
+                ui_manager->focus_cursor_index++;
+                buffer->current_length++;
+            } else if (c == '\r') { // enter key
+                submitted = true;
+                if (ui_id_equals(ui_manager->active, id)) {
+                    ui_manager->active = {};
+                }
+            }
+        }
+    }
+
+    return submitted;
 }
 
 // NOTE: this returns the state's buffer if use_state = true, otherwise, it returns the passed in buffer.
@@ -752,59 +832,7 @@ UI_Text_Box_Result do_text_box(real32 x, real32 y,
                                              style, text_style,
                                              ui_manager->current_layer, id_string, index);
 
-    bool32 submitted = false;
-
-    Vec2 current_mouse = controller_state->current_mouse;
-    if (!ui_manager->is_disabled && in_bounds_on_layer(ui_manager, current_mouse, x, x + width, y, y + height)) {
-        set_hot(ui_manager, text_box.id);
-
-        if (controller_state->left_mouse.is_down && !controller_state->left_mouse.was_down) {
-            ui_manager->active = text_box.id;
-            ui_manager->focus_timer = platform_get_wall_clock_time();
-            ui_manager->focus_cursor_index = buffer->current_length;
-        }
-    } else {
-        // FIXME: this isn't really a bug (other programs seem to behave this way), but i'm not sure
-        //        why it's happening: if you hold down a key in the textbox and you click outside of the textbox,
-        //        the textbox should lose focus and text should no longer be inputted. but, for some reason it
-        //        keeps focus after clicking outside of the textbox and characters keep getting inputted.
-        //        actually, i think it's because we're doing while(PeekMessage...).
-        if (ui_id_equals(ui_manager->hot, text_box.id)) {
-            clear_hot(ui_manager);
-        }
-
-        if (ui_id_equals(ui_manager->active, text_box.id) &&
-            controller_state->left_mouse.is_down &&
-            !controller_state->left_mouse.was_down) {
-            ui_manager->active = {};
-            ui_manager->focus_cursor_index = 0;
-            submitted = true;
-        }
-    }
-
-    if (ui_id_equals(ui_manager->active, text_box.id)) {
-        for (int32 i = 0; i < controller_state->num_pressed_chars; i++) {
-            char c = controller_state->pressed_chars[i];
-            if (c == '\b') { // backspace key
-                ui_manager->focus_cursor_index--;
-                if (ui_manager->focus_cursor_index < 0) {
-                    ui_manager->focus_cursor_index = 0;
-                }
-                buffer->current_length = ui_manager->focus_cursor_index;
-            } else if (ui_manager->focus_cursor_index < buffer->size &&
-                       c >= 32 &&
-                       c <= 126) {
-                buffer->contents[ui_manager->focus_cursor_index] = c;
-                ui_manager->focus_cursor_index++;
-                buffer->current_length++;
-            } else if (c == '\r') { // enter key
-                submitted = true;
-                if (ui_id_equals(ui_manager->active, text_box.id)) {
-                    ui_manager->active = {};
-                }
-            }
-        }
-    }
+    bool32 submitted = do_text_box_logic(ui_manager, controller_state, text_box.id, x, y, width, height, buffer);
 
     ui_add_text_box(ui_manager, text_box);
 
@@ -856,26 +884,15 @@ real32 do_slider(real32 x, real32 y,
 
     UI_id slider_id = make_ui_id(UI_SLIDER, id_string, index);
 
-    // TODO: it's annoying to constantly have to cast it back and forth, figure out something better - maybe use
-    //       macros
-    UI_Element_State *untyped_state;
-    bool32 state_exists = get_state(ui_manager, slider_id, &untyped_state);
-    if (!state_exists) {
-        UI_Slider_State *slider_state = (UI_Slider_State *) heap_allocate(ui_manager->heap_pointer,
-                                                                          sizeof(UI_Slider_State));
-
+    UI_Slider_State *state = (UI_Slider_State *) get_state(ui_manager, slider_id);
+    if (!state) {
+        UI_Slider_State *new_state = add_ui_slider_state(ui_manager, slider_id);
         Marker m = begin_region();
-        // technically, again, we are not using up the entire 64 character limit, since 64 in string_format
-        // is the buffer size, which includes the null terminator, so 63 actual characters.
         char *buf = string_format((Allocator *) &memory.global_stack, 64, "%f", value);
-        *slider_state = make_ui_slider_state((Allocator *) &memory.string64_pool, buf);
+        *new_state = make_ui_slider_state((Allocator *) &memory.string64_pool, buf);
         end_region(m);
-
-        untyped_state = (UI_Element_State *) slider_state;
-        add_state(ui_manager, slider_id, untyped_state);
+        state = new_state;
     }
-    assert(untyped_state->type == UI_Element_State_Type::SLIDER);
-    UI_Slider_State *state = (UI_Slider_State *) untyped_state;
 
     UI_Slider slider = make_ui_slider(x, y, width, height,
                                       state->buffer, font,
@@ -884,61 +901,64 @@ real32 do_slider(real32 x, real32 y,
                                       ui_manager->current_layer, id_string, index);
 
     Vec2 current_mouse = controller_state->current_mouse;
-    if (!ui_manager->is_disabled && in_bounds_on_layer(ui_manager, current_mouse, x, x + width, y, y + height)) {
-        set_hot(ui_manager, slider.id);
 
-        if (controller_state->left_mouse.is_down && !controller_state->left_mouse.was_down) {
-            ui_manager->active = slider.id;
-            ui_manager->active_initial_position = controller_state->current_mouse;
-            ui_manager->active_initial_time = platform_get_wall_clock_time();
-        }
+    if (!state->is_text_box) {
+        if (!ui_manager->is_disabled && in_bounds_on_layer(ui_manager, current_mouse, x, x + width, y, y + height)) {
+            set_hot(ui_manager, slider.id);
 
-        if (!controller_state->left_mouse.is_down) {
-        
-            if (ui_id_equals(ui_manager->active, slider.id)) {
+            if (controller_state->left_mouse.is_down && !controller_state->left_mouse.was_down) {
+                ui_manager->active = slider.id;
+                ui_manager->active_initial_position = controller_state->current_mouse;
+                ui_manager->active_initial_time = platform_get_wall_clock_time();
+            }
+
+            if (!controller_state->left_mouse.is_down) {
+                if (ui_id_equals(ui_manager->active, slider.id)) {
+                    ui_manager->active = {};
+                }
+
+                real32 deadzone_time = 0.5;
+                real32 time_since_first_active = (real32) (platform_get_wall_clock_time() - ui_manager->active_initial_time);
+
+                if (time_since_first_active < deadzone_time) {
+                    state->is_text_box = true;
+                    ui_manager->active = slider.id;
+                } else {
+                    ui_manager->active = {};
+                }
+            }
+        } else {
+            if (ui_id_equals(ui_manager->hot, slider.id)) {
+                clear_hot(ui_manager);
+            }
+
+            if (ui_id_equals(ui_manager->active, slider.id) && !controller_state->left_mouse.is_down) {
                 ui_manager->active = {};
             }
+        }
+
+        if (ui_id_equals(ui_manager->active, slider.id) && being_held(controller_state->left_mouse)) {
 #if 0
+            real32 pixel_deadzone_radius = 5.0f;
             real64 deadzone_time = 0.5;
             real32 time_since_first_active = platform_get_wall_clock_time() - ui_manager->active_initial_time;
-
-            if (time_since_first_active < deadzone_time) {
-                state->is_textbox = true;
-                ui_manager->active = slider.id;
-            } else {
-                ui_manager->active = {};
+            if (time_since_first_active >= deadzone_time || delta_pixels > pixel_deadzone_radius) {
+                value += delta_pixels * rate;
+                value = min(max, value);
+                value = max(min, value);
             }
 #endif
-        }
-    } else {
-        if (ui_id_equals(ui_manager->hot, slider.id)) {
-            clear_hot(ui_manager);
-        }
+            real32 delta_pixels = (controller_state->current_mouse - controller_state->last_mouse).x;
+            real32 rate = (max - min) / width;
 
-        if (ui_id_equals(ui_manager->active, slider.id) && !controller_state->left_mouse.is_down) {
-            ui_manager->active = {};
-        }
-    }
-
-    if (ui_id_equals(ui_manager->active, slider.id) && being_held(controller_state->left_mouse)) {
-#if 0
-        real32 pixel_deadzone_radius = 5.0f;
-        real64 deadzone_time = 0.5;
-        real32 time_since_first_active = platform_get_wall_clock_time() - ui_manager->active_initial_time;
-        if (time_since_first_active >= deadzone_time || delta_pixels > pixel_deadzone_radius) {
             value += delta_pixels * rate;
             value = min(max, value);
             value = max(min, value);
         }
-#endif
-        real32 delta_pixels = (controller_state->current_mouse - controller_state->last_mouse).x;
-        real32 rate = (max - min) / width;
+    } else {
 
-        value += delta_pixels * rate;
-        value = min(max, value);
-        value = max(min, value);
     }
-
+    
     Marker m = begin_region();
     char *buf = string_format((Allocator *) &memory.global_stack, 64, "%f", value);
     set_string_buffer_text(&state->buffer, buf);
