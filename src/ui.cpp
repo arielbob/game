@@ -947,6 +947,11 @@ real32 do_slider(real32 x, real32 y,
                         if (time_since_first_active < deadzone_time) {
                             state->is_text_box = true;
                             ui_manager->active = slider_id;
+                            // we need to set these here, since do_text_box_logic uses different criteria for when
+                            // a text box should be active. (it sets active when the mouse first presses down, but
+                            // with the slider, we only set it to a text box when the mouse is lifted)
+                            ui_manager->focus_timer = platform_get_wall_clock_time();
+                            ui_manager->focus_cursor_index = state->buffer.current_length;
                         } else {
                             ui_manager->active = {};
                         }
@@ -981,20 +986,28 @@ real32 do_slider(real32 x, real32 y,
             value = min(max, value);
             value = max(min, value);
         }
-    } else {
+    }
+
+    if (state->is_text_box) {
         do_text_box_logic(ui_manager, controller_state, slider_id,
                           x, y, width, height,
                           &state->buffer);
         if (!ui_id_equals(ui_manager->active, slider_id)) {
             state->is_text_box = false;
+            // if it's bad, then we just set the buffer to the original
+            real32 result;
+            Marker m = begin_region();
+            if (string_to_real32(make_string(state->buffer), &result)) {
+                value = result;
+            }
+
+            char *buf = string_format((Allocator *) &memory.global_stack, 64, "%f", value);
+            set_string_buffer_text(&state->buffer, buf);
+
+            end_region(m);
         }
     }
     
-    Marker m = begin_region();
-    char *buf = string_format((Allocator *) &memory.global_stack, 64, "%f", value);
-    set_string_buffer_text(&state->buffer, buf);
-    end_region(m);
-
     // TODO: the buffer will be different if we're not a text box
     UI_Slider slider = make_ui_slider(x, y, width, height,
                                       state->buffer, font,

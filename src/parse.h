@@ -17,6 +17,10 @@ Tokenizer make_tokenizer(File_Data file_data) {
     return tokenizer;
 }
 
+inline bool32 is_digit(char c) {
+    return (c >= 48 && c <= 57);
+}
+
 inline uint32 ascii_to_uint32(char c) {
     assert(c >= 48 && c <= 57);
     return c - 48;
@@ -66,6 +70,45 @@ inline real32 string_to_real32(char *str, uint32 length) {
     return result;
 }
 
+bool32 string_to_real32(char *str, uint32 length, real32 *real32_result) {
+    real32 result = 0;
+    bool32 has_decimal = false;
+    real32 decimal_denom = 10.0f;
+    bool32 is_negative = false;
+    
+    for (uint32 i = 0; i < length; i++) {
+        char c = str[i];
+        if (!is_digit(c) || c != '-' || c != '.') return false;
+
+        if (c == '.') {
+            if (has_decimal) return false;
+            has_decimal = true;
+        } else if (c == '-') {
+            if (is_negative) return false;
+            is_negative = true;
+        } else {
+            if (has_decimal) {
+                result += (real32) ascii_to_uint32(str[i]) / decimal_denom;
+                decimal_denom *= 10;
+            } else {
+                result = result*10 + ascii_to_uint32(str[i]);
+            }            
+        }
+    }
+
+    if (is_negative) {
+        result = -result;
+    }
+
+    *real32_result = result;
+
+    return true;
+}
+
+inline bool32 string_to_real32(String string, real32 *real32_result) {
+    return string_to_real32(string.contents, string.length, real32_result);
+}
+
 // NOTE: we have these tokenizer_equals procedures since the tokenizer contents does not guarantee a
 //       null-terminator, since they can come from file reading, and files don't necessarily have null-terminators.
 //       these procedures just add bounds checking so that we don't read past the char array bounds.x
@@ -98,10 +141,6 @@ inline bool32 tokenizer_equals(Tokenizer *tokenizer, char *string) {
     String b = make_string(string, len);
 
     return string_equals(a, b);
-}
-
-inline bool32 is_digit(char c) {
-    return (c >= 48 && c <= 57);
 }
 
 inline bool32 is_digit(Tokenizer *tokenizer) {

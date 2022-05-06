@@ -324,7 +324,8 @@
 //       - TODO (done): move text box UI logic to separate procedure
 //       - TODO (done): use text box UI logic when slider is a text box
 //       - TODO (done): render text box instead of slider when slider is a text box
-//       - TODO: fix typing in text box
+//       - TODO (done): fix typing in text box
+//       - TODO: fix value not getting set to text box value
 
 
 // TODO: change do_text to use Strings?
