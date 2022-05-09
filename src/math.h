@@ -72,6 +72,10 @@ struct Mat4 {
     };
 };
 
+Vec3 x_axis = { 1.0f, 0.0f, 0.0f };
+Vec3 y_axis = { 0.0f, 1.0f, 0.0f };
+Vec3 z_axis = { 0.0f, 0.0f, 1.0f };
+
 struct Basis {
     Vec3 forward;
     Vec3 right;
@@ -151,11 +155,15 @@ struct HSV_Color {
 
 inline Vec3 make_vec3(real32 x, real32 y, real32 z);
 inline Vec4 make_vec4(real32 x, real32 y, real32 z, real32 w);
+inline Vec4 make_vec4(Vec3 v, real32 w);
 Vec4 rgba_to_vec4(real32 r, real32 g, real32 b, real32 a);
 Vec4 rgb_to_vec4(real32 r, real32 g, real32 b);
 AABB transform_aabb(AABB aabb, Mat4 transform_matrix);
 Mat4 get_model_matrix(Transform transform);
 real32 clamp(real32 value, real32 min, real32 max);
+Quaternion make_quaternion();
+Transform make_transform();
+Transform make_transform(Vec3 position, Quaternion rotation, Vec3 scale);
 
 #define GAME_MATH_H
 #endif

@@ -452,6 +452,12 @@ void init_game(Game_State *game_state,
     int32 gizmo_sphere_mesh_id = add_common_mesh(game_state, mesh);
 
     mesh = read_and_load_mesh((Allocator *) &memory.common_mesh_arena,
+                              make_string_buffer(filename_allocator, "blender/gizmo_cube.mesh",
+                                                 PLATFORM_MAX_PATH),
+                              make_string_buffer(mesh_name_allocator, "gizmo_cube", MESH_NAME_MAX_SIZE));
+    int32 gizmo_cube_mesh_id = add_common_mesh(game_state, mesh);
+
+    mesh = read_and_load_mesh((Allocator *) &memory.common_mesh_arena,
                               make_string_buffer(filename_allocator, "blender/cube.mesh", PLATFORM_MAX_PATH),
                               make_string_buffer(mesh_name_allocator, "cube", MESH_NAME_MAX_SIZE));
     add_primitive_mesh(game_state, mesh);
@@ -466,6 +472,7 @@ void init_game(Game_State *game_state,
     editor_state->gizmo.arrow_mesh_id = gizmo_arrow_mesh_id;
     editor_state->gizmo.ring_mesh_id = gizmo_ring_mesh_id;
     editor_state->gizmo.sphere_mesh_id = gizmo_sphere_mesh_id;
+    editor_state->gizmo.cube_mesh_id = gizmo_cube_mesh_id;
     editor_state->selected_entity_id = -1;
     editor_state->show_wireframe = true;
     editor_state->open_window_flags = 0;

@@ -1,9 +1,5 @@
 #include "math.h"
 
-Vec3 x_axis = { 1.0f, 0.0f, 0.0f };
-Vec3 y_axis = { 0.0f, 1.0f, 0.0f };
-Vec3 z_axis = { 0.0f, 0.0f, 1.0f };
-
 Ray make_ray(Vec3 origin, Vec3 direction) {
     Ray result;
     result.origin = origin;
@@ -623,6 +619,11 @@ Transform make_transform() {
     transform.position = {};
     transform.rotation = make_quaternion();
     transform.scale = make_vec3(1.0f, 1.0f, 1.0f);
+    return transform;
+}
+
+inline Transform make_transform(Vec3 position, Quaternion rotation, Vec3 scale) {
+    Transform transform = { position, rotation, scale };
     return transform;
 }
 

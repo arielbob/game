@@ -12,6 +12,9 @@ enum Gizmo_Handle {
     GIZMO_TRANSLATE_X,
     GIZMO_TRANSLATE_Y,
     GIZMO_TRANSLATE_Z,
+    GIZMO_SCALE_X,
+    GIZMO_SCALE_Y,
+    GIZMO_SCALE_Z,
     GIZMO_ROTATE_X,
     GIZMO_ROTATE_Y,
     GIZMO_ROTATE_Z
@@ -27,6 +30,20 @@ struct Gizmo {
     int32 arrow_mesh_id;
     int32 ring_mesh_id;
     int32 sphere_mesh_id;
+    int32 cube_mesh_id;
+};
+
+namespace Gizmo_Constants {
+    Vec4 default_x_handle_color = make_vec4(x_axis, 1.0f);
+    Vec4 default_y_handle_color = make_vec4(y_axis, 1.0f);
+    Vec4 default_z_handle_color = make_vec4(z_axis, 1.0f);
+    Vec4 x_handle_hover = make_vec4(1.0f, 0.8f, 0.8f, 1.0f);
+    Vec4 y_handle_hover = make_vec4(0.8f, 1.0f, 0.8f, 1.0f);
+    Vec4 z_handle_hover = make_vec4(0.8f, 0.8f, 1.0f, 1.0f);
+    Transform scale_handle_transform = make_transform(make_vec3(0.8f, 0.0f, 0.0f),
+                                                      make_quaternion(),
+                                                      make_vec3(0.3f, 0.1f, 0.1f));
+    Mat4 scale_handle_model_matrix = get_model_matrix(scale_handle_transform);
 };
 
 namespace Editor_Constants {

@@ -333,6 +333,11 @@
 //               - just clamp the text box result for now, although i think we will want to sometimes just be able to
 //                 manually enter any value, even if it's outside of the initial bounds of the sliders
 
+// TODO (done): fix rotation gizmos hitbox not being aligned
+// TODO: scale gizmo
+//       - TODO (done): draw cubes for scaling handles
+//       - TODO: scale gizmo picking
+
 // TODO: replace the transform values in the entity box with slideable text boxes
 //       - TODO (done): create do_slider with no limits, would have to hide the slider when rendering
 //       - TODO (done): replace position and scale texts
@@ -340,7 +345,6 @@
 
 // TODO: editor undoing
 // TODO: better gizmo controls
-//       - TODO: scale gizmo
 //       - TODO: translation on a plane (little squares on the planes of the gizmo)
 //       - TODO: bigger hitboxes on the controls or just scale the meshes
 //       - TODO: maybe just draw lines for the rotation handles. this makes it kind of hard to select a handle
@@ -2542,18 +2546,16 @@ void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Editor_State 
         z_transform = gizmo.transform;
         z_transform.rotation = gizmo.transform.rotation*make_quaternion(-90.0f, y_axis);
     }
-
-    Vec4 x_handle_hover = make_vec4(1.0f, 0.8f, 0.8f, 1.0f);
-    Vec4 y_handle_hover = make_vec4(0.8f, 1.0f, 0.8f, 1.0f);
-    Vec4 z_handle_hover = make_vec4(0.8f, 0.8f, 1.0f, 1.0f);
+    
+    using namespace Gizmo_Constants;
 
     Gizmo_Handle hovered_handle = editor_state->hovered_gizmo_handle;
 
-    Vec4 x_handle_color = make_vec4(x_axis, 1.0f);
-    Vec4 y_handle_color = make_vec4(y_axis, 1.0f);
-    Vec4 z_handle_color = make_vec4(z_axis, 1.0f);
-
     // translation arrows
+    Vec4 x_handle_color = default_x_handle_color;
+    Vec4 y_handle_color = default_y_handle_color;
+    Vec4 z_handle_color = default_z_handle_color;
+
     if (hovered_handle == GIZMO_TRANSLATE_X) {
         x_handle_color = x_handle_hover;
     } else if (hovered_handle == GIZMO_TRANSLATE_Y) {
@@ -2571,10 +2573,30 @@ void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Editor_State 
     GL_Mesh ring_mesh;
     mesh_exists = hash_table_find(gl_state->common_mesh_table, gizmo.ring_mesh_id, &ring_mesh);
     assert(mesh_exists);
+    GL_Mesh cube_mesh;
+    mesh_exists = hash_table_find(gl_state->common_mesh_table, gizmo.cube_mesh_id, &cube_mesh);
+    assert(mesh_exists);
 
     gl_draw_solid_color_mesh(gl_state, render_state, arrow_mesh, x_handle_color, x_transform);
     gl_draw_solid_color_mesh(gl_state, render_state, arrow_mesh, y_handle_color, y_transform);
     gl_draw_solid_color_mesh(gl_state, render_state, arrow_mesh, z_handle_color, z_transform);
+
+    // scale handles
+    x_handle_color = default_x_handle_color;
+    y_handle_color = default_y_handle_color;
+    z_handle_color = default_z_handle_color;
+
+    if (hovered_handle == GIZMO_SCALE_X) {
+        x_handle_color = x_handle_hover;
+    } else if (hovered_handle == GIZMO_SCALE_Y) {
+        y_handle_color = y_handle_hover;
+    } else if (hovered_handle == GIZMO_SCALE_Z) {
+        z_handle_color = z_handle_hover;
+    }
+
+    gl_draw_solid_color_mesh(gl_state, render_state, cube_mesh, x_handle_color, x_transform);
+    gl_draw_solid_color_mesh(gl_state, render_state, cube_mesh, y_handle_color, y_transform);
+    gl_draw_solid_color_mesh(gl_state, render_state, cube_mesh, z_handle_color, z_transform);
 
     Transform sphere_mask_transform = gizmo.transform;
     glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
@@ -2583,9 +2605,10 @@ void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Editor_State 
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
     // rotation rings
-    x_handle_color = make_vec4(x_axis, 1.0f);
-    y_handle_color = make_vec4(y_axis, 1.0f);
-    z_handle_color = make_vec4(z_axis, 1.0f);
+    x_handle_color = default_x_handle_color;
+    y_handle_color = default_y_handle_color;
+    z_handle_color = default_z_handle_color;
+    
     if (hovered_handle == GIZMO_ROTATE_X) {
         x_handle_color = x_handle_hover;
     } else if (hovered_handle == GIZMO_ROTATE_Y) {
