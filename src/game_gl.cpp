@@ -337,12 +337,17 @@
 // TODO: scale gizmo
 //       - TODO (done): draw cubes for scaling handles
 //       - TODO (done): better switching between global and local transform gizmo
-//       - TODO: scale gizmo picking
+//       - TODO (done): scale gizmo picking
+//       - TODO (done): local scaling with scale gizmo
+//       - TODO (done): global scaling with scale gizmo
+//       - TODO: hold shift to keep position but scale in direction
 
 // TODO: replace the transform values in the entity box with slideable text boxes
 //       - TODO (done): create do_slider with no limits, would have to hide the slider when rendering
 //       - TODO (done): replace position and scale texts
 // TODO: show an image button for the texture instead of a regular button under material properties
+// TODO: better string format that uses win32 function for getting formatted string length
+//       - allows you to not pass in size of the buffer and instead automatically allocates the needed amount
 
 // TODO: editor undoing
 // TODO: better gizmo controls

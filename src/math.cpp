@@ -689,8 +689,8 @@ inline Quaternion log(Quaternion q) {
 //       as much space
 // TODO: maybe overload this to take in an origin argument?
 //       would basically just translate it first, then scale, then translate it back
-    Mat4 make_scale_matrix(Vec3 axis, real32 factor) {
-        Mat4 result = {};
+Mat4 make_scale_matrix(Vec3 axis, real32 factor) {
+    Mat4 result = {};
     
     Vec4 col1 = {
         1 + ((factor - 1)*(axis.x*axis.x)),

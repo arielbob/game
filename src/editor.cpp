@@ -1952,6 +1952,12 @@ bool32 is_translation(Gizmo_Handle gizmo_axis) {
             gizmo_axis == GIZMO_TRANSLATE_Z);
 }
 
+bool32 is_scale(Gizmo_Handle gizmo_axis) {
+    return (gizmo_axis == GIZMO_SCALE_X ||
+            gizmo_axis == GIZMO_SCALE_Y ||
+            gizmo_axis == GIZMO_SCALE_Z);
+}
+
 bool32 is_rotation(Gizmo_Handle gizmo_axis) {
     return (gizmo_axis == GIZMO_ROTATE_X ||
             gizmo_axis == GIZMO_ROTATE_Y ||
@@ -2110,6 +2116,66 @@ Vec3 do_gizmo_translation(Camera *camera, Editor_State *editor_state, Ray cursor
     }
 
     return new_position;
+}
+
+// TODO: local scaling should just use x, y, z standard basis vectors, and not the entity's transformed basis
+//       vectors.
+// TODO: global scaling should first get the model matrix, then scale it using standard basis, then extract the
+//       scale from the scaled model matrix.
+Vec3 do_gizmo_scale(Camera *camera, Editor_State *editor_state, Ray cursor_ray) {
+    real32 t;
+    Vec3 camera_forward = camera->current_basis.forward;
+
+    Vec3 initial_hit;
+    if (editor_state->transform_mode == TRANSFORM_GLOBAL) {
+        initial_hit = editor_state->global_initial_gizmo_hit;
+    } else {
+        initial_hit = editor_state->local_initial_gizmo_hit;
+    }
+
+    Gizmo_Handle gizmo_handle = editor_state->selected_gizmo_handle;
+    Vec3 scale_transform_axis = {};
+    if (gizmo_handle == GIZMO_SCALE_X) {
+        scale_transform_axis = x_axis;
+    } else if (gizmo_handle == GIZMO_SCALE_Y) {
+        scale_transform_axis = y_axis;
+    } else {
+        scale_transform_axis = z_axis;
+    }
+
+    // we still use the transform ray here since the selected gizmo axis is lined up with the transform ray.
+    Ray transform_ray = make_ray(initial_hit,
+                                 editor_state->gizmo_transform_axis);
+    Plane plane = get_plane_containing_ray(transform_ray, camera_forward);
+    bool32 intersects_plane = ray_intersects_plane(cursor_ray, plane, &t);
+
+    Vec3 new_scale = editor_state->entity_original_transform.scale;
+
+    // this will always intersect unless your FOV is >= 180 degrees
+    if (intersects_plane) {
+        Vec3 intersect_point = cursor_ray.origin + t*cursor_ray.direction;
+        real32 delta_length = dot(intersect_point - initial_hit,
+                                  editor_state->gizmo_transform_axis);
+        Vec3 delta = scale_transform_axis * delta_length;
+        new_scale += delta;
+        if (editor_state->transform_mode == TRANSFORM_LOCAL) {
+            return new_scale;
+        } else {
+            Mat4 model = get_model_matrix(editor_state->entity_original_transform);
+            delta = make_vec3(1.0f, 1.0f, 1.0f) + delta;
+
+            // NOTE: when delta goes below the zero vector, the entity grows instead of shrinks. i'm pretty sure
+            //       it's because when we call distance() on the columns of the scaled model matrix, it does not
+            //       give signed values. i think this is fine.
+            Mat4 scale_matrix = make_scale_matrix(delta);
+            Mat4 scaled_model = scale_matrix * model;
+            new_scale = make_vec3(distance(truncate_v4_to_v3(scaled_model.col1)),
+                                  distance(truncate_v4_to_v3(scaled_model.col2)),
+                                  distance(truncate_v4_to_v3(scaled_model.col3)));
+        }
+    }
+
+    return new_scale;
 }
 
 Quaternion do_gizmo_rotation(Camera *camera, Editor_State *editor_state, Ray cursor_ray) {
@@ -2411,6 +2477,11 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
                 Quaternion new_rotation = do_gizmo_rotation(&render_state->camera,
                                                             editor_state, cursor_ray);
                 update_entity_rotation(game_state, entity, new_rotation);
+            } else if (is_scale(editor_state->selected_gizmo_handle)) {
+                Vec3 new_scale = do_gizmo_scale(&render_state->camera, editor_state, cursor_ray);
+                update_entity_scale(game_state, entity, new_scale);
+            } else {
+                assert(!"Should be unreachable.");
             }
 
             editor_state->gizmo.transform.position = entity->transform.position;
