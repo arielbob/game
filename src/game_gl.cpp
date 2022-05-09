@@ -336,6 +336,7 @@
 // TODO (done): fix rotation gizmos hitbox not being aligned
 // TODO: scale gizmo
 //       - TODO (done): draw cubes for scaling handles
+//       - TODO (done): better switching between global and local transform gizmo
 //       - TODO: scale gizmo picking
 
 // TODO: replace the transform values in the entity box with slideable text boxes

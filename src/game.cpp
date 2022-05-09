@@ -964,6 +964,11 @@ void update_entity_scale(Game_State *game_state, Entity *entity, Vec3 new_scale)
 #endif
 }
 
+void set_entity_transform(Game_State *game_state, Entity *entity, Transform transform) {
+    entity->transform = transform;
+    update_entity_aabb(game_state, &game_state->current_level, entity);
+}
+
 Material *get_entity_material(Level *level, Entity *entity) {
     // TODO: maybe just return NULL here instead of asserting
     assert(entity->type == ENTITY_NORMAL);

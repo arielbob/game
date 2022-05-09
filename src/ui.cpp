@@ -525,6 +525,17 @@ void do_text(UI_Manager *manager,
     ui_add_text(manager, ui_text);
 }
 
+void do_text(real32 x_px, real32 y_px,
+             char *text, char *font, char *id_string, int32 index = 0) {
+    using namespace Context;
+    UI_Text ui_text = make_ui_text(x_px, y_px,
+                                   text, font, default_text_style, ui_manager->current_layer, id_string, index);
+
+    bool32 was_clicked = false;
+
+    ui_add_text(ui_manager, ui_text);
+}
+
 bool32 do_text_button(real32 x_px, real32 y_px,
                       real32 width, real32 height,
                       UI_Text_Button_Style style, UI_Text_Style text_style,

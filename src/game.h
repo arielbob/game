@@ -62,7 +62,7 @@ struct Controller_State {
     char pressed_chars[MAX_PRESSED_CHARS];
 
     union {
-        Controller_Button_State key_states[17];
+        Controller_Button_State key_states[19];
         struct {
             Controller_Button_State key_shift;
             Controller_Button_State key_ctrl;
@@ -73,6 +73,8 @@ struct Controller_State {
             Controller_Button_State key_s;
             Controller_Button_State key_d;
             Controller_Button_State key_e;
+            Controller_Button_State key_x;
+            Controller_Button_State key_z;
             Controller_Button_State key_f5;
             Controller_Button_State key_up;
             Controller_Button_State key_down;
@@ -307,5 +309,6 @@ void add_message(Message_Manager *manager, String text);
 bool32 material_name_exists(Level *level, String name);
 bool32 texture_name_exists(Level *level, String name);
 bool32 mesh_name_exists(Game_State *game_state, Level *level, String name);
+void set_entity_transform(Game_State *game_state, Entity *entity, Transform transform);
 
 #endif

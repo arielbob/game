@@ -1958,18 +1958,58 @@ bool32 is_rotation(Gizmo_Handle gizmo_axis) {
             gizmo_axis == GIZMO_ROTATE_Z);
 }
 
-Gizmo_Handle pick_gizmo(Game_State *game_state, Ray cursor_ray,
-                        Vec3 *gizmo_initial_hit, Vec3 *gizmo_transform_axis) {
+Vec3 get_gizmo_transform_axis(Transform_Mode transform_mode, Gizmo_Handle gizmo_handle, Transform transform) {
+    assert(gizmo_handle != GIZMO_HANDLE_NONE);
+
+    uint32 axis;
+
+    if (gizmo_handle == GIZMO_TRANSLATE_X ||
+        gizmo_handle == GIZMO_SCALE_X ||
+        gizmo_handle == GIZMO_ROTATE_X) {
+        // x
+        axis = 0;
+    } else if (gizmo_handle == GIZMO_TRANSLATE_Y ||
+               gizmo_handle == GIZMO_SCALE_Y ||
+               gizmo_handle == GIZMO_ROTATE_Y) {
+        // y
+        axis = 1;
+    } else {
+        // z
+        axis = 2;
+    }
+     
+    if (transform_mode == TRANSFORM_GLOBAL) {
+        if (axis == 0) {
+            return x_axis;
+        } else if (axis == 1) {
+            return y_axis;
+        } else {
+            return z_axis;
+        }
+    } else {
+        // local transform
+
+        // TODO: maybe cache this model matrix?
+        Mat4 entity_model_matrix = get_model_matrix(transform);
+
+        if (axis == 0) {
+            return normalize(truncate_v4_to_v3(entity_model_matrix.col1));
+        } else if (axis == 1) {
+            return  normalize(truncate_v4_to_v3(entity_model_matrix.col2));
+        } else {
+            return normalize(truncate_v4_to_v3(entity_model_matrix.col3));
+        }
+    }
+}
+
+Gizmo_Handle pick_gizmo(Game_State *game_state, Ray cursor_ray, real32 *t_result) {
     Editor_State *editor_state = &game_state->editor_state;
     Entity *entity = get_selected_entity(game_state);
     Gizmo gizmo = editor_state->gizmo;
 
     Transform_Mode transform_mode = editor_state->transform_mode;
 
-    Mat4 entity_model_matrix = get_model_matrix(entity->transform);
-
     Transform x_transform, y_transform, z_transform;
-    Vec3 transform_x_axis, transform_y_axis, transform_z_axis;
     // TODO: maybe add some scale here? for a bit of extra space to click on the gizmo.
     if (transform_mode == TRANSFORM_GLOBAL) {
         x_transform = gizmo.transform;
@@ -1978,10 +2018,6 @@ Gizmo_Handle pick_gizmo(Game_State *game_state, Ray cursor_ray,
         y_transform.rotation = make_quaternion(90.0f, z_axis);
         z_transform = gizmo.transform;
         z_transform.rotation = make_quaternion(-90.0f, y_axis);
-
-        transform_x_axis = x_axis;
-        transform_y_axis = y_axis;
-        transform_z_axis = z_axis;
     } else {
         // local transform
         x_transform = gizmo.transform;
@@ -1989,17 +2025,11 @@ Gizmo_Handle pick_gizmo(Game_State *game_state, Ray cursor_ray,
         y_transform.rotation = gizmo.transform.rotation*make_quaternion(90.0f, z_axis);
         z_transform = gizmo.transform;
         z_transform.rotation = gizmo.transform.rotation*make_quaternion(-90.0f, y_axis);
-
-        transform_x_axis = normalize(truncate_v4_to_v3(entity_model_matrix.col1));
-        transform_y_axis = normalize(truncate_v4_to_v3(entity_model_matrix.col2));
-        transform_z_axis = normalize(truncate_v4_to_v3(entity_model_matrix.col3));
     }
 
     Gizmo_Handle picked_handle = GIZMO_HANDLE_NONE;
 
     Transform gizmo_handle_transforms[3] = { x_transform, y_transform, z_transform };
-    Vec3 transform_axes[3] = { transform_x_axis, transform_y_axis, transform_z_axis };
-    Vec3 selected_transform_axis = transform_x_axis;
 
     // check ray against translation arrows
     Gizmo_Handle gizmo_translation_handles[3] = { GIZMO_TRANSLATE_X, GIZMO_TRANSLATE_Y, GIZMO_TRANSLATE_Z };
@@ -2014,7 +2044,21 @@ Gizmo_Handle pick_gizmo(Game_State *game_state, Ray cursor_ray,
             (result.t < t_min)) {
             t_min = result.t;
             picked_handle = gizmo_translation_handles[i];
-            selected_transform_axis = transform_axes[i];
+        }
+    }
+
+    // check ray against scale cube handles
+    Gizmo_Handle gizmo_scale_handles[3] = { GIZMO_SCALE_X, GIZMO_SCALE_Y, GIZMO_SCALE_Z };
+    assert(gizmo.cube_mesh_id >= 0);
+    Mesh gizmo_cube_mesh = get_common_mesh(game_state, gizmo.cube_mesh_id);
+
+    for (int32 i = 0; i < 3; i++) {
+        Transform gizmo_handle_transform = gizmo_handle_transforms[i];
+        Ray_Intersects_Mesh_Result result;
+        if (ray_intersects_mesh(cursor_ray, gizmo_cube_mesh, gizmo_handle_transform, true, &result) &&
+            (result.t < t_min)) {
+            t_min = result.t;
+            picked_handle = gizmo_scale_handles[i];
         }
     }
 
@@ -2030,27 +2074,10 @@ Gizmo_Handle pick_gizmo(Game_State *game_state, Ray cursor_ray,
             (result.t < t_min)) {
             t_min = result.t;
             picked_handle = gizmo_rotation_handles[i];
-            selected_transform_axis = transform_axes[i];
         }
     }
 
-    if (picked_handle) {
-        if (is_rotation(picked_handle)) {
-            real32 t;
-            Plane plane = { dot(gizmo.transform.position, selected_transform_axis),
-                            selected_transform_axis };
-            bool32 intersects_plane = ray_intersects_plane(cursor_ray, plane, &t);
-            if (intersects_plane) {
-                *gizmo_initial_hit = cursor_ray.origin + t*cursor_ray.direction;
-            } else {
-                *gizmo_initial_hit = cursor_ray.origin + t_min*cursor_ray.direction;;
-            }
-        } else {
-            *gizmo_initial_hit = cursor_ray.origin + t_min*cursor_ray.direction;
-        }
-
-        *gizmo_transform_axis = selected_transform_axis;
-    }
+    *t_result = t_min;
 
     return picked_handle;
 }
@@ -2058,24 +2085,31 @@ Gizmo_Handle pick_gizmo(Game_State *game_state, Ray cursor_ray,
 Vec3 do_gizmo_translation(Camera *camera, Editor_State *editor_state, Ray cursor_ray) {
     real32 t;
     Vec3 camera_forward = camera->current_basis.forward;
-    Ray transform_ray = make_ray(editor_state->gizmo_initial_hit,
+
+    Vec3 initial_hit;
+    if (editor_state->transform_mode == TRANSFORM_GLOBAL) {
+        initial_hit = editor_state->global_initial_gizmo_hit;
+    } else {
+        initial_hit = editor_state->local_initial_gizmo_hit;
+    }
+
+    Ray transform_ray = make_ray(initial_hit,
                                  editor_state->gizmo_transform_axis);
     Plane plane = get_plane_containing_ray(transform_ray, camera_forward);
     bool32 intersects_plane = ray_intersects_plane(cursor_ray, plane, &t);
 
-    Vec3 delta_result = make_vec3();
+    Vec3 new_position = editor_state->entity_original_transform.position;
 
     // this will always intersect unless your FOV is >= 180 degrees
     if (intersects_plane) {
         Vec3 intersect_point = cursor_ray.origin + t*cursor_ray.direction;
-        real32 delta_length = dot(intersect_point - editor_state->last_gizmo_transform_point,
+        real32 delta_length = dot(intersect_point - initial_hit,
                                   editor_state->gizmo_transform_axis);
         Vec3 delta = editor_state->gizmo_transform_axis * delta_length;
-        editor_state->last_gizmo_transform_point += delta;
-        delta_result = delta;
+        new_position = editor_state->entity_original_transform.position + delta;
     }
 
-    return delta_result;
+    return new_position;
 }
 
 Quaternion do_gizmo_rotation(Camera *camera, Editor_State *editor_state, Ray cursor_ray) {
@@ -2086,17 +2120,24 @@ Quaternion do_gizmo_rotation(Camera *camera, Editor_State *editor_state, Ray cur
                     editor_state->gizmo_transform_axis };
     bool32 intersects_plane = ray_intersects_plane(cursor_ray, plane, &t);
 
-    Quaternion delta_result = make_quaternion();
+    Vec3 initial_hit;
+    if (editor_state->transform_mode == TRANSFORM_GLOBAL) {
+        initial_hit = editor_state->global_initial_gizmo_hit;
+    } else {
+        initial_hit = editor_state->local_initial_gizmo_hit;
+    }
+
+    Quaternion new_rotation = editor_state->entity_original_transform.rotation;
 
     // this will always intersect unless your FOV is >= 180 degrees
     if (intersects_plane) {
         Vec3 intersect_point = cursor_ray.origin + t*cursor_ray.direction;
 
         Vec3 center_to_intersect_point = intersect_point - center;
-        Vec3 center_to_last_intersect_point = editor_state->last_gizmo_transform_point - center;
+        Vec3 center_to_last_intersect_point = initial_hit - center;
 
-        if (are_collinear(center_to_last_intersect_point, center_to_intersect_point)) {
-            return delta_result;
+        if (are_collinear(normalize(center_to_last_intersect_point), normalize(center_to_intersect_point))) {
+            return new_rotation;
         }
 
         Vec3 out_vector = cross(editor_state->gizmo_transform_axis, center_to_last_intersect_point);
@@ -2106,16 +2147,15 @@ Quaternion do_gizmo_rotation(Camera *camera, Editor_State *editor_state, Ray cur
 
         real32 a = distance(center_to_intersect_point);
         real32 b = distance(center_to_last_intersect_point);
-        real32 c = distance(intersect_point - editor_state->last_gizmo_transform_point);
+        real32 c = distance(intersect_point - initial_hit);
 
         real32 angle_delta_degrees = sign * cosine_law_degrees(a, b, c);
-        Quaternion delta = make_quaternion(angle_delta_degrees, editor_state->gizmo_transform_axis);
 
-        editor_state->last_gizmo_transform_point = intersect_point;
-        delta_result = delta;
+        Quaternion delta_from_start = make_quaternion(angle_delta_degrees, editor_state->gizmo_transform_axis);
+        new_rotation = delta_from_start * new_rotation;
     }
 
-    return delta_result;
+    return new_rotation;
 }
 
 void update_editor_camera(Camera *camera, Controller_State *controller_state,
@@ -2172,6 +2212,26 @@ void update_editor_camera(Camera *camera, Controller_State *controller_state,
     camera->current_basis = current_basis;
 }
 
+Vec3 get_gizmo_hit(Gizmo gizmo, Gizmo_Handle picked_handle, real32 pick_gizmo_t,
+                   Ray cursor_ray, Vec3 transform_axis) {
+    Vec3 gizmo_hit;
+
+    if (is_rotation(picked_handle)) {
+        real32 t;
+        Plane plane = { dot(gizmo.transform.position, transform_axis), transform_axis };
+        bool32 intersects_plane = ray_intersects_plane(cursor_ray, plane, &t);
+        if (intersects_plane) {
+            gizmo_hit = cursor_ray.origin + t*cursor_ray.direction;
+        } else {
+            gizmo_hit = cursor_ray.origin + pick_gizmo_t*cursor_ray.direction;;
+        }
+    } else {
+        gizmo_hit = cursor_ray.origin + pick_gizmo_t*cursor_ray.direction;
+    }
+
+    return gizmo_hit;
+}
+
 void update_gizmo(Game_State *game_state) {
     Editor_State *editor_state = &game_state->editor_state;
     if (editor_state->selected_entity_id < 0) return;
@@ -2214,6 +2274,24 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
     } else {
         enable_input(ui_manager);
     }
+
+    if (just_pressed(controller_state->key_z)) {
+        editor_state->show_wireframe = !editor_state->show_wireframe;
+    }
+
+    if (just_pressed(controller_state->key_x)) {
+        if (editor_state->transform_mode == TRANSFORM_GLOBAL) {
+            editor_state->transform_mode = TRANSFORM_LOCAL;
+        } else {
+            editor_state->transform_mode = TRANSFORM_GLOBAL;
+        }
+
+        if (editor_state->selected_gizmo_handle != GIZMO_HANDLE_NONE) {
+            Entity *selected_entity = get_selected_entity(game_state);
+            set_entity_transform(game_state, selected_entity, editor_state->entity_original_transform);
+            //editor_state->gizmo_initial_hit =
+        }
+    }
     
     // mesh picking
     Vec3 cursor_world_space = cursor_pos_to_world_space(controller_state->current_mouse,
@@ -2253,14 +2331,59 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
         !ui_has_hot(ui_manager) &&
         !editor_state->selected_gizmo_handle) {
 
-        Vec3 gizmo_initial_hit, gizmo_transform_axis;
-        Gizmo_Handle picked_handle = pick_gizmo(game_state, cursor_ray,
-                                                &gizmo_initial_hit, &gizmo_transform_axis);
+        real32 pick_gizmo_t;
+        Gizmo_Handle picked_handle = pick_gizmo(game_state, cursor_ray, &pick_gizmo_t);
         if (controller_state->left_mouse.is_down && !controller_state->left_mouse.was_down) {
+            if (picked_handle) {
+#if 0
+                editor_state->gizmo_initial_cursor = controller_state->current_mouse;
+                editor_state->gizmo_last_cursor = controller_state->current_mouse;
+
+                Entity *selected_entity = get_selected_entity(game_state);
+                editor_state->entity_original_transform = selected_entity->transform;
+                Vec3 local_transform_axis = get_gizmo_transform_axis(TRANSFORM_LOCAL,
+                                                                     picked_handle,
+                                                                     selected_entity);
+#endif
+#if 1
+                Entity *selected_entity = get_selected_entity(game_state);
+                editor_state->entity_original_transform = selected_entity->transform;
+                Vec3 global_transform_axis = get_gizmo_transform_axis(TRANSFORM_GLOBAL,
+                                                                      picked_handle,
+                                                                      selected_entity->transform);
+                Vec3 local_transform_axis = get_gizmo_transform_axis(TRANSFORM_LOCAL,
+                                                                     picked_handle,
+                                                                     selected_entity->transform);
+                editor_state->local_initial_gizmo_hit = get_gizmo_hit(editor_state->gizmo,
+                                                                      picked_handle, pick_gizmo_t,
+                                                                      cursor_ray, local_transform_axis);
+                editor_state->global_initial_gizmo_hit = get_gizmo_hit(editor_state->gizmo,
+                                                                       picked_handle, pick_gizmo_t,
+                                                                       cursor_ray, global_transform_axis);
+
+#if 0
+                Vec3 gizmo_initial_hit;
+                if (is_rotation(picked_handle)) {
+                    real32 t;
+                    Plane plane = { dot(editor_state->gizmo.transform.position, transform_axis), transform_axis };
+                    bool32 intersects_plane = ray_intersects_plane(cursor_ray, plane, &t);
+                    if (intersects_plane) {
+                        gizmo_initial_hit = cursor_ray.origin + t*cursor_ray.direction;
+                    } else {
+                        gizmo_initial_hit = cursor_ray.origin + pick_gizmo_t*cursor_ray.direction;;
+                    }
+                } else {
+                    gizmo_initial_hit = cursor_ray.origin + pick_gizmo_t*cursor_ray.direction;
+                }
+
+                editor_state->gizmo_initial_hit = gizmo_initial_hit;
+                editor_state->gizmo_transform_axis = transform_axis;
+                //editor_state->last_gizmo_transform_point = gizmo_initial_hit;
+#endif
+#endif
+            }
+
             editor_state->selected_gizmo_handle = picked_handle;
-            editor_state->gizmo_initial_hit = gizmo_initial_hit;
-            editor_state->gizmo_transform_axis = gizmo_transform_axis;
-            editor_state->last_gizmo_transform_point = gizmo_initial_hit;
         } else {
             editor_state->hovered_gizmo_handle = picked_handle;
         }
@@ -2276,14 +2399,18 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
         disable_input(ui_manager);
         if (controller_state->left_mouse.is_down) {
             Entity *entity = get_selected_entity(game_state);
+            editor_state->gizmo_transform_axis = get_gizmo_transform_axis(editor_state->transform_mode,
+                                                                          editor_state->selected_gizmo_handle,
+                                                                          editor_state->entity_original_transform);
 
             if (is_translation(editor_state->selected_gizmo_handle)) {
-                Vec3 delta = do_gizmo_translation(&render_state->camera, editor_state, cursor_ray);
-                update_entity_position(game_state, entity, entity->transform.position + delta);
+                Vec3 new_position = do_gizmo_translation(&render_state->camera, editor_state, cursor_ray);
+                update_entity_position(game_state, entity, new_position);
                 
             } else if (is_rotation(editor_state->selected_gizmo_handle)) {
-                Quaternion delta = do_gizmo_rotation(&render_state->camera, editor_state, cursor_ray);
-                update_entity_rotation(game_state, entity, delta*entity->transform.rotation);
+                Quaternion new_rotation = do_gizmo_rotation(&render_state->camera,
+                                                            editor_state, cursor_ray);
+                update_entity_rotation(game_state, entity, new_rotation);
             }
 
             editor_state->gizmo.transform.position = entity->transform.position;

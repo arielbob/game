@@ -521,6 +521,16 @@ internal void win32_process_keyboard_input(bool was_down, bool is_down,
                 controller_state->key_e.was_down = was_down;
                 return;
             }
+            case 'X': {
+                controller_state->key_x.is_down = is_down;
+                controller_state->key_x.was_down = was_down;
+                return;
+            }
+            case 'Z': {
+                controller_state->key_z.is_down = is_down;
+                controller_state->key_z.was_down = was_down;
+                return;
+            }
             case VK_UP: {
                 controller_state->key_up.is_down = is_down;
                 controller_state->key_up.was_down = was_down;

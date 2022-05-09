@@ -100,9 +100,14 @@ struct Editor_State {
     Gizmo gizmo;
     Gizmo_Handle hovered_gizmo_handle;
     Gizmo_Handle selected_gizmo_handle;
-    Vec3 gizmo_initial_hit;
+    Transform entity_original_transform;
+    //Vec3 gizmo_initial_hit;
+    //Vec3 gizmo_local_initial_hit;
+    Vec3 local_initial_gizmo_hit;
+    Vec3 global_initial_gizmo_hit;
+
     Vec3 gizmo_transform_axis;
-    Vec3 last_gizmo_transform_point;
+    //Vec3 last_gizmo_transform_point;
 
     bool32 show_wireframe;
     bool32 show_colliders;

@@ -614,6 +614,18 @@ Quaternion make_quaternion(real32 angle_degs, Vec3 axis) {
     return result;
 }
 
+inline real32 magnitude(Quaternion q) {
+    return sqrtf(q.w*q.w + dot(q.v, q.v));
+}
+
+inline Quaternion normalize(Quaternion q) {
+    Quaternion result;
+    real32 q_magnitude = magnitude(q);
+    result.w = q.w / q_magnitude;
+    result.v = q.v / q_magnitude;
+    return result;
+}
+
 Transform make_transform() {
     Transform transform;
     transform.position = {};
@@ -625,10 +637,6 @@ Transform make_transform() {
 inline Transform make_transform(Vec3 position, Quaternion rotation, Vec3 scale) {
     Transform transform = { position, rotation, scale };
     return transform;
-}
-
-real32 magnitude(Quaternion q) {
-    return sqrtf(q.w*q.w + dot(q.v, q.v));
 }
 
 inline Quaternion operator*(Quaternion q1, Quaternion q2) {
