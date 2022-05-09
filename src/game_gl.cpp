@@ -2594,11 +2594,6 @@ void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Editor_State 
         z_handle_color = z_handle_hover;
     }
 
-    real32 offset_value = 1e-2f;
-    Vec3 offset = make_vec3(offset_value, offset_value, offset_value);
-    y_transform.scale += offset;
-    z_transform.scale += 2.0f * offset;
-
     gl_draw_solid_color_mesh(gl_state, render_state, ring_mesh, x_handle_color, x_transform);
     gl_draw_solid_color_mesh(gl_state, render_state, ring_mesh, y_handle_color, y_transform);
     gl_draw_solid_color_mesh(gl_state, render_state, ring_mesh, z_handle_color, z_transform);
