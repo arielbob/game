@@ -704,6 +704,7 @@ bool32 win32_init_memory() {
     uint32 string64_pool_size = MEGABYTES(64);
     uint32 filename_pool_size = MEGABYTES(8);
     uint32 ui_state_heap_size = MEGABYTES(64);
+    uint32 editor_history_heap_size = MEGABYTES(64);
 
     // level memory
     uint32 level_mesh_heap_size = MEGABYTES(64);
@@ -724,7 +725,8 @@ bool32 win32_init_memory() {
                                 level_arena_size +
                                 level_string64_pool_size +
                                 level_filename_pool_size +
-                                level_mesh_heap_size);
+                                level_mesh_heap_size +
+                                editor_history_heap_size);
     void *memory_base = VirtualAlloc(0, total_memory_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
     if (memory_base) {
@@ -768,6 +770,10 @@ bool32 win32_init_memory() {
         Heap_Allocator ui_state_heap = make_heap_allocator(base, ui_state_heap_size);
         memory.ui_state_heap = ui_state_heap;
         base = (uint8 *) base + ui_state_heap_size;
+
+        Heap_Allocator editor_history_heap = make_heap_allocator(base, editor_history_heap_size);
+        memory.editor_history_heap = editor_history_heap;
+        base = (uint8 *) base + editor_history_heap_size;
 
         // level memory
         memory.level_arena = make_arena_allocator(base, level_arena_size);

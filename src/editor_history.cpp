@@ -1,7 +1,20 @@
 #include "editor.h"
 #include "editor_history.h"
 
-void editor_add_normal_entity(Game_State *game_state, Add_Normal_Entity_Action action) {
+void _history_add_action(Editor_History *history, Editor_Action *editor_action) {
+    history->entries[history->current_history_index] = editor_action;
+    history->num_entries++;
+    history->num_entries = min(history->num_entries, MAX_EDITOR_HISTORY_ENTRIES);
+    history->current_history_index = (history->current_history_index + 1) % MAX_EDITOR_HISTORY_ENTRIES;
+}
+
+#define history_add_action(history_pointer, type, value)      \
+    type *allocated = (type *) allocate(history_pointer->allocator_pointer, sizeof(type)); \
+    *allocated = value; \
+    _history_add_action(history_pointer, (Editor_Action *) allocated)
+
+
+void editor_add_normal_entity(Editor_State *editor_state, Game_State *game_state, Add_Normal_Entity_Action action) {
     int32 mesh_id = get_mesh_id_by_name(game_state,
                                         &game_state->current_level,
                                         Mesh_Type::PRIMITIVE,
@@ -19,8 +32,12 @@ void editor_add_normal_entity(Game_State *game_state, Add_Normal_Entity_Action a
         action.entity_id = level_add_entity(game_state, &game_state->current_level, new_entity);
     }
 
-    game_state->editor_state.selected_entity_type = ENTITY_NORMAL;
-    game_state->editor_state.selected_entity_id = action.entity_id;
+    editor_state->selected_entity_type = ENTITY_NORMAL;
+    editor_state->selected_entity_id = action.entity_id;
+
+    Editor_History *history = &editor_state->history;
+
+    history_add_action(history, Add_Normal_Entity_Action, action);
 }
 
 void undo_add_normal_entity(Level *level, Add_Normal_Entity_Action action) {

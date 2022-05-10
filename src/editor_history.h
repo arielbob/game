@@ -1,6 +1,7 @@
 #ifndef EDITOR_HISTORY_H
 #define EDITOR_HISTORY_H
 
+struct Editor_State;
 struct Game_State;
 
 enum Action_Type {
@@ -34,7 +35,10 @@ Add_Normal_Entity_Action make_add_normal_entity_action() {
 #define MAX_EDITOR_HISTORY_ENTRIES 64
 
 struct Editor_History {
+    Allocator *allocator_pointer;
     Editor_Action *entries[MAX_EDITOR_HISTORY_ENTRIES];
+    int32 num_entries = 0;
+    int32 current_history_index = 0;
     // use a push buffer?
     // idk, we kind of want to have a set length
     // could just use an array of pointers then maybe?
@@ -85,6 +89,6 @@ struct Editor_History {
 
  */
 
-void editor_add_normal_entity(Game_State *game_state, Add_Normal_Entity_Action action);
+void editor_add_normal_entity(Editor_State *editor_state, Game_State *game_state, Add_Normal_Entity_Action action);
 
 #endif

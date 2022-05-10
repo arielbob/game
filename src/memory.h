@@ -73,6 +73,7 @@ struct Memory {
     Pool_Allocator string64_pool;
     Pool_Allocator filename_pool;
     Heap_Allocator ui_state_heap;
+    Heap_Allocator editor_history_heap;
 };
 
 void *allocate(Allocator *allocator, uint32 size, bool32 zero_memory = true);

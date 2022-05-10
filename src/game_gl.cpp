@@ -343,6 +343,7 @@
 
 // TODO: editor undoing
 //       - TODO (done): doing an add entity
+//       - TODO (done): add action to history
 //       - TODO: undoing history
 //        -TODO: redoing history
 //       - TODO: undoing an add entity

@@ -578,6 +578,8 @@ void deallocate(Allocator *allocator, void *address) {
     }
 }
 
+//#define copy_struct(allocator_pointer, type, value) *(allocate(allocator_pointer, sizeof(type))) = value
+
 // #define allocate(allocator, size) _allocate((Allocator *) allocator, size)
 // #define allocate(allocator, size, zero_memory) _allocate((Allocator *) allocator, size, zero_memory)
 

@@ -1750,7 +1750,7 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
     y += button_height + button_gap;
     if (add_normal_entity_clicked) {
         Add_Normal_Entity_Action action = make_add_normal_entity_action();
-        editor_add_normal_entity(game_state, action);
+        editor_add_normal_entity(editor_state, game_state, action);
 
 #if 0
         int32 mesh_id = get_mesh_id_by_name(game_state,

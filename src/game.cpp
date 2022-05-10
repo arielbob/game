@@ -480,6 +480,10 @@ void init_game(Game_State *game_state,
     editor_state->current_level_filename = make_string_buffer(filename_allocator, PLATFORM_MAX_PATH);
     Context::editor_state = editor_state;
     
+    Editor_History editor_history = {};
+    editor_history.allocator_pointer = (Allocator *) &memory.editor_history_heap;
+    editor_state->history = editor_history;
+    
     // init ui state
     UI_Manager *ui_manager = &game_state->ui_manager;
     UI_Push_Buffer ui_push_buffer = {};
