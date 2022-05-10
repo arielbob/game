@@ -334,22 +334,29 @@
 //                 manually enter any value, even if it's outside of the initial bounds of the sliders
 
 // TODO (done): fix rotation gizmos hitbox not being aligned
-// TODO: scale gizmo
+// TODO (done): scale gizmo
 //       - TODO (done): draw cubes for scaling handles
 //       - TODO (done): better switching between global and local transform gizmo
 //       - TODO (done): scale gizmo picking
 //       - TODO (done): local scaling with scale gizmo
 //       - TODO (done): global scaling with scale gizmo
-//       - TODO: hold shift to keep position but scale in direction
+
+// TODO: editor undoing
+//       - TODO (done): doing an add entity
+//       - TODO: undoing history
+//        -TODO: redoing history
+//       - TODO: undoing an add entity
 
 // TODO: replace the transform values in the entity box with slideable text boxes
 //       - TODO (done): create do_slider with no limits, would have to hide the slider when rendering
 //       - TODO (done): replace position and scale texts
+//       - TODO: euler angle entry in entity box
+//       - TODO: replace rotation with slideable text boxes that use euler angles (we just convert euler angles to
+//               quaternions to store the value - euler angles are just more user friendly)
 // TODO: show an image button for the texture instead of a regular button under material properties
 // TODO: better string format that uses win32 function for getting formatted string length
 //       - allows you to not pass in size of the buffer and instead automatically allocates the needed amount
 
-// TODO: editor undoing
 // TODO: better gizmo controls
 //       - TODO: translation on a plane (little squares on the planes of the gizmo)
 //       - TODO: bigger hitboxes on the controls or just scale the meshes
@@ -358,9 +365,6 @@
 //               the rotation at that angle anyways. the way you would do the picking is you do a ray vs plane and
 //               then check if the intersection point is within some bounds of the circle, using the circle's
 //               radius. in the orthogonal case, we may just want to hide the handle, like how blender does it.
-//       - TODO: keyboard controls for switching between gizmos
-
-// TODO: euler angle entry in entity box
 
 // TODO: change do_text to use Strings?
 //       - idk, i think it's fine that we use the frame arena, since it's guaranteed that the char array will still

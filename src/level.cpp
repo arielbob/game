@@ -390,6 +390,13 @@ int32 get_texture_id_by_name(Level *level, String texture_name) {
     return -1;
 }
 
+int32 level_add_entity(Game_State *game_state, Level *level, Normal_Entity entity, int32 entity_id) {
+    assert(mesh_exists(game_state, level, entity.mesh_type, entity.mesh_id));
+    assert(entity_id >= 0);
+    hash_table_add(&level->normal_entity_table, entity_id, entity);
+    return entity_id;
+}
+
 int32 level_add_entity(Game_State *game_state, Level *level, Normal_Entity entity) {
     assert(mesh_exists(game_state, level, entity.mesh_type, entity.mesh_id));
     //assert(material_exists(level, entity.material_id));

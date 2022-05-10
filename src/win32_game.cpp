@@ -48,6 +48,7 @@ global_variable Memory memory;
 #include "ui.cpp"
 #include "level.cpp"
 #include "editor.cpp"
+#include "editor_history.cpp"
 #include "game.cpp"
 
 global_variable int64 perf_counter_frequency;

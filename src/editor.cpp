@@ -1743,12 +1743,16 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
     y += 120.0f;
 
     bool32 add_normal_entity_clicked = do_text_button(render_state->display_output.width - sidebar_button_width, y,
-                                               sidebar_button_width, button_height,
-                                               default_text_button_style, default_text_style,
-                                               "Add Normal Entity",
-                                               button_font_name, "add_entity");
+                                                      sidebar_button_width, button_height,
+                                                      default_text_button_style, default_text_style,
+                                                      "Add Normal Entity",
+                                                      button_font_name, "add_entity");
     y += button_height + button_gap;
     if (add_normal_entity_clicked) {
+        Add_Normal_Entity_Action action = make_add_normal_entity_action();
+        editor_add_normal_entity(game_state, action);
+
+#if 0
         int32 mesh_id = get_mesh_id_by_name(game_state,
                                             &game_state->current_level,
                                             Mesh_Type::PRIMITIVE,
@@ -1761,6 +1765,7 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
         int32 entity_id = level_add_entity(game_state, &game_state->current_level, new_entity);
         editor_state->selected_entity_type = ENTITY_NORMAL;
         editor_state->selected_entity_id = entity_id;
+#endif
     }
 
     bool32 add_point_light_entity_clicked = do_text_button(render_state->display_output.width - sidebar_button_width, y,
