@@ -6,7 +6,7 @@ struct Game_State;
 
 enum Action_Type {
     ACTION_NONE,
-    ACTION_ADD_ENTITY,
+    ACTION_ADD_NORMAL_ENTITY,
     
 };
 
@@ -26,19 +26,23 @@ struct Add_Normal_Entity_Action {
 
 Add_Normal_Entity_Action make_add_normal_entity_action() {
     Add_Normal_Entity_Action action = {};
-    action.type = ACTION_ADD_ENTITY;
+    action.type = ACTION_ADD_NORMAL_ENTITY;
     action.entity_type = ENTITY_NORMAL;
     action.entity_id = -1;
     return action;
 }
 
-#define MAX_EDITOR_HISTORY_ENTRIES 64
+#define MAX_EDITOR_HISTORY_ENTRIES 3
 
 struct Editor_History {
     Allocator *allocator_pointer;
     Editor_Action *entries[MAX_EDITOR_HISTORY_ENTRIES];
     int32 num_entries = 0;
-    int32 current_history_index = 0;
+    int32 num_undone = 0;
+    int32 current_index = 0;
+    int32 oldest_index = 0;
+    //int32 newest_index = 0;
+
     // use a push buffer?
     // idk, we kind of want to have a set length
     // could just use an array of pointers then maybe?
@@ -90,5 +94,6 @@ struct Editor_History {
  */
 
 void editor_add_normal_entity(Editor_State *editor_state, Game_State *game_state, Add_Normal_Entity_Action action);
+void history_undo(Game_State *game_state, Editor_History *history);
 
 #endif

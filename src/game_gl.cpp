@@ -344,8 +344,13 @@
 // TODO: editor undoing
 //       - TODO (done): doing an add entity
 //       - TODO (done): add action to history
-//       - TODO: undoing history
-//        -TODO: redoing history
+//       - TODO (done): undoing history
+//       - TODO (done): add undo button
+//       - TODO (done): test undoing
+//               - TODO (done): make sure things are being deallocated when we loop around
+//       - TODO: redoing history
+//       - TODO: make sure things are being deallocated when we undo then add an action, and redo button should
+//               become disabled
 //       - TODO: undoing an add entity
 
 // TODO: replace the transform values in the entity box with slideable text boxes
