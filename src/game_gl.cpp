@@ -341,17 +341,20 @@
 //       - TODO (done): local scaling with scale gizmo
 //       - TODO (done): global scaling with scale gizmo
 
-// TODO: editor undoing
+// TODO: editor history (undoing and redoing)
 //       - TODO (done): doing an add entity
 //       - TODO (done): add action to history
 //       - TODO (done): undoing history
 //       - TODO (done): add undo button
 //       - TODO (done): test undoing
 //               - TODO (done): make sure things are being deallocated when we loop around
-//       - TODO: redoing history
-//       - TODO: make sure things are being deallocated when we undo then add an action, and redo button should
-//               become disabled
-//       - TODO: undoing an add entity
+//       - TODO (done): add redo button
+//       - TODO (done): use start, end, and current indices instead
+//       - TODO (done): undoing
+//       - TODO (done): redoing history
+//       - TODO: add actions for deleting entities
+//       - TODO: add actions for transforms (translate, rotate, scale)
+//       - TODO: add actions for text box changes?
 
 // TODO: replace the transform values in the entity box with slideable text boxes
 //       - TODO (done): create do_slider with no limits, would have to hide the slider when rendering

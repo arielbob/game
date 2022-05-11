@@ -154,6 +154,10 @@ void hash_table_add(Hash_Table<Key_Type, Value_Type> *hash_table, Key_Type key, 
     while (num_checked < hash_table->max_entries) {
         Hash_Table_Entry<Key_Type, Value_Type> entry = hash_table->entries[hash];
         if (entry.is_occupied) {
+            if (hash_table->key_equals(entry.key, key)) {
+                assert(!"Entry already exists with key");
+            }
+
             hash++;
             hash %= hash_table->max_entries;
             num_checked++;

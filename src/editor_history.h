@@ -37,10 +37,16 @@ Add_Normal_Entity_Action make_add_normal_entity_action() {
 struct Editor_History {
     Allocator *allocator_pointer;
     Editor_Action *entries[MAX_EDITOR_HISTORY_ENTRIES];
+    int32 start_index = -1;
+    int32 end_index = -1; // end index is the index of the last entry
+    int32 current_index = -1; // the entry we just added/the entry that will be undone
+    int32 num_undone = 0;
+#if 0
     int32 num_entries = 0;
     int32 num_undone = 0;
     int32 current_index = 0;
     int32 oldest_index = 0;
+#endif
     //int32 newest_index = 0;
 
     // use a push buffer?
@@ -93,7 +99,10 @@ struct Editor_History {
 
  */
 
-void editor_add_normal_entity(Editor_State *editor_state, Game_State *game_state, Add_Normal_Entity_Action action);
+void editor_add_normal_entity(Editor_State *editor_state, Game_State *game_state, Add_Normal_Entity_Action action,
+                              bool32 is_redoing=false);
 void history_undo(Game_State *game_state, Editor_History *history);
+void history_redo(Game_State *game_state, Editor_History *history);
+int32 history_get_num_entries(Editor_History *history);
 
 #endif

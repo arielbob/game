@@ -2,68 +2,70 @@
 #include "editor_history.h"
 
 void _history_add_action(Editor_History *history, Editor_Action *editor_action) {
-    // [oldest|e|e|e|x|newest| | ] oldest < x < newest
-    // [oldest|e|e|e|e|newest|x| ] oldest < newest < x
-    // [newest| | | | |oldest|x|e] newest < oldest < x
-    // [e|e|x|e|newest|oldest|e|e] x < newest < oldest
+    if (history->start_index == -1 && history->end_index == -1) {
+        int32 new_entry_index = 0;
 
-    int32 num_between_oldest_and_current; // does not include current, since current needs to be deallocated
-    if (history->current_index < history->oldest_index) {
-        // for example, [e|current|e|e|_|_|_|oldest]
-        // num_entries = 5, 2 between oldest and current, 3 need to be deleted after and including current
-        // unwrapped_current = 8 + 1 = 9
-        // num_between_oldest_and_current = 9 - 7 = 2
-        // num_to_be_deleted = num_entries - num_between_oldest_and_current = 3
-        // num_entries -= num_to_be_deleted
+        history->start_index = new_entry_index;
+        history->entries[new_entry_index] = editor_action;
+        history->end_index = new_entry_index;
+        history->current_index = new_entry_index;
+    } else if (history->current_index == -1) {
+        int32 start_index = history->start_index;
+        int32 end_index = history->end_index;
 
-        int32 unwrapped_current = MAX_EDITOR_HISTORY_ENTRIES + history->current_index;
-        num_between_oldest_and_current = unwrapped_current - history->oldest_index;
+        if (start_index > end_index) {
+            end_index += MAX_EDITOR_HISTORY_ENTRIES;
+        }
+
+        for (int32 i = start_index; i <= end_index; i++) {
+            int32 wrapped_index = i % MAX_EDITOR_HISTORY_ENTRIES;
+            deallocate(history->allocator_pointer, history->entries[wrapped_index]);
+            history->entries[wrapped_index] = NULL;
+            //debug_print("deallocated history at index %d\n", i);
+        }
+
+        history->current_index = start_index;
+        history->end_index = start_index;
+        history->entries[start_index] = editor_action;
     } else {
-        // [oldest|e|e|current|e|e|e|_]
-        // num_between_oldest_and_current = 3 - 0 = 3
-        // num_to_be_deleted = num_entries - num_between_oldest_and_current = 7 - 3 = 4
-        // num_entries -= num_to_be_deleted
-        num_between_oldest_and_current = history->current_index - history->oldest_index;
-    }
+        int32 start_index = history->start_index;
+        int32 end_index = history->end_index;
+        int32 current_index = history->current_index;
 
-    // [current, oldest|e|e|e|e|e|e|e]
+        if (start_index > end_index) {
+            end_index += MAX_EDITOR_HISTORY_ENTRIES;
+            if (current_index < start_index) {
+                current_index += MAX_EDITOR_HISTORY_ENTRIES;
+            }
+        }
 
-    int32 num_to_be_deleted = history->num_entries - num_between_oldest_and_current;
-    assert(num_to_be_deleted >= 0);
+        int32 new_entry_index = current_index + 1;
+ 
+        int32 wrapped_new_entry_index = new_entry_index % MAX_EDITOR_HISTORY_ENTRIES;
 
-    int32 num_deleted = 0;
+        if (wrapped_new_entry_index == start_index) {
+            Editor_Action *action = history->entries[start_index % MAX_EDITOR_HISTORY_ENTRIES];
+            deallocate(history->allocator_pointer, action);
+            history->entries[start_index % MAX_EDITOR_HISTORY_ENTRIES] = NULL;
 
-    int32 i = history->current_index;
-    while (num_deleted < num_to_be_deleted) {
-        deallocate(history->allocator_pointer, history->entries[i]);
-        debug_print("deallocated history at index %d\n", i);
+            history->start_index = (start_index + 1) % MAX_EDITOR_HISTORY_ENTRIES;
+            //debug_print("deallocated history at index %d (start_index)\n", start_index);
 
-        i = (i + 1) % MAX_EDITOR_HISTORY_ENTRIES;
-        num_deleted++;
-    }
-    history->num_entries -= num_deleted;
-
-    history->entries[history->current_index] = editor_action;
-    history->num_entries++;
-    history->num_entries = min(history->num_entries, MAX_EDITOR_HISTORY_ENTRIES);
-    history->current_index = (history->current_index + 1) % MAX_EDITOR_HISTORY_ENTRIES;
-
-    if (history->current_index == history->oldest_index) {
-        // there are two cases when this condition is true: (1) when you've undone enough to reach the oldest and
-        // (2) when you've added enough entries such that you loop around the circular buffer and end up at the
-        // oldest index.
-
-        // this handles case 2. we don't want to handle this case at the beginning of this procedure, since it's
-        // possible that this code might run during case 1, which would be incorrect. by doing this at the end of
-        // this procedure, we guarantee that it's case 2, since we just added an entry.
-
-        history->oldest_index = (history->oldest_index + 1) % MAX_EDITOR_HISTORY_ENTRIES;
-
-        // example:
-        // [oldest|e|e|e|e|e|e|current]
-        // [current,oldest|e|e|e|e|e|e|e]
-        // [current|oldest|e|e|e|e|e|e]
-        // current will be deallocated next time we add.
+            history->current_index = wrapped_new_entry_index;
+            history->end_index = wrapped_new_entry_index;
+            history->entries[wrapped_new_entry_index] = editor_action;
+        } else {
+            for (int32 i = new_entry_index; i <= end_index; i++) {
+                int32 wrapped_index = i % MAX_EDITOR_HISTORY_ENTRIES;
+                deallocate(history->allocator_pointer, history->entries[wrapped_index]);
+                history->entries[wrapped_index] = NULL;
+                //debug_print("deallocated history at index %d\n", i);
+            }
+            
+            history->current_index = wrapped_new_entry_index;
+            history->end_index = wrapped_new_entry_index;
+            history->entries[wrapped_new_entry_index] = editor_action;
+        }
     }
 
     history->num_undone = 0;
@@ -74,7 +76,8 @@ void _history_add_action(Editor_History *history, Editor_Action *editor_action) 
     *allocated = value; \
     _history_add_action(history_pointer, (Editor_Action *) allocated)
 
-void editor_add_normal_entity(Editor_State *editor_state, Game_State *game_state, Add_Normal_Entity_Action action) {
+void editor_add_normal_entity(Editor_State *editor_state, Game_State *game_state, Add_Normal_Entity_Action action,
+                              bool32 is_redoing) {
     int32 mesh_id = get_mesh_id_by_name(game_state,
                                         &game_state->current_level,
                                         Mesh_Type::PRIMITIVE,
@@ -95,9 +98,10 @@ void editor_add_normal_entity(Editor_State *editor_state, Game_State *game_state
     editor_state->selected_entity_type = ENTITY_NORMAL;
     editor_state->selected_entity_id = action.entity_id;
 
-    Editor_History *history = &editor_state->history;
-
-    history_add_action(history, Add_Normal_Entity_Action, action);
+    if (!is_redoing) {
+        Editor_History *history = &editor_state->history;
+        history_add_action(history, Add_Normal_Entity_Action, action);
+    }
 }
 
 void undo_add_normal_entity(Editor_State *editor_state, Level *level, Add_Normal_Entity_Action action) {
@@ -105,22 +109,42 @@ void undo_add_normal_entity(Editor_State *editor_state, Level *level, Add_Normal
     level_delete_entity(level, action.entity_type, action.entity_id);
 }
 
+int32 history_get_num_entries(Editor_History *history) {
+    if (history->start_index == -1 && history->end_index == -1) return 0;
+
+    int32 count;
+    if (history->end_index < history->start_index) {
+        // [e|end|_|_|start|e|e|e]
+        // end = 1, start = 4, max = 8
+        // unwrapped_end = 8 + 1 = 9
+        // count = 9 - 4 + 1 = 6
+        int32 unwrapped_end = MAX_EDITOR_HISTORY_ENTRIES + history->end_index;
+        count = unwrapped_end - history->start_index + 1;
+    } else {
+        // [oldest|e|e|e|e|e|end|_]
+        count = history->end_index - history->start_index + 1;
+    }
+    
+    return count;
+}
+
 void history_undo(Game_State *game_state, Editor_History *history) {
-    if (history->num_undone == history->num_entries) return;
+    assert(history->start_index >= 0);
+    assert(history->end_index >= 0);
 
-    // we undo the entry one before current_index. current_index is where the new entry will go when we're
-    // adding an action.
+    int32 num_entries = history_get_num_entries(history);
 
-    int32 last_action_index = ((MAX_EDITOR_HISTORY_ENTRIES + (history->current_index - 1))
-                               % MAX_EDITOR_HISTORY_ENTRIES);
-    Editor_Action *last_action = history->entries[last_action_index];
-    switch (last_action->type) {
+    if (history->num_undone == num_entries) return;
+
+    // we undo the action at current_index.
+    Editor_Action *current_action = history->entries[history->current_index];
+    switch (current_action->type) {
         case ACTION_NONE: {
             assert(!"Action does not have a type.");
             return;
         }
         case ACTION_ADD_NORMAL_ENTITY: {
-            Add_Normal_Entity_Action *action = (Add_Normal_Entity_Action *) last_action;
+            Add_Normal_Entity_Action *action = (Add_Normal_Entity_Action *) current_action;
             undo_add_normal_entity(&game_state->editor_state, &game_state->current_level, *action);
         } break;
         default: {
@@ -129,7 +153,44 @@ void history_undo(Game_State *game_state, Editor_History *history) {
         }
     }
 
-    history->current_index = ((MAX_EDITOR_HISTORY_ENTRIES + (history->current_index - 1))
-                              % MAX_EDITOR_HISTORY_ENTRIES);
+    if (history->current_index == history->start_index) {
+        history->current_index = -1;
+    } else {
+        history->current_index = ((MAX_EDITOR_HISTORY_ENTRIES + (history->current_index - 1))
+                                  % MAX_EDITOR_HISTORY_ENTRIES);    
+    }
+    
     history->num_undone++;
+}
+
+void history_redo(Game_State *game_state, Editor_History *history) {
+    assert(history->num_undone > 0);
+
+    // we redo the action at current_index + 1, unless current_index is -1, in which case we redo the action
+    // at start_index.
+    int32 redo_index;
+    if (history->current_index == -1) {
+        redo_index = history->start_index;
+    } else {
+        redo_index = (history->current_index + 1) % MAX_EDITOR_HISTORY_ENTRIES;
+    }
+
+    Editor_Action *redo_action = history->entries[redo_index];
+    switch (redo_action->type) {
+        case ACTION_NONE: {
+            assert(!"Action does not have a type.");
+            return;
+        }
+        case ACTION_ADD_NORMAL_ENTITY: {
+            Add_Normal_Entity_Action *action = (Add_Normal_Entity_Action *) redo_action;
+            editor_add_normal_entity(&game_state->editor_state, game_state, *action, true);
+        } break;
+        default: {
+            assert(!"Unhandled editor action type.");
+            return;
+        }
+    }
+
+    history->current_index = redo_index;
+    history->num_undone--;
 }

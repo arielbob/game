@@ -1802,29 +1802,28 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
 
     y += button_height + button_height;
 
+    int32 num_history_entries = history_get_num_entries(&editor_state->history);
     bool32 undo_clicked = do_text_button(render_state->display_output.width - sidebar_button_width, y,
-                                         sidebar_button_width, button_height,
+                                         0.5f * sidebar_button_width - 1, button_height,
                                          default_text_button_style, default_text_style,
                                          "Undo",
                                          button_font_name,
-                                         editor_state->history.num_undone == editor_state->history.num_entries,
+                                         editor_state->history.num_undone == num_history_entries,
                                          "editor_undo");
     if (undo_clicked) {
         history_undo(game_state, &editor_state->history);
     }
 
-#if 0
-    bool32 redo_clicked = do_text_button(render_state->display_output.width - sidebar_button_width, y,
-                                         sidebar_button_width, button_height,
+    bool32 redo_clicked = do_text_button(render_state->display_output.width - 0.5f * sidebar_button_width, y,
+                                         0.5f * sidebar_button_width, button_height,
                                          default_text_button_style, default_text_style,
                                          "Redo",
                                          button_font_name,
-                                         editor_state->history.current_index == editor_state->history.oldest_index,
+                                         num_history_entries == 0 || editor_state->history.num_undone == 0,
                                          "editor_redo");
     if (redo_clicked) {
-        //history_redo(game_state, &editor_state->history);
+        history_redo(game_state, &editor_state->history);
     }
-#endif
 
     if (!editor_state->is_new_level) {
         char *filename_buf = to_char_array((Allocator *) &memory.frame_arena, editor_state->current_level_filename);
@@ -1917,6 +1916,58 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
     do_text(ui_manager,
             5.0f, render_state->display_output.height - 90.0f,
             buf, editor_font_name, default_text_style, "editor history heap size");
+
+    String_Buffer history_buf = make_string_buffer((Allocator *) &memory.frame_arena, 128);
+    append_string(&history_buf, "[ ");
+    for (int32 i = 0; i < MAX_EDITOR_HISTORY_ENTRIES; i++) {
+        if (i == editor_state->history.start_index) {
+            append_string(&history_buf, "start ");
+        }
+
+        if (i == editor_state->history.end_index) {
+            append_string(&history_buf, "end ");
+        }
+        
+        if (i == editor_state->history.current_index) {
+            append_string(&history_buf, "current ");
+        }
+
+        if (editor_state->history.entries[i] == NULL) {
+            append_string(&history_buf, "_ ");
+        } else {
+            append_string(&history_buf, "e ");
+
+            if (editor_state->history.entries[i]->type == ACTION_ADD_NORMAL_ENTITY) {
+                Add_Normal_Entity_Action *action = (Add_Normal_Entity_Action *) editor_state->history.entries[i];
+                Marker m = begin_region();
+                char *whatever = string_format((Allocator *) &memory.global_stack, 8, "(%d) ", action->entity_id);
+                append_string(&history_buf, whatever);
+                end_region(m);
+            }
+
+        }
+        
+        if (i < MAX_EDITOR_HISTORY_ENTRIES - 1) {
+            append_string(&history_buf, " | ");
+        }
+        
+    }
+    append_string(&history_buf, "]");
+
+    buf = to_char_array((Allocator *) &memory.frame_arena, history_buf);
+    do_text(ui_manager,
+            5.0f, render_state->display_output.height - 114.0f,
+            buf, editor_font_name, default_text_style, "editor history");
+
+    buf = string_format((Allocator *) &memory.frame_arena, 64, "num_undone: %d", editor_state->history.num_undone);
+    do_text(ui_manager,
+            5.0f, render_state->display_output.height - 129.0f,
+            buf, editor_font_name, default_text_style, "num undone");
+
+    buf = string_format((Allocator *) &memory.frame_arena, 64, "num_history_entries: %d", num_history_entries);
+    do_text(ui_manager,
+            5.0f, render_state->display_output.height - 143.0f,
+            buf, editor_font_name, default_text_style, "num history entries");
 }
 
 int32 pick_entity(Game_State *game_state, Ray cursor_ray, Entity *entity_result, int32 *index_result) {
