@@ -276,6 +276,7 @@ inline bool32 was_clicked(Controller_Button_State button_state);
 inline bool32 being_held(Controller_Button_State button_state);
 inline bool32 just_pressed(Controller_Button_State button_state);
 inline bool32 just_lifted(Controller_Button_State button_state);
+Entity *get_entity(Level *level, Entity_Type entity_type, int32 entity_id);
 Entity *get_selected_entity(Game_State *game_state);
 Font get_font(Game_State *game_state, char *font_name);
 //int32 add_material(Game_State *game_state, Material material);

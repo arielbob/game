@@ -1,16 +1,22 @@
 #ifndef EDITOR_HISTORY_H
 #define EDITOR_HISTORY_H
 
+#include "level.h"
+
+#define MAX_EDITOR_HISTORY_ENTRIES 3
+
 struct Editor_State;
 struct Game_State;
 
 enum Action_Type {
     ACTION_NONE,
     ACTION_ADD_NORMAL_ENTITY,
-    ACTION_ADD_POINT_LIGHT_ENTITY
+    ACTION_ADD_POINT_LIGHT_ENTITY,
+    ACTION_DELETE_NORMAL_ENTITY,
+    ACTION_DELETE_POINT_LIGHT_ENTITY
 };
 
-#define ACTION_HEADER \
+#define ACTION_HEADER                           \
     Action_Type type;
 
 struct Editor_Action {
@@ -23,18 +29,18 @@ struct Add_Normal_Entity_Action {
     int32 entity_id;
 };
 
-struct Add_Point_Light_Entity_Action {
-    ACTION_HEADER
-
-    int32 entity_id;
-};
-
 Add_Normal_Entity_Action make_add_normal_entity_action() {
     Add_Normal_Entity_Action action = {};
     action.type = ACTION_ADD_NORMAL_ENTITY;
     action.entity_id = -1;
     return action;
 }
+
+struct Add_Point_Light_Entity_Action {
+    ACTION_HEADER
+
+    int32 entity_id;
+};
 
 Add_Point_Light_Entity_Action make_add_point_light_entity_action() {
     Add_Point_Light_Entity_Action action = {};
@@ -43,8 +49,33 @@ Add_Point_Light_Entity_Action make_add_point_light_entity_action() {
     return action;
 }
 
+struct Delete_Normal_Entity_Action {
+    ACTION_HEADER
+    
+    int32 entity_id;
+    Normal_Entity entity;
+};
 
-#define MAX_EDITOR_HISTORY_ENTRIES 3
+Delete_Normal_Entity_Action make_delete_normal_entity_action(int32 entity_id) {
+    Delete_Normal_Entity_Action action = {};
+    action.type = ACTION_DELETE_NORMAL_ENTITY;
+    action.entity_id = entity_id;
+    return action;
+}
+
+struct Delete_Point_Light_Entity_Action {
+    ACTION_HEADER
+    
+    int32 entity_id;
+    Point_Light_Entity entity;
+};
+
+Delete_Point_Light_Entity_Action make_delete_point_light_entity_action(int32 entity_id) {
+    Delete_Point_Light_Entity_Action action = {};
+    action.type = ACTION_DELETE_POINT_LIGHT_ENTITY;
+    action.entity_id = entity_id;
+    return action;
+}
 
 struct Editor_History {
     Allocator *allocator_pointer;
@@ -116,8 +147,12 @@ void editor_add_normal_entity(Editor_State *editor_state, Game_State *game_state
 void editor_add_point_light_entity(Editor_State *editor_state, Game_State *game_state,
                                    Add_Point_Light_Entity_Action action,
                                    bool32 is_redoing = false);
+void editor_delete_entity(Editor_State *editor_state, Level *level,
+                          Entity_Type entity_type, int32 entity_id,
+                          bool32 is_redoing = false);
 void history_undo(Game_State *game_state, Editor_History *history);
 void history_redo(Game_State *game_state, Editor_History *history);
 int32 history_get_num_entries(Editor_History *history);
+
 
 #endif

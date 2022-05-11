@@ -72,10 +72,11 @@ void _history_add_action(Editor_History *history, Editor_Action *editor_action) 
 }
 
 #define history_add_action(history_pointer, type, value)      \
-    type *allocated = (type *) allocate(history_pointer->allocator_pointer, sizeof(type)); \
+    type *allocated = (type *) allocate((history_pointer)->allocator_pointer, sizeof(type)); \
     *allocated = value; \
     _history_add_action(history_pointer, (Editor_Action *) allocated)
 
+// normal entity adding
 void editor_add_normal_entity(Editor_State *editor_state, Game_State *game_state, Add_Normal_Entity_Action action,
                               bool32 is_redoing) {
     int32 mesh_id = get_mesh_id_by_name(game_state,
@@ -109,6 +110,7 @@ void undo_add_normal_entity(Editor_State *editor_state, Level *level, Add_Normal
     level_delete_entity(level, ENTITY_NORMAL, action.entity_id);
 }
 
+// point light adding
 void editor_add_point_light_entity(Editor_State *editor_state, Game_State *game_state,
                                    Add_Point_Light_Entity_Action action,
                                    bool32 is_redoing) {
@@ -134,6 +136,63 @@ void undo_add_point_light_entity(Editor_State *editor_state, Level *level, Add_P
     deselect_entity(editor_state);
     level_delete_entity(level, ENTITY_POINT_LIGHT, action.entity_id);
 }
+
+// normal entity deleting
+void editor_delete_normal_entity(Editor_State *editor_state, Level *level,
+                                 Delete_Normal_Entity_Action action, bool32 is_redoing) {
+    if (!is_redoing) {
+        Normal_Entity *entity = (Normal_Entity *) get_entity(level, ENTITY_NORMAL, action.entity_id);
+        action.entity = *entity;
+        history_add_action(&editor_state->history, Delete_Normal_Entity_Action, action);
+    }
+
+    level_delete_entity(level, ENTITY_NORMAL, action.entity_id);
+    deselect_entity(editor_state);
+}
+
+void undo_delete_normal_entity(Game_State *game_state, Level *level, Delete_Normal_Entity_Action action) {
+    level_add_entity(game_state, level, action.entity, action.entity_id);
+}
+
+// point light entity deleting
+void editor_delete_point_light_entity(Editor_State *editor_state, Level *level,
+                                      Delete_Point_Light_Entity_Action action, bool32 is_redoing) {
+    if (!is_redoing) {
+        Point_Light_Entity *entity = (Point_Light_Entity *) get_entity(level, ENTITY_POINT_LIGHT, action.entity_id);
+        action.entity = *entity;
+        history_add_action(&editor_state->history, Delete_Point_Light_Entity_Action, action);
+    }
+
+    level_delete_entity(level, ENTITY_POINT_LIGHT, action.entity_id);
+    deselect_entity(editor_state);
+}
+
+void undo_delete_point_light_entity(Game_State *game_state, Level *level, Delete_Point_Light_Entity_Action action) {
+    level_add_point_light_entity(game_state, level, action.entity, action.entity_id);
+}
+
+// NOTE: this should only be called by the editor. this creates the action objects for us, but the objects only
+//       have the entity id. the calls to editor_delete_* fill in the struct with the Entity object. we need to
+//       store the entity object, since when we redo a deletion (i.e. adding the entity back), we need to the
+//       entity's data.
+void editor_delete_entity(Editor_State *editor_state, Level *level,
+                          Entity_Type entity_type, int32 entity_id,
+                          bool32 is_redoing) {
+    switch (entity_type) {
+        case ENTITY_NORMAL: {
+            Delete_Normal_Entity_Action action = make_delete_normal_entity_action(entity_id);
+            editor_delete_normal_entity(editor_state, level, action, is_redoing);
+        } break;
+        case ENTITY_POINT_LIGHT: {
+            Delete_Point_Light_Entity_Action action = make_delete_point_light_entity_action(entity_id);
+            editor_delete_point_light_entity(editor_state, level, action, is_redoing);
+        } break;
+        default: {
+            assert(!"Unhandled entity type.");
+        } break;
+    }
+}
+
 
 int32 history_get_num_entries(Editor_History *history) {
     if (history->start_index == -1 && history->end_index == -1) return 0;
@@ -177,6 +236,14 @@ void history_undo(Game_State *game_state, Editor_History *history) {
             Add_Point_Light_Entity_Action *action = (Add_Point_Light_Entity_Action *) current_action;
             undo_add_point_light_entity(&game_state->editor_state, &game_state->current_level, *action);
         } break;
+        case ACTION_DELETE_NORMAL_ENTITY: {
+            Delete_Normal_Entity_Action *action = (Delete_Normal_Entity_Action *) current_action;
+            undo_delete_normal_entity(game_state, &game_state->current_level, *action);
+        } break;
+        case ACTION_DELETE_POINT_LIGHT_ENTITY: {
+            Delete_Point_Light_Entity_Action *action = (Delete_Point_Light_Entity_Action *) current_action;
+            undo_delete_point_light_entity(game_state, &game_state->current_level, *action);
+        } break;
         default: {
             assert(!"Unhandled editor action type.");
             return;
@@ -218,6 +285,14 @@ void history_redo(Game_State *game_state, Editor_History *history) {
         case ACTION_ADD_POINT_LIGHT_ENTITY: {
             Add_Point_Light_Entity_Action *action = (Add_Point_Light_Entity_Action *) redo_action;
             editor_add_point_light_entity(&game_state->editor_state, game_state, *action, true);
+        } break;
+        case ACTION_DELETE_NORMAL_ENTITY: {
+            Delete_Normal_Entity_Action *action = (Delete_Normal_Entity_Action *) redo_action;
+            editor_delete_normal_entity(&game_state->editor_state, &game_state->current_level, *action, true);
+        } break;
+        case ACTION_DELETE_POINT_LIGHT_ENTITY: {
+            Delete_Point_Light_Entity_Action *action = (Delete_Point_Light_Entity_Action *) redo_action;
+            editor_delete_point_light_entity(&game_state->editor_state, &game_state->current_level, *action, true);
         } break;
         default: {
             assert(!"Unhandled editor action type.");

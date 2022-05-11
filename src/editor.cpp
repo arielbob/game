@@ -1489,8 +1489,11 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     draw_row_padding(x, &y, row_width, padding_y, row_color,
                      side_flags | SIDE_BOTTOM, row_id, row_index++);
     if (delete_entity_pressed) {
+        editor_delete_entity(editor_state, level, editor_state->selected_entity_type, editor_state->selected_entity_id);
+#if 0
         level_delete_entity(level, editor_state->selected_entity_type, editor_state->selected_entity_id);
         deselect_entity(editor_state);
+#endif
     }
 }
 
@@ -1762,21 +1765,6 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
     if (add_point_light_entity_clicked) {
         Add_Point_Light_Entity_Action action = make_add_point_light_entity_action();
         editor_add_point_light_entity(editor_state, game_state, action);
-
-#if 0
-        int32 mesh_id = get_mesh_id_by_name(game_state,
-                                            &game_state->current_level,
-                                            Mesh_Type::PRIMITIVE,
-                                            make_string("cube"));
-        AABB primitive_cube_mesh_aabb = (get_mesh(game_state, &game_state->current_level,
-                                                  Mesh_Type::PRIMITIVE, mesh_id)).aabb;
-        
-        Point_Light_Entity new_entity = make_point_light_entity(make_vec3(1.0f, 1.0f, 1.0f),
-                                                                0.0f, 5.0f, make_transform());
-        int32 entity_id = level_add_point_light_entity(game_state, &game_state->current_level, new_entity);
-        editor_state->selected_entity_type = new_entity.type;
-        editor_state->selected_entity_id = entity_id;
-#endif
     }
 
     bool32 toggle_colliders_clicked = do_text_button(render_state->display_output.width - sidebar_button_width, y,

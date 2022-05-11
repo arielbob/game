@@ -353,9 +353,10 @@
 //       - TODO (done): undoing
 //       - TODO (done): redoing history
 //       - TODO (done): add actions for adding point light entities
-//       - TODO: add actions for deleting entities
+//       - TODO (done): add actions for deleting entities
 //       - TODO: add actions for transforms (translate, rotate, scale)
 //       - TODO: add actions for text box changes?
+//       - TODO: reset history on level load
 
 // TODO: replace the transform values in the entity box with slideable text boxes
 //       - TODO (done): create do_slider with no limits, would have to hide the slider when rendering
