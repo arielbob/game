@@ -106,7 +106,33 @@ void editor_add_normal_entity(Editor_State *editor_state, Game_State *game_state
 
 void undo_add_normal_entity(Editor_State *editor_state, Level *level, Add_Normal_Entity_Action action) {
     deselect_entity(editor_state);
-    level_delete_entity(level, action.entity_type, action.entity_id);
+    level_delete_entity(level, ENTITY_NORMAL, action.entity_id);
+}
+
+void editor_add_point_light_entity(Editor_State *editor_state, Game_State *game_state,
+                                   Add_Point_Light_Entity_Action action,
+                                   bool32 is_redoing) {
+    Point_Light_Entity new_entity = make_point_light_entity(make_vec3(1.0f, 1.0f, 1.0f),
+                                                            0.0f, 5.0f, make_transform());
+
+    if (action.entity_id >= 0) {
+        level_add_point_light_entity(game_state, &game_state->current_level, new_entity, action.entity_id);
+    } else {
+        action.entity_id = level_add_point_light_entity(game_state, &game_state->current_level, new_entity);
+    }
+
+    editor_state->selected_entity_type = ENTITY_POINT_LIGHT;
+    editor_state->selected_entity_id = action.entity_id;
+
+    if (!is_redoing) {
+        Editor_History *history = &editor_state->history;
+        history_add_action(history, Add_Point_Light_Entity_Action, action);
+    }
+}
+
+void undo_add_point_light_entity(Editor_State *editor_state, Level *level, Add_Point_Light_Entity_Action action) {
+    deselect_entity(editor_state);
+    level_delete_entity(level, ENTITY_POINT_LIGHT, action.entity_id);
 }
 
 int32 history_get_num_entries(Editor_History *history) {
@@ -147,6 +173,10 @@ void history_undo(Game_State *game_state, Editor_History *history) {
             Add_Normal_Entity_Action *action = (Add_Normal_Entity_Action *) current_action;
             undo_add_normal_entity(&game_state->editor_state, &game_state->current_level, *action);
         } break;
+        case ACTION_ADD_POINT_LIGHT_ENTITY: {
+            Add_Point_Light_Entity_Action *action = (Add_Point_Light_Entity_Action *) current_action;
+            undo_add_point_light_entity(&game_state->editor_state, &game_state->current_level, *action);
+        } break;
         default: {
             assert(!"Unhandled editor action type.");
             return;
@@ -184,6 +214,10 @@ void history_redo(Game_State *game_state, Editor_History *history) {
         case ACTION_ADD_NORMAL_ENTITY: {
             Add_Normal_Entity_Action *action = (Add_Normal_Entity_Action *) redo_action;
             editor_add_normal_entity(&game_state->editor_state, game_state, *action, true);
+        } break;
+        case ACTION_ADD_POINT_LIGHT_ENTITY: {
+            Add_Point_Light_Entity_Action *action = (Add_Point_Light_Entity_Action *) redo_action;
+            editor_add_point_light_entity(&game_state->editor_state, game_state, *action, true);
         } break;
         default: {
             assert(!"Unhandled editor action type.");

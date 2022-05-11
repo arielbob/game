@@ -7,7 +7,7 @@ struct Game_State;
 enum Action_Type {
     ACTION_NONE,
     ACTION_ADD_NORMAL_ENTITY,
-    
+    ACTION_ADD_POINT_LIGHT_ENTITY
 };
 
 #define ACTION_HEADER \
@@ -21,16 +21,28 @@ struct Add_Normal_Entity_Action {
     ACTION_HEADER
 
     int32 entity_id;
-    Entity_Type entity_type;
+};
+
+struct Add_Point_Light_Entity_Action {
+    ACTION_HEADER
+
+    int32 entity_id;
 };
 
 Add_Normal_Entity_Action make_add_normal_entity_action() {
     Add_Normal_Entity_Action action = {};
     action.type = ACTION_ADD_NORMAL_ENTITY;
-    action.entity_type = ENTITY_NORMAL;
     action.entity_id = -1;
     return action;
 }
+
+Add_Point_Light_Entity_Action make_add_point_light_entity_action() {
+    Add_Point_Light_Entity_Action action = {};
+    action.type = ACTION_ADD_POINT_LIGHT_ENTITY;
+    action.entity_id = -1;
+    return action;
+}
+
 
 #define MAX_EDITOR_HISTORY_ENTRIES 3
 
@@ -100,7 +112,10 @@ struct Editor_History {
  */
 
 void editor_add_normal_entity(Editor_State *editor_state, Game_State *game_state, Add_Normal_Entity_Action action,
-                              bool32 is_redoing=false);
+                              bool32 is_redoing = false);
+void editor_add_point_light_entity(Editor_State *editor_state, Game_State *game_state,
+                                   Add_Point_Light_Entity_Action action,
+                                   bool32 is_redoing = false);
 void history_undo(Game_State *game_state, Editor_History *history);
 void history_redo(Game_State *game_state, Editor_History *history);
 int32 history_get_num_entries(Editor_History *history);

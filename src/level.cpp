@@ -421,6 +421,11 @@ int32 level_delete_entity(Level *level, Entity_Type type, int32 id) {
     return id;
 }
 
+int32 level_add_point_light_entity(Game_State *game_state, Level *level, Point_Light_Entity entity, int32 entity_id) {
+    hash_table_add(&level->point_light_entity_table, entity_id, entity);
+    return entity_id;
+}
+
 int32 level_add_point_light_entity(Game_State *game_state, Level *level, Point_Light_Entity entity) {
     int32 entity_id = level->point_light_entity_table.total_added_ever;
     hash_table_add(&level->point_light_entity_table, entity_id, entity);

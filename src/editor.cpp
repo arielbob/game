@@ -1751,21 +1751,6 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
     if (add_normal_entity_clicked) {
         Add_Normal_Entity_Action action = make_add_normal_entity_action();
         editor_add_normal_entity(editor_state, game_state, action);
-
-#if 0
-        int32 mesh_id = get_mesh_id_by_name(game_state,
-                                            &game_state->current_level,
-                                            Mesh_Type::PRIMITIVE,
-                                            make_string("cube"));
-        AABB primitive_cube_mesh_aabb = (get_mesh(game_state, &game_state->current_level,
-                                                  Mesh_Type::PRIMITIVE, mesh_id)).aabb;
-        
-        Normal_Entity new_entity = make_entity(Mesh_Type::PRIMITIVE, mesh_id, -1, make_transform(),
-                                               primitive_cube_mesh_aabb);
-        int32 entity_id = level_add_entity(game_state, &game_state->current_level, new_entity);
-        editor_state->selected_entity_type = ENTITY_NORMAL;
-        editor_state->selected_entity_id = entity_id;
-#endif
     }
 
     bool32 add_point_light_entity_clicked = do_text_button(render_state->display_output.width - sidebar_button_width, y,
@@ -1775,6 +1760,10 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
                                                       button_font_name, "add_point_light_entity");
     y += button_height + button_gap;
     if (add_point_light_entity_clicked) {
+        Add_Point_Light_Entity_Action action = make_add_point_light_entity_action();
+        editor_add_point_light_entity(editor_state, game_state, action);
+
+#if 0
         int32 mesh_id = get_mesh_id_by_name(game_state,
                                             &game_state->current_level,
                                             Mesh_Type::PRIMITIVE,
@@ -1787,6 +1776,7 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
         int32 entity_id = level_add_point_light_entity(game_state, &game_state->current_level, new_entity);
         editor_state->selected_entity_type = new_entity.type;
         editor_state->selected_entity_id = entity_id;
+#endif
     }
 
     bool32 toggle_colliders_clicked = do_text_button(render_state->display_output.width - sidebar_button_width, y,

@@ -352,6 +352,7 @@
 //       - TODO (done): use start, end, and current indices instead
 //       - TODO (done): undoing
 //       - TODO (done): redoing history
+//       - TODO (done): add actions for adding point light entities
 //       - TODO: add actions for deleting entities
 //       - TODO: add actions for transforms (translate, rotate, scale)
 //       - TODO: add actions for text box changes?
