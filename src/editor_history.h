@@ -84,13 +84,6 @@ struct Editor_History {
     int32 end_index = -1; // end index is the index of the last entry
     int32 current_index = -1; // the entry we just added/the entry that will be undone
     int32 num_undone = 0;
-#if 0
-    int32 num_entries = 0;
-    int32 num_undone = 0;
-    int32 current_index = 0;
-    int32 oldest_index = 0;
-#endif
-    //int32 newest_index = 0;
 
     // use a push buffer?
     // idk, we kind of want to have a set length
@@ -153,6 +146,6 @@ void editor_delete_entity(Editor_State *editor_state, Level *level,
 void history_undo(Game_State *game_state, Editor_History *history);
 void history_redo(Game_State *game_state, Editor_History *history);
 int32 history_get_num_entries(Editor_History *history);
-
+void history_reset(Editor_History *history);
 
 #endif

@@ -1562,6 +1562,7 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
                 copy_string(&editor_state->current_level_filename, make_string(absolute_filename));
                 editor_state->selected_entity_id = -1;
                 just_loaded_level = true;
+                history_reset(&editor_state->history);
             }
         }
 

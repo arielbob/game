@@ -578,6 +578,35 @@ void deallocate(Allocator *allocator, void *address) {
     }
 }
 
+void clear(Allocator *allocator, bool32 zero_memory = false) {
+    switch (allocator->type) {
+        case STACK_ALLOCATOR: {
+            // TODO: implement a clear stack procedure?
+            assert(!"Stacks are cleared using end_region()");
+            return;
+        }
+        case ARENA_ALLOCATOR: {
+            Arena_Allocator *arena = (Arena_Allocator *) allocator;
+            clear_arena(arena, zero_memory);
+            return;
+        }
+        case POOL_ALLOCATOR: {
+            Pool_Allocator *pool = (Pool_Allocator *) allocator;
+            clear_pool(pool);
+            return;
+        }
+        case HEAP_ALLOCATOR: {
+            Heap_Allocator *heap = (Heap_Allocator *) allocator;
+            clear_heap(heap);
+            return;
+        }
+        default: {
+            assert(!"Unhandled allocator type.");
+            return;
+        } break;
+    }
+}
+
 //#define copy_struct(allocator_pointer, type, value) *(allocate(allocator_pointer, sizeof(type))) = value
 
 // #define allocate(allocator, size) _allocate((Allocator *) allocator, size)

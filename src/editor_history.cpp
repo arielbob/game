@@ -193,7 +193,6 @@ void editor_delete_entity(Editor_State *editor_state, Level *level,
     }
 }
 
-
 int32 history_get_num_entries(Editor_History *history) {
     if (history->start_index == -1 && history->end_index == -1) return 0;
 
@@ -302,4 +301,12 @@ void history_redo(Game_State *game_state, Editor_History *history) {
 
     history->current_index = redo_index;
     history->num_undone--;
+}
+
+void history_reset(Editor_History *history) {
+    clear(history->allocator_pointer);
+    history->start_index = -1;
+    history->end_index = -1;
+    history->current_index = -1;
+    history->num_undone = 0;
 }
