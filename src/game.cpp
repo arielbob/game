@@ -880,11 +880,9 @@ Entity *get_entity(Level *level, Entity_Type entity_type, int32 entity_id) {
 
 Entity *get_selected_entity(Game_State *game_state) {
     Editor_State *editor_state = &game_state->editor_state;
-
-    
-    int32 index = editor_state->selected_entity_id;
-
     Level *level = &game_state->current_level;
+
+    int32 index = editor_state->selected_entity_id;
 
     Entity *entity = NULL;
     entity = get_entity(level, editor_state->selected_entity_type, index);

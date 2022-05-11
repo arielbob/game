@@ -171,6 +171,23 @@ void undo_delete_point_light_entity(Game_State *game_state, Level *level, Delete
     level_add_point_light_entity(game_state, level, action.entity, action.entity_id);
 }
 
+// entity transforming
+void editor_transform_entity(Game_State *game_state, Editor_State *editor_state,
+                             Transform_Entity_Action action, bool32 is_redoing) {
+    if (!is_redoing) {
+        history_add_action(&editor_state->history, Transform_Entity_Action, action);
+    }
+    
+    Level *level = &game_state->current_level;
+    Entity *entity = get_entity(level, action.entity_type, action.entity_id);
+    set_entity_transform(game_state, entity, action.transform);
+}
+
+void undo_transform_entity(Game_State *game_state, Transform_Entity_Action action) {
+    Entity *entity = get_entity(&game_state->current_level, action.entity_type, action.entity_id);
+    set_entity_transform(game_state, entity, action.original_transform);
+}
+
 // NOTE: this should only be called by the editor. this creates the action objects for us, but the objects only
 //       have the entity id. the calls to editor_delete_* fill in the struct with the Entity object. we need to
 //       store the entity object, since when we redo a deletion (i.e. adding the entity back), we need to the
@@ -243,6 +260,10 @@ void history_undo(Game_State *game_state, Editor_History *history) {
             Delete_Point_Light_Entity_Action *action = (Delete_Point_Light_Entity_Action *) current_action;
             undo_delete_point_light_entity(game_state, &game_state->current_level, *action);
         } break;
+        case ACTION_TRANSFORM_ENTITY: {
+            Transform_Entity_Action *action = (Transform_Entity_Action *) current_action;
+            undo_transform_entity(game_state, *action);
+        } break;
         default: {
             assert(!"Unhandled editor action type.");
             return;
@@ -271,6 +292,8 @@ void history_redo(Game_State *game_state, Editor_History *history) {
         redo_index = (history->current_index + 1) % MAX_EDITOR_HISTORY_ENTRIES;
     }
 
+
+    Editor_State *editor_state = &game_state->editor_state;
     Editor_Action *redo_action = history->entries[redo_index];
     switch (redo_action->type) {
         case ACTION_NONE: {
@@ -279,19 +302,23 @@ void history_redo(Game_State *game_state, Editor_History *history) {
         }
         case ACTION_ADD_NORMAL_ENTITY: {
             Add_Normal_Entity_Action *action = (Add_Normal_Entity_Action *) redo_action;
-            editor_add_normal_entity(&game_state->editor_state, game_state, *action, true);
+            editor_add_normal_entity(editor_state, game_state, *action, true);
         } break;
         case ACTION_ADD_POINT_LIGHT_ENTITY: {
             Add_Point_Light_Entity_Action *action = (Add_Point_Light_Entity_Action *) redo_action;
-            editor_add_point_light_entity(&game_state->editor_state, game_state, *action, true);
+            editor_add_point_light_entity(editor_state, game_state, *action, true);
         } break;
         case ACTION_DELETE_NORMAL_ENTITY: {
             Delete_Normal_Entity_Action *action = (Delete_Normal_Entity_Action *) redo_action;
-            editor_delete_normal_entity(&game_state->editor_state, &game_state->current_level, *action, true);
+            editor_delete_normal_entity(editor_state, &game_state->current_level, *action, true);
         } break;
         case ACTION_DELETE_POINT_LIGHT_ENTITY: {
             Delete_Point_Light_Entity_Action *action = (Delete_Point_Light_Entity_Action *) redo_action;
-            editor_delete_point_light_entity(&game_state->editor_state, &game_state->current_level, *action, true);
+            editor_delete_point_light_entity(editor_state, &game_state->current_level, *action, true);
+        } break;
+        case ACTION_TRANSFORM_ENTITY: {
+            Transform_Entity_Action *action = (Transform_Entity_Action *) redo_action;
+            editor_transform_entity(game_state, editor_state, *action, true);
         } break;
         default: {
             assert(!"Unhandled editor action type.");

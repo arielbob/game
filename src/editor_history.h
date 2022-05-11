@@ -13,7 +13,8 @@ enum Action_Type {
     ACTION_ADD_NORMAL_ENTITY,
     ACTION_ADD_POINT_LIGHT_ENTITY,
     ACTION_DELETE_NORMAL_ENTITY,
-    ACTION_DELETE_POINT_LIGHT_ENTITY
+    ACTION_DELETE_POINT_LIGHT_ENTITY,
+    ACTION_TRANSFORM_ENTITY
 };
 
 #define ACTION_HEADER                           \
@@ -22,6 +23,7 @@ enum Action_Type {
 struct Editor_Action {
     ACTION_HEADER
 };
+
 
 struct Add_Normal_Entity_Action {
     ACTION_HEADER
@@ -36,6 +38,7 @@ Add_Normal_Entity_Action make_add_normal_entity_action() {
     return action;
 }
 
+
 struct Add_Point_Light_Entity_Action {
     ACTION_HEADER
 
@@ -48,6 +51,7 @@ Add_Point_Light_Entity_Action make_add_point_light_entity_action() {
     action.entity_id = -1;
     return action;
 }
+
 
 struct Delete_Normal_Entity_Action {
     ACTION_HEADER
@@ -63,6 +67,7 @@ Delete_Normal_Entity_Action make_delete_normal_entity_action(int32 entity_id) {
     return action;
 }
 
+
 struct Delete_Point_Light_Entity_Action {
     ACTION_HEADER
     
@@ -76,6 +81,28 @@ Delete_Point_Light_Entity_Action make_delete_point_light_entity_action(int32 ent
     action.entity_id = entity_id;
     return action;
 }
+
+
+struct Transform_Entity_Action {
+    ACTION_HEADER
+    
+    int32 entity_id;
+    Entity_Type entity_type;
+    Transform original_transform;
+    Transform transform;
+};
+
+Transform_Entity_Action make_transform_entity_action(Entity_Type entity_type, int32 entity_id,
+                                                     Transform original_transform, Transform new_transform) {
+    Transform_Entity_Action action = {};
+    action.type = ACTION_TRANSFORM_ENTITY;
+    action.entity_type = entity_type;
+    action.entity_id = entity_id;
+    action.original_transform = original_transform;
+    action.transform = new_transform;
+    return action;
+}
+
 
 struct Editor_History {
     Allocator *allocator_pointer;
@@ -143,6 +170,8 @@ void editor_add_point_light_entity(Editor_State *editor_state, Game_State *game_
 void editor_delete_entity(Editor_State *editor_state, Level *level,
                           Entity_Type entity_type, int32 entity_id,
                           bool32 is_redoing = false);
+void editor_transform_entity(Game_State *game_state, Editor_State *editor_state,
+                             Transform_Entity_Action action, bool32 is_redoing = false);
 void history_undo(Game_State *game_state, Editor_History *history);
 void history_redo(Game_State *game_state, Editor_History *history);
 int32 history_get_num_entries(Editor_History *history);

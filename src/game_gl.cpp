@@ -355,8 +355,14 @@
 //       - TODO (done): add actions for adding point light entities
 //       - TODO (done): add actions for deleting entities
 //       - TODO (done): reset history on level load
-//       - TODO: add actions for transforms (translate, rotate, scale)
+//       - TODO (done): add actions for transforms with gizmo
 //       - TODO: add actions for text box changes?
+//               - i think it might be better to just have the actions tied to the state that is changed by the
+//                 text boxes, and not tied to text box states. this is because text boxes and other UI stuff
+//                 can go away between frames, so if for example you tried to undo or redo something in a text box,
+//                 there's no guarantee that that text box is even there, unless we also had UI stuff in the history,
+//                 which would be annoying, i think.
+//       - TODO: add transform action to history when changing slideable text boxes in entity box
 
 // TODO: replace the transform values in the entity box with slideable text boxes
 //       - TODO (done): create do_slider with no limits, would have to hide the slider when rendering

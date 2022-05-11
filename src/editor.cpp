@@ -2530,8 +2530,8 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
     
     if (editor_state->selected_gizmo_handle) {
         disable_input(ui_manager);
+        Entity *entity = get_selected_entity(game_state);
         if (controller_state->left_mouse.is_down) {
-            Entity *entity = get_selected_entity(game_state);
             editor_state->gizmo_transform_axis = get_gizmo_transform_axis(editor_state->transform_mode,
                                                                           editor_state->selected_gizmo_handle,
                                                                           editor_state->entity_original_transform);
@@ -2555,6 +2555,12 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
             editor_state->gizmo.transform.rotation = entity->transform.rotation;
         } else {
             editor_state->selected_gizmo_handle = GIZMO_HANDLE_NONE;
+
+            Transform_Entity_Action action = make_transform_entity_action(editor_state->selected_entity_type,
+                                                                          editor_state->selected_entity_id,
+                                                                          editor_state->entity_original_transform,
+                                                                          entity->transform);
+            editor_transform_entity(game_state, editor_state, action);
         }
     }
 
