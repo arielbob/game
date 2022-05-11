@@ -1284,6 +1284,8 @@ void update(Game_State *game_state,
     UI_Manager *ui_manager = &game_state->ui_manager;
     Render_State *render_state = &game_state->render_state;
 
+    ui_manager->last_frame_active = ui_manager->active;
+
     if (was_clicked(controller_state->key_f5)) {
         if (game_state->mode == Game_Mode::EDITING) {
             if (!game_state->editor_state.use_freecam) platform_set_cursor_visible(false);
@@ -1370,6 +1372,7 @@ void update(Game_State *game_state,
     draw_messages(&game_state->message_manager, display_output->width / 2.0f, display_output->height / 2.0f);
 
     clear_hot_if_gone(ui_manager);
+    clear_active_if_gone(ui_manager);
 
     // NOTE: it's fine to call delete_state_if_gone() here. this won't cause any accesses of deallocated memory
     //       when we render the UI, since if some element isn't in the push_buffer, which is also the condition

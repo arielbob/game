@@ -576,6 +576,7 @@ struct UI_Push_Buffer {
 struct UI_Manager {
     UI_id hot;
     UI_id active;
+    UI_id last_frame_active;
 
     int32 hot_layer;
     int32 current_layer;

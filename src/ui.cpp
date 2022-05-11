@@ -60,6 +60,30 @@ bool32 char_is_in_array(char c, char array[], int32 num_chars) {
     return false;
 }
 
+inline bool32 ui_id_is_empty(UI_id id) {
+    return ((id.string_ptr == NULL) && (id.index == 0));
+}
+
+inline bool32 ui_id_equals(UI_id id1, UI_id id2) {
+    return ((id1.string_ptr == id2.string_ptr) && (id1.index == id2.index));
+}
+
+inline bool32 is_active(UI_Manager *manager, UI_id id) {
+    return ui_id_equals(manager->active, id);
+}
+
+inline bool32 was_active(UI_Manager *manager, UI_id id) {
+    return ui_id_equals(manager->last_frame_active, id);
+}
+
+inline bool32 is_newly_active(UI_Manager *manager, UI_id id) {
+    return (is_active(manager, id) && !was_active(manager, id));
+}
+
+inline bool32 is_newly_inactive(UI_Manager *manager, UI_id id) {
+    return (!is_active(manager, id) && was_active(manager, id));
+}
+
 inline UI_id make_ui_id(UI_Type type, void *id, int32 index) {
     UI_id ui_id = { type, id, index };
     return ui_id;
@@ -256,14 +280,6 @@ void ui_add_color_picker(UI_Manager *manager, UI_Color_Picker color_picker) {
     *element = color_picker;
 }
 
-inline bool32 ui_id_is_empty(UI_id id) {
-    return ((id.string_ptr == NULL) && (id.index == 0));
-}
-
-inline bool32 ui_id_equals(UI_id id1, UI_id id2) {
-    return ((id1.string_ptr == id2.string_ptr) && (id1.index == id2.index));
-}
-
 uint32 get_hash(UI_id id, uint32 bucket_size) {
     String_Iterator it = make_string_iterator(make_string((char *) id.string_ptr));
     uint32 sum = 0;
@@ -344,6 +360,10 @@ inline void set_hot(UI_Manager *manager, UI_id hot) {
 inline void clear_hot(UI_Manager *manager) {
     manager->hot = {};
     manager->hot_layer = 0;
+}
+
+inline void clear_active(UI_Manager *manager) {
+    manager->active = {};
 }
 
 UI_Element *next_element(UI_Element *current_element, UI_Push_Buffer *push_buffer) {
@@ -449,6 +469,23 @@ void clear_hot_if_gone(UI_Manager *manager) {
 
     // hot is gone
     clear_hot(manager);
+}
+
+void clear_active_if_gone(UI_Manager *manager) {
+    UI_Push_Buffer *push_buffer = &manager->push_buffer;
+    UI_Element *element = next_element(NULL, push_buffer);
+
+    while (element) {
+        if (ui_id_equals(manager->active, element->id)) {
+            // active still exists
+            return;
+        }
+
+        element = next_element(element, push_buffer);
+    }
+
+    // active is gone
+    clear_active(manager);
 }
 
 void clear_editor_state_for_gone_color_pickers(UI_Manager *manager, Editor_State *editor_state) {
@@ -926,10 +963,12 @@ real32 do_slider(real32 x, real32 y,
                  bool32 is_bounded, real32 min, real32 max,
                  real32 value,
                  UI_Slider_Style style, UI_Text_Style text_style,
-                 char *id_string, int32 index = 0) {
+                 char *id_string, int32 index,
+                 UI_id *result_id) {
     using namespace Context;
 
     UI_id slider_id = make_ui_id(UI_SLIDER, id_string, index);
+    *result_id = slider_id;
 
     UI_Slider_State *state = (UI_Slider_State *) get_state(ui_manager, slider_id);
 
@@ -1067,14 +1106,16 @@ inline real32 do_slider(real32 x, real32 y,
                         char *font,
                         real32 min, real32 max, real32 value,
                         UI_Slider_Style style, UI_Text_Style text_style,
-                        char *id_string, int32 index = 0) {
+                char *id_string, int32 index,
+                UI_id *result_id) {
     return do_slider(x, y,
                      width, height,
                      font,
                      true, min, max,
                      value,
                      style, text_style,
-                     id_string, index);
+                id_string, index,
+                result_id);
 }
 
 inline real32 do_slider(real32 x, real32 y,
@@ -1082,14 +1123,16 @@ inline real32 do_slider(real32 x, real32 y,
                         char *font,
                         real32 value,
                         UI_Slider_Style style, UI_Text_Style text_style,
-                        char *id_string, int32 index = 0) {
+                char *id_string, int32 index,
+                UI_id *result_id) {
     return do_slider(x, y,
                      width, height,
                      font,
                      false, 0.0f, 0.0f,
                      value,
                      style, text_style,
-                     id_string, index);
+                id_string, index,
+                result_id);
 }
 
 // we keep border_flags out of UI_Box_Style, since boxes can often have the same style, but have different

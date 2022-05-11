@@ -706,6 +706,24 @@ void open_color_picker(Editor_Color_Picker *editor_color_picker, UI_id parent_id
                                                             Editor_Constants::hsv_picker_width,
                                                             Editor_Constants::hsv_picker_height);
 }
+
+void start_or_finalize_transform_input(Game_State *game_state, UI_id element_id, Entity *entity) {
+    Editor_State *editor_state = &game_state->editor_state;
+    UI_Manager *ui_manager = &game_state->ui_manager;
+
+    if (is_newly_active(ui_manager, element_id)) {
+        editor_state->entity_original_transform = entity->transform;
+    } else if (is_newly_inactive(ui_manager, element_id)) {
+        Transform_Entity_Action action = make_transform_entity_action(editor_state->selected_entity_type,
+                                                                      editor_state->selected_entity_id,
+                                                                      editor_state->entity_original_transform,
+                                                                      entity->transform);
+        // yeah, this procedure doesn't actually transform the entity, since we transform it all the time while
+        // we're using the element (i.e. while element is active). this DOES set the entity's transform to what
+        // we pass in the action, but we use it here just to add a transform_entity action to the editor history.
+        editor_transform_entity(game_state, editor_state, action);
+    }
+}
                        
 void draw_entity_box(Game_State *game_state, Controller_State *controller_state, int32 entity_id, Entity *entity) {
     int32 row_index = 0;
@@ -779,12 +797,15 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     //buf = string_format(allocator, buffer_size, "%f", transform.position.x);
     x += right_column_offset;
     real32 transform_button_width = 80.0f;
+
+    UI_id x_slider, y_slider, z_slider;
     real32 new_x = do_slider(x, y,
                              transform_button_width, small_row_height,
                              editor_font_name,
                              transform.position.x,
                              default_slider_style, default_text_style,
-                             "x", entity_id);
+                             "x", entity_id,
+                             &x_slider);
     x += transform_button_width + 5.0f;
 
     real32 new_y = do_slider(x, y,
@@ -792,7 +813,8 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                              editor_font_name,
                              transform.position.y,
                              default_slider_style, default_text_style,
-                             "y", entity_id);
+                             "y", entity_id,
+                             &y_slider);
     x += transform_button_width + 5.0f;
 
     real32 new_z = do_slider(x, y,
@@ -800,10 +822,14 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                              editor_font_name,
                              transform.position.z,
                              default_slider_style, default_text_style,
-                             "z", entity_id);
+                             "z", entity_id,
+                             &z_slider);
     x += transform_button_width + 5.0f;
 
     update_entity_position(game_state, entity, make_vec3(new_x, new_y, new_z));
+    start_or_finalize_transform_input(game_state, x_slider, entity);
+    start_or_finalize_transform_input(game_state, y_slider, entity);
+    start_or_finalize_transform_input(game_state, z_slider, entity);
 
     y += small_row_height;
     x = initial_x;
@@ -846,12 +872,15 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     draw_v_centered_text(x+padding_left, y, small_row_height,
                          "Scale", editor_font_name, text_style);
     x += right_column_offset;
+
+    UI_id scale_x_slider, scale_y_slider, scale_z_slider;
     real32 new_scale_x = do_slider(x, y,
                                    transform_button_width, small_row_height,
                                    editor_font_name,
                                    transform.scale.x,
                                    default_slider_style, default_text_style,
-                                   "scale_x", entity_id);
+                                   "scale_x", entity_id,
+                                   &scale_x_slider);
     x += transform_button_width + 5.0f;
 
     real32 new_scale_y = do_slider(x, y,
@@ -859,7 +888,8 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                    editor_font_name,
                                    transform.scale.y,
                                    default_slider_style, default_text_style,
-                                   "scale_y", entity_id);
+                                   "scale_y", entity_id,
+                                   &scale_y_slider);
     x += transform_button_width + 5.0f;
 
     real32 new_scale_z = do_slider(x, y,
@@ -867,10 +897,14 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                    editor_font_name,
                                    transform.scale.z,
                                    default_slider_style, default_text_style,
-                                   "scale_z", entity_id);
+                                   "scale_z", entity_id,
+                                   &scale_z_slider);
     x += transform_button_width + 5.0f;
 
     update_entity_scale(game_state, entity, make_vec3(new_scale_x, new_scale_y, new_scale_z));
+    start_or_finalize_transform_input(game_state, scale_x_slider, entity);
+    start_or_finalize_transform_input(game_state, scale_y_slider, entity);
+    start_or_finalize_transform_input(game_state, scale_z_slider, entity);
 
     y += small_row_height;
     x = initial_x;
@@ -1323,12 +1357,14 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                      row_id, row_index++);
             draw_v_centered_text(label_x, y, row_height,
                                  "Gloss", editor_font_name, text_style);
+            UI_id gloss_slider;
             material->gloss = do_slider(x+right_column_offset, y,
                                         edit_box_width, row_height,
                                         editor_font_name,
                                         0.0f, 100.0f, material->gloss,
                                         default_slider_style, default_text_style,
-                                        "edit_material_gloss_slider", normal_entity->material_id);
+                                        "edit_material_gloss_slider", normal_entity->material_id,
+                                        &gloss_slider);
             y += row_height;
             draw_row_padding(x, &y, row_width, padding_y, row_color,
                              side_flags, row_id, row_index++);
@@ -1447,12 +1483,14 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                  row_id, row_index++);
         draw_v_centered_text(x + padding_left, y, row_height,
                              "Falloff Start", editor_font_name, text_style);
+        UI_id falloff_start_slider;
         point_light->falloff_start = do_slider(x+right_column_offset, y,
                                                edit_box_width, row_height,
                                                editor_font_name,
                                                0.0f, 100.0f, point_light->falloff_start,
                                                default_slider_style, default_text_style,
-                                               "edit_point_light_falloff_start_slider", entity_id);
+                                               "edit_point_light_falloff_start_slider", entity_id,
+                                               &falloff_start_slider);
         y += row_height;
         draw_row_padding(x, &y, row_width, padding_y, row_color,
                          side_flags, row_id, row_index++);
@@ -1462,12 +1500,14 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                  row_id, row_index++);
         draw_v_centered_text(x + padding_left, y, row_height,
                              "Falloff Distance", editor_font_name, text_style);
+        UI_id falloff_end_slider;
         point_light->falloff_end = do_slider(x+right_column_offset, y,
                                              edit_box_width, row_height,
                                              editor_font_name,
                                              0.0f, 100.0f, point_light->falloff_end,
                                              default_slider_style, default_text_style,
-                                             "edit_point_light_falloff_end_slider", entity_id);
+                                             "edit_point_light_falloff_end_slider", entity_id,
+                                             &falloff_end_slider);
         y += row_height;
         draw_row_padding(x, &y, row_width, padding_y, row_color,
                          side_flags | SIDE_BOTTOM, row_id, row_index++);
