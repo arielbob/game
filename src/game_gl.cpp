@@ -376,6 +376,9 @@
 //       - TODO (done): add editor undo procedure for entity modifications
 //       - TODO (done): write a history_deallocate() procedure that handles specific deallocation needs
 //       - TODO (done): change gizmos to use the new modify action
+//       - TODO (done): add history to changing meshes
+//       - TODO: add history to changing mesh names
+//       - TODO: add history to adding and deleting meshes
 //       - TODO: change other entity fields to use new modify action
 //       - TODO: add history for adding and deleting materials
 //       - TODO: add history for adding and deleting textures
@@ -398,6 +401,7 @@
 //         add new members to some entity type, we would just add those to the same entity struct. so we can just
 //         do entity.material_id if it has a material.
 //       - let's just stick with what we have for now.
+// TODO: could we use something like an Entity_Variant struct for things like selected_entity?
 
 // TODO: replace the transform values in the entity box with slideable text boxes
 //       - TODO (done): create do_slider with no limits, would have to hide the slider when rendering

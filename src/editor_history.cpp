@@ -199,6 +199,27 @@ void undo_transform_entity(Game_State *game_state, Transform_Entity_Action actio
     set_entity_transform(game_state, entity, action.original_transform);
 }
 
+// copies new_entity into entity
+void set_entity(Entity *entity, Entity *new_entity) {
+    assert(entity->type == new_entity->type);
+
+    switch (entity->type) {
+        case ENTITY_NORMAL: {
+            Normal_Entity *e = (Normal_Entity *) entity;
+            *e = *((Normal_Entity *) new_entity);
+            return;
+        }
+        case ENTITY_POINT_LIGHT: {
+            Point_Light_Entity *e = (Point_Light_Entity *) entity;
+            *e = *((Point_Light_Entity *) new_entity);
+            return;
+        }
+        default: {
+            assert(!"Unhandled entity type.");
+        }
+    }
+}
+
 // entity modifying
 void editor_modify_entity(Editor_State *editor_state, Level *level,
                           Modify_Entity_Action action, bool32 is_redoing) {
@@ -207,7 +228,7 @@ void editor_modify_entity(Editor_State *editor_state, Level *level,
     }
 
     Entity *entity = get_entity(level, action.original->type, action.entity_id);
-    *entity = *action.new_entity;
+    set_entity(entity, action.new_entity);
 }
 
 void undo_modify_entity(Editor_State *editor_state, Level *level,
@@ -216,9 +237,7 @@ void undo_modify_entity(Editor_State *editor_state, Level *level,
     // if we stored entities in the way where we have entity type flags and all the different fields in a single
     // entity, then we could do this easily.
     Entity *entity = get_entity(level, action.original->type, action.entity_id);
-    assert(entity->type == action.original->type);
-
-    *entity = *action.original;
+    set_entity(entity, action.original);
 }
 
 // NOTE: this should only be called by the editor. this creates the action objects for us, but the objects only

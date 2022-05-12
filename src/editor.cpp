@@ -48,6 +48,56 @@ void reset_entity_editors(Editor_State *editor_state) {
     editor_state->color_picker.parent_ui_id = {};
 }
 
+Entity *allocate_and_copy_entity(Allocator *allocator, Entity *entity) {
+    Entity *uncast_entity = NULL;
+    if (entity->type == ENTITY_NORMAL) {
+        Normal_Entity *entity_alloc = (Normal_Entity *) allocate(allocator, sizeof(Normal_Entity));
+        *entity_alloc = *((Normal_Entity *) entity);
+        uncast_entity = (Entity *) entity_alloc;
+    } else if (entity->type == ENTITY_POINT_LIGHT) {
+        Point_Light_Entity *entity_alloc = (Point_Light_Entity *) allocate(allocator, sizeof(Point_Light_Entity));
+        *entity_alloc = *((Point_Light_Entity *) entity);
+        uncast_entity = (Entity *) entity_alloc;
+    } else {
+        assert(!"Unhandled entity type");
+    }
+
+    return uncast_entity;
+}
+
+void start_entity_change(Editor_State *editor_state, Entity *entity) {
+    assert(editor_state->old_entity == NULL); // make sure we haven't started an entity change already
+    assert(entity);
+    editor_state->old_entity = allocate_and_copy_entity(editor_state->history.allocator_pointer, entity);
+}
+
+void finalize_entity_change(Editor_State *editor_state, Level *level, Entity *entity) {
+    assert(editor_state->old_entity);
+    Entity *new_entity = allocate_and_copy_entity(editor_state->history.allocator_pointer, entity);
+    Modify_Entity_Action action = make_modify_entity_action(editor_state->selected_entity_id,
+                                                            editor_state->old_entity,
+                                                            new_entity);
+    editor_modify_entity(editor_state, level, action);
+    editor_state->old_entity = NULL;
+}
+
+void start_or_finalize_entity_change(Game_State *game_state, UI_id element_id,
+                                     Entity *entity) {
+    Editor_State *editor_state = &game_state->editor_state;
+    UI_Manager *ui_manager = &game_state->ui_manager;
+
+    if (is_newly_active(ui_manager, element_id)) {
+        editor_state->old_entity = allocate_and_copy_entity(editor_state->history.allocator_pointer, entity);
+    } else if (is_newly_inactive(ui_manager, element_id)) {
+        Entity *new_entity = allocate_and_copy_entity(editor_state->history.allocator_pointer, entity);
+        Modify_Entity_Action action = make_modify_entity_action(editor_state->selected_entity_id,
+                                                                editor_state->old_entity,
+                                                                new_entity);
+        editor_modify_entity(editor_state, &game_state->current_level, action);
+        editor_state->old_entity = NULL;
+    }
+}
+
 void generate_material_name(Level *level, String_Buffer *buffer) {
     int32 num_attempts = 0;
     while (num_attempts < MAX_MATERIALS + 1) {
@@ -500,8 +550,10 @@ void draw_mesh_library(Game_State *game_state, Controller_State *controller_stat
     }
     
     if (picked_mesh_id >= 0) {
+        start_entity_change(editor_state, selected_entity);
         set_entity_mesh(game_state, &game_state->current_level, selected_entity,
                         picked_mesh_type, picked_mesh_id);
+        finalize_entity_change(editor_state, &game_state->current_level, selected_entity);
 
         editor_state->open_window_flags = 0;
     }
@@ -707,40 +759,6 @@ void open_color_picker(Editor_Color_Picker *editor_color_picker, UI_id parent_id
                                                             Editor_Constants::hsv_picker_height);
 }
 
-Entity *allocate_and_copy_entity(Allocator *allocator, Entity *entity) {
-    Entity *uncast_entity = NULL;
-    if (entity->type == ENTITY_NORMAL) {
-        Normal_Entity *entity_alloc = (Normal_Entity *) allocate(allocator, sizeof(Normal_Entity));
-        *entity_alloc = *((Normal_Entity *) entity);
-        uncast_entity = (Entity *) entity_alloc;
-    } else if (entity->type == ENTITY_POINT_LIGHT) {
-        Point_Light_Entity *entity_alloc = (Point_Light_Entity *) allocate(allocator, sizeof(Point_Light_Entity));
-        *entity_alloc = *((Point_Light_Entity *) entity);
-        uncast_entity = (Entity *) entity_alloc;
-    } else {
-        assert(!"Unhandled entity type");
-    }
-
-    return uncast_entity;
-}
-
-void start_or_finalize_entity_change(Game_State *game_state, UI_id element_id,
-                                     Entity *entity) {
-    Editor_State *editor_state = &game_state->editor_state;
-    UI_Manager *ui_manager = &game_state->ui_manager;
-
-    if (is_newly_active(ui_manager, element_id)) {
-        editor_state->old_entity = allocate_and_copy_entity(editor_state->history.allocator_pointer, entity);
-    } else if (is_newly_inactive(ui_manager, element_id)) {
-        Entity *new_entity = allocate_and_copy_entity(editor_state->history.allocator_pointer, entity);
-        Modify_Entity_Action action = make_modify_entity_action(editor_state->selected_entity_id,
-                                                                editor_state->old_entity,
-                                                                new_entity);
-        editor_modify_entity(editor_state, &game_state->current_level, action);
-        editor_state->old_entity = NULL;
-    }
-}
-                       
 void draw_entity_box(Game_State *game_state, Controller_State *controller_state, int32 entity_id, Entity *entity) {
     int32 row_index = 0;
 
@@ -2519,6 +2537,7 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
 
     update_gizmo(game_state);
 
+    // gizmo picking
     if (editor_state->selected_entity_id >= 0 &&
         !ui_has_hot(ui_manager) &&
         !editor_state->selected_gizmo_handle) {
@@ -2528,8 +2547,11 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
         if (controller_state->left_mouse.is_down && !controller_state->left_mouse.was_down) {
             if (picked_handle) {
                 Entity *selected_entity = get_selected_entity(game_state);
+                start_entity_change(editor_state, selected_entity);
+#if 0
                 editor_state->old_entity = allocate_and_copy_entity(editor_state->history.allocator_pointer,
                                                                     selected_entity);
+#endif
                 Vec3 global_transform_axis = get_gizmo_transform_axis(TRANSFORM_GLOBAL,
                                                                       picked_handle,
                                                                       selected_entity->transform);
@@ -2583,12 +2605,7 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
             editor_state->gizmo.transform.rotation = entity->transform.rotation;
         } else {
             editor_state->selected_gizmo_handle = GIZMO_HANDLE_NONE;
-
-            Transform_Entity_Action action = make_transform_entity_action(editor_state->selected_entity_type,
-                                                                          editor_state->selected_entity_id,
-                                                                          editor_state->old_entity->transform,
-                                                                          entity->transform);
-            editor_transform_entity(game_state, editor_state, action);
+            finalize_entity_change(editor_state, &game_state->current_level, entity);
         }
     }
 

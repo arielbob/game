@@ -8,15 +8,17 @@
 struct Editor_State;
 struct Game_State;
 
-// TODO: add action type for any entity change, i.e. action where we just copy the entire entity struct
+// TODO: idk if we have a use for ACTION_TRANSFORM_ENTITY anymore (also the procedure that uses it doesn't
+//       reset old_entity, so starting a new entity modification will assert)
 enum Action_Type {
     ACTION_NONE,
     ACTION_ADD_NORMAL_ENTITY,
     ACTION_ADD_POINT_LIGHT_ENTITY,
     ACTION_DELETE_NORMAL_ENTITY,
     ACTION_DELETE_POINT_LIGHT_ENTITY,
-    ACTION_TRANSFORM_ENTITY,
-    ACTION_MODIFY_ENTITY
+    ACTION_TRANSFORM_ENTITY, 
+    ACTION_MODIFY_ENTITY,
+    ACTION_MODIFY_MESH
 };
 
 #define ACTION_HEADER                           \
