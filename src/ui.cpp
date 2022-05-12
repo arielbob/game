@@ -721,89 +721,6 @@ bool32 do_color_button(real32 x_px, real32 y_px,
     return was_clicked;
 }
 
-// TODO: this should return a bool32, since we want to be able to submit fields by pressing the enter key
-// TODO: this may be messed up since we changed width/height to include padding
-#if 0
-// TODO: this should return a bool32, since we want to be able to submit fields by pressing the enter key
-// TODO: this may be messed up since we changed width/height to include padding
-void do_text_box(UI_Manager *manager, Controller_State *controller_state,
-                 real32 x, real32 y,
-                 real32 width, real32 height,
-                 char *current_text, int32 text_buffer_size,
-                 UI_Text_Box_Style style,
-                 char *id_string, int32 index = 0) {
-    UI_Text_Box text_box =  make_ui_text_box(x, y, width, height,
-                                             current_text, text_buffer_size,
-                                             style,
-                                             id_string, index);
-
-    Vec2 current_mouse = controller_state->current_mouse;
-    if (!manager->is_disabled && in_bounds_on_layer(manager, current_mouse, x, x + width, y, y + height)) {
-        if (!controller_state->left_mouse.is_down) {
-            set_hot(manager, text_box.id);
-        }
-        
-
-        if (ui_id_equals(manager->hot, text_box.id) &&
-            controller_state->left_mouse.is_down) {
-            manager->active = text_box.id;
-            manager->focus_timer = platform_get_wall_clock_time();
-            manager->focus_cursor_index = string_length(text_box.current_text);
-        }
-    } else {
-        // FIXME: this isn't really a bug (other programs seem to behave this way), but i'm not sure
-        //        why it's happening: if you hold down a key in the textbox and you click outside of the textbox,
-        //        the textbox should lose focus and text should no longer be inputted. but, for some reason it
-        //        keeps focus after clicking outside of the textbox and characters keep getting inputted.
-        //        actually, i think it's because we're doing while(PeekMessage...).
-        if (ui_id_equals(manager->hot, text_box.id)) {
-            clear_hot(manager);
-        }
-
-        if (ui_id_equals(manager->active, text_box.id) &&
-            controller_state->left_mouse.is_down &&
-            !controller_state->left_mouse.was_down) {
-            manager->active = {};
-            manager->focus_cursor_index = 0;
-        }
-    }
-
-    if (ui_id_equals(manager->active, text_box.id)) {
-        for (int32 i = 0; i < controller_state->num_pressed_chars; i++) {
-            char c = controller_state->pressed_chars[i];
-            if (c == '\b') {
-                manager->focus_cursor_index--;
-                if (manager->focus_cursor_index < 0) {
-                    manager->focus_cursor_index = 0;
-                }
-                current_text[manager->focus_cursor_index] = '\0';
-            } else if (manager->focus_cursor_index < (text_box.size - 1) &&
-                       c >= 32 &&
-                       c <= 126) {
-                current_text[manager->focus_cursor_index] = c;
-                current_text[manager->focus_cursor_index + 1] = '\0';
-                manager->focus_cursor_index++;
-            }
-        }
-    }
-
-    ui_add_text_box(manager, text_box);
-}
-#endif
-
-#if 0
-void do_text_box_with_state(real32 x, real32 y,
-                            real32 width, real32 height,
-                            String_Buffer initial_text,
-                            char *font,
-                            UI_Text_Box_Style style, UI_Text_Style text_style,
-                            char *id_string, int32 index = 0) {
-    using namespace Context;
-
-    
-}
-#endif
-
 UI_Slider_State *add_ui_slider_state(UI_Manager *manager, UI_id id) {
     UI_Slider_State *state = (UI_Slider_State *) heap_allocate(manager->heap_pointer, sizeof(UI_Slider_State));
     hash_table_add(&manager->state_table, id, (UI_Element_State *) state);
@@ -897,7 +814,7 @@ UI_Text_Box_Result do_text_box(real32 x, real32 y,
     if (use_state) {
         if (!state) {
             UI_Text_Box_State *new_state = add_ui_text_box_state(ui_manager, text_box_id);
-            *new_state = make_ui_text_box_state((Allocator *) &memory.string64_pool,
+            *new_state = make_ui_text_box_state((Allocator *) ui_manager->heap_pointer,
                                                 make_string(*buffer), buffer->size);
             state = new_state;
         }
@@ -976,7 +893,7 @@ real32 do_slider(real32 x, real32 y,
     if (!state) {
         UI_Slider_State *new_state = add_ui_slider_state(ui_manager, slider_id);
         char *buf = string_format((Allocator *) &memory.global_stack, 64, "%f", value);
-        *new_state = make_ui_slider_state((Allocator *) &memory.string64_pool, buf);
+        *new_state = make_ui_slider_state((Allocator *) ui_manager->heap_pointer, buf);
         state = new_state;
     } else {
         if (!state->is_text_box) {

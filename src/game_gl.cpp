@@ -377,13 +377,18 @@
 //       - TODO (done): write a history_deallocate() procedure that handles specific deallocation needs
 //       - TODO (done): change gizmos to use the new modify action
 //       - TODO (done): add history to changing meshes
-//       - TODO: add history to changing mesh names
+//       - TODO (done): add history to changing mesh names
+//       - TODO (done): hide text boxes when undoing/redoing mesh name changes, so that we don't have to reset
+//                      text box state.
 //       - TODO: add history to adding and deleting meshes
 //       - TODO: change other entity fields to use new modify action
 //       - TODO: add history for adding and deleting materials
 //       - TODO: add history for adding and deleting textures
 //       - TODO: add history for color changes
 //       - TODO: add history for light falloff changes
+
+// TODO: material duplicating
+// TODO: entity duplicating
 
 // TODO: instead of passing game_state to procedures like get_mesh_pointer (because we need the primitive mesh table),
 //       create a new struct called Asset_Tables that holds pointers to the current level's mesh table and the

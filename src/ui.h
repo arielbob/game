@@ -561,6 +561,7 @@ UI_Text_Box_State make_ui_text_box_state(Allocator *string_allocator, String ini
 
 struct UI_Slider_State {
     UI_ELEMENT_STATE_HEADER
+
     String_Buffer buffer;
     bool32 is_text_box;
 };

@@ -126,6 +126,23 @@ Modify_Entity_Action make_modify_entity_action(int32 entity_id,
     return action;
 }
 
+struct Modify_Mesh_Action {
+    ACTION_HEADER
+    
+    Mesh_Type mesh_type;
+    int32 mesh_id;
+    String_Buffer original_name;
+    String_Buffer new_name;
+};
+
+Modify_Mesh_Action make_modify_mesh_action(Mesh_Type mesh_type, int32 mesh_id, String_Buffer new_name) {
+    Modify_Mesh_Action action = {};
+    action.type = ACTION_MODIFY_MESH;
+    action.mesh_type = mesh_type;
+    action.mesh_id = mesh_id;
+    action.new_name = new_name;
+    return action;
+}
 
 struct Editor_History {
     Allocator *allocator_pointer;
@@ -197,6 +214,7 @@ void editor_transform_entity(Game_State *game_state, Editor_State *editor_state,
                              Transform_Entity_Action action, bool32 is_redoing = false);
 void editor_modify_entity(Editor_State *editor_state, Level *level,
                           Modify_Entity_Action action, bool32 is_redoing = false);
+void editor_modify_mesh(Game_State *game_state, Modify_Mesh_Action action, bool32 is_redoing = false);
 void history_undo(Game_State *game_state, Editor_History *history);
 void history_redo(Game_State *game_state, Editor_History *history);
 int32 history_get_num_entries(Editor_History *history);

@@ -240,6 +240,40 @@ void undo_modify_entity(Editor_State *editor_state, Level *level,
     set_entity(entity, action.original);
 }
 
+// mesh modifying
+void editor_modify_mesh(Game_State *game_state, Modify_Mesh_Action action, bool32 is_redoing) {
+    // NOTE: we currently only handle changes to the mesh name
+
+    Editor_History *history = &game_state->editor_state.history;
+
+    Mesh *mesh = get_mesh_pointer(game_state, &game_state->current_level, action.mesh_type, action.mesh_id);
+    action.original_name = copy_string_buffer(history->allocator_pointer, mesh->name);
+
+    copy_string(&mesh->name, make_string(action.new_name));
+
+    action.new_name = copy_string_buffer(history->allocator_pointer, action.new_name);
+
+    if (!is_redoing) {
+        history_add_action(history, Modify_Mesh_Action, action);
+    } else {
+        game_state->editor_state.editing_selected_entity_mesh = false;
+    }
+
+    // we just set this to false so we don't have to handle resetting the text box's text.
+    // and we don't want to just set text box's text even when it's not active, since it's nice just in case
+    // when you type something that's invalid, that it doesn't erase what you wrote, so that you don't have to
+    // type it again. it would get reset if we had "reset when not active" behaviour
+}
+
+void undo_modify_mesh(Game_State *game_state,
+                      Modify_Mesh_Action action) {
+    Mesh *mesh = get_mesh_pointer(game_state, &game_state->current_level, action.mesh_type, action.mesh_id);
+
+    game_state->editor_state.editing_selected_entity_mesh = false;
+
+    copy_string(&mesh->name, make_string(action.original_name));
+}
+
 // NOTE: this should only be called by the editor. this creates the action objects for us, but the objects only
 //       have the entity id. the calls to editor_delete_* fill in the struct with the Entity object. we need to
 //       store the entity object, since when we redo a deletion (i.e. adding the entity back), we need to the
@@ -323,6 +357,10 @@ void history_undo(Game_State *game_state, Editor_History *history) {
             Modify_Entity_Action *action = (Modify_Entity_Action *) current_action;
             undo_modify_entity(editor_state, level, *action);
         } break;
+        case ACTION_MODIFY_MESH: {
+            Modify_Mesh_Action *action = (Modify_Mesh_Action *) current_action;
+            undo_modify_mesh(game_state, *action);
+        } break;
         default: {
             assert(!"Unhandled editor action type.");
             return;
@@ -383,6 +421,10 @@ void history_redo(Game_State *game_state, Editor_History *history) {
         case ACTION_MODIFY_ENTITY: {
             Modify_Entity_Action *action = (Modify_Entity_Action *) redo_action;
             editor_modify_entity(editor_state, level, *action, true);
+        } break;
+        case ACTION_MODIFY_MESH: {
+            Modify_Mesh_Action *action = (Modify_Mesh_Action *) redo_action;
+            editor_modify_mesh(game_state, *action, true);
         } break;
         default: {
             assert(!"Unhandled editor action type.");

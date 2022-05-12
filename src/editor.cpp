@@ -1054,7 +1054,10 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                     add_message(&game_state->message_manager, make_string("Mesh name cannot contain {, }, or double quotes!"));
                 } else if (!string_equals(make_string(mesh->name), new_name)) {
                     if (!mesh_name_exists(game_state, level, new_name)) {
-                        copy_string(&mesh->name, new_name);
+                        Modify_Mesh_Action action = make_modify_mesh_action(normal_entity->mesh_type,
+                                                                            normal_entity->mesh_id,
+                                                                            result.buffer);
+                        editor_modify_mesh(game_state, action);
                     } else {
                         add_message(&game_state->message_manager, make_string("Mesh name already exists!"));
                     }

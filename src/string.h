@@ -146,6 +146,20 @@ String_Buffer make_string_buffer(Allocator *allocator, String initial_value, int
     return buffer;
 }
 
+String_Buffer copy_string_buffer(Allocator *allocator, String_Buffer source_buffer) {
+    String_Buffer buffer = {};
+
+    char *contents = (char *) allocate(allocator, source_buffer.size);
+    memcpy(contents, source_buffer.contents, source_buffer.current_length);
+
+    buffer.allocator = allocator;
+    buffer.contents = contents;
+    buffer.size =  source_buffer.size;
+    buffer.current_length = source_buffer.current_length;
+
+    return buffer;
+}
+
 void set_string_buffer_text(String_Buffer *string_buffer, char *text) {
     int32 len = string_length(text);
     assert(len < string_buffer->size);
