@@ -3,18 +3,20 @@
 
 #include "level.h"
 
-#define MAX_EDITOR_HISTORY_ENTRIES 3
+#define MAX_EDITOR_HISTORY_ENTRIES 128
 
 struct Editor_State;
 struct Game_State;
 
+// TODO: add action type for any entity change, i.e. action where we just copy the entire entity struct
 enum Action_Type {
     ACTION_NONE,
     ACTION_ADD_NORMAL_ENTITY,
     ACTION_ADD_POINT_LIGHT_ENTITY,
     ACTION_DELETE_NORMAL_ENTITY,
     ACTION_DELETE_POINT_LIGHT_ENTITY,
-    ACTION_TRANSFORM_ENTITY
+    ACTION_TRANSFORM_ENTITY,
+    ACTION_MODIFY_ENTITY
 };
 
 #define ACTION_HEADER                           \
@@ -104,6 +106,25 @@ Transform_Entity_Action make_transform_entity_action(Entity_Type entity_type, in
 }
 
 
+struct Modify_Entity_Action {
+    ACTION_HEADER
+    
+    int32 entity_id;
+    Entity *original;
+    Entity *new_entity;
+};
+
+Modify_Entity_Action make_modify_entity_action(int32 entity_id,
+                                               Entity *original,  Entity *new_entity) {
+    Modify_Entity_Action action = {};
+    action.type = ACTION_MODIFY_ENTITY;
+    action.entity_id = entity_id;
+    action.original = original;
+    action.new_entity = new_entity;
+    return action;
+}
+
+
 struct Editor_History {
     Allocator *allocator_pointer;
     Editor_Action *entries[MAX_EDITOR_HISTORY_ENTRIES];
@@ -172,6 +193,8 @@ void editor_delete_entity(Editor_State *editor_state, Level *level,
                           bool32 is_redoing = false);
 void editor_transform_entity(Game_State *game_state, Editor_State *editor_state,
                              Transform_Entity_Action action, bool32 is_redoing = false);
+void editor_modify_entity(Editor_State *editor_state, Level *level,
+                          Modify_Entity_Action action, bool32 is_redoing = false);
 void history_undo(Game_State *game_state, Editor_History *history);
 void history_redo(Game_State *game_state, Editor_History *history);
 int32 history_get_num_entries(Editor_History *history);

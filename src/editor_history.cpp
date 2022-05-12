@@ -1,6 +1,17 @@
 #include "editor.h"
 #include "editor_history.h"
 
+void history_deallocate(Editor_History *history, Editor_Action *editor_action) {
+    Allocator *allocator = history->allocator_pointer;
+    if (editor_action->type == ACTION_MODIFY_ENTITY) {
+        Modify_Entity_Action *action = (Modify_Entity_Action *) editor_action;
+        deallocate(allocator, action->original);
+        deallocate(allocator, action->new_entity);
+    }
+    
+    deallocate(allocator, editor_action);
+}
+
 void _history_add_action(Editor_History *history, Editor_Action *editor_action) {
     if (history->start_index == -1 && history->end_index == -1) {
         int32 new_entry_index = 0;
@@ -19,7 +30,7 @@ void _history_add_action(Editor_History *history, Editor_Action *editor_action) 
 
         for (int32 i = start_index; i <= end_index; i++) {
             int32 wrapped_index = i % MAX_EDITOR_HISTORY_ENTRIES;
-            deallocate(history->allocator_pointer, history->entries[wrapped_index]);
+            history_deallocate(history, history->entries[wrapped_index]);
             history->entries[wrapped_index] = NULL;
             //debug_print("deallocated history at index %d\n", i);
         }
@@ -45,9 +56,9 @@ void _history_add_action(Editor_History *history, Editor_Action *editor_action) 
 
         if (wrapped_new_entry_index == start_index) {
             Editor_Action *action = history->entries[start_index % MAX_EDITOR_HISTORY_ENTRIES];
-            deallocate(history->allocator_pointer, action);
-            history->entries[start_index % MAX_EDITOR_HISTORY_ENTRIES] = NULL;
+            history_deallocate(history, action);
 
+            history->entries[start_index % MAX_EDITOR_HISTORY_ENTRIES] = NULL;
             history->start_index = (start_index + 1) % MAX_EDITOR_HISTORY_ENTRIES;
             //debug_print("deallocated history at index %d (start_index)\n", start_index);
 
@@ -57,7 +68,7 @@ void _history_add_action(Editor_History *history, Editor_Action *editor_action) 
         } else {
             for (int32 i = new_entry_index; i <= end_index; i++) {
                 int32 wrapped_index = i % MAX_EDITOR_HISTORY_ENTRIES;
-                deallocate(history->allocator_pointer, history->entries[wrapped_index]);
+                history_deallocate(history, history->entries[wrapped_index]);
                 history->entries[wrapped_index] = NULL;
                 //debug_print("deallocated history at index %d\n", i);
             }
@@ -188,6 +199,28 @@ void undo_transform_entity(Game_State *game_state, Transform_Entity_Action actio
     set_entity_transform(game_state, entity, action.original_transform);
 }
 
+// entity modifying
+void editor_modify_entity(Editor_State *editor_state, Level *level,
+                          Modify_Entity_Action action, bool32 is_redoing) {
+    if (!is_redoing) {
+        history_add_action(&editor_state->history, Modify_Entity_Action, action);
+    }
+
+    Entity *entity = get_entity(level, action.original->type, action.entity_id);
+    *entity = *action.new_entity;
+}
+
+void undo_modify_entity(Editor_State *editor_state, Level *level,
+                        Modify_Entity_Action action) {
+    // yeah, this doesn't handle changing entity types, but i don't think we need to ever handle that.
+    // if we stored entities in the way where we have entity type flags and all the different fields in a single
+    // entity, then we could do this easily.
+    Entity *entity = get_entity(level, action.original->type, action.entity_id);
+    assert(entity->type == action.original->type);
+
+    *entity = *action.original;
+}
+
 // NOTE: this should only be called by the editor. this creates the action objects for us, but the objects only
 //       have the entity id. the calls to editor_delete_* fill in the struct with the Entity object. we need to
 //       store the entity object, since when we redo a deletion (i.e. adding the entity back), we need to the
@@ -237,6 +270,9 @@ void history_undo(Game_State *game_state, Editor_History *history) {
 
     if (history->num_undone == num_entries) return;
 
+    Editor_State *editor_state = &game_state->editor_state;
+    Level *level = &game_state->current_level;
+
     // we undo the action at current_index.
     Editor_Action *current_action = history->entries[history->current_index];
     switch (current_action->type) {
@@ -246,23 +282,27 @@ void history_undo(Game_State *game_state, Editor_History *history) {
         }
         case ACTION_ADD_NORMAL_ENTITY: {
             Add_Normal_Entity_Action *action = (Add_Normal_Entity_Action *) current_action;
-            undo_add_normal_entity(&game_state->editor_state, &game_state->current_level, *action);
+            undo_add_normal_entity(editor_state, level, *action);
         } break;
         case ACTION_ADD_POINT_LIGHT_ENTITY: {
             Add_Point_Light_Entity_Action *action = (Add_Point_Light_Entity_Action *) current_action;
-            undo_add_point_light_entity(&game_state->editor_state, &game_state->current_level, *action);
+            undo_add_point_light_entity(editor_state, level, *action);
         } break;
         case ACTION_DELETE_NORMAL_ENTITY: {
             Delete_Normal_Entity_Action *action = (Delete_Normal_Entity_Action *) current_action;
-            undo_delete_normal_entity(game_state, &game_state->current_level, *action);
+            undo_delete_normal_entity(game_state, level, *action);
         } break;
         case ACTION_DELETE_POINT_LIGHT_ENTITY: {
             Delete_Point_Light_Entity_Action *action = (Delete_Point_Light_Entity_Action *) current_action;
-            undo_delete_point_light_entity(game_state, &game_state->current_level, *action);
+            undo_delete_point_light_entity(game_state, level, *action);
         } break;
         case ACTION_TRANSFORM_ENTITY: {
             Transform_Entity_Action *action = (Transform_Entity_Action *) current_action;
             undo_transform_entity(game_state, *action);
+        } break;
+        case ACTION_MODIFY_ENTITY: {
+            Modify_Entity_Action *action = (Modify_Entity_Action *) current_action;
+            undo_modify_entity(editor_state, level, *action);
         } break;
         default: {
             assert(!"Unhandled editor action type.");
@@ -292,8 +332,9 @@ void history_redo(Game_State *game_state, Editor_History *history) {
         redo_index = (history->current_index + 1) % MAX_EDITOR_HISTORY_ENTRIES;
     }
 
-
     Editor_State *editor_state = &game_state->editor_state;
+    Level *level = &game_state->current_level;
+
     Editor_Action *redo_action = history->entries[redo_index];
     switch (redo_action->type) {
         case ACTION_NONE: {
@@ -310,15 +351,19 @@ void history_redo(Game_State *game_state, Editor_History *history) {
         } break;
         case ACTION_DELETE_NORMAL_ENTITY: {
             Delete_Normal_Entity_Action *action = (Delete_Normal_Entity_Action *) redo_action;
-            editor_delete_normal_entity(editor_state, &game_state->current_level, *action, true);
+            editor_delete_normal_entity(editor_state, level, *action, true);
         } break;
         case ACTION_DELETE_POINT_LIGHT_ENTITY: {
             Delete_Point_Light_Entity_Action *action = (Delete_Point_Light_Entity_Action *) redo_action;
-            editor_delete_point_light_entity(editor_state, &game_state->current_level, *action, true);
+            editor_delete_point_light_entity(editor_state, level, *action, true);
         } break;
         case ACTION_TRANSFORM_ENTITY: {
             Transform_Entity_Action *action = (Transform_Entity_Action *) redo_action;
             editor_transform_entity(game_state, editor_state, *action, true);
+        } break;
+        case ACTION_MODIFY_ENTITY: {
+            Modify_Entity_Action *action = (Modify_Entity_Action *) redo_action;
+            editor_modify_entity(editor_state, level, *action, true);
         } break;
         default: {
             assert(!"Unhandled editor action type.");

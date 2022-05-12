@@ -707,21 +707,37 @@ void open_color_picker(Editor_Color_Picker *editor_color_picker, UI_id parent_id
                                                             Editor_Constants::hsv_picker_height);
 }
 
-void start_or_finalize_transform_input(Game_State *game_state, UI_id element_id, Entity *entity) {
+Entity *allocate_and_copy_entity(Allocator *allocator, Entity *entity) {
+    Entity *uncast_entity = NULL;
+    if (entity->type == ENTITY_NORMAL) {
+        Normal_Entity *entity_alloc = (Normal_Entity *) allocate(allocator, sizeof(Normal_Entity));
+        *entity_alloc = *((Normal_Entity *) entity);
+        uncast_entity = (Entity *) entity_alloc;
+    } else if (entity->type == ENTITY_POINT_LIGHT) {
+        Point_Light_Entity *entity_alloc = (Point_Light_Entity *) allocate(allocator, sizeof(Point_Light_Entity));
+        *entity_alloc = *((Point_Light_Entity *) entity);
+        uncast_entity = (Entity *) entity_alloc;
+    } else {
+        assert(!"Unhandled entity type");
+    }
+
+    return uncast_entity;
+}
+
+void start_or_finalize_entity_change(Game_State *game_state, UI_id element_id,
+                                     Entity *entity) {
     Editor_State *editor_state = &game_state->editor_state;
     UI_Manager *ui_manager = &game_state->ui_manager;
 
     if (is_newly_active(ui_manager, element_id)) {
-        editor_state->entity_original_transform = entity->transform;
+        editor_state->old_entity = allocate_and_copy_entity(editor_state->history.allocator_pointer, entity);
     } else if (is_newly_inactive(ui_manager, element_id)) {
-        Transform_Entity_Action action = make_transform_entity_action(editor_state->selected_entity_type,
-                                                                      editor_state->selected_entity_id,
-                                                                      editor_state->entity_original_transform,
-                                                                      entity->transform);
-        // yeah, this procedure doesn't actually transform the entity, since we transform it all the time while
-        // we're using the element (i.e. while element is active). this DOES set the entity's transform to what
-        // we pass in the action, but we use it here just to add a transform_entity action to the editor history.
-        editor_transform_entity(game_state, editor_state, action);
+        Entity *new_entity = allocate_and_copy_entity(editor_state->history.allocator_pointer, entity);
+        Modify_Entity_Action action = make_modify_entity_action(editor_state->selected_entity_id,
+                                                                editor_state->old_entity,
+                                                                new_entity);
+        editor_modify_entity(editor_state, &game_state->current_level, action);
+        editor_state->old_entity = NULL;
     }
 }
                        
@@ -827,9 +843,9 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     x += transform_button_width + 5.0f;
 
     update_entity_position(game_state, entity, make_vec3(new_x, new_y, new_z));
-    start_or_finalize_transform_input(game_state, x_slider, entity);
-    start_or_finalize_transform_input(game_state, y_slider, entity);
-    start_or_finalize_transform_input(game_state, z_slider, entity);
+    start_or_finalize_entity_change(game_state, x_slider, entity);
+    start_or_finalize_entity_change(game_state, y_slider, entity);
+    start_or_finalize_entity_change(game_state, z_slider, entity);
 
     y += small_row_height;
     x = initial_x;
@@ -902,9 +918,9 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     x += transform_button_width + 5.0f;
 
     update_entity_scale(game_state, entity, make_vec3(new_scale_x, new_scale_y, new_scale_z));
-    start_or_finalize_transform_input(game_state, scale_x_slider, entity);
-    start_or_finalize_transform_input(game_state, scale_y_slider, entity);
-    start_or_finalize_transform_input(game_state, scale_z_slider, entity);
+    start_or_finalize_entity_change(game_state, scale_x_slider, entity);
+    start_or_finalize_entity_change(game_state, scale_y_slider, entity);
+    start_or_finalize_entity_change(game_state, scale_z_slider, entity);
 
     y += small_row_height;
     x = initial_x;
@@ -1936,6 +1952,7 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
             5.0f, render_state->display_output.height - 90.0f,
             buf, editor_font_name, default_text_style, "editor history heap size");
 
+#if 0
     String_Buffer history_buf = make_string_buffer((Allocator *) &memory.frame_arena, 128);
     append_string(&history_buf, "[ ");
     for (int32 i = 0; i < MAX_EDITOR_HISTORY_ENTRIES; i++) {
@@ -1977,6 +1994,7 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
     do_text(ui_manager,
             5.0f, render_state->display_output.height - 114.0f,
             buf, editor_font_name, default_text_style, "editor history");
+#endif
 
     buf = string_format((Allocator *) &memory.frame_arena, 64, "num_undone: %d", editor_state->history.num_undone);
     do_text(ui_manager,
@@ -2211,7 +2229,7 @@ Vec3 do_gizmo_translation(Camera *camera, Editor_State *editor_state, Ray cursor
     Plane plane = get_plane_containing_ray(transform_ray, camera_forward);
     bool32 intersects_plane = ray_intersects_plane(cursor_ray, plane, &t);
 
-    Vec3 new_position = editor_state->entity_original_transform.position;
+    Vec3 new_position = editor_state->old_entity->transform.position;
 
     // this will always intersect unless your FOV is >= 180 degrees
     if (intersects_plane) {
@@ -2219,7 +2237,7 @@ Vec3 do_gizmo_translation(Camera *camera, Editor_State *editor_state, Ray cursor
         real32 delta_length = dot(intersect_point - initial_hit,
                                   editor_state->gizmo_transform_axis);
         Vec3 delta = editor_state->gizmo_transform_axis * delta_length;
-        new_position = editor_state->entity_original_transform.position + delta;
+        new_position += delta;
     }
 
     return new_position;
@@ -2256,7 +2274,8 @@ Vec3 do_gizmo_scale(Camera *camera, Editor_State *editor_state, Ray cursor_ray) 
     Plane plane = get_plane_containing_ray(transform_ray, camera_forward);
     bool32 intersects_plane = ray_intersects_plane(cursor_ray, plane, &t);
 
-    Vec3 new_scale = editor_state->entity_original_transform.scale;
+    Transform original_transform = editor_state->old_entity->transform;
+    Vec3 new_scale = original_transform.scale;
 
     // this will always intersect unless your FOV is >= 180 degrees
     if (intersects_plane) {
@@ -2268,7 +2287,7 @@ Vec3 do_gizmo_scale(Camera *camera, Editor_State *editor_state, Ray cursor_ray) 
         if (editor_state->transform_mode == TRANSFORM_LOCAL) {
             return new_scale;
         } else {
-            Mat4 model = get_model_matrix(editor_state->entity_original_transform);
+            Mat4 model = get_model_matrix(original_transform);
             delta = make_vec3(1.0f, 1.0f, 1.0f) + delta;
 
             // NOTE: when delta goes below the zero vector, the entity grows instead of shrinks. i'm pretty sure
@@ -2300,7 +2319,7 @@ Quaternion do_gizmo_rotation(Camera *camera, Editor_State *editor_state, Ray cur
         initial_hit = editor_state->local_initial_gizmo_hit;
     }
 
-    Quaternion new_rotation = editor_state->entity_original_transform.rotation;
+    Quaternion new_rotation = editor_state->old_entity->transform.rotation;
 
     // this will always intersect unless your FOV is >= 180 degrees
     if (intersects_plane) {
@@ -2461,7 +2480,7 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
 
         if (editor_state->selected_gizmo_handle != GIZMO_HANDLE_NONE) {
             Entity *selected_entity = get_selected_entity(game_state);
-            set_entity_transform(game_state, selected_entity, editor_state->entity_original_transform);
+            set_entity_transform(game_state, selected_entity, editor_state->old_entity->transform);
             //editor_state->gizmo_initial_hit =
         }
     }
@@ -2508,19 +2527,9 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
         Gizmo_Handle picked_handle = pick_gizmo(game_state, cursor_ray, &pick_gizmo_t);
         if (controller_state->left_mouse.is_down && !controller_state->left_mouse.was_down) {
             if (picked_handle) {
-#if 0
-                editor_state->gizmo_initial_cursor = controller_state->current_mouse;
-                editor_state->gizmo_last_cursor = controller_state->current_mouse;
-
                 Entity *selected_entity = get_selected_entity(game_state);
-                editor_state->entity_original_transform = selected_entity->transform;
-                Vec3 local_transform_axis = get_gizmo_transform_axis(TRANSFORM_LOCAL,
-                                                                     picked_handle,
-                                                                     selected_entity);
-#endif
-#if 1
-                Entity *selected_entity = get_selected_entity(game_state);
-                editor_state->entity_original_transform = selected_entity->transform;
+                editor_state->old_entity = allocate_and_copy_entity(editor_state->history.allocator_pointer,
+                                                                    selected_entity);
                 Vec3 global_transform_axis = get_gizmo_transform_axis(TRANSFORM_GLOBAL,
                                                                       picked_handle,
                                                                       selected_entity->transform);
@@ -2533,27 +2542,6 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
                 editor_state->global_initial_gizmo_hit = get_gizmo_hit(editor_state->gizmo,
                                                                        picked_handle, pick_gizmo_t,
                                                                        cursor_ray, global_transform_axis);
-
-#if 0
-                Vec3 gizmo_initial_hit;
-                if (is_rotation(picked_handle)) {
-                    real32 t;
-                    Plane plane = { dot(editor_state->gizmo.transform.position, transform_axis), transform_axis };
-                    bool32 intersects_plane = ray_intersects_plane(cursor_ray, plane, &t);
-                    if (intersects_plane) {
-                        gizmo_initial_hit = cursor_ray.origin + t*cursor_ray.direction;
-                    } else {
-                        gizmo_initial_hit = cursor_ray.origin + pick_gizmo_t*cursor_ray.direction;;
-                    }
-                } else {
-                    gizmo_initial_hit = cursor_ray.origin + pick_gizmo_t*cursor_ray.direction;
-                }
-
-                editor_state->gizmo_initial_hit = gizmo_initial_hit;
-                editor_state->gizmo_transform_axis = transform_axis;
-                //editor_state->last_gizmo_transform_point = gizmo_initial_hit;
-#endif
-#endif
             }
 
             editor_state->selected_gizmo_handle = picked_handle;
@@ -2574,7 +2562,7 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
         if (controller_state->left_mouse.is_down) {
             editor_state->gizmo_transform_axis = get_gizmo_transform_axis(editor_state->transform_mode,
                                                                           editor_state->selected_gizmo_handle,
-                                                                          editor_state->entity_original_transform);
+                                                                          editor_state->old_entity->transform);
 
             if (is_translation(editor_state->selected_gizmo_handle)) {
                 Vec3 new_position = do_gizmo_translation(&render_state->camera, editor_state, cursor_ray);
@@ -2598,7 +2586,7 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
 
             Transform_Entity_Action action = make_transform_entity_action(editor_state->selected_entity_type,
                                                                           editor_state->selected_entity_id,
-                                                                          editor_state->entity_original_transform,
+                                                                          editor_state->old_entity->transform,
                                                                           entity->transform);
             editor_transform_entity(game_state, editor_state, action);
         }

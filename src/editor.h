@@ -101,10 +101,11 @@ struct Editor_State {
     int32 last_selected_entity_id;
     Entity_Type last_selected_entity_type;
 
+    Entity *old_entity;
+
     Gizmo gizmo;
     Gizmo_Handle hovered_gizmo_handle;
     Gizmo_Handle selected_gizmo_handle;
-    Transform entity_original_transform;
     //Vec3 gizmo_initial_hit;
     //Vec3 gizmo_local_initial_hit;
     Vec3 local_initial_gizmo_hit;

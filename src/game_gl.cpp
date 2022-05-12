@@ -366,12 +366,38 @@
 //       - TODO (done): add last_frame_active field to UI
 //       - TODO (done): add was_active procedure
 //       - TODO (done): add transform action to history when changing slideable text boxes in entity box
-//       - TODO: we may just want to save the entire entity in the action and just reset it. it's fine since
+//       - TODO (done): we may just want to save the entire entity in the action and just reset it. it's fine since
 //               we don't allocate anything in entities. even if we did allocate things, we would just copy them
 //               into the editor history heap then restore them. this would only be an issue if our entities were
 //               huge. but it makes adding history actions for new entity fields a lot easier. if we want finer
 //               control, we can still always just add actions for those specific fields.
+//       - TODO (done): add procedure for copying old and new entity
+//       - TODO (done): add editor procedure for entity modifications
+//       - TODO (done): add editor undo procedure for entity modifications
+//       - TODO (done): write a history_deallocate() procedure that handles specific deallocation needs
+//       - TODO (done): change gizmos to use the new modify action
+//       - TODO: change other entity fields to use new modify action
+//       - TODO: add history for adding and deleting materials
+//       - TODO: add history for adding and deleting textures
+//       - TODO: add history for color changes
+//       - TODO: add history for light falloff changes
 
+// TODO: instead of passing game_state to procedures like get_mesh_pointer (because we need the primitive mesh table),
+//       create a new struct called Asset_Tables that holds pointers to the current level's mesh table and the
+//       primitive mesh table
+
+// TODO: (refactor) instead of having a bunch of different structs for different entities, well we would still have
+//       different entities, but we would instead have a single struct called Entity with a union with the different
+//       entity structs. each entity struct would have a flags member of the entity type.
+//       - actually, we could kind of do a version of this now. we should replace Entity_Type with a uint32 of
+//         entity type flags. then, we don't have to constantly make switch statements in places where we have to
+//         do something like get an entity's mesh. and instead we could just create a has_mesh bitmask that just
+//         ORs together all the entity types that have meshes. then we just do (entity_type & has_mesh_mask)
+//         whenever we need to check if it has a mesh. but you would still need to have a switch statement to cast
+//         it so that you can actually get the mesh_id... so i guess instead of having a union, whenever we need to
+//         add new members to some entity type, we would just add those to the same entity struct. so we can just
+//         do entity.material_id if it has a material.
+//       - let's just stick with what we have for now.
 
 // TODO: replace the transform values in the entity box with slideable text boxes
 //       - TODO (done): create do_slider with no limits, would have to hide the slider when rendering

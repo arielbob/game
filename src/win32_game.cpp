@@ -704,7 +704,7 @@ bool32 win32_init_memory() {
     uint32 string64_pool_size = MEGABYTES(64);
     uint32 filename_pool_size = MEGABYTES(8);
     uint32 ui_state_heap_size = MEGABYTES(64);
-    uint32 editor_history_heap_size = MEGABYTES(64);
+    uint32 editor_history_heap_size = MEGABYTES(128);
 
     // level memory
     uint32 level_mesh_heap_size = MEGABYTES(64);
