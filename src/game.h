@@ -1,7 +1,6 @@
 #ifndef GAME_H
 #define GAME_H
 
-#define MAX_MESHES 64
 #define MAX_MATERIALS 64
 #define MAX_TEXTURES 64
 #define MAX_ENTITIES 64
@@ -237,8 +236,11 @@ struct Game_State {
     //String_Buffer level_to_be_loaded;
     Level current_level;
 
+#if 1
+    // TODO: remove these
     Hash_Table<int32, Mesh> common_mesh_table;
     Hash_Table<int32, Mesh> primitive_mesh_table;
+#endif
     Hash_Table<String, File_Data> font_file_table;
     Hash_Table<String, Font> font_table;
 

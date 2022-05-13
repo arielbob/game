@@ -178,6 +178,28 @@ void editor_delete_point_light_entity(Editor_State *editor_state, Level *level,
     deselect_entity(editor_state);
 }
 
+// NOTE: this should only be called by the editor. this creates the action objects for us, but the objects only
+//       have the entity id. the calls to editor_delete_* fill in the struct with the Entity object. we need to
+//       store the entity object, since when we redo a deletion (i.e. adding the entity back), we need to the
+//       entity's data.
+void editor_delete_entity(Editor_State *editor_state, Level *level,
+                          Entity_Type entity_type, int32 entity_id,
+                          bool32 is_redoing) {
+    switch (entity_type) {
+        case ENTITY_NORMAL: {
+            Delete_Normal_Entity_Action action = make_delete_normal_entity_action(entity_id);
+            editor_delete_normal_entity(editor_state, level, action, is_redoing);
+        } break;
+        case ENTITY_POINT_LIGHT: {
+            Delete_Point_Light_Entity_Action action = make_delete_point_light_entity_action(entity_id);
+            editor_delete_point_light_entity(editor_state, level, action, is_redoing);
+        } break;
+        default: {
+            assert(!"Unhandled entity type.");
+        } break;
+    }
+}
+
 void undo_delete_point_light_entity(Game_State *game_state, Level *level, Delete_Point_Light_Entity_Action action) {
     level_add_point_light_entity(game_state, level, action.entity, action.entity_id);
 }
@@ -274,27 +296,13 @@ void undo_modify_mesh(Game_State *game_state,
     copy_string(&mesh->name, make_string(action.original_name));
 }
 
-// NOTE: this should only be called by the editor. this creates the action objects for us, but the objects only
-//       have the entity id. the calls to editor_delete_* fill in the struct with the Entity object. we need to
-//       store the entity object, since when we redo a deletion (i.e. adding the entity back), we need to the
-//       entity's data.
-void editor_delete_entity(Editor_State *editor_state, Level *level,
-                          Entity_Type entity_type, int32 entity_id,
-                          bool32 is_redoing) {
-    switch (entity_type) {
-        case ENTITY_NORMAL: {
-            Delete_Normal_Entity_Action action = make_delete_normal_entity_action(entity_id);
-            editor_delete_normal_entity(editor_state, level, action, is_redoing);
-        } break;
-        case ENTITY_POINT_LIGHT: {
-            Delete_Point_Light_Entity_Action action = make_delete_point_light_entity_action(entity_id);
-            editor_delete_point_light_entity(editor_state, level, action, is_redoing);
-        } break;
-        default: {
-            assert(!"Unhandled entity type.");
-        } break;
-    }
+#if 0
+void editor_add_mesh(Game_State *game_state, Editor_State *editor_state, Level *level, Entity *entity, Mesh mesh) {
+    int32 mesh_id = level_add_mesh(level, mesh);
+    set_entity_mesh(game_state, level, entity, Mesh_Type::LEVEL, mesh_id);
+
 }
+#endif
 
 int32 history_get_num_entries(Editor_History *history) {
     if (history->start_index == -1 && history->end_index == -1) return 0;

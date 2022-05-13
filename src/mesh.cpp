@@ -411,6 +411,7 @@ inline void get_triangle(Mesh *mesh, int32 triangle_index, Vec3 triangle[3]) {
 // TODO: we may want to just get rid of the mesh_name_size parameter, and have it just be set to
 //       MESH_NAME_MAX_SIZE.
 Mesh read_and_load_mesh(Allocator *allocator,
+                        Mesh_Type type,
                         String_Buffer filename_buffer,
                         String_Buffer name_buffer) {
     Marker m = begin_region();
@@ -423,7 +424,8 @@ Mesh read_and_load_mesh(Allocator *allocator,
     mesh.allocator = allocator;
     mesh.filename = filename_buffer;
     mesh.name = name_buffer;
-    
+    mesh.type = type;
+
     end_region(m);
     
     return mesh;

@@ -18,7 +18,11 @@ enum Action_Type {
     ACTION_DELETE_POINT_LIGHT_ENTITY,
     ACTION_TRANSFORM_ENTITY, 
     ACTION_MODIFY_ENTITY,
-    ACTION_MODIFY_MESH
+    ACTION_MODIFY_MESH,
+
+    // TODO: implement these
+    ACTION_ADD_MESH,
+    ACTION_DELETE_MESH
 };
 
 #define ACTION_HEADER                           \

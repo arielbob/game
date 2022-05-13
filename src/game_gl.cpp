@@ -386,6 +386,12 @@
 //       - TODO: add history for adding and deleting textures
 //       - TODO: add history for color changes
 //       - TODO: add history for light falloff changes
+//       - TODO: add shortcuts for undoing and redoing
+
+// TODO: (refactor) could we maybe just store all the meshes in the same table? so we don't need to constantly
+//       differentiate between primitive and level meshes
+//       - TODO (done): create Asset_Manager struct
+//       - TODO: add procedures for adding level, primitive, and engine meshes
 
 // TODO: material duplicating
 // TODO: entity duplicating

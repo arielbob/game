@@ -488,12 +488,14 @@ void load_default_level(Game_State *game_state, Level *level) {
     // add level meshes
     Mesh mesh;
     mesh = read_and_load_mesh(mesh_allocator,
+                              Mesh_Type::LEVEL,
                               make_string_buffer(filename_allocator, "blender/suzanne2.mesh", PLATFORM_MAX_PATH),
                               make_string_buffer(mesh_name_allocator, "suzanne", MESH_NAME_MAX_SIZE));
     int32 suzanne_mesh_id = level_add_mesh(level, mesh);
     AABB suzanne_mesh_aabb = mesh.aabb;
     
     mesh = read_and_load_mesh(mesh_allocator,
+                              Mesh_Type::LEVEL,
                               make_string_buffer(filename_allocator, "blender/sphere.mesh", PLATFORM_MAX_PATH),
                               make_string_buffer(mesh_name_allocator, "sphere", MESH_NAME_MAX_SIZE));
     int32 sphere_mesh_id = level_add_mesh(level, mesh);
@@ -1371,7 +1373,7 @@ bool32 read_and_load_level(Game_State *game_state,
                 String_Buffer mesh_filename = make_string_buffer(level_filename_allocator,
                                                                  make_string(temp_mesh.filename),
                                                                  PLATFORM_MAX_PATH);
-                Mesh mesh = read_and_load_mesh(level_mesh_allocator, mesh_filename, mesh_name);
+                Mesh mesh = read_and_load_mesh(level_mesh_allocator, Mesh_Type::LEVEL, mesh_filename, mesh_name);
                 mesh_table.entries[i].value = mesh;
 
                 num_checked++;

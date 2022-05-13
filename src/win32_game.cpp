@@ -31,13 +31,13 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "lib/stb_image.h"
 
+#include "win32_game.h"
 #include "math.h"
 #include "entity.h"
 #include "game.h"
 #include "level.h"
 #include "memory.h"
 #include "platform.h"
-#include "win32_game.h"
 
 global_variable Memory memory;
 
@@ -45,6 +45,7 @@ global_variable Memory memory;
 #include "math.cpp"
 #include "mesh.cpp"
 #include "font.cpp"
+#include "asset.cpp"
 #include "ui.cpp"
 #include "level.cpp"
 #include "editor.cpp"

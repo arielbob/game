@@ -437,27 +437,32 @@ void init_game(Game_State *game_state,
     Allocator *mesh_name_allocator = (Allocator *) &memory.string_arena;
     Mesh mesh;
     mesh = read_and_load_mesh((Allocator *) &memory.common_mesh_arena,
+                              Mesh_Type::ENGINE,
                               make_string_buffer(filename_allocator, "blender/gizmo_arrow.mesh", PLATFORM_MAX_PATH),
                               make_string_buffer(mesh_name_allocator, "gizmo_arrow", MESH_NAME_MAX_SIZE));
     int32 gizmo_arrow_mesh_id = add_common_mesh(game_state, mesh);
 
     mesh = read_and_load_mesh((Allocator *) &memory.common_mesh_arena,
+                              Mesh_Type::ENGINE,
                               make_string_buffer(filename_allocator, "blender/gizmo_ring.mesh", PLATFORM_MAX_PATH),
                               make_string_buffer(mesh_name_allocator, "gizmo_ring", MESH_NAME_MAX_SIZE));
     int32 gizmo_ring_mesh_id = add_common_mesh(game_state, mesh);
 
     mesh = read_and_load_mesh((Allocator *) &memory.common_mesh_arena,
+                              Mesh_Type::ENGINE,
                               make_string_buffer(filename_allocator, "blender/gizmo_sphere.mesh", PLATFORM_MAX_PATH),
                               make_string_buffer(mesh_name_allocator, "gizmo_sphere", MESH_NAME_MAX_SIZE));
     int32 gizmo_sphere_mesh_id = add_common_mesh(game_state, mesh);
 
     mesh = read_and_load_mesh((Allocator *) &memory.common_mesh_arena,
+                              Mesh_Type::ENGINE,
                               make_string_buffer(filename_allocator, "blender/gizmo_cube.mesh",
                                                  PLATFORM_MAX_PATH),
                               make_string_buffer(mesh_name_allocator, "gizmo_cube", MESH_NAME_MAX_SIZE));
     int32 gizmo_cube_mesh_id = add_common_mesh(game_state, mesh);
 
     mesh = read_and_load_mesh((Allocator *) &memory.common_mesh_arena,
+                              Mesh_Type::PRIMITIVE,
                               make_string_buffer(filename_allocator, "blender/cube.mesh", PLATFORM_MAX_PATH),
                               make_string_buffer(mesh_name_allocator, "cube", MESH_NAME_MAX_SIZE));
     add_primitive_mesh(game_state, mesh);

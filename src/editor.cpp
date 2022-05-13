@@ -172,12 +172,19 @@ bool32 editor_add_mesh_press(Game_State *game_state, Level *level, Entity *entit
                                                              relative_filename, PLATFORM_MAX_PATH);
 
         Mesh new_mesh = read_and_load_mesh((Allocator *) &memory.level_mesh_heap,
+                                           Mesh_Type::LEVEL,
                                            new_mesh_filename,
                                            new_mesh_name);
         int32 mesh_id = level_add_mesh(level, new_mesh);
 
         set_entity_mesh(Context::game_state, level, entity, Mesh_Type::LEVEL, mesh_id);
         end_region(m);
+
+#if 0
+        Add_Mesh_Action action = make_add_mesh_action(new_mesh);
+        editor_add_mesh(game_state, game_state->editor_state, level, entity, new_mesh);
+#endif
+
         return true;
     }
 
