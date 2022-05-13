@@ -1010,10 +1010,12 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                                  "add_mesh");
         x += small_button_width + padding_left;
 
+        bool32 mesh_added = false;
         if (add_mesh_pressed) {
-            bool32 mesh_added = editor_add_mesh_press(game_state, &game_state->current_level, entity);
+            mesh_added = editor_add_mesh_press(game_state, &game_state->current_level, entity);
             if (mesh_added) {
                 editor_state->editing_selected_entity_mesh = true;
+                mesh = get_mesh_pointer(game_state, level, normal_entity->mesh_type, normal_entity->mesh_id);
             }
         }
 
@@ -1049,7 +1051,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                                     edit_box_width, row_height,
                                                     &mesh->name, editor_font_name,
                                                     text_box_style, default_text_style,
-                                                    true,
+                                                    true, mesh_added,
                                                     "mesh_name_text_box", normal_entity->mesh_id);
             if (result.submitted) {
                 String new_name = make_string(result.buffer);
