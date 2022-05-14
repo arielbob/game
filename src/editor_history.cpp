@@ -90,21 +90,18 @@ void _history_add_action(Editor_History *history, Editor_Action *editor_action) 
 // normal entity adding
 void editor_add_normal_entity(Editor_State *editor_state, Game_State *game_state, Add_Normal_Entity_Action action,
                               bool32 is_redoing) {
-    int32 mesh_id = get_mesh_id_by_name(game_state,
-                                        &game_state->current_level,
-                                        Mesh_Type::PRIMITIVE,
-                                        make_string("cube"));
+    Asset_Manager *asset_manager = &game_state->asset_manager;
+    int32 mesh_id = get_mesh_id_by_name(asset_manager, make_string("cube"));
 
-    AABB primitive_cube_mesh_aabb = (get_mesh(game_state, &game_state->current_level,
-                                              Mesh_Type::PRIMITIVE, mesh_id)).aabb;
+    AABB primitive_cube_mesh_aabb = (get_mesh(asset_manager, mesh_id)).aabb;
 
-    Normal_Entity new_entity = make_entity(Mesh_Type::PRIMITIVE, mesh_id, -1, make_transform(),
+    Normal_Entity new_entity = make_entity(mesh_id, -1, make_transform(),
                                            primitive_cube_mesh_aabb);
 
     if (action.entity_id >= 0) {
-        level_add_entity(game_state, &game_state->current_level, new_entity, action.entity_id);
+        level_add_entity(&game_state->current_level, new_entity, action.entity_id);
     } else {
-        action.entity_id = level_add_entity(game_state, &game_state->current_level, new_entity);
+        action.entity_id = level_add_entity(&game_state->current_level, new_entity);
     }
 
     editor_state->selected_entity_type = ENTITY_NORMAL;
@@ -129,9 +126,9 @@ void editor_add_point_light_entity(Editor_State *editor_state, Game_State *game_
                                                             0.0f, 5.0f, make_transform());
 
     if (action.entity_id >= 0) {
-        level_add_point_light_entity(game_state, &game_state->current_level, new_entity, action.entity_id);
+        level_add_point_light_entity(&game_state->current_level, new_entity, action.entity_id);
     } else {
-        action.entity_id = level_add_point_light_entity(game_state, &game_state->current_level, new_entity);
+        action.entity_id = level_add_point_light_entity(&game_state->current_level, new_entity);
     }
 
     editor_state->selected_entity_type = ENTITY_POINT_LIGHT;
@@ -161,8 +158,8 @@ void editor_delete_normal_entity(Editor_State *editor_state, Level *level,
     deselect_entity(editor_state);
 }
 
-void undo_delete_normal_entity(Game_State *game_state, Level *level, Delete_Normal_Entity_Action action) {
-    level_add_entity(game_state, level, action.entity, action.entity_id);
+void undo_delete_normal_entity(Level *level, Delete_Normal_Entity_Action action) {
+    level_add_entity(level, action.entity, action.entity_id);
 }
 
 // point light entity deleting
@@ -200,8 +197,8 @@ void editor_delete_entity(Editor_State *editor_state, Level *level,
     }
 }
 
-void undo_delete_point_light_entity(Game_State *game_state, Level *level, Delete_Point_Light_Entity_Action action) {
-    level_add_point_light_entity(game_state, level, action.entity, action.entity_id);
+void undo_delete_point_light_entity(Level *level, Delete_Point_Light_Entity_Action action) {
+    level_add_point_light_entity(level, action.entity, action.entity_id);
 }
 
 // entity transforming
@@ -213,12 +210,12 @@ void editor_transform_entity(Game_State *game_state, Editor_State *editor_state,
     
     Level *level = &game_state->current_level;
     Entity *entity = get_entity(level, action.entity_type, action.entity_id);
-    set_entity_transform(game_state, entity, action.transform);
+    set_entity_transform(&game_state->asset_manager, entity, action.transform);
 }
 
 void undo_transform_entity(Game_State *game_state, Transform_Entity_Action action) {
     Entity *entity = get_entity(&game_state->current_level, action.entity_type, action.entity_id);
-    set_entity_transform(game_state, entity, action.original_transform);
+    set_entity_transform(&game_state->asset_manager, entity, action.original_transform);
 }
 
 // copies new_entity into entity
@@ -267,8 +264,9 @@ void editor_modify_mesh(Game_State *game_state, Modify_Mesh_Action action, bool3
     // NOTE: we currently only handle changes to the mesh name
 
     Editor_History *history = &game_state->editor_state.history;
+    Asset_Manager *asset_manager = &game_state->asset_manager;
 
-    Mesh *mesh = get_mesh_pointer(game_state, &game_state->current_level, action.mesh_type, action.mesh_id);
+    Mesh *mesh = get_mesh_pointer(asset_manager, action.mesh_id);
     action.original_name = copy_string_buffer(history->allocator_pointer, mesh->name);
 
     copy_string(&mesh->name, make_string(action.new_name));
@@ -289,7 +287,7 @@ void editor_modify_mesh(Game_State *game_state, Modify_Mesh_Action action, bool3
 
 void undo_modify_mesh(Game_State *game_state,
                       Modify_Mesh_Action action) {
-    Mesh *mesh = get_mesh_pointer(game_state, &game_state->current_level, action.mesh_type, action.mesh_id);
+    Mesh *mesh = get_mesh_pointer(&game_state->asset_manager, action.mesh_id);
 
     game_state->editor_state.editing_selected_entity_mesh = false;
 
@@ -351,11 +349,11 @@ void history_undo(Game_State *game_state, Editor_History *history) {
         } break;
         case ACTION_DELETE_NORMAL_ENTITY: {
             Delete_Normal_Entity_Action *action = (Delete_Normal_Entity_Action *) current_action;
-            undo_delete_normal_entity(game_state, level, *action);
+            undo_delete_normal_entity(level, *action);
         } break;
         case ACTION_DELETE_POINT_LIGHT_ENTITY: {
             Delete_Point_Light_Entity_Action *action = (Delete_Point_Light_Entity_Action *) current_action;
-            undo_delete_point_light_entity(game_state, level, *action);
+            undo_delete_point_light_entity(level, *action);
         } break;
         case ACTION_TRANSFORM_ENTITY: {
             Transform_Entity_Action *action = (Transform_Entity_Action *) current_action;

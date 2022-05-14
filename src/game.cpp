@@ -144,26 +144,7 @@ bool32 texture_name_exists(Level *level, String name) {
     return false;
 }
 
-bool32 mesh_name_exists(Game_State *game_state, Level *level, String name) {
-    {
-        FOR_VALUE_POINTERS(int32, Mesh, game_state->primitive_mesh_table) {
-            if (string_equals(make_string(value->name), name)) {
-                return true;
-            }
-        }
-    }
-
-    {
-        FOR_VALUE_POINTERS(int32, Mesh, level->mesh_table) {
-            if (string_equals(make_string(value->name), name)) {
-                return true;
-            }
-        }
-    }
-
-    return false;
-}
-
+#if 0
 int32 add_common_mesh(Game_State *game_state, Mesh mesh) {
     int32 mesh_id = game_state->common_mesh_table.total_added_ever;
     hash_table_add(&game_state->common_mesh_table, mesh_id, mesh);
@@ -185,6 +166,7 @@ int32 add_primitive_mesh(Game_State *game_state, Mesh mesh) {
     hash_table_add(&game_state->primitive_mesh_table, mesh_id, mesh);
     return mesh_id;
 }
+#endif
 
 #if 0
 int32 get_primitive_mesh_id_by_name(Game_State *game_state, String mesh_name) {
@@ -203,9 +185,7 @@ int32 get_primitive_mesh_id_by_name(Game_State *game_state, String mesh_name) {
 }
 #endif
 
-// TODO: this assumes that mesh names are unique, which isn't currently being enforced.. so ideally we should just
-//       not name meshes by the same name.. until we add validation to the text boxes and to the level_add_*
-//       procedures.
+#if 0
 int32 get_mesh_id_by_name(Game_State *game_state, Level *level, Mesh_Type mesh_type, String mesh_name) {
     int32 num_checked = 0;
 
@@ -232,8 +212,9 @@ int32 get_mesh_id_by_name(Game_State *game_state, Level *level, Mesh_Type mesh_t
 
     return -1;
 }
+#endif
 
-
+#if 0
 bool32 mesh_exists(Game_State *game_state, Level *level, Mesh_Type mesh_type, int32 mesh_id) {
     bool32 mesh_exists = false;
     switch (mesh_type) {
@@ -287,6 +268,25 @@ Mesh *get_mesh_pointer(Game_State *game_state, Level *level, Mesh_Type mesh_type
     assert(mesh_exists);
     return mesh;
 }
+Mesh *get_mesh_pointer(Game_State *game_state, Level *level, Mesh_Type mesh_type, int32 mesh_id) {
+    Mesh *mesh = NULL;
+    bool32 mesh_exists = false;
+        switch (mesh_type) {
+            case Mesh_Type::LEVEL: {
+                mesh_exists = hash_table_find_pointer(level->mesh_table, mesh_id, &mesh);
+            } break;
+            case Mesh_Type::PRIMITIVE: {
+                mesh_exists = hash_table_find_pointer(game_state->primitive_mesh_table, mesh_id, &mesh);
+            } break;
+            default: {
+                assert(!"Unhandled mesh type.");
+            } break;
+        }
+
+    assert(mesh_exists);
+    return mesh;
+}
+#endif
 
 #if 0
 void add_entity(Game_State *game_state, Normal_Entity entity) {
@@ -384,6 +384,18 @@ void init_game(Game_State *game_state,
     game_state->message_manager.message_time_limit = MESSAGE_TIME_LIMIT;
     Context::message_manager = &game_state->message_manager;
 
+    // init asset manager
+    Asset_Manager asset_manager = {};
+    asset_manager.persistent_mesh_arena_pointer = &memory.common_mesh_arena;
+    asset_manager.persistent_string_arena_pointer = &memory.string_arena;
+    asset_manager.level_mesh_heap_pointer = &memory.level_mesh_heap;
+    asset_manager.string_pool_pointer = &memory.string64_pool;
+    asset_manager.filename_pool_pointer = &memory.filename_pool;
+    asset_manager.mesh_table = make_hash_table<int32, Mesh>((Allocator *) &memory.hash_table_stack,
+                                                            MAX_MESHES,
+                                                            &int32_equals);
+    game_state->asset_manager = asset_manager;
+
     // string pool allocators
     Allocator *string64_allocator = (Allocator *) &memory.string64_pool;
     Allocator *filename_allocator = (Allocator *) &memory.filename_pool;
@@ -395,13 +407,8 @@ void init_game(Game_State *game_state,
     game_state->font_file_table = make_hash_table<String, File_Data>((Allocator *) &memory.hash_table_stack,
                                                                      HASH_TABLE_SIZE,
                                                                      &string_equals);
-    game_state->common_mesh_table = make_hash_table<int32, Mesh>((Allocator *) &memory.hash_table_stack,
-                                                                 HASH_TABLE_SIZE,
-                                                                 &int32_equals);
-    game_state->primitive_mesh_table = make_hash_table<int32, Mesh>((Allocator *) &memory.hash_table_stack,
-                                                                    HASH_TABLE_SIZE,
-                                                                    &int32_equals);
 
+    // init camera
     init_camera(camera, display_output);
 
     // init fonts
@@ -433,6 +440,7 @@ void init_game(Game_State *game_state,
     add_font(game_state, font);
 
     // add common meshes
+#if 0
     // NOTE: we just use the string_arena here since we're never going to need to remove these meshes
     Allocator *mesh_name_allocator = (Allocator *) &memory.string_arena;
     Mesh mesh;
@@ -466,6 +474,22 @@ void init_game(Game_State *game_state,
                               make_string_buffer(filename_allocator, "blender/cube.mesh", PLATFORM_MAX_PATH),
                               make_string_buffer(mesh_name_allocator, "cube", MESH_NAME_MAX_SIZE));
     add_primitive_mesh(game_state, mesh);
+#else
+    int32 gizmo_arrow_mesh_id;
+    add_engine_mesh(&game_state->asset_manager, "blender/gizmo_arrow.mesh", "gizmo_arrow", &gizmo_arrow_mesh_id);
+
+    int32 gizmo_ring_mesh_id;
+    add_engine_mesh(&game_state->asset_manager, "blender/gizmo_ring.mesh", "gizmo_ring", &gizmo_ring_mesh_id);
+
+    int32 gizmo_sphere_mesh_id;
+    add_engine_mesh(&game_state->asset_manager, "blender/gizmo_sphere.mesh", "gizmo_sphere", &gizmo_sphere_mesh_id);
+
+    int32 gizmo_cube_mesh_id;
+    add_engine_mesh(&game_state->asset_manager, "blender/gizmo_cube.mesh", "gizmo_cube", &gizmo_cube_mesh_id);
+
+    add_primitive_mesh(&game_state->asset_manager, "blender/cube.mesh", "cube");
+#endif
+
 
     Vec3 origin = make_vec3(0.0f, 10.0f, 0.0f);
     Vec3 direction = make_vec3(0.0f, -1.0f, 0.0f);
@@ -507,7 +531,6 @@ void init_game(Game_State *game_state,
     // init level
     Level *current_level = &game_state->current_level;
     current_level->name = make_string_buffer((Allocator *) &memory.level_string64_pool, LEVEL_NAME_MAX_SIZE);
-    current_level->mesh_heap_pointer = &memory.level_mesh_heap;
     current_level->arena_pointer = &memory.level_arena;
     current_level->string64_pool_pointer = &memory.level_string64_pool;
     current_level->filename_pool_pointer = &memory.level_filename_pool;
@@ -787,6 +810,7 @@ bool32 closest_vertical_point_on_mesh(Vec3 point, Mesh *mesh, Transform transfor
 bool32 get_new_walk_state(Game_State *game_state, Walk_State current_walk_state, Vec3 player_position,
                           Walk_State *walk_state_result, Vec3 *grounded_position) {
     Level *level = &game_state->current_level;
+    Asset_Manager *asset_manager = &game_state->asset_manager;
 
     Circle_Collider player_collider = make_circle_collider(player_position, Player_Constants::walk_radius);
     real32 max_lower_offset = Player_Constants::max_lower_ground_offset;
@@ -802,7 +826,7 @@ bool32 get_new_walk_state(Game_State *game_state, Walk_State current_walk_state,
     FOR_ENTRY_POINTERS(int32, Normal_Entity, level->normal_entity_table) {
         Normal_Entity *entity = &entry->value;
         if (entity->is_walkable) {
-            Mesh *mesh = get_mesh_pointer(game_state, level, entity->mesh_type, entity->mesh_id);
+            Mesh *mesh = get_mesh_pointer(asset_manager, entity->mesh_id);
             Get_Walkable_Triangle_On_Mesh_Result result;
             bool32 found_triangle = get_walkable_triangle_on_mesh(player_collider.center, player_collider.radius,
                                                                   mesh,
@@ -896,18 +920,18 @@ Entity *get_selected_entity(Game_State *game_state) {
     return entity;
 }
 
-Mesh *get_entity_mesh_pointer(Game_State *game_state, Level *level, Entity *entity) {
+Mesh *get_entity_mesh_pointer(Asset_Manager *asset_manager, Entity *entity) {
     if (entity->type == ENTITY_NORMAL) {
         Normal_Entity *normal_entity = (Normal_Entity *) entity;
-        Mesh *mesh = get_mesh_pointer(game_state, level, normal_entity->mesh_type, normal_entity->mesh_id);
+        Mesh *mesh = get_mesh_pointer(asset_manager, normal_entity->mesh_id);
         return mesh;
     }
 
     return NULL;
 }
 
-void update_entity_aabb(Game_State *game_state, Level *level, Entity *entity) {
-    Mesh *mesh = get_entity_mesh_pointer(game_state, level, entity);
+void update_entity_aabb(Asset_Manager *asset_manager, Entity *entity) {
+    Mesh *mesh = get_entity_mesh_pointer(asset_manager, entity);
     if (mesh) {
         if (entity->type == ENTITY_NORMAL) {
             Normal_Entity *normal_entity = (Normal_Entity *) entity;
@@ -922,10 +946,10 @@ void update_entity_aabb(Game_State *game_state, Level *level, Entity *entity) {
 //       outside of the editor, but that's the only place we're using them right now. although, it is convenient
 //       that as long as we use these procedures when transforming entities, the entities will always have an
 //       up to date AABB.
-void update_entity_position(Game_State *game_state, Entity *entity, Vec3 new_position) {
+void update_entity_position(Asset_Manager *asset_manager, Entity *entity, Vec3 new_position) {
     entity->transform.position = new_position;
 
-    update_entity_aabb(game_state, &game_state->current_level, entity);
+    update_entity_aabb(asset_manager, entity);
 
     if (entity->type == ENTITY_NORMAL) {
         Normal_Entity *normal_entity = (Normal_Entity *) entity;
@@ -942,16 +966,16 @@ void update_entity_position(Game_State *game_state, Entity *entity, Vec3 new_pos
     }
 }
 
-void update_entity_rotation(Game_State *game_state, Entity *entity, Quaternion new_rotation) {
+void update_entity_rotation(Asset_Manager *asset_manager, Entity *entity, Quaternion new_rotation) {
     entity->transform.rotation = new_rotation;
-    update_entity_aabb(game_state, &game_state->current_level, entity);
+    update_entity_aabb(asset_manager, entity);
 
     // TODO: modify colliders when rotating
 }
 
-void update_entity_scale(Game_State *game_state, Entity *entity, Vec3 new_scale) {
+void update_entity_scale(Asset_Manager *asset_manager, Entity *entity, Vec3 new_scale) {
     entity->transform.scale = new_scale;
-    update_entity_aabb(game_state, &game_state->current_level, entity);
+    update_entity_aabb(asset_manager, entity);
 
     // TODO: modify colliders when scaling
 #if 0
@@ -971,9 +995,9 @@ void update_entity_scale(Game_State *game_state, Entity *entity, Vec3 new_scale)
 #endif
 }
 
-void set_entity_transform(Game_State *game_state, Entity *entity, Transform transform) {
+void set_entity_transform(Asset_Manager *asset_manager, Entity *entity, Transform transform) {
     entity->transform = transform;
-    update_entity_aabb(game_state, &game_state->current_level, entity);
+    update_entity_aabb(asset_manager, entity);
 }
 
 Material *get_entity_material(Level *level, Entity *entity) {
@@ -990,6 +1014,7 @@ Material *get_entity_material(Level *level, Entity *entity) {
     return selected_material;
 }
 
+#if 0
 void set_entity_mesh(Game_State *game_state, Level *level, Entity *entity, Mesh_Type mesh_type, int32 mesh_id) {
     // TODO: we'll probably add entities other than normal entities in the future that have meshes, but for now just check
     //       for ENTITY_NORMAL
@@ -1000,6 +1025,25 @@ void set_entity_mesh(Game_State *game_state, Level *level, Entity *entity, Mesh_
         case ENTITY_NORMAL: {
             Normal_Entity *normal_entity = (Normal_Entity *) entity;
             normal_entity->mesh_type = mesh_type;
+            normal_entity->mesh_id = mesh_id;
+            normal_entity->transformed_aabb = transform_aabb(mesh.aabb, entity->transform);
+        } break;
+        default: {
+            assert(!"Unhandled entity with mesh type");
+        } break;
+    }
+}
+#endif
+
+void set_entity_mesh(Asset_Manager *asset_manager, Entity *entity, int32 mesh_id) {
+    // TODO: we'll probably add entities other than normal entities in the future that have meshes, but for now
+    //       just check for ENTITY_NORMAL
+    assert(entity->type == ENTITY_NORMAL);
+    Mesh mesh = get_mesh(asset_manager, mesh_id);
+
+    switch (entity->type) {
+        case ENTITY_NORMAL: {
+            Normal_Entity *normal_entity = (Normal_Entity *) entity;
             normal_entity->mesh_id = mesh_id;
             normal_entity->transformed_aabb = transform_aabb(mesh.aabb, entity->transform);
         } break;
@@ -1031,6 +1075,7 @@ void add_debug_line(Debug_State *debug_state, Vec3 start, Vec3 end, Vec4 color) 
 void check_player_collisions(Game_State *game_state) {
     Level *level = &game_state->current_level;
     Player *player = &game_state->player;
+    Asset_Manager *asset_manager = &game_state->asset_manager;
 
     Capsule player_capsule = { player->position,
                                player->position + make_vec3(0.0f, player->height, 0.0f),
@@ -1040,7 +1085,7 @@ void check_player_collisions(Game_State *game_state) {
         
     FOR_VALUE_POINTERS(int32, Normal_Entity, level->normal_entity_table) {
         Normal_Entity *entity = value;
-        Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
+        Mesh mesh = get_mesh(asset_manager, entity->mesh_id);
         if (capsule_intersects_mesh(player_capsule, mesh, entity->transform)) {
             char *buf = string_format((Allocator *) &memory.frame_arena, 128,
                                       "capsule is intersecting: %s",
@@ -1053,6 +1098,7 @@ void check_player_collisions(Game_State *game_state) {
 void update_player(Game_State *game_state, Controller_State *controller_state,
                    real32 dt) {
     Debug_State *debug_state = &game_state->debug_state;
+    Asset_Manager *asset_manager = &game_state->asset_manager;
     Player *player = &game_state->player;
 
     if (platform_window_has_focus()) {
@@ -1139,8 +1185,7 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
         
         Entity *entity = get_entity(&game_state->current_level,
                                     new_walk_state.ground_entity_type, new_walk_state.ground_entity_id);
-        Mesh *mesh = get_entity_mesh_pointer(game_state, &game_state->current_level,
-                                             entity);
+        Mesh *mesh = get_entity_mesh_pointer(asset_manager, entity);
         assert(mesh);
 
         Vec3 triangle[3];

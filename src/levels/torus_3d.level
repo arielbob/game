@@ -1,0 +1,89 @@
+level_info {
+level_name "torus_3d"
+}
+
+meshes {
+mesh "suzanne" "blender/suzanne2.mesh"
+mesh "sphere" "blender/sphere.mesh"
+mesh "torus" ".\blender\torus.mesh"
+}
+
+textures {
+texture "debug" "src/textures/debug_texture.png"
+texture "white" "src/textures/white.bmp"
+}
+
+materials {
+material "shiny_monkey"
+texture "debug"
+gloss 100.000000
+color_override 0.600000 0.600000 0.600000
+use_color_override 1
+
+material "diffuse_plane"
+gloss 1.000000
+color_override 0.900000 0.900000 0.900000
+use_color_override 1
+
+material "arrow_material"
+gloss 100.000000
+color_override 1.000000 0.000000 0.000000
+use_color_override 1
+
+material "white_light"
+gloss 0.000000
+color_override 1.000000 1.000000 1.000000
+use_color_override 1
+
+material "blue_light"
+gloss 0.000000
+color_override 0.000000 0.000000 1.000000
+use_color_override 1
+
+material "diffuse_sphere"
+gloss 5.000000
+color_override 0.690196 0.690196 0.690196
+use_color_override 1
+}
+
+entities {
+type normal
+position 1.838791 1.237550 0.000000
+rotation 0.755369 0.531950 0.012380 -0.382483
+scale 1.000000 1.000000 1.000000
+mesh "suzanne"
+material "shiny_monkey"
+is_walkable 0
+
+type normal
+position 0.000000 -0.810176 0.000000
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 5.000000 3.983019 5.000000
+mesh "torus"
+material "diffuse_plane"
+is_walkable 1
+
+type normal
+position -1.500000 1.500000 -1.000000
+rotation 0.835147 -0.316013 -0.159321 -0.421049
+scale 1.367154 0.500000 0.500000
+mesh "sphere"
+material "diffuse_sphere"
+is_walkable 0
+
+type point_light
+position 0.800000 1.800000 -2.300000
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 0.100000 0.100000 0.100000
+light_color 0.386750 0.910000 0.847210
+falloff_start 0.000000
+falloff_end 3.000000
+
+type point_light
+position -1.000000 1.792271 0.000000
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 0.100000 0.100000 0.100000
+light_color 0.570000 0.091200 0.191748
+falloff_start 0.000000
+falloff_end 5.000000
+}

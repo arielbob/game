@@ -100,7 +100,7 @@ void append_string_add_quotes(String_Buffer *buffer, char *string) {
     append_string(buffer, "\"");
 }
 
-void append_default_entity_info(Game_State *game_state, Level *level, String_Buffer *buffer, Entity *entity) {
+void append_default_entity_info(Level *level, String_Buffer *buffer, Entity *entity) {
     int32 temp_buffer_size = 128;
 
     Marker m = begin_region();
@@ -131,7 +131,7 @@ void append_default_entity_info(Game_State *game_state, Level *level, String_Buf
     end_region(m);
 }
 
-void export_level(Allocator *allocator, Game_State *game_state, Level *level, char *filename) {
+void export_level(Allocator *allocator, Asset_Manager *asset_manager, Level *level, char *filename) {
     uint32 buffer_size = MEGABYTES(8); // should be a fine size
     String_Buffer working_buffer = make_string_buffer(allocator, buffer_size);
 
@@ -142,6 +142,19 @@ void export_level(Allocator *allocator, Game_State *game_state, Level *level, ch
     append_string(&working_buffer, "}\n\n");
 
     append_string(&working_buffer, "meshes {\n");
+    {
+    FOR_VALUE_POINTERS(int32, Mesh, asset_manager->mesh_table) {
+        if (value->type == Mesh_Type::LEVEL) {
+            append_string(&working_buffer, "mesh ");
+            append_string_add_quotes(&working_buffer, value->name);
+            append_string(&working_buffer, " ");
+            append_string_add_quotes(&working_buffer, value->filename);
+            append_string(&working_buffer, "\n");
+        }
+    }
+    }
+
+#if 0
     Hash_Table<int32, Mesh> mesh_table = level->mesh_table;
     for (int32 i = 0; i < mesh_table.max_entries; i++) {
         Hash_Table_Entry<int32, Mesh> entry = mesh_table.entries[i];
@@ -153,6 +166,7 @@ void export_level(Allocator *allocator, Game_State *game_state, Level *level, ch
             append_string(&working_buffer, "\n");
         }
     }
+#endif
     append_string(&working_buffer, "}\n\n");
 
     append_string(&working_buffer, "textures {\n");
@@ -226,14 +240,15 @@ void export_level(Allocator *allocator, Game_State *game_state, Level *level, ch
             Normal_Entity *entity = &entry->value;
 
             append_string(&working_buffer, "type normal\n");
-            append_default_entity_info(game_state, level, &working_buffer, (Entity *) entity);
-            if (entity->mesh_type == Mesh_Type::PRIMITIVE) {
+            append_default_entity_info(level, &working_buffer, (Entity *) entity);
+
+            Mesh mesh = get_mesh(asset_manager, entity->mesh_id);
+
+            if (mesh.type == Mesh_Type::PRIMITIVE) {
                 append_string(&working_buffer, "mesh_primitive ");
             } else {
                 append_string(&working_buffer, "mesh ");
             }
-    
-            Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
             append_string_add_quotes(&working_buffer, mesh.name);
             append_string(&working_buffer, "\n");
 
@@ -260,7 +275,7 @@ void export_level(Allocator *allocator, Game_State *game_state, Level *level, ch
             Point_Light_Entity *entity = &entry->value;
 
             append_string(&working_buffer, "type point_light\n");
-            append_default_entity_info(game_state, level, &working_buffer, (Entity *) entity);
+            append_default_entity_info(level, &working_buffer, (Entity *) entity);
 
             Marker m = begin_region();
 
@@ -335,13 +350,16 @@ inline bool32 texture_exists(Level *level, int32 texture_id) {
     return hash_table_exists(level->texture_table, texture_id);
 }
 
+#if 0
 int32 level_add_mesh(Level *level, Mesh mesh) {
     int32 mesh_id = level->mesh_table.total_added_ever;
     hash_table_add(&level->mesh_table, mesh_id, mesh);
     return mesh_id;
 }
+#endif
 
 // you can only delete level meshes, so we assume the mesh type is always LEVEL
+#if 0
 void level_delete_mesh(Game_State *game_state, Level *level, int32 mesh_id) {
     hash_table_remove(&level->mesh_table, mesh_id);
     // remove the mesh from normal entities
@@ -352,6 +370,23 @@ void level_delete_mesh(Game_State *game_state, Level *level, int32 mesh_id) {
         Normal_Entity *entity = &entry->value;
         if (entity->mesh_type == Mesh_Type::LEVEL && entity->mesh_id == mesh_id) {
             set_entity_mesh(game_state, level, (Entity *) entity, Mesh_Type::PRIMITIVE, default_mesh_id);
+        }
+    }
+}
+#endif
+
+void level_delete_mesh(Asset_Manager *asset_manager, Level *level, int32 mesh_id) {
+    // we assume that the mesh is a level mesh. hash_table_remove will assert anyways if we try and delete
+    // primitive or engine meshes, since those meshes are allocated using arenas, and you cannot deallocate
+    // individual allocations from arenas.
+    hash_table_remove(&asset_manager->mesh_table, mesh_id);
+    int32 default_mesh_id = get_mesh_id_by_name(asset_manager, make_string("cube"));
+    
+    FOR_ENTRY_POINTERS(int32, Normal_Entity, level->normal_entity_table) {
+        Normal_Entity *entity = &entry->value;
+        if (entity->mesh_id == mesh_id) {
+            
+            set_entity_mesh(asset_manager, (Entity *) entity, mesh_id);
         }
     }
 }
@@ -390,16 +425,14 @@ int32 get_texture_id_by_name(Level *level, String texture_name) {
     return -1;
 }
 
-int32 level_add_entity(Game_State *game_state, Level *level, Normal_Entity entity, int32 entity_id) {
-    assert(mesh_exists(game_state, level, entity.mesh_type, entity.mesh_id));
+int32 level_add_entity(Level *level, Normal_Entity entity, int32 entity_id) {
+    //assert(mesh_exists(asset_manager, entity.mesh_id));
     assert(entity_id >= 0);
     hash_table_add(&level->normal_entity_table, entity_id, entity);
     return entity_id;
 }
 
-int32 level_add_entity(Game_State *game_state, Level *level, Normal_Entity entity) {
-    assert(mesh_exists(game_state, level, entity.mesh_type, entity.mesh_id));
-    //assert(material_exists(level, entity.material_id));
+int32 level_add_entity(Level *level, Normal_Entity entity) {
     int32 entity_id = level->normal_entity_table.total_added_ever;
     hash_table_add(&level->normal_entity_table, entity_id, entity);
     return entity_id;
@@ -421,12 +454,12 @@ int32 level_delete_entity(Level *level, Entity_Type type, int32 id) {
     return id;
 }
 
-int32 level_add_point_light_entity(Game_State *game_state, Level *level, Point_Light_Entity entity, int32 entity_id) {
+int32 level_add_point_light_entity(Level *level, Point_Light_Entity entity, int32 entity_id) {
     hash_table_add(&level->point_light_entity_table, entity_id, entity);
     return entity_id;
 }
 
-int32 level_add_point_light_entity(Game_State *game_state, Level *level, Point_Light_Entity entity) {
+int32 level_add_point_light_entity(Level *level, Point_Light_Entity entity) {
     int32 entity_id = level->point_light_entity_table.total_added_ever;
     hash_table_add(&level->point_light_entity_table, entity_id, entity);
     return entity_id;
@@ -460,7 +493,6 @@ void level_delete_texture(Level *level, int32 texture_id) {
 
 // NOTE: should only be called once, or at least make sure you deallocate everything before
 void load_default_level(Game_State *game_state, Level *level) {
-    Allocator *mesh_allocator = (Allocator *) level->mesh_heap_pointer;
     Allocator *arena_allocator = (Allocator *) level->arena_pointer;
     Allocator *filename_allocator = (Allocator *) level->filename_pool_pointer;
     Allocator *mesh_name_allocator = (Allocator *) level->string64_pool_pointer;
@@ -473,9 +505,6 @@ void load_default_level(Game_State *game_state, Level *level) {
     level->point_light_entity_table = make_hash_table<int32, Point_Light_Entity>(arena_allocator,
                                                                                  MAX_ENTITIES,
                                                                                  &int32_equals);
-    level->mesh_table = make_hash_table<int32, Mesh>(arena_allocator,
-                                                     HASH_TABLE_SIZE,
-                                                     &int32_equals);
     level->material_table = make_hash_table<int32, Material>(arena_allocator,
                                                              HASH_TABLE_SIZE,
                                                              &int32_equals);
@@ -483,22 +512,17 @@ void load_default_level(Game_State *game_state, Level *level) {
                                                            HASH_TABLE_SIZE,
                                                            &int32_equals);
 
-    
+    Asset_Manager *asset_manager = &game_state->asset_manager;
 
     // add level meshes
     Mesh mesh;
-    mesh = read_and_load_mesh(mesh_allocator,
-                              Mesh_Type::LEVEL,
-                              make_string_buffer(filename_allocator, "blender/suzanne2.mesh", PLATFORM_MAX_PATH),
-                              make_string_buffer(mesh_name_allocator, "suzanne", MESH_NAME_MAX_SIZE));
-    int32 suzanne_mesh_id = level_add_mesh(level, mesh);
+
+    int32 suzanne_mesh_id;
+    mesh = add_level_mesh(asset_manager, "blender/suzanne2.mesh", "suzanne", &suzanne_mesh_id);
     AABB suzanne_mesh_aabb = mesh.aabb;
     
-    mesh = read_and_load_mesh(mesh_allocator,
-                              Mesh_Type::LEVEL,
-                              make_string_buffer(filename_allocator, "blender/sphere.mesh", PLATFORM_MAX_PATH),
-                              make_string_buffer(mesh_name_allocator, "sphere", MESH_NAME_MAX_SIZE));
-    int32 sphere_mesh_id = level_add_mesh(level, mesh);
+    int32 sphere_mesh_id;
+    mesh = add_level_mesh(asset_manager, "blender/sphere.mesh", "sphere", &sphere_mesh_id);
     AABB sphere_mesh_aabb = mesh.aabb;
 
     // add level textures
@@ -550,20 +574,20 @@ void load_default_level(Game_State *game_state, Level *level) {
     transform.position = make_vec3(2.0f, 1.0f, 0.0f);
     transform.rotation = make_quaternion(45.0f, y_axis);
     //entity = make_entity(suzanne_mesh_id, shiny_monkey_material_id, transform);
-    int32 primitive_cube_mesh_id = get_mesh_id_by_name(game_state, level, Mesh_Type::PRIMITIVE, make_string("cube"));
+    int32 primitive_cube_mesh_id = get_mesh_id_by_name(asset_manager, make_string("cube"));
     assert(primitive_cube_mesh_id >= 0);
-    AABB primitive_cube_mesh_aabb = (get_mesh(game_state, level, Mesh_Type::PRIMITIVE, primitive_cube_mesh_id)).aabb;
-    entity = make_entity(Mesh_Type::PRIMITIVE, primitive_cube_mesh_id, shiny_monkey_material_id,
+    AABB primitive_cube_mesh_aabb = (get_mesh(asset_manager, primitive_cube_mesh_id)).aabb;
+    entity = make_entity(primitive_cube_mesh_id, shiny_monkey_material_id,
                          transform, primitive_cube_mesh_aabb, true);
-    level_add_entity(game_state, level, entity);
+    level_add_entity(level, entity);
 
     transform = {};
     transform.scale = make_vec3(5.0f, 0.1f, 5.0f);
     transform.position = make_vec3(0.0f, 0.0f, 0.0f);
     transform.rotation = make_quaternion();
-    entity = make_entity(Mesh_Type::PRIMITIVE, primitive_cube_mesh_id, plane_material_id,
+    entity = make_entity(primitive_cube_mesh_id, plane_material_id,
                          transform, primitive_cube_mesh_aabb, true);
-    level_add_entity(game_state, level, entity);
+    level_add_entity(level, entity);
 
 #if 0
     transform = {};
@@ -581,9 +605,9 @@ void load_default_level(Game_State *game_state, Level *level) {
     Collider_Variant collider;
     collider.type = Collider_Type::CIRCLE;
     collider.circle = make_circle_collider(transform.position, 0.51f);
-    entity = make_entity(Mesh_Type::LEVEL, sphere_mesh_id, diffuse_sphere_material_id,
+    entity = make_entity(sphere_mesh_id, diffuse_sphere_material_id,
                          transform, sphere_mesh_aabb, collider);
-    level_add_entity(game_state, level, entity);
+    level_add_entity(level, entity);
 
     Vec3 light_color;
     Point_Light_Entity point_light_entity;
@@ -596,7 +620,7 @@ void load_default_level(Game_State *game_state, Level *level) {
     point_light_entity = make_point_light_entity(light_color,
                                                  0.0f, 3.0f,
                                                  transform);
-    level_add_point_light_entity(game_state, level, point_light_entity);
+    level_add_point_light_entity(level, point_light_entity);
 
     transform = {};
     transform.scale = make_vec3(0.1f, 0.1f, 0.1f);
@@ -606,14 +630,14 @@ void load_default_level(Game_State *game_state, Level *level) {
     point_light_entity = make_point_light_entity(light_color,
                                                  0.0f, 5.0f,
                                                  transform);
-    level_add_point_light_entity(game_state, level, point_light_entity);
+    level_add_point_light_entity(level, point_light_entity);
 }
 
-void unload_level(Level *level) {
+void unload_level(Asset_Manager *asset_manager, Level *level) {
     level->should_clear_gpu_data = true;
 
+    clear_heap(asset_manager->level_mesh_heap_pointer);
     clear_arena(level->arena_pointer);
-    clear_heap(level->mesh_heap_pointer);
     clear_pool(level->string64_pool_pointer);
     clear_pool(level->filename_pool_pointer);
 
@@ -621,14 +645,34 @@ void unload_level(Level *level) {
     // tables, but if we're just creating a new level, then we need to reset the tables, so we keep this.
     hash_table_reset(&level->normal_entity_table);
     hash_table_reset(&level->point_light_entity_table);
-    hash_table_reset(&level->mesh_table);
     hash_table_reset(&level->material_table);
     hash_table_reset(&level->texture_table);
 }
 
-void new_level(Level *current_level) {
-    unload_level(current_level);
+void new_level(Asset_Manager *asset_manager, Level *current_level) {
+    unload_level(asset_manager, current_level);
     current_level->name = make_string_buffer((Allocator *) current_level->string64_pool_pointer, LEVEL_NAME_MAX_SIZE);
+}
+
+void add_entity_and_asset_info(Level *level, Entity *entity,
+                               Hash_Table<int32, Normal_Entity_Asset_Info> *normal_entity_asset_info_table,
+                               Normal_Entity_Asset_Info info) {
+    assert(entity);
+
+    switch (entity->type) {
+        case ENTITY_NORMAL: {
+            Normal_Entity *e = (Normal_Entity *) entity;
+            int32 id = level_add_entity(level, *e);
+            hash_table_add(normal_entity_asset_info_table, id, info);
+        } break;
+        case ENTITY_POINT_LIGHT: {
+            Point_Light_Entity *e = (Point_Light_Entity *) entity;
+            level_add_point_light_entity(level, *e);
+        } break;
+        default: {
+            assert(!"Unhandled entity type.");
+        } break;
+    }
 }
 
 inline Level_Loader::Token Level_Loader::make_token(Token_Type type, char *contents, int32 length) {
@@ -763,20 +807,26 @@ Level_Loader::Token Level_Loader::get_token(Tokenizer *tokenizer, char *file_con
 }
 
 // loads barebones level data into level
-bool32 Level_Loader::load_temp_level(Allocator *temp_allocator, Game_State *game_state,
-                                     File_Data file_data, Level *temp_level) {
+bool32 Level_Loader::load_temp_level(Allocator *temp_allocator,
+                                     File_Data file_data, Level *temp_level,
+                                     Mesh_Info *level_meshes, int32 level_meshes_size, int32 *num_level_meshes,
+                                     Hash_Table<int32, Normal_Entity_Asset_Info> *normal_entity_asset_info_table) {
     Tokenizer tokenizer = make_tokenizer(file_data);
 
     Token token;
     Parser_State state = WAIT_FOR_LEVEL_INFO_BLOCK_NAME;
 
-    Mesh temp_mesh = {};
+    Mesh_Info temp_mesh_info = {};
     Texture temp_texture = {};
     Material temp_material = {};
     bool32 should_add_new_temp_material = false;
 
+    int32 num_meshes = 0;
+
     Entity_Type temp_entity_type = ENTITY_NONE;
     Normal_Entity temp_normal_entity = {};
+    Normal_Entity_Asset_Info temp_normal_entity_asset_info = {};
+
     Point_Light_Entity temp_point_light_entity = {};
     Entity *temp_entity = NULL;
     bool32 should_add_new_temp_entity = false;
@@ -860,8 +910,8 @@ bool32 Level_Loader::load_temp_level(Allocator *temp_allocator, Game_State *game
                 if (token.type == STRING) {
                     assert(token.string.length <= MESH_NAME_MAX_SIZE);
                     
-                    temp_mesh = {};
-                    temp_mesh.name = make_string_buffer(temp_allocator, token.string, token.string.length);
+                    temp_mesh_info = {};
+                    temp_mesh_info.name = token.string;
                     state = WAIT_FOR_MESH_FILENAME_STRING;
                 } else {
                     assert(!"Expected mesh name string.");
@@ -871,8 +921,10 @@ bool32 Level_Loader::load_temp_level(Allocator *temp_allocator, Game_State *game
                 if (token.type == STRING) {
                     assert(token.string.length <= PLATFORM_MAX_PATH);
 
-                    temp_mesh.filename = make_string_buffer(temp_allocator, token.string, token.string.length);
-                    level_add_mesh(temp_level, temp_mesh);
+                    temp_mesh_info.filename = token.string;
+                    assert(num_meshes < level_meshes_size);
+                    level_meshes[num_meshes] = temp_mesh_info;
+                    num_meshes++;
 
                     state = WAIT_FOR_MESH_KEYWORD_OR_MESHES_BLOCK_CLOSE;
                 }
@@ -1066,7 +1118,7 @@ bool32 Level_Loader::load_temp_level(Allocator *temp_allocator, Game_State *game
             case WAIT_FOR_ENTITY_TYPE_VALUE: {
                 if (token.type == KEYWORD) {
                     if (string_equals(token.string, "normal")) {
-                        temp_normal_entity = make_entity(Mesh_Type::NONE, -1, -1, make_transform(), {});
+                        temp_normal_entity = make_entity(-1, -1, make_transform(), {});
                         temp_entity_type = ENTITY_NORMAL;
                         temp_entity = (Entity *) &temp_normal_entity;
                         state = WAIT_FOR_ENTITY_PROPERTY_NAME_OR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE;
@@ -1089,17 +1141,9 @@ bool32 Level_Loader::load_temp_level(Allocator *temp_allocator, Game_State *game
                 if (token.type == KEYWORD) {
                     if (string_equals(token.string, "type")) {
                         if (should_add_new_temp_entity) {
-                            switch (temp_entity_type) {
-                                case ENTITY_NORMAL: {
-                                    level_add_entity(game_state, temp_level, temp_normal_entity);
-                                } break;
-                                case ENTITY_POINT_LIGHT: {
-                                    level_add_point_light_entity(game_state, temp_level, temp_point_light_entity);
-                                } break;
-                                default: {
-                                    assert(!"Unhandled entity type.");
-                                } break;
-                            }
+                            add_entity_and_asset_info(temp_level, temp_entity,
+                                                      normal_entity_asset_info_table,
+                                                      temp_normal_entity_asset_info);
                         }
 
                         state = WAIT_FOR_ENTITY_TYPE_VALUE;
@@ -1116,10 +1160,8 @@ bool32 Level_Loader::load_temp_level(Allocator *temp_allocator, Game_State *game
                     } else if (temp_entity_type == ENTITY_NORMAL) {
                         if (string_equals(token.string, "mesh")) {
                             state = WAIT_FOR_NORMAL_ENTITY_MESH_NAME_STRING;
-                            temp_normal_entity.mesh_type = Mesh_Type::LEVEL;
                         } else if (string_equals(token.string, "mesh_primitive")) {
                             state = WAIT_FOR_NORMAL_ENTITY_MESH_NAME_STRING;
-                            temp_normal_entity.mesh_type = Mesh_Type::PRIMITIVE;
                         } else if (string_equals(token.string, "material")) {
                             state = WAIT_FOR_NORMAL_ENTITY_MATERIAL_NAME_STRING;                        
                         } else if (string_equals(token.string, "is_walkable")) {
@@ -1144,17 +1186,9 @@ bool32 Level_Loader::load_temp_level(Allocator *temp_allocator, Game_State *game
                     }
                 } else if (token.type == CLOSE_BRACKET) {
                     if (should_add_new_temp_entity) {
-                        switch (temp_entity_type) {
-                            case ENTITY_NORMAL: {
-                                level_add_entity(game_state, temp_level, temp_normal_entity);
-                            } break;
-                            case ENTITY_POINT_LIGHT: {
-                                level_add_point_light_entity(game_state, temp_level, temp_point_light_entity);
-                            } break;
-                            default: {
-                                assert(!"Unhandled entity type.");
-                            } break;
-                        }
+                        add_entity_and_asset_info(temp_level, temp_entity,
+                                                  normal_entity_asset_info_table,
+                                                  temp_normal_entity_asset_info);
                     }
                     state = FINISHED;
                 }
@@ -1162,14 +1196,17 @@ bool32 Level_Loader::load_temp_level(Allocator *temp_allocator, Game_State *game
             case WAIT_FOR_NORMAL_ENTITY_MESH_NAME_STRING: {
                 if (token.type == STRING) {
                     assert(token.string.length <= MESH_NAME_MAX_SIZE);
-
-                    int32 mesh_id = get_mesh_id_by_name(game_state, temp_level, temp_normal_entity.mesh_type, token.string);
+                    temp_normal_entity_asset_info.mesh_name = token.string;
+                    state = WAIT_FOR_ENTITY_PROPERTY_NAME_OR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE;
+#if 0
+                    int32 mesh_id = get_mesh_id_by_name(asset_manager, token.string);
                     if (mesh_id >= 0) {
                         temp_normal_entity.mesh_id = mesh_id;
                         state = WAIT_FOR_ENTITY_PROPERTY_NAME_OR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE;
                     } else {
                         assert(!"Mesh not found.");
                     }
+#endif
                 } else {
                     assert(!"Expected string for entity mesh name.");
                 }
@@ -1177,6 +1214,7 @@ bool32 Level_Loader::load_temp_level(Allocator *temp_allocator, Game_State *game
             case WAIT_FOR_NORMAL_ENTITY_MATERIAL_NAME_STRING: {
                 if (token.type == STRING) {
                     assert(token.string.length <= MATERIAL_NAME_MAX_SIZE);
+                    //temp_normal_entity_asset_info.material_name = token.string;
 
                     int32 material_id = get_material_id_by_name(temp_level, token.string);
                     if (material_id >= 0) {
@@ -1291,10 +1329,12 @@ bool32 Level_Loader::load_temp_level(Allocator *temp_allocator, Game_State *game
 
     } while (token.type != END);
 
+    *num_level_meshes = num_meshes;
+
     return true;
 }
 
-bool32 read_and_load_level(Game_State *game_state,
+bool32 read_and_load_level(Asset_Manager *asset_manager,
                            Level *level, char *filename,
                            Arena_Allocator *arena,
                            Heap_Allocator *mesh_heap,
@@ -1313,9 +1353,6 @@ bool32 read_and_load_level(Game_State *game_state,
                                                                                       level->point_light_entity_table.max_entries,
                                                                                       level->point_light_entity_table.key_equals);
 
-    temp_level->mesh_table = make_hash_table<int32, Mesh>(temp_allocator,
-                                                          level->mesh_table.max_entries,
-                                                          level->mesh_table.key_equals);
     temp_level->material_table = make_hash_table<int32, Material>(temp_allocator,
                                                                   level->material_table.max_entries,
                                                                   level->material_table.key_equals);
@@ -1323,13 +1360,18 @@ bool32 read_and_load_level(Game_State *game_state,
                                                                 level->texture_table.max_entries,
                                                                 level->texture_table.key_equals);
 
-    bool32 load_temp_level_result = Level_Loader::load_temp_level(temp_allocator, game_state, level_file, temp_level);
+    Mesh_Info *level_meshes = (Mesh_Info *) allocate(temp_allocator, sizeof(Mesh_Info) * MAX_MESHES);
+    int32 num_level_meshes;
+    Hash_Table<int32, Normal_Entity_Asset_Info> normal_entity_asset_info =
+        make_hash_table<int32, Normal_Entity_Asset_Info>(temp_allocator, MAX_ENTITIES, int32_equals);
+    bool32 load_temp_level_result = Level_Loader::load_temp_level(temp_allocator, level_file, temp_level,
+                                                                  level_meshes, MAX_MESHES, &num_level_meshes,
+                                                                  &normal_entity_asset_info);
 
     if (load_temp_level_result) {
-        unload_level(level);
+        unload_level(asset_manager, level);
         
         Allocator *level_arena_allocator = (Allocator *) arena;
-        Allocator *level_mesh_allocator = (Allocator *) mesh_heap;
         Allocator *level_string64_allocator = (Allocator *) string64_pool;
         Allocator *level_filename_allocator = (Allocator *) filename_pool;
 
@@ -1346,7 +1388,6 @@ bool32 read_and_load_level(Game_State *game_state,
                                          LEVEL_NAME_MAX_SIZE);
         // set allocators
         level->arena_pointer = arena;
-        level->mesh_heap_pointer = mesh_heap;
         level->string64_pool_pointer = string64_pool;
         level->filename_pool_pointer = filename_pool;
 
@@ -1355,11 +1396,13 @@ bool32 read_and_load_level(Game_State *game_state,
         level->point_light_entity_table = copy_hash_table(level_arena_allocator,
                                                           temp_level->point_light_entity_table);
 
-        // copy and load meshes
-        // level_arena_allocator is not a typo; that is where the hash table entries are stored.
-        // the actual mesh data is loaded below and is stored in level_mesh_allocator
-        level->mesh_table = copy_hash_table(level_arena_allocator, temp_level->mesh_table);
-        // copy mesh strings and load all the meshes
+        // load meshes
+        for (int32 i = 0; i < num_level_meshes; i++) {
+            Mesh_Info mesh_info = level_meshes[i];
+            // add_level_mesh copies the strings it receives
+            add_level_mesh(asset_manager, mesh_info.filename, mesh_info.name);
+        }
+#if 0
         int32 num_checked = 0;
         Hash_Table<int32, Mesh> temp_mesh_table = temp_level->mesh_table;
         Hash_Table<int32, Mesh> mesh_table = level->mesh_table;
@@ -1379,10 +1422,11 @@ bool32 read_and_load_level(Game_State *game_state,
                 num_checked++;
             }
         }
+#endif
 
         level->texture_table = copy_hash_table(level_arena_allocator, temp_level->texture_table);
         // copy all the textures
-        num_checked = 0;
+        int32 num_checked = 0;
         Hash_Table<int32, Texture> temp_texture_table = temp_level->texture_table;
         Hash_Table<int32, Texture> texture_table = level->texture_table;
         for (int32 i = 0;
@@ -1427,11 +1471,20 @@ bool32 read_and_load_level(Game_State *game_state,
             }
         }
 
-        // set the AABBs
+        // resolve normal entity assets. (we only resolves mesh IDs this way for now, since meshes are no longer
+        // stored in Level structs.)
+        // also set entity AABBs.
         {
             FOR_ENTRY_POINTERS(int32, Normal_Entity, level->normal_entity_table) {
                 Normal_Entity *entity = &entry->value;
-                Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
+
+                Normal_Entity_Asset_Info asset_info = hash_table_get(normal_entity_asset_info,
+                                                                     entry->key);
+
+                int32 mesh_id;
+                Mesh mesh = get_mesh_by_name(asset_manager, asset_info.mesh_name, &mesh_id);
+
+                entity->mesh_id = mesh_id;
                 entity->transformed_aabb = transform_aabb(mesh.aabb, entity->transform);
             }
         }

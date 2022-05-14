@@ -24,7 +24,6 @@ struct Entity {
 struct Normal_Entity {
     ENTITY_HEADER
 
-    Mesh_Type mesh_type;
     int32 mesh_id;
     int32 material_id;
     AABB transformed_aabb;
@@ -72,21 +71,21 @@ Material make_material(String_Buffer material_name,
     return material;
 }
 
-Normal_Entity make_entity(Mesh_Type mesh_type, int32 mesh_id,
+Normal_Entity make_entity(int32 mesh_id,
                           int32 material_id,
                           Transform transform, AABB aabb,
                           Collider_Variant collider,
                           bool32 is_walkable = false) {
     AABB transformed_aabb = transform_aabb(aabb, get_model_matrix(transform));
     Normal_Entity entity = { ENTITY_NORMAL, transform,
-                             mesh_type, mesh_id, material_id,
+                             mesh_id, material_id,
                              transformed_aabb,
                              collider,
                              is_walkable };
     return entity;
 }
 
-Normal_Entity make_entity(Mesh_Type mesh_type, int32 mesh_id,
+Normal_Entity make_entity(int32 mesh_id,
                           int32 material_id,
                           Transform transform, AABB aabb,
                           bool32 is_walkable = false) {
@@ -94,7 +93,7 @@ Normal_Entity make_entity(Mesh_Type mesh_type, int32 mesh_id,
     Collider_Variant collider;
     collider.type = Collider_Type::NONE;
     Normal_Entity entity = { ENTITY_NORMAL, transform,
-                             mesh_type, mesh_id, material_id,
+                             mesh_id, material_id,
                              transformed_aabb, collider,
                              is_walkable };
     return entity;

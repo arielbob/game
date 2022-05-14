@@ -116,6 +116,7 @@ enum Shader_Type {
 };
 
 struct GL_Mesh {
+    Mesh_Type type;
     uint32 vao;
     uint32 vbo;
     uint32 num_triangles;
@@ -156,17 +157,22 @@ struct GL_State {
     //       gl_state.mesh_table. if we were to combine the two, the IDs could collide, since we're just
     //       making IDs based off of a running count kept by the table you're adding to.
     // for GL specific meshes
+#if 0
     Hash_Table<int32, GL_Mesh> rendering_mesh_table;
     // for game's common meshes
     Hash_Table<int32, GL_Mesh> common_mesh_table;
-    Hash_Table<int32, GL_Mesh> primitive_mesh_table;
+    Hash_Table<int32, GL_Mesh> primitive_mesh_table
+#endif
+
+    Hash_Table<int32, GL_Mesh> rendering_mesh_table;
+    Hash_Table<int32, GL_Mesh> mesh_table;
 
     // for GL specific textures
     Hash_Table<int32, GL_Texture> rendering_texture_table;
 
     Hash_Table<String, uint32> font_texture_table;
 
-    Hash_Table<int32, GL_Mesh> level_mesh_table;
+    //Hash_Table<int32, GL_Mesh> level_mesh_table;
     Hash_Table<int32, GL_Texture> level_texture_table;
     
     // TODO: will have to delete these and remake them on window resize

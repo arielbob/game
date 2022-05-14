@@ -136,13 +136,13 @@ void generate_texture_name(Level *level, String_Buffer *buffer) {
     assert(!"Could not generate texture name.");
 }
 
-void generate_mesh_name(Game_State *game_state, Level *level, String_Buffer *buffer) {
+void generate_mesh_name(Asset_Manager *asset_manager, Level *level, String_Buffer *buffer) {
     int32 num_attempts = 0;
     while (num_attempts < MAX_MESHES + 1) {
         Marker m = begin_region();
         char *format = (num_attempts == 0) ? "New Mesh" : "New Mesh %d";
         char *buf = string_format((Allocator *) &memory.global_stack, buffer->size, format, num_attempts + 1);
-        if (!mesh_name_exists(game_state, level, make_string(buf))) {
+        if (!mesh_name_exists(asset_manager, make_string(buf))) {
             set_string_buffer_text(buffer, buf);
             end_region(m);
             return;
@@ -155,7 +155,7 @@ void generate_mesh_name(Game_State *game_state, Level *level, String_Buffer *buf
     assert(!"Could not generate mesh name.");
 }
 
-bool32 editor_add_mesh_press(Game_State *game_state, Level *level, Entity *entity) {
+bool32 editor_add_mesh_press(Asset_Manager *asset_manager, Level *level, Entity *entity) {
     Marker m = begin_region();
     char *absolute_filename = (char *) region_push(PLATFORM_MAX_PATH);
         
@@ -164,20 +164,17 @@ bool32 editor_add_mesh_press(Game_State *game_state, Level *level, Entity *entit
 
     if (platform_open_file_dialog(absolute_filename, PLATFORM_MAX_PATH)) {
         String_Buffer new_mesh_name = make_string_buffer(string_allocator, 64);
-        generate_mesh_name(game_state, level, &new_mesh_name);
+        generate_mesh_name(asset_manager, level, &new_mesh_name);
 
         char *relative_filename = (char *) region_push(PLATFORM_MAX_PATH);
         platform_get_relative_path(absolute_filename, relative_filename, PLATFORM_MAX_PATH);
         String_Buffer new_mesh_filename = make_string_buffer(filename_allocator,
                                                              relative_filename, PLATFORM_MAX_PATH);
 
-        Mesh new_mesh = read_and_load_mesh((Allocator *) &memory.level_mesh_heap,
-                                           Mesh_Type::LEVEL,
-                                           new_mesh_filename,
-                                           new_mesh_name);
-        int32 mesh_id = level_add_mesh(level, new_mesh);
-
-        set_entity_mesh(Context::game_state, level, entity, Mesh_Type::LEVEL, mesh_id);
+        int32 mesh_id;
+        add_level_mesh(asset_manager, make_string(relative_filename), make_string(new_mesh_name), &mesh_id);
+        
+        set_entity_mesh(asset_manager, entity, mesh_id);
         end_region(m);
 
 #if 0
@@ -381,6 +378,7 @@ void draw_mesh_library(Game_State *game_state, Controller_State *controller_stat
     Render_State *render_state = &game_state->render_state;
     UI_Manager *ui_manager = &game_state->ui_manager;
     Editor_State *editor_state = &game_state->editor_state;
+    Asset_Manager *asset_manager = &game_state->asset_manager;
 
     push_layer(ui_manager);
 
@@ -495,10 +493,45 @@ void draw_mesh_library(Game_State *game_state, Controller_State *controller_stat
     UI_Image_Button_Style image_button_style = default_image_button_style;
     image_button_style.image_constraint_flags = CONSTRAINT_FILL_BUTTON_WIDTH | CONSTRAINT_KEEP_IMAGE_PROPORTIONS;
 
-    Hash_Table<int32, Mesh> *mesh_table = &game_state->current_level.mesh_table;
-    Mesh_Type picked_mesh_type = Mesh_Type::NONE;
+    //Hash_Table<int32, Mesh> *mesh_table = &game_state->current_level.mesh_table;
+    //Mesh_Type picked_mesh_type = Mesh_Type::NONE;
     int32 picked_mesh_id = -1;
 
+    FOR_ENTRY_POINTERS(int, Mesh, game_state->asset_manager.mesh_table) {
+        Mesh *mesh = &entry->value;
+        if (editor_state->mesh_library_filter != Mesh_Type::NONE &&
+            mesh->type != editor_state->mesh_library_filter) continue;
+
+        char *mesh_name = to_char_array(allocator, mesh->name);
+        UI_Text_Button_Style text_button_style = default_text_button_style;
+
+        if (mesh->type == Mesh_Type::PRIMITIVE) {
+            text_button_style = primitive_item_style;
+        } else if (mesh->type == Mesh_Type::LEVEL) {
+            text_button_style = level_item_style;
+        } else {
+            continue;
+        }
+
+        bool32 pressed = do_text_button(x, y,
+                                        item_width, item_height,
+                                        text_button_style, default_text_style,
+                                        mesh_name,
+                                        editor_font_name,
+                                        "mesh_library_level_item", entry->key);
+
+        if (pressed) {
+            picked_mesh_id = entry->key;
+        }
+
+        x += item_width + x_gap;
+        if (x + item_width > initial_x + window_width) {
+            x = initial_x + padding_x;
+            y += item_height + y_gap;
+        }
+    }
+
+#if 0
     if (editor_state->mesh_library_filter == Mesh_Type::NONE ||
         editor_state->mesh_library_filter == Mesh_Type::LEVEL) {
         for (int32 i = 0; i < mesh_table->max_entries; i++) {
@@ -555,11 +588,11 @@ void draw_mesh_library(Game_State *game_state, Controller_State *controller_stat
             }
         }
     }
-    
+#endif    
+
     if (picked_mesh_id >= 0) {
         start_entity_change(editor_state, selected_entity);
-        set_entity_mesh(game_state, &game_state->current_level, selected_entity,
-                        picked_mesh_type, picked_mesh_id);
+        set_entity_mesh(asset_manager, selected_entity, picked_mesh_id);
         finalize_entity_change(editor_state, &game_state->current_level, selected_entity);
 
         editor_state->open_window_flags = 0;
@@ -771,6 +804,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
 
     UI_Manager *ui_manager = &game_state->ui_manager;
     Editor_State *editor_state = &game_state->editor_state;
+    Asset_Manager *asset_manager = &game_state->asset_manager;
 
     real32 box_x = 5.0f;
     real32 box_y = 50.0f;
@@ -867,7 +901,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                              &z_slider);
     x += transform_button_width + 5.0f;
 
-    update_entity_position(game_state, entity, make_vec3(new_x, new_y, new_z));
+    update_entity_position(asset_manager, entity, make_vec3(new_x, new_y, new_z));
     start_or_finalize_entity_change(game_state, x_slider, entity);
     start_or_finalize_entity_change(game_state, y_slider, entity);
     start_or_finalize_entity_change(game_state, z_slider, entity);
@@ -942,7 +976,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                    &scale_z_slider);
     x += transform_button_width + 5.0f;
 
-    update_entity_scale(game_state, entity, make_vec3(new_scale_x, new_scale_y, new_scale_z));
+    update_entity_scale(asset_manager, entity, make_vec3(new_scale_x, new_scale_y, new_scale_z));
     start_or_finalize_entity_change(game_state, scale_x_slider, entity);
     start_or_finalize_entity_change(game_state, scale_y_slider, entity);
     start_or_finalize_entity_change(game_state, scale_z_slider, entity);
@@ -959,7 +993,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
     if (entity->type == ENTITY_NORMAL) {
         Normal_Entity *normal_entity = (Normal_Entity *) entity;
 
-        Mesh *mesh = get_mesh_pointer(game_state, level, normal_entity->mesh_type, normal_entity->mesh_id);
+        Mesh *mesh = get_mesh_pointer(asset_manager, normal_entity->mesh_id);
         
         row_id = "mesh_properties_line";
     
@@ -972,7 +1006,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         draw_row(x, y, row_width, row_height, row_color, side_flags,
                  row_id, row_index++);
         char *mesh_label_string = "Mesh";
-        if (normal_entity->mesh_type == Mesh_Type::PRIMITIVE) mesh_label_string = "Mesh (primitive)";
+        if (mesh->type == Mesh_Type::PRIMITIVE) mesh_label_string = "Mesh (primitive)";
         draw_v_centered_text(x + padding_left, y, row_height,
                              mesh_label_string, editor_font_name, text_style);
 
@@ -992,12 +1026,12 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                                     small_button_width, row_height,
                                                     default_text_button_cancel_style, default_text_style,
                                                     "-", editor_font_name,
-                                                    normal_entity->mesh_type == Mesh_Type::PRIMITIVE,
+                                                    mesh->type == Mesh_Type::PRIMITIVE,
                                                     "delete_mesh");
 
         if (delete_mesh_pressed) {
-            assert(normal_entity->mesh_type == Mesh_Type::LEVEL);
-            level_delete_mesh(game_state, level, normal_entity->mesh_id);
+            assert(mesh->type == Mesh_Type::LEVEL);
+            level_delete_mesh(asset_manager, level, normal_entity->mesh_id);
             editor_state->editing_selected_entity_mesh = false;
         }
 
@@ -1012,10 +1046,10 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
 
         bool32 mesh_added = false;
         if (add_mesh_pressed) {
-            mesh_added = editor_add_mesh_press(game_state, &game_state->current_level, entity);
+            mesh_added = editor_add_mesh_press(asset_manager, &game_state->current_level, entity);
             if (mesh_added) {
                 editor_state->editing_selected_entity_mesh = true;
-                mesh = get_mesh_pointer(game_state, level, normal_entity->mesh_type, normal_entity->mesh_id);
+                mesh = get_mesh_pointer(asset_manager, normal_entity->mesh_id);
             }
         }
 
@@ -1024,7 +1058,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                                   edit_mesh_button_width, row_height,
                                                   button_style, default_text_style,
                                                   "Edit", editor_font_name,
-                                                  normal_entity->mesh_type == Mesh_Type::PRIMITIVE,
+                                                  mesh->type == Mesh_Type::PRIMITIVE,
                                                   "edit_mesh");
 
         if (edit_mesh_pressed) {
@@ -1033,7 +1067,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
 
         y += row_height;
         x = initial_x;
-        if (normal_entity->mesh_type == Mesh_Type::LEVEL && editor_state->editing_selected_entity_mesh) {
+        if (mesh->type == Mesh_Type::LEVEL && editor_state->editing_selected_entity_mesh) {
             draw_row_padding(x, &y, row_width, padding_y, row_color, side_flags,
                              row_id, row_index++);
 
@@ -1062,8 +1096,8 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                            Editor_Constants::num_disallowed_chars)) {
                     add_message(&game_state->message_manager, make_string("Mesh name cannot contain {, }, or double quotes!"));
                 } else if (!string_equals(make_string(mesh->name), new_name)) {
-                    if (!mesh_name_exists(game_state, level, new_name)) {
-                        Modify_Mesh_Action action = make_modify_mesh_action(normal_entity->mesh_type,
+                    if (!mesh_name_exists(asset_manager, new_name)) {
+                        Modify_Mesh_Action action = make_modify_mesh_action(mesh->type,
                                                                             normal_entity->mesh_id,
                                                                             result.buffer);
                         editor_modify_mesh(game_state, action);
@@ -1587,6 +1621,7 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
                     real32 x, real32 y) {
     UI_Manager *ui_manager = &game_state->ui_manager;
     Editor_State *editor_state = &game_state->editor_state;
+    Asset_Manager *asset_manager = &game_state->asset_manager;
     
     int32 row_index = 0;
     char *row_id = "level_box_row";
@@ -1616,7 +1651,7 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
                                               "New",
                                               editor_font_name, "new_level");
     if (new_level_clicked) {
-        new_level(&game_state->current_level);
+        new_level(asset_manager, &game_state->current_level);
         editor_state->selected_entity_id = -1;
         editor_state->is_new_level = true;
     }
@@ -1637,7 +1672,7 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
         if (platform_open_file_dialog(absolute_filename,
                                       LEVEL_FILE_FILTER_TITLE, LEVEL_FILE_FILTER_TYPE,
                                       PLATFORM_MAX_PATH)) {
-            bool32 result = read_and_load_level(game_state,
+            bool32 result = read_and_load_level(asset_manager,
                                                 &game_state->current_level, absolute_filename,
                                                 &memory.level_arena,
                                                 &memory.level_mesh_heap,
@@ -1718,7 +1753,7 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
                                                                  PLATFORM_MAX_PATH);
 
             if (has_filename) {
-                export_level((Allocator *) &memory.global_stack, game_state, &game_state->current_level, filename);
+                export_level((Allocator *) &memory.global_stack, asset_manager, &game_state->current_level, filename);
                 copy_string(&editor_state->current_level_filename, make_string(filename));
                 editor_state->is_new_level = false;
                 
@@ -1727,7 +1762,7 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
         } else {
             char *level_filename = to_char_array((Allocator *) &memory.global_stack,
                                                  editor_state->current_level_filename);
-            export_level((Allocator *) &memory.global_stack, game_state, &game_state->current_level, level_filename);
+            export_level((Allocator *) &memory.global_stack, asset_manager, &game_state->current_level, level_filename);
             add_message(&game_state->message_manager, make_string(SAVE_SUCCESS_MESSAGE));
         }
         
@@ -1755,7 +1790,7 @@ void draw_level_box(Game_State *game_state, Controller_State *controller_state,
                                                              PLATFORM_MAX_PATH);
 
         if (has_filename) {
-            export_level((Allocator *) &memory.global_stack, game_state, &game_state->current_level, filename);
+            export_level((Allocator *) &memory.global_stack, asset_manager, &game_state->current_level, filename);
             copy_string(&editor_state->current_level_filename, make_string(filename));
             editor_state->is_new_level = false;
             add_message(&game_state->message_manager, make_string(SAVE_SUCCESS_MESSAGE));
@@ -2039,10 +2074,9 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
 
 int32 pick_entity(Game_State *game_state, Ray cursor_ray, Entity *entity_result, int32 *index_result) {
     Editor_State *editor_state = &game_state->editor_state;
+    Asset_Manager *asset_manager = &game_state->asset_manager;
 
     Level *level = &game_state->current_level;
-
-    Hash_Table<int32, Mesh> mesh_table = level->mesh_table;
 
     Entity *picked_entity = NULL;
     int32 entity_id = -1;
@@ -2052,7 +2086,7 @@ int32 pick_entity(Game_State *game_state, Ray cursor_ray, Entity *entity_result,
         real32 aabb_t;
         FOR_ENTRY_POINTERS(int32, Normal_Entity, level->normal_entity_table) {
             Normal_Entity *entity = &entry->value;
-            Mesh mesh = get_mesh(game_state, level, entity->mesh_type, entity->mesh_id);
+            Mesh mesh = get_mesh(asset_manager, entity->mesh_id);
             if (ray_intersects_aabb(cursor_ray, entity->transformed_aabb, &aabb_t) && (aabb_t < t_min)) {
                 Ray_Intersects_Mesh_Result result;
                 if (ray_intersects_mesh(cursor_ray, mesh, entity->transform, true, &result) &&
@@ -2165,6 +2199,8 @@ Vec3 get_gizmo_transform_axis(Transform_Mode transform_mode, Gizmo_Handle gizmo_
 
 Gizmo_Handle pick_gizmo(Game_State *game_state, Ray cursor_ray, real32 *t_result) {
     Editor_State *editor_state = &game_state->editor_state;
+    Asset_Manager *asset_manager = &game_state->asset_manager;
+
     Entity *entity = get_selected_entity(game_state);
     Gizmo gizmo = editor_state->gizmo;
 
@@ -2195,7 +2231,7 @@ Gizmo_Handle pick_gizmo(Game_State *game_state, Ray cursor_ray, real32 *t_result
     // check ray against translation arrows
     Gizmo_Handle gizmo_translation_handles[3] = { GIZMO_TRANSLATE_X, GIZMO_TRANSLATE_Y, GIZMO_TRANSLATE_Z };
     assert(gizmo.arrow_mesh_id >= 0);
-    Mesh arrow_mesh = get_common_mesh(game_state, gizmo.arrow_mesh_id);
+    Mesh arrow_mesh = get_mesh(asset_manager, gizmo.arrow_mesh_id);
 
     real32 t_min = FLT_MAX;
     for (int32 i = 0; i < 3; i++) {
@@ -2211,7 +2247,7 @@ Gizmo_Handle pick_gizmo(Game_State *game_state, Ray cursor_ray, real32 *t_result
     // check ray against scale cube handles
     Gizmo_Handle gizmo_scale_handles[3] = { GIZMO_SCALE_X, GIZMO_SCALE_Y, GIZMO_SCALE_Z };
     assert(gizmo.cube_mesh_id >= 0);
-    Mesh gizmo_cube_mesh = get_common_mesh(game_state, gizmo.cube_mesh_id);
+    Mesh gizmo_cube_mesh = get_mesh(asset_manager, gizmo.cube_mesh_id);
 
     for (int32 i = 0; i < 3; i++) {
         Transform gizmo_handle_transform = gizmo_handle_transforms[i];
@@ -2226,7 +2262,7 @@ Gizmo_Handle pick_gizmo(Game_State *game_state, Ray cursor_ray, real32 *t_result
     // check ray against rotation rings
     Gizmo_Handle gizmo_rotation_handles[3] = { GIZMO_ROTATE_X, GIZMO_ROTATE_Y, GIZMO_ROTATE_Z };
     assert(gizmo.ring_mesh_id >= 0);
-    Mesh ring_mesh = get_common_mesh(game_state, gizmo.ring_mesh_id);
+    Mesh ring_mesh = get_mesh(asset_manager, gizmo.ring_mesh_id);
 
     for (int32 i = 0; i < 3; i++) {
         Transform gizmo_handle_transform = gizmo_handle_transforms[i];
@@ -2474,6 +2510,7 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
     Editor_State *editor_state = &game_state->editor_state;
     Render_State *render_state = &game_state->render_state;
     Display_Output *display_output = &game_state->render_state.display_output;
+    Asset_Manager *asset_manager = &game_state->asset_manager;
 
     if (just_pressed(controller_state->key_tab) && !has_focus(ui_manager)) {
         editor_state->use_freecam = !editor_state->use_freecam;
@@ -2510,7 +2547,7 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
 
         if (editor_state->selected_gizmo_handle != GIZMO_HANDLE_NONE) {
             Entity *selected_entity = get_selected_entity(game_state);
-            set_entity_transform(game_state, selected_entity, editor_state->old_entity->transform);
+            set_entity_transform(asset_manager, selected_entity, editor_state->old_entity->transform);
             //editor_state->gizmo_initial_hit =
         }
     }
@@ -2600,15 +2637,15 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
 
             if (is_translation(editor_state->selected_gizmo_handle)) {
                 Vec3 new_position = do_gizmo_translation(&render_state->camera, editor_state, cursor_ray);
-                update_entity_position(game_state, entity, new_position);
+                update_entity_position(asset_manager, entity, new_position);
                 
             } else if (is_rotation(editor_state->selected_gizmo_handle)) {
                 Quaternion new_rotation = do_gizmo_rotation(&render_state->camera,
                                                             editor_state, cursor_ray);
-                update_entity_rotation(game_state, entity, new_rotation);
+                update_entity_rotation(asset_manager, entity, new_rotation);
             } else if (is_scale(editor_state->selected_gizmo_handle)) {
                 Vec3 new_scale = do_gizmo_scale(&render_state->camera, editor_state, cursor_ray);
-                update_entity_scale(game_state, entity, new_scale);
+                update_entity_scale(asset_manager, entity, new_scale);
             } else {
                 assert(!"Should be unreachable.");
             }

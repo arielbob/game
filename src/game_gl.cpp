@@ -391,7 +391,25 @@
 // TODO: (refactor) could we maybe just store all the meshes in the same table? so we don't need to constantly
 //       differentiate between primitive and level meshes
 //       - TODO (done): create Asset_Manager struct
-//       - TODO: add procedures for adding level, primitive, and engine meshes
+//       - TODO (done): add procedures for adding level, primitive, and engine meshes
+//       - TODO (done): remove old mesh tables from game_state
+//       - TODO (done): init asset manager
+//       - TODO (done): remove mesh_types, since all the meshes are in the same table, we can just use mesh_id
+//       - TODO (done): update level loader to use asset_manager for meshes
+//       - TODO (done): remove mesh_table from level struct
+//       - TODO (done): make sure level loading and exporting works
+//       - TODO: make sure asset_manager memory and tables for levels is being cleared on level load
+//       - TODO: make sure opengl mesh table is being cleared when new level loads
+//       - TODO: remove mesh_type from editor actions
+
+
+// TODO: i'm pretty sure whenever we make string buffers using PLATFORM_MAX_PATH, we should be adding 1 to it,
+//       since PLATFORM_MAX_PATH includes the null terminator.
+
+// TODO: we may want to just use arrays again for level entities, since it's more cache-friendly. i'm not sure why
+//       we even switched to using tables for them.
+//       - TODO: figure out why we even started using hash tables for entities in the first place
+//       - TODO: create an Array struct
 
 // TODO: material duplicating
 // TODO: entity duplicating
@@ -620,8 +638,8 @@ int32 gl_get_mesh_id(GL_State *gl_state, char *mesh_name) {
 }
 #endif
 
-GL_Mesh make_gl_mesh(uint32 vao, uint32 vbo, uint32 num_triangles) {
-    GL_Mesh gl_mesh = { vao, vbo };
+GL_Mesh make_gl_mesh(Mesh_Type mesh_type, uint32 vao, uint32 vbo, uint32 num_triangles) {
+    GL_Mesh gl_mesh = { mesh_type, vao, vbo };
     return gl_mesh;
 }
 
@@ -869,7 +887,7 @@ GL_Mesh gl_load_mesh(GL_State *gl_state, Mesh mesh) {
 
     glBindVertexArray(0);
 
-    GL_Mesh gl_mesh = { vao, vbo, mesh.num_triangles };
+    GL_Mesh gl_mesh = { mesh.type, vao, vbo, mesh.num_triangles };
 
     return gl_mesh;
 }
@@ -906,29 +924,10 @@ void gl_use_font_texture(GL_State *gl_state, String font_texture_name) {
 }
 
 // TODO: think of a better API for this.. it's unclear which mesh table it's using
-GL_Mesh gl_use_mesh(GL_State *gl_state, Mesh_Type mesh_type, int32 mesh_id) {
+GL_Mesh gl_use_mesh(GL_State *gl_state, int32 mesh_id) {
     GL_Mesh gl_mesh = {};
     bool32 mesh_exists = false;
-    switch (mesh_type) {
-        case Mesh_Type::LEVEL: {
-            mesh_exists = hash_table_find(gl_state->level_mesh_table, mesh_id, &gl_mesh);
-        } break;
-        case Mesh_Type::PRIMITIVE: {
-            mesh_exists = hash_table_find(gl_state->primitive_mesh_table, mesh_id, &gl_mesh);
-        } break;
-        default: {
-            assert(!"Unhandled mesh type.");
-        } break;
-    }
-    
-    assert(mesh_exists);
-    glBindVertexArray(gl_mesh.vao);
-    return gl_mesh;
-}
-
-GL_Mesh gl_use_common_mesh(GL_State *gl_state, int32 mesh_id) {
-    GL_Mesh gl_mesh;
-    uint32 mesh_exists = hash_table_find(gl_state->common_mesh_table, mesh_id, &gl_mesh);
+    mesh_exists = hash_table_find(gl_state->mesh_table, mesh_id, &gl_mesh);
     assert(mesh_exists);
     glBindVertexArray(gl_mesh.vao);
     return gl_mesh;
@@ -943,12 +942,11 @@ GL_Mesh gl_use_rendering_mesh(GL_State *gl_state, int32 mesh_id) {
 }
 
 void gl_draw_solid_mesh(GL_State *gl_state, Render_State *render_state,
-                        Mesh_Type mesh_type,
                         int32 mesh_id,
                         Material material,
                         Transform transform) {
     uint32 shader_id = gl_use_shader(gl_state, "solid");
-    GL_Mesh gl_mesh = gl_use_mesh(gl_state, mesh_type, mesh_id);
+    GL_Mesh gl_mesh = gl_use_mesh(gl_state, mesh_id);
 
     if (!material.use_color_override && (material.texture_id < 0)) assert(!"No texture name provided.");
     if (!material.use_color_override) gl_use_texture(gl_state, material.texture_id);
@@ -966,10 +964,10 @@ void gl_draw_solid_mesh(GL_State *gl_state, Render_State *render_state,
 }
 
 void gl_draw_solid_color_mesh(GL_State *gl_state, Render_State *render_state,
-                              Mesh_Type mesh_type, int32 mesh_id, Vec4 color,
+                              int32 mesh_id, Vec4 color,
                               Transform transform) {
     uint32 shader_id = gl_use_shader(gl_state, "solid");
-    GL_Mesh gl_mesh = gl_use_mesh(gl_state, mesh_type, mesh_id);
+    GL_Mesh gl_mesh = gl_use_mesh(gl_state, mesh_id);
 
     Mat4 model_matrix = get_model_matrix(transform);
     gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
@@ -1002,12 +1000,12 @@ void gl_draw_solid_color_mesh(GL_State *gl_state, Render_State *render_state,
 }
 
 void gl_draw_mesh(GL_State *gl_state, Render_State *render_state,
-                  Mesh_Type mesh_type, int32 mesh_id,
+                  int32 mesh_id,
                   Material material,
                   Transform transform) {
     uint32 shader_id = gl_use_shader(gl_state, "basic_3d");
 
-    GL_Mesh gl_mesh = gl_use_mesh(gl_state, mesh_type, mesh_id);
+    GL_Mesh gl_mesh = gl_use_mesh(gl_state, mesh_id);
 
     if (!material.use_color_override && (material.texture_id < 0)) assert(!"No texture name provided.");
     if (!material.use_color_override) gl_use_texture(gl_state, material.texture_id);
@@ -1032,12 +1030,12 @@ void gl_draw_mesh(GL_State *gl_state, Render_State *render_state,
 }
 
 void gl_draw_textured_mesh(GL_State *gl_state, Render_State *render_state,
-                           Mesh_Type mesh_type, int32 mesh_id,
+                           int32 mesh_id,
                            int32 texture_id, Transform transform) {
     uint32 shader_id = gl_use_shader(gl_state, "basic_3d_textured");
     gl_use_texture(gl_state, texture_id);
 
-    GL_Mesh gl_mesh = gl_use_mesh(gl_state, mesh_type, mesh_id);
+    GL_Mesh gl_mesh = gl_use_mesh(gl_state, mesh_id);
 
     Mat4 model_matrix = get_model_matrix(transform);
     gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
@@ -1051,13 +1049,13 @@ void gl_draw_textured_mesh(GL_State *gl_state, Render_State *render_state,
 }
 
 void gl_draw_wireframe(GL_State *gl_state, Render_State *render_state,
-                       Mesh_Type mesh_type, int32 mesh_id, Transform transform) {
+                       int32 mesh_id, Transform transform) {
     uint32 shader_id;
     uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("debug_wireframe"), &shader_id);
     assert(shader_exists);
     glUseProgram(shader_id);
 
-    GL_Mesh gl_mesh = gl_use_mesh(gl_state, mesh_type, mesh_id);
+    GL_Mesh gl_mesh = gl_use_mesh(gl_state, mesh_id);
 
     Mat4 model_matrix = get_model_matrix(transform);
     gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
@@ -1354,15 +1352,10 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
                                                                  HASH_TABLE_SIZE, &string_equals);
     gl_state->rendering_mesh_table = make_hash_table<int32, GL_Mesh>((Allocator *) &memory.hash_table_stack,
                                                                      HASH_TABLE_SIZE, &int32_equals);
-    gl_state->common_mesh_table = make_hash_table<int32, GL_Mesh>((Allocator *) &memory.hash_table_stack,
-                                                                  HASH_TABLE_SIZE, &int32_equals);
-    gl_state->primitive_mesh_table = make_hash_table<int32, GL_Mesh>((Allocator *) &memory.hash_table_stack,
-                                                                     HASH_TABLE_SIZE, &int32_equals);
+    gl_state->mesh_table = make_hash_table<int32, GL_Mesh>((Allocator *) &memory.hash_table_stack,
+                                                           MAX_MESHES, &int32_equals);
     gl_state->rendering_texture_table = make_hash_table<int32, GL_Texture>((Allocator *) &memory.hash_table_stack,
                                                                            HASH_TABLE_SIZE, &int32_equals);
-
-    gl_state->level_mesh_table = make_hash_table<int32, GL_Mesh>((Allocator *) &memory.hash_table_stack,
-                                                                 HASH_TABLE_SIZE, &int32_equals);
     gl_state->level_texture_table = make_hash_table<int32, GL_Texture>((Allocator *) &memory.hash_table_stack,
                                                                   HASH_TABLE_SIZE, &int32_equals);
     gl_state->font_texture_table = make_hash_table<String, uint32>((Allocator *) &memory.hash_table_stack,
@@ -1389,7 +1382,7 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
     glEnableVertexAttribArray(0);
     
     glBindVertexArray(0);
-    gl_state->triangle_mesh_id = gl_add_rendering_mesh(gl_state, make_gl_mesh(vao, vbo, 1));
+    gl_state->triangle_mesh_id = gl_add_rendering_mesh(gl_state, make_gl_mesh(Mesh_Type::RENDERING, vao, vbo, 1));
 
     // NOTE: quad mesh
     // we store them separately like this because we use glBufferSubData to send the vertex positions
@@ -1435,7 +1428,7 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
     glEnableVertexAttribArray(1);
     
     glBindVertexArray(0);
-    gl_state->quad_mesh_id = gl_add_rendering_mesh(gl_state, make_gl_mesh(vao, vbo, 2));
+    gl_state->quad_mesh_id = gl_add_rendering_mesh(gl_state, make_gl_mesh(Mesh_Type::RENDERING, vao, vbo, 2));
 
     // NOTE: framebuffer mesh
     real32 framebuffer_mesh_data[] = {
@@ -1466,7 +1459,8 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
     glEnableVertexAttribArray(1);
     
     glBindVertexArray(0);
-    gl_state->framebuffer_quad_mesh_id = gl_add_rendering_mesh(gl_state, make_gl_mesh(vao, vbo, 2));
+    gl_state->framebuffer_quad_mesh_id = gl_add_rendering_mesh(gl_state, make_gl_mesh(Mesh_Type::RENDERING,
+                                                                                      vao, vbo, 2));
 
     // NOTE: glyph quad
     glGenVertexArrays(1, &vao);
@@ -1490,7 +1484,7 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
     glEnableVertexAttribArray(1);
     
     glBindVertexArray(0);
-    gl_state->glyph_quad_mesh_id = gl_add_rendering_mesh(gl_state, make_gl_mesh(vao, vbo, 2));
+    gl_state->glyph_quad_mesh_id = gl_add_rendering_mesh(gl_state, make_gl_mesh(Mesh_Type::RENDERING, vao, vbo, 2));
 
     // line mesh
     real32 line_vertices[] = {
@@ -1510,7 +1504,7 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
     glEnableVertexAttribArray(0);
     
     glBindVertexArray(0);
-    gl_state->line_mesh_id = gl_add_rendering_mesh(gl_state, make_gl_mesh(vao, vbo, 0));
+    gl_state->line_mesh_id = gl_add_rendering_mesh(gl_state, make_gl_mesh(Mesh_Type::RENDERING, vao, vbo, 0));
 
     // circle mesh
     // add 2, since we need a space for the center of the circle and another space since the final vertex
@@ -1529,7 +1523,7 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
     glEnableVertexAttribArray(0);
     
     glBindVertexArray(0);
-    gl_state->circle_mesh_id = gl_add_rendering_mesh(gl_state, make_gl_mesh(vao, vbo, 0));
+    gl_state->circle_mesh_id = gl_add_rendering_mesh(gl_state, make_gl_mesh(Mesh_Type::RENDERING, vao, vbo, 0));
 
     // NOTE: shaders
     gl_load_shader(gl_state,
@@ -2642,16 +2636,16 @@ void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Editor_State 
     }
 
     GL_Mesh arrow_mesh;
-    uint32 mesh_exists = hash_table_find(gl_state->common_mesh_table, gizmo.arrow_mesh_id, &arrow_mesh);
+    uint32 mesh_exists = hash_table_find(gl_state->mesh_table, gizmo.arrow_mesh_id, &arrow_mesh);
     assert(mesh_exists);
     GL_Mesh sphere_mask_mesh;
-    mesh_exists = hash_table_find(gl_state->common_mesh_table, gizmo.sphere_mesh_id, &sphere_mask_mesh);
+    mesh_exists = hash_table_find(gl_state->mesh_table, gizmo.sphere_mesh_id, &sphere_mask_mesh);
     assert(mesh_exists);
     GL_Mesh ring_mesh;
-    mesh_exists = hash_table_find(gl_state->common_mesh_table, gizmo.ring_mesh_id, &ring_mesh);
+    mesh_exists = hash_table_find(gl_state->mesh_table, gizmo.ring_mesh_id, &ring_mesh);
     assert(mesh_exists);
     GL_Mesh cube_mesh;
-    mesh_exists = hash_table_find(gl_state->common_mesh_table, gizmo.cube_mesh_id, &cube_mesh);
+    mesh_exists = hash_table_find(gl_state->mesh_table, gizmo.cube_mesh_id, &cube_mesh);
     assert(mesh_exists);
 
     gl_draw_solid_color_mesh(gl_state, render_state, arrow_mesh, x_handle_color, x_transform);
@@ -2725,6 +2719,7 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
                Controller_State *controller_state,
                Display_Output display_output, Win32_Sound_Output *win32_sound_output) {
     Render_State *render_state = &game_state->render_state;
+    Asset_Manager *asset_manager = &game_state->asset_manager;
 
     Level *level = &game_state->current_level;
 
@@ -2748,6 +2743,7 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
         }
         hash_table_reset(gl_level_texture_table);
 
+#if 0
         // clear mesh table
         Hash_Table<int32, GL_Mesh> *gl_level_mesh_table = &gl_state->level_mesh_table;
         for (int32 i = 0; i < gl_level_mesh_table->max_entries; i++) {
@@ -2759,10 +2755,20 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
             // NOTE: same as above note
         }
         hash_table_reset(gl_level_mesh_table);
+#endif
+
+        // delete level meshes
+        FOR_ENTRY_POINTERS(int32, GL_Mesh, gl_state->mesh_table) {
+            if (!entry->is_occupied || (entry->value.type != Mesh_Type::LEVEL)) continue;
+
+            GL_Mesh mesh = entry->value;
+            gl_delete_mesh(mesh);
+        }
 
         level->should_clear_gpu_data = false;
     }
 
+#if 0
     // load primitive meshes
     {
         Hash_Table_Iterator<int32, Mesh> iterator = make_hash_table_iterator(game_state->primitive_mesh_table);
@@ -2825,13 +2831,33 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
             mesh->is_loaded = true;
         }
     }
+#endif
 
-    // delete level meshes
+    // load game meshes
     {
-        FOR_ENTRY_POINTERS(int32, GL_Mesh, gl_state->level_mesh_table) {
+        FOR_ENTRY_POINTERS(int32, Mesh, asset_manager->mesh_table) {
             int32 mesh_key = entry->key;
-            if (!hash_table_exists(level->mesh_table, mesh_key)) {
-                hash_table_remove(&gl_state->level_mesh_table, mesh_key);
+            Mesh *mesh = &entry->value;
+            
+            if (!mesh->is_loaded) {
+                if (!hash_table_exists(gl_state->mesh_table, mesh_key)) {
+                    GL_Mesh gl_mesh = gl_load_mesh(gl_state, *mesh);
+                    hash_table_add(&gl_state->mesh_table, mesh_key, gl_mesh);
+                } else {
+                    debug_print("%s already loaded.\n", mesh->name);
+                }
+
+                mesh->is_loaded = true;
+            }
+        }
+    }
+
+    // delete level meshes if they were deleted in the game
+    {
+        FOR_ENTRY_POINTERS(int32, GL_Mesh, gl_state->mesh_table) {
+            int32 mesh_key = entry->key;
+            if (!hash_table_exists(asset_manager->mesh_table, mesh_key)) {
+                hash_table_remove(&gl_state->mesh_table, mesh_key);
                 gl_delete_mesh(entry->value);
             }
         }
@@ -2952,7 +2978,6 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
             }
 
             gl_draw_mesh(gl_state, render_state,
-                         entity->mesh_type,
                          mesh_id, material,
                          entity->transform);
 
@@ -2960,7 +2985,7 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
                 editor_state->show_wireframe &&
                 editor_state->selected_entity_type == ENTITY_NORMAL &&
                 editor_state->selected_entity_id == entry->key) {
-                gl_draw_wireframe(gl_state, render_state, entity->mesh_type, mesh_id, entity->transform);
+                gl_draw_wireframe(gl_state, render_state, mesh_id, entity->transform);
             }
 
             if (game_state->mode == Game_Mode::EDITING &&

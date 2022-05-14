@@ -10,6 +10,7 @@
 
 #include "platform.h"
 #include "hash_table.h"
+#include "asset.h"
 #include "font.h"
 #include "ui.h"
 #include "mesh.h"
@@ -236,8 +237,9 @@ struct Game_State {
     //String_Buffer level_to_be_loaded;
     Level current_level;
 
-#if 1
-    // TODO: remove these
+    Asset_Manager asset_manager;
+    
+#if 0
     Hash_Table<int32, Mesh> common_mesh_table;
     Hash_Table<int32, Mesh> primitive_mesh_table;
 #endif
@@ -287,19 +289,23 @@ Font get_font(Game_State *game_state, char *font_name);
 //Mesh *get_mesh_pointer(Game_State *game_state, int32 mesh_id);
 //Material get_material(Game_State *game_state, int32 material_id);
 //int32 add_mesh(Game_State *game_state, Mesh mesh);
+#if 0
 Mesh get_common_mesh(Game_State *game_state, int32 mesh_id);
 Mesh get_mesh(Game_State *game_state, Level *level, Mesh_Type mesh_type, int32 mesh_id);
 bool32 mesh_exists(Game_State *game_state, Level *level, Mesh_Type mesh_type, int32 mesh_id);
 int32 get_mesh_id_by_name(Game_State *game_state, Level *level, Mesh_Type mesh_type, String mesh_name);
 Mesh *get_mesh_pointer(Game_State *game_state, Level *level, Mesh_Type mesh_type, int32 mesh_id);
+bool32 mesh_name_exists(Game_State *game_state, Level *level, String name);
+#endif
 Material *get_entity_material(Level *level, Entity *entity);
-void set_entity_mesh(Game_State *game_state, Level *level, Entity *entity, Mesh_Type mesh_type, int32 mesh_id);
+//void set_entity_mesh(Game_State *game_state, Level *level, Entity *entity, Mesh_Type mesh_type, int32 mesh_id);
+void set_entity_mesh(Asset_Manager *asset_manager, Entity *entity, int32 mesh_id);
 void set_entity_material(Entity *entity, int32 material_id);
 void update_render_state(Render_State *render_state);
 Vec3 cursor_pos_to_world_space(Vec2 cursor_pos, Render_State *render_state);
-void update_entity_position(Game_State *game_state, Entity *entity, Vec3 new_position);
-void update_entity_rotation(Game_State *game_state, Entity *entity, Quaternion new_rotation);
-void update_entity_scale(Game_State *game_state, Entity *entity, Vec3 new_scale);
+void update_entity_position(Asset_Manager *asset_manager, Entity *entity, Vec3 new_position);
+void update_entity_rotation(Asset_Manager *asset_manager, Entity *entity, Quaternion new_rotation);
+void update_entity_scale(Asset_Manager *asset_manager, Entity *entity, Vec3 new_scale);
 int32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, bool32 include_backside,
                           Ray_Intersects_Mesh_Result *result);
 bool32 closest_point_below_on_mesh(Vec3 point, Mesh mesh, Transform transform, Vec3 *result);
@@ -311,7 +317,6 @@ void add_debug_line(Debug_State *debug_state, Vec3 start, Vec3 end, Vec4 color);
 void add_message(Message_Manager *manager, String text);
 bool32 material_name_exists(Level *level, String name);
 bool32 texture_name_exists(Level *level, String name);
-bool32 mesh_name_exists(Game_State *game_state, Level *level, String name);
-void set_entity_transform(Game_State *game_state, Entity *entity, Transform transform);
+void set_entity_transform(Asset_Manager *asset_manager, Entity *entity, Transform transform);
 
 #endif

@@ -17,13 +17,22 @@ struct Level {
     Arena_Allocator *arena_pointer;
     Pool_Allocator *string64_pool_pointer;
     Pool_Allocator *filename_pool_pointer;
-    Heap_Allocator *mesh_heap_pointer;
 
-    Hash_Table<int32, Mesh> mesh_table;
     Hash_Table<int32, Material> material_table;
     Hash_Table<int32, Texture> texture_table;
     
     bool32 should_clear_gpu_data;
+};
+
+struct Mesh_Info {
+    String filename;
+    String name;
+};
+
+struct Normal_Entity_Asset_Info {
+    String mesh_name;
+    // TODO: we don't do materials the way we do meshes yet
+    //String material_name;
 };
 
 namespace Level_Loader {
@@ -96,11 +105,13 @@ namespace Level_Loader {
 
     Token make_token(Token_Type type, char *contents, int32 length);
     Token get_token(Tokenizer *tokenizer, char *file_contents);
-    bool32 load_temp_level(Allocator *temp_allocator, Game_State *game_state,
-                           File_Data file_data, Level *temp_level);
+    bool32 load_temp_level(Allocator *temp_allocator,
+                           File_Data file_data, Level *temp_level,
+                           Mesh_Info *level_meshes, int32 level_meshes_size, int32 *num_level_meshes,
+                           Hash_Table<int32, Normal_Entity_Asset_Info> *normal_entity_asset_info);
 };
 
-bool32 read_and_load_level(Game_State *game_state,
+bool32 read_and_load_level(Asset_Manager *asset_manager,
                            Level *level, char *filename,
                            Arena_Allocator *arena,
                            Heap_Allocator *mesh_heap,
