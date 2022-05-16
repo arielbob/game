@@ -1170,7 +1170,9 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                          row_id, row_index++);
         
         if (toggle_is_walkable_pressed) {
+            start_entity_change(editor_state, (Entity *) normal_entity);
             normal_entity->is_walkable = !normal_entity->is_walkable;
+            finalize_entity_change(editor_state, level, (Entity *) normal_entity);
         }
 
             
