@@ -26,6 +26,10 @@ void history_deallocate(Editor_History *history, Editor_Action *editor_action) {
             Add_Mesh_Action *action = (Add_Mesh_Action *) editor_action;
             deallocate(*action);
         } break;
+        case ACTION_DELETE_MESH: {
+            Delete_Mesh_Action *action = (Delete_Mesh_Action *) editor_action;
+            deallocate(*action);
+        } break;
         default: {
             assert(!"Unhandled deallocation for action type.");
         }
@@ -349,6 +353,45 @@ void undo_add_mesh(Editor_State *editor_state, Asset_Manager *asset_manager,
     level_delete_mesh(asset_manager, level, action.mesh_id);
 }
 
+// mesh deleting
+void editor_delete_mesh(Editor_State *editor_state, Asset_Manager *asset_manager,
+                        Level *level,
+                        Delete_Mesh_Action action, bool32 is_redoing) {
+    if (!is_redoing) {
+        Allocator *allocator = editor_state->history.allocator_pointer;
+        action.relative_filename = copy(allocator, action.relative_filename);
+        action.mesh_name = copy(allocator, action.mesh_name);
+    }
+
+    bool32 result = level_delete_mesh(asset_manager, level, action.mesh_id,
+                                      &action.num_entities_with_mesh,
+                                      action.entity_ids_with_mesh, action.entity_types,
+                                      MAX_ENTITIES_WITH_SAME_MESH);
+
+    if (!result) {
+        add_message(Context::message_manager, make_string("Too many entities have this mesh to be deleted."));
+        return;
+    }
+    
+    if (!is_redoing) {
+        history_add_action(&editor_state->history, Delete_Mesh_Action, action);
+    }
+}
+
+void undo_delete_mesh(Editor_State *editor_state, Asset_Manager *asset_manager,
+                      Level *level,
+                      Delete_Mesh_Action action) {
+    int32 mesh_id;
+    add_level_mesh(asset_manager,
+                   action.relative_filename, action.mesh_name, action.mesh_id,
+                   &mesh_id);
+
+    for (int32 i = 0; i < action.num_entities_with_mesh; i++) {
+        Entity *entity = get_entity(level, action.entity_types[i], action.entity_ids_with_mesh[i]);
+        set_entity_mesh(asset_manager, entity, mesh_id);
+    }
+}
+
 int32 history_get_num_entries(Editor_History *history) {
     if (history->start_index == -1 && history->end_index == -1) return 0;
 
@@ -419,6 +462,10 @@ void history_undo(Game_State *game_state, Editor_History *history) {
             Add_Mesh_Action *action = (Add_Mesh_Action *) current_action;
             undo_add_mesh(editor_state, asset_manager, level, *action);
         } break;
+        case ACTION_DELETE_MESH: {
+            Delete_Mesh_Action *action = (Delete_Mesh_Action *) current_action;
+            undo_delete_mesh(editor_state, asset_manager, level, *action);
+        } break;
         default: {
             assert(!"Unhandled editor action type.");
             return;
@@ -488,6 +535,10 @@ void history_redo(Game_State *game_state, Editor_History *history) {
         case ACTION_ADD_MESH: {
             Add_Mesh_Action *action = (Add_Mesh_Action *) redo_action;
             editor_add_mesh(editor_state, asset_manager, level, *action, true);
+        } break;
+        case ACTION_DELETE_MESH: {
+            Delete_Mesh_Action *action = (Delete_Mesh_Action *) redo_action;
+            editor_delete_mesh(editor_state, asset_manager, level, *action, true);
         } break;
         default: {
             assert(!"Unhandled editor action type.");

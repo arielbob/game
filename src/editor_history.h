@@ -4,6 +4,7 @@
 #include "level.h"
 
 #define MAX_EDITOR_HISTORY_ENTRIES 128
+#define MAX_ENTITIES_WITH_SAME_MESH 64
 
 struct Editor_State;
 struct Game_State;
@@ -166,7 +167,7 @@ struct Add_Mesh_Action {
 
 // TODO: we may need to make a new version of this if we ever add adding meshes without an entity selected
 Add_Mesh_Action make_add_mesh_action(String relative_filename, String mesh_name,
-                                        Entity_Type entity_type, int32 entity_id) {
+                                     Entity_Type entity_type, int32 entity_id) {
     Add_Mesh_Action action = {};
     action.type = ACTION_ADD_MESH;
     action.mesh_id = -1;
@@ -179,6 +180,35 @@ Add_Mesh_Action make_add_mesh_action(String relative_filename, String mesh_name,
 }
 
 void deallocate(Add_Mesh_Action action) {
+    deallocate(action.relative_filename);
+    deallocate(action.mesh_name);
+}
+
+struct Delete_Mesh_Action {
+    ACTION_HEADER
+    
+    int32 mesh_id;
+    String relative_filename;
+    String mesh_name;
+    
+    // TODO: we may want to do this differently, so we can actually have a lot of entities with the same mesh,
+    //       although, i'm not sure if that's even needed.
+    int32 entity_ids_with_mesh[MAX_ENTITIES_WITH_SAME_MESH];
+    Entity_Type entity_types[MAX_ENTITIES_WITH_SAME_MESH];
+    int32 num_entities_with_mesh;
+};
+
+Delete_Mesh_Action make_delete_mesh_action(int32 mesh_id, String relative_filename, String mesh_name) {
+    Delete_Mesh_Action action = {};
+    action.type = ACTION_DELETE_MESH;
+    action.mesh_id = mesh_id;
+    action.relative_filename = relative_filename;
+    action.mesh_name = mesh_name;
+
+    return action;
+}
+
+void deallocate(Delete_Mesh_Action action) {
     deallocate(action.relative_filename);
     deallocate(action.mesh_name);
 }
@@ -257,6 +287,9 @@ void editor_modify_mesh(Game_State *game_state, Modify_Mesh_Action action, bool3
 void editor_add_mesh(Editor_State *editor_state, Asset_Manager *asset_manager,
                      Level *level,
                      Add_Mesh_Action action, bool32 is_redoing = false);
+void editor_delete_mesh(Editor_State *editor_state, Asset_Manager *asset_manager,
+                        Level *level,
+                        Delete_Mesh_Action action, bool32 is_redoing = false);
 void history_undo(Game_State *game_state, Editor_History *history);
 void history_redo(Game_State *game_state, Editor_History *history);
 int32 history_get_num_entries(Editor_History *history);

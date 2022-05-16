@@ -391,6 +391,44 @@ void level_delete_mesh(Asset_Manager *asset_manager, Level *level, int32 mesh_id
     }
 }
 
+bool32 level_delete_mesh(Asset_Manager *asset_manager, Level *level, int32 mesh_id,
+                         int32 *num_entities_with_mesh,
+                         int32 *entity_indices, Entity_Type *entity_types,
+                         int32 entities_array_size) {
+    hash_table_remove(&asset_manager->mesh_table, mesh_id);
+    int32 default_mesh_id = get_mesh_id_by_name(asset_manager, make_string("cube"));
+    
+    {
+        int32 num_entities_found_with_mesh = 0;
+        FOR_VALUE_POINTERS(int32, Normal_Entity, level->normal_entity_table) {
+            if (value->mesh_id == mesh_id) {
+                num_entities_found_with_mesh++;
+                if (num_entities_found_with_mesh >= entities_array_size) {
+                    return false;
+                }
+            }
+        }
+    }
+
+    int32 num_meshes_set = 0;
+    FOR_ENTRY_POINTERS(int32, Normal_Entity, level->normal_entity_table) {
+        Normal_Entity *entity = &entry->value;
+        if (entity->mesh_id == mesh_id) {
+            assert(num_meshes_set < entities_array_size);
+
+            entity_indices[num_meshes_set] = entry->key;
+            entity_types[num_meshes_set] = ENTITY_NORMAL;
+            num_meshes_set++;
+
+            set_entity_mesh(asset_manager, (Entity *) entity, default_mesh_id);
+        }
+    }
+
+    *num_entities_with_mesh = num_meshes_set;
+
+    return true;
+}
+
 // TODO: same TODO as get_mesh_id_by_name
 int32 get_material_id_by_name(Level *level, String material_name) {
     int32 num_checked = 0;

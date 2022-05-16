@@ -1036,7 +1036,13 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
 
         if (delete_mesh_pressed) {
             assert(mesh->type == Mesh_Type::LEVEL);
+            Delete_Mesh_Action action = make_delete_mesh_action(normal_entity->mesh_id,
+                                                                make_string(mesh->filename),
+                                                                make_string(mesh->name));
+            editor_delete_mesh(editor_state, asset_manager, level, action);
+#if 0
             level_delete_mesh(asset_manager, level, normal_entity->mesh_id);
+#endif
             editor_state->editing_selected_entity_mesh = false;
         }
 
@@ -2075,6 +2081,27 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
     do_text(ui_manager,
             5.0f, render_state->display_output.height - 143.0f,
             buf, editor_font_name, default_text_style, "num history entries");
+
+    Heap_Allocator *history_heap = &memory.editor_history_heap;
+    String_Buffer history_buf = make_string_buffer((Allocator *) &memory.frame_arena, 512);
+    append_string(&history_buf, "[ ");
+
+    Heap_Block *block = history_heap->first_block;
+    while (block) {
+        Marker m = begin_region();
+        char *whatever = string_format((Allocator *) &memory.global_stack, 16, "| %d | ", block->size);
+        append_string(&history_buf, whatever);
+        end_region(m);
+
+        block = block->next;
+    }
+
+    append_string(&history_buf, "]");
+
+    buf = to_char_array((Allocator *) &memory.frame_arena, history_buf);
+    do_text(ui_manager,
+            5.0f, render_state->display_output.height - 114.0f,
+            buf, editor_font_name, default_text_style, "editor history");
 }
 
 int32 pick_entity(Game_State *game_state, Ray cursor_ray, Entity *entity_result, int32 *index_result) {

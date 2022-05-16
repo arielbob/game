@@ -387,13 +387,16 @@
 //                 actually be less memory too.
 //       - TODO (done): write copy function for meshes
 //       - TODO (done): add history to adding meshes
-//       - TODO: add history to deleting meshes
+//       - TODO (done): add history to deleting meshes
+//       - FIXME (done): we're writing over memory somewhere...
+//                - you can see it often when you set a bunch of meshes to suzanne then delete then try and overwrite the history by undoing all the way and doing another action
+//               - we were using the wrong size when zeroing memory in the heap_allocate() procedure (we were
+//                 using the aligned data size, which includes the alignment and not the regular aligned size.)
 //       - TODO: change other entity fields to use new modify action
 //       - TODO: add history for adding and deleting materials
 //       - TODO: add history for adding and deleting textures
 //       - TODO: add history for color changes
 //       - TODO: add history for light falloff changes
-//       - TODO: add history for selected/deselecting entities
 //       - TODO: add shortcuts for undoing and redoing
 
 // TODO (done): (refactor) store all the meshes in the same table so we don't need to constantly differentiate
@@ -409,6 +412,8 @@
 //       - TODO (done): make sure asset_manager memory and tables for levels is being cleared on level load
 //       - TODO (done): make sure opengl mesh table is being cleared when new level loads
 
+
+// TODO: make_string() with formatting built in with arguments
 
 // TODO: i'm pretty sure whenever we make string buffers using PLATFORM_MAX_PATH, we should be adding 1 to it,
 //       since PLATFORM_MAX_PATH includes the null terminator.

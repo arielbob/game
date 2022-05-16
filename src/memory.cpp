@@ -302,7 +302,9 @@ void heap_coalesce_blocks(Heap_Allocator *heap) {
     
     while (block != NULL) {
         Heap_Block *next_block = block->next;
-        if (next_block == NULL) return;
+        if (next_block == NULL) {
+            return;
+        }
 
         uint8 *block_start = get_block_unaligned_address(block);
         uint8 *block_end = block_start + block->size;
@@ -313,6 +315,8 @@ void heap_coalesce_blocks(Heap_Allocator *heap) {
         if (block_end == next_block_start) {
             block->size += next_block->size;
             block->next = next_block->next;
+
+            assert(((uint8 *) block->next) < (heap_get_unaligned_address(heap->base) + heap->size));
             // it is not an error that we don't set block = block->next if we coalesced.
             // if we have multiple contiguous free blocks, for example 3, if we coalesce the first 2,
             // and then just set block = block->next, we would go to the third block, then check if
@@ -425,7 +429,7 @@ void *heap_allocate(Heap_Allocator *heap, uint32 size, bool32 zero_memory = fals
         *((uint8 *) ((uint8 *) header_address - 1)) = (uint8) header_align_offset;
 
         if (zero_memory) {
-            platform_zero_memory(data_address, data_aligned_size);
+            platform_zero_memory(data_address, size);
         }
 
         if (previous_block == NULL) {
@@ -442,8 +446,11 @@ void *heap_allocate(Heap_Allocator *heap, uint32 size, bool32 zero_memory = fals
 
     if (block == NULL) {
         assert(!"Could not find free block.");
+
         return NULL;
     }
+
+    assert(start_byte < (heap_get_unaligned_address(heap->base) + heap->size));
 
     return start_byte;
 }
@@ -498,6 +505,13 @@ void heap_deallocate(Heap_Allocator *heap, void *address) {
 
     assert(heap->used < heap->size);
     assert(free_block != free_block->next);
+    
+    // debug
+    block = heap->first_block;
+    while (block != NULL) {
+        assert(block->size >= 0);
+        block = block->next;
+    }
 
     heap_coalesce_blocks(heap);
 }
