@@ -388,8 +388,8 @@
 //       - TODO: add history for light falloff changes
 //       - TODO: add shortcuts for undoing and redoing
 
-// TODO: (refactor) could we maybe just store all the meshes in the same table? so we don't need to constantly
-//       differentiate between primitive and level meshes
+// TODO (done): (refactor) store all the meshes in the same table so we don't need to constantly differentiate
+//              between primitive and level meshes
 //       - TODO (done): create Asset_Manager struct
 //       - TODO (done): add procedures for adding level, primitive, and engine meshes
 //       - TODO (done): remove old mesh tables from game_state
@@ -400,7 +400,6 @@
 //       - TODO (done): make sure level loading and exporting works
 //       - TODO (done): make sure asset_manager memory and tables for levels is being cleared on level load
 //       - TODO (done): make sure opengl mesh table is being cleared when new level loads
-//       - TODO: remove mesh_type from editor actions
 
 
 // TODO: i'm pretty sure whenever we make string buffers using PLATFORM_MAX_PATH, we should be adding 1 to it,
@@ -1061,9 +1060,11 @@ void gl_draw_wireframe(GL_State *gl_state, Render_State *render_state,
     gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
     gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->cpv_matrix);
 
+    glDepthFunc(GL_LEQUAL);
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     glDrawElements(GL_TRIANGLES, gl_mesh.num_triangles * 3, GL_UNSIGNED_INT, 0);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    glDepthFunc(GL_LESS);
 
     glUseProgram(0);
     glBindVertexArray(0);

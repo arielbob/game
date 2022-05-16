@@ -294,14 +294,6 @@ void undo_modify_mesh(Game_State *game_state,
     copy_string(&mesh->name, make_string(action.original_name));
 }
 
-#if 0
-void editor_add_mesh(Game_State *game_state, Editor_State *editor_state, Level *level, Entity *entity, Mesh mesh) {
-    int32 mesh_id = level_add_mesh(level, mesh);
-    set_entity_mesh(game_state, level, entity, Mesh_Type::LEVEL, mesh_id);
-
-}
-#endif
-
 int32 history_get_num_entries(Editor_History *history) {
     if (history->start_index == -1 && history->end_index == -1) return 0;
 
