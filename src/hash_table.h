@@ -310,6 +310,8 @@ void hash_table_reset(Hash_Table<Key_Type, Value_Type> *hash_table) {
     for (int32 i = 0; i < hash_table->max_entries && num_checked < hash_table->num_entries; i++) {
         Hash_Table_Entry<Key_Type, Value_Type> *entry = &hash_table->entries[i];
         if (entry->is_occupied) {
+            // TODO: i'm not sure if we actually need to clear it.. we could just set is_occupied = false like we
+            //       do in the procedure below
             *entry = {};
             num_checked++;
         }
@@ -317,6 +319,29 @@ void hash_table_reset(Hash_Table<Key_Type, Value_Type> *hash_table) {
 
     hash_table->num_entries = 0;
     hash_table->total_added_ever = 0;
+}
+
+template <class Key_Type, class Value_Type>
+void hash_table_reset_entry(Hash_Table<Key_Type, Value_Type> *hash_table, Key_Type key) {
+    int32 num_checked = 0;
+    int32 found = false;
+    for (int32 i = 0; i < hash_table->max_entries && num_checked < hash_table->num_entries; i++) {
+        Hash_Table_Entry<Key_Type, Value_Type> *entry = &hash_table->entries[i];
+        if (entry->is_occupied && hash_table.key_equals(key, entry->key)) {
+            entry->is_occupied = false;
+            found = true;
+            break;
+        }
+    }
+
+    if (found) {
+        // NOTE: we could do this in the loop, since we break out early, but i don't want to accidentally
+        // eventually add something that messes up the loop.
+        hash_table->num_entries--;
+        return;
+    }
+
+    assert(!"Entry to reset not found.");
 }
 
 #endif

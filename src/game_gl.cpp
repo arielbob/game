@@ -398,8 +398,8 @@
 //       - TODO (done): update level loader to use asset_manager for meshes
 //       - TODO (done): remove mesh_table from level struct
 //       - TODO (done): make sure level loading and exporting works
-//       - TODO: make sure asset_manager memory and tables for levels is being cleared on level load
-//       - TODO: make sure opengl mesh table is being cleared when new level loads
+//       - TODO (done): make sure asset_manager memory and tables for levels is being cleared on level load
+//       - TODO (done): make sure opengl mesh table is being cleared when new level loads
 //       - TODO: remove mesh_type from editor actions
 
 
@@ -2758,12 +2758,18 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
 #endif
 
         // delete level meshes
+        int32 num_reset = 0;
         FOR_ENTRY_POINTERS(int32, GL_Mesh, gl_state->mesh_table) {
-            if (!entry->is_occupied || (entry->value.type != Mesh_Type::LEVEL)) continue;
+            if (entry->value.type != Mesh_Type::LEVEL) continue;
 
             GL_Mesh mesh = entry->value;
             gl_delete_mesh(mesh);
+            entry->is_occupied = false;
+            num_reset++;
         }
+
+        gl_state->mesh_table.num_entries -= num_reset;
+        assert(gl_state->mesh_table.num_entries >= 0);
 
         level->should_clear_gpu_data = false;
     }

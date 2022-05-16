@@ -647,6 +647,7 @@ void unload_level(Asset_Manager *asset_manager, Level *level) {
     hash_table_reset(&level->point_light_entity_table);
     hash_table_reset(&level->material_table);
     hash_table_reset(&level->texture_table);
+    reset_mesh_table_level_entries(asset_manager);
 }
 
 void new_level(Asset_Manager *asset_manager, Level *current_level) {

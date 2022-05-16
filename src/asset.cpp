@@ -70,12 +70,18 @@ Mesh add_engine_mesh(Asset_Manager *asset_manager, char *filename, char *name, i
     return mesh;
 }
 
-void clear_mesh_table_level_entries(Asset_Manager *asset_manager) {
+// NOTE: doesn't delete, since we clear level meshes all at once since they're all stored with the same allocator
+void reset_mesh_table_level_entries(Asset_Manager *asset_manager) {
+    int32 num_reset = 0;
     FOR_ENTRY_POINTERS(int32, Mesh, asset_manager->mesh_table) {
         if (entry->value.type == Mesh_Type::LEVEL) {
             entry->is_occupied = false;
+            num_reset++;
         }
     }
+
+    asset_manager->mesh_table.num_entries -= num_reset;
+    assert(asset_manager->mesh_table.num_entries >= 0);
 }
 
 bool32 mesh_name_exists(Asset_Manager *asset_manager, String name) {
