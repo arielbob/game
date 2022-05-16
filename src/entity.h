@@ -123,12 +123,16 @@ void deallocate(Point_Light_Entity entity) {
 }
 
 void deallocate(Texture texture) {
-    delete_string_buffer(texture.name);
-    delete_string_buffer(texture.filename);
+    deallocate(texture.name);
+    deallocate(texture.filename);
 }
 
 void deallocate(Material material) {
-    delete_string_buffer(material.name);
+    deallocate(material.name);
+}
+
+bool32 has_mesh_field(Entity *entity) {
+    return (entity->type == ENTITY_NORMAL);
 }
 
 #endif

@@ -1,7 +1,8 @@
 #include "asset.h"
 
 // NOTE: filenames should always be relative, since that's what we put into the level file when saving levels.
-Mesh add_level_mesh(Asset_Manager *asset_manager, String filename, String name, int32 *result_id = NULL) {
+Mesh add_level_mesh(Asset_Manager *asset_manager, String filename, String name,
+                    int32 mesh_id, int32 *result_id = NULL) {
     String_Buffer filename_buffer = make_string_buffer((Allocator *) asset_manager->filename_pool_pointer,
                                                        filename, PLATFORM_MAX_PATH);
     String_Buffer mesh_name_buffer = make_string_buffer((Allocator *) asset_manager->string_pool_pointer,
@@ -12,18 +13,35 @@ Mesh add_level_mesh(Asset_Manager *asset_manager, String filename, String name, 
                                    filename_buffer, mesh_name_buffer);
 
     Hash_Table<int32, Mesh> *mesh_table = &asset_manager->mesh_table;
-    int32 mesh_id = mesh_table->total_added_ever;
-    hash_table_add(mesh_table, mesh_id, mesh);
+    int32 new_mesh_id;
+    if (mesh_id >= 0) {
+        new_mesh_id = mesh_id;
+    } else {
+        new_mesh_id = mesh_table->total_added_ever;
+    }
+    hash_table_add(mesh_table, new_mesh_id, mesh);
 
     if (result_id) {
-        *result_id = mesh_id;
+        *result_id = new_mesh_id;
     }
 
     return mesh;
 }
 
-inline Mesh add_level_mesh(Asset_Manager *asset_manager, char *filename, char *name, int32 *result_id = NULL) {
-    return add_level_mesh(asset_manager, make_string(filename), make_string(name), result_id);
+inline Mesh add_level_mesh(Asset_Manager *asset_manager, String filename, String name,
+                           int32 *result_id = NULL) {
+    return add_level_mesh(asset_manager, filename, name,
+                          -1, result_id);
+}
+
+inline Mesh add_level_mesh(Asset_Manager *asset_manager, char *filename, char *name,
+                           int32 mesh_id = -1, int32 *result_id = NULL) {
+    return add_level_mesh(asset_manager, make_string(filename), make_string(name), mesh_id, result_id);
+}
+
+inline Mesh add_level_mesh(Asset_Manager *asset_manager, char *filename, char *name,
+                           int32 *result_id = NULL) {
+    return add_level_mesh(asset_manager, make_string(filename), make_string(name), -1, result_id);
 }
 
 Mesh add_primitive_mesh(Asset_Manager *asset_manager, char *filename, char *name, int32 *result_id = NULL) {

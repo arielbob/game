@@ -386,7 +386,7 @@ void level_delete_mesh(Asset_Manager *asset_manager, Level *level, int32 mesh_id
         Normal_Entity *entity = &entry->value;
         if (entity->mesh_id == mesh_id) {
             
-            set_entity_mesh(asset_manager, (Entity *) entity, mesh_id);
+            set_entity_mesh(asset_manager, (Entity *) entity, default_mesh_id);
         }
     }
 }

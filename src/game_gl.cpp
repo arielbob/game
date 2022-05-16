@@ -380,12 +380,20 @@
 //       - TODO (done): add history to changing mesh names
 //       - TODO (done): hide text boxes when undoing/redoing mesh name changes, so that we don't have to reset
 //                      text box state.
-//       - TODO: add history to adding and deleting meshes
+//       - TODO (done): figure out how to save meshes in history
+//               - save the file data?
+//               - save the mesh struct?
+//               - probably just save the mesh struct. that way we don't have to parse the file again and it'll
+//                 actually be less memory too.
+//       - TODO (done): write copy function for meshes
+//       - TODO (done): add history to adding meshes
+//       - TODO: add history to deleting meshes
 //       - TODO: change other entity fields to use new modify action
 //       - TODO: add history for adding and deleting materials
 //       - TODO: add history for adding and deleting textures
 //       - TODO: add history for color changes
 //       - TODO: add history for light falloff changes
+//       - TODO: add history for selected/deselecting entities
 //       - TODO: add shortcuts for undoing and redoing
 
 // TODO (done): (refactor) store all the meshes in the same table so we don't need to constantly differentiate

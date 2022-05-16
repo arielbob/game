@@ -148,6 +148,41 @@ Modify_Mesh_Action make_modify_mesh_action(Mesh_Type mesh_type, int32 mesh_id, S
     return action;
 }
 
+void deallocate(Modify_Mesh_Action action) {
+    deallocate(action.original_name);
+    deallocate(action.new_name);
+}
+
+struct Add_Mesh_Action {
+    ACTION_HEADER
+    
+    int32 mesh_id;
+    String relative_filename;
+    String mesh_name;
+    // we can only add meshes when an entity is selected right now, so we save which entity was selected.
+    Entity_Type entity_type;
+    int32 entity_id;
+};
+
+// TODO: we may need to make a new version of this if we ever add adding meshes without an entity selected
+Add_Mesh_Action make_add_mesh_action(String relative_filename, String mesh_name,
+                                        Entity_Type entity_type, int32 entity_id) {
+    Add_Mesh_Action action = {};
+    action.type = ACTION_ADD_MESH;
+    action.mesh_id = -1;
+    action.relative_filename = relative_filename;
+    action.mesh_name = mesh_name;
+    action.entity_type = entity_type;
+    action.entity_id = entity_id;
+
+    return action;
+}
+
+void deallocate(Add_Mesh_Action action) {
+    deallocate(action.relative_filename);
+    deallocate(action.mesh_name);
+}
+
 struct Editor_History {
     Allocator *allocator_pointer;
     Editor_Action *entries[MAX_EDITOR_HISTORY_ENTRIES];
@@ -219,6 +254,9 @@ void editor_transform_entity(Game_State *game_state, Editor_State *editor_state,
 void editor_modify_entity(Editor_State *editor_state, Level *level,
                           Modify_Entity_Action action, bool32 is_redoing = false);
 void editor_modify_mesh(Game_State *game_state, Modify_Mesh_Action action, bool32 is_redoing = false);
+void editor_add_mesh(Editor_State *editor_state, Asset_Manager *asset_manager,
+                     Level *level,
+                     Add_Mesh_Action action, bool32 is_redoing = false);
 void history_undo(Game_State *game_state, Editor_History *history);
 void history_redo(Game_State *game_state, Editor_History *history);
 int32 history_get_num_entries(Editor_History *history);

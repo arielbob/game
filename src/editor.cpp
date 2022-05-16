@@ -155,7 +155,8 @@ void generate_mesh_name(Asset_Manager *asset_manager, Level *level, String_Buffe
     assert(!"Could not generate mesh name.");
 }
 
-bool32 editor_add_mesh_press(Asset_Manager *asset_manager, Level *level, Entity *entity) {
+bool32 editor_add_mesh_press(Editor_State *editor_state, Asset_Manager *asset_manager,
+                             Level *level) {
     Marker m = begin_region();
     char *absolute_filename = (char *) region_push(PLATFORM_MAX_PATH);
         
@@ -171,17 +172,21 @@ bool32 editor_add_mesh_press(Asset_Manager *asset_manager, Level *level, Entity 
         String_Buffer new_mesh_filename = make_string_buffer(filename_allocator,
                                                              relative_filename, PLATFORM_MAX_PATH);
 
-        int32 mesh_id;
-        add_level_mesh(asset_manager, make_string(relative_filename), make_string(new_mesh_name), &mesh_id);
+        Add_Mesh_Action action = make_add_mesh_action(make_string(relative_filename), make_string(new_mesh_name),
+                                                      editor_state->selected_entity_type,
+                                                      editor_state->selected_entity_id);
+        editor_add_mesh(editor_state, asset_manager, level, action);
+
+        //set_entity_mesh(asset_manager, entity, mesh_id);
+#if 0
+        Mesh new_mesh = add_level_mesh(asset_manager,
+                                       make_string(relative_filename), make_string(new_mesh_name), &mesh_id);
         
         set_entity_mesh(asset_manager, entity, mesh_id);
         end_region(m);
-
-#if 0
-        Add_Mesh_Action action = make_add_mesh_action(new_mesh);
-        editor_add_mesh(game_state, game_state->editor_state, level, entity, new_mesh);
 #endif
 
+        end_region(m);
         return true;
     }
 
@@ -1046,7 +1051,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
 
         bool32 mesh_added = false;
         if (add_mesh_pressed) {
-            mesh_added = editor_add_mesh_press(asset_manager, &game_state->current_level, entity);
+            mesh_added = editor_add_mesh_press(editor_state, asset_manager, &game_state->current_level);
             if (mesh_added) {
                 editor_state->editing_selected_entity_mesh = true;
                 mesh = get_mesh_pointer(asset_manager, normal_entity->mesh_id);

@@ -1038,7 +1038,7 @@ void set_entity_mesh(Game_State *game_state, Level *level, Entity *entity, Mesh_
 void set_entity_mesh(Asset_Manager *asset_manager, Entity *entity, int32 mesh_id) {
     // TODO: we'll probably add entities other than normal entities in the future that have meshes, but for now
     //       just check for ENTITY_NORMAL
-    assert(entity->type == ENTITY_NORMAL);
+    assert(has_mesh_field(entity));
     Mesh mesh = get_mesh(asset_manager, mesh_id);
 
     switch (entity->type) {

@@ -432,8 +432,23 @@ Mesh read_and_load_mesh(Allocator *allocator,
 }
 
 void deallocate(Mesh mesh) {
-    delete_string_buffer(mesh.name);
-    delete_string_buffer(mesh.filename);
+    deallocate(mesh.name);
+    deallocate(mesh.filename);
     deallocate(mesh.allocator, mesh.data);
     deallocate(mesh.allocator, mesh.indices);
+}
+
+// this uses the same allocator for everything
+void copy(Allocator *allocator, Mesh *mesh_dest, Mesh *mesh_source) {
+    *mesh_dest = *mesh_source;
+
+    mesh_dest->name = copy_string_buffer(allocator, mesh_source->name);
+    mesh_dest->filename = copy_string_buffer(allocator, mesh_source->filename);
+    mesh_dest->allocator = allocator;
+
+    mesh_dest->data = (real32 *) allocate(allocator, mesh_source->data_size);
+    memcpy(mesh_dest->data, mesh_source->data, mesh_source->data_size);
+
+    mesh_dest->indices = (uint32 *) allocate(allocator, mesh_source->indices_size);
+    memcpy(mesh_dest->indices, mesh_source->indices, mesh_source->indices_size);
 }

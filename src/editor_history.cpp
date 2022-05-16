@@ -3,10 +3,32 @@
 
 void history_deallocate(Editor_History *history, Editor_Action *editor_action) {
     Allocator *allocator = history->allocator_pointer;
-    if (editor_action->type == ACTION_MODIFY_ENTITY) {
-        Modify_Entity_Action *action = (Modify_Entity_Action *) editor_action;
-        deallocate(allocator, action->original);
-        deallocate(allocator, action->new_entity);
+    
+    switch (editor_action->type) {
+        case ACTION_NONE: {
+            assert(!"Action has no type.");
+        } break;
+        case ACTION_ADD_NORMAL_ENTITY: {} break;
+        case ACTION_ADD_POINT_LIGHT_ENTITY: {} break;
+        case ACTION_DELETE_NORMAL_ENTITY: {} break;
+        case ACTION_DELETE_POINT_LIGHT_ENTITY: {} break;
+        case ACTION_TRANSFORM_ENTITY: {} break;
+        case ACTION_MODIFY_MESH: {
+            Modify_Mesh_Action *action = (Modify_Mesh_Action *) editor_action;
+            deallocate(*action);
+        } break;
+        case ACTION_MODIFY_ENTITY: {
+            Modify_Entity_Action *action = (Modify_Entity_Action *) editor_action;
+            deallocate(allocator, action->original);
+            deallocate(allocator, action->new_entity);
+        } break;
+        case ACTION_ADD_MESH: {
+            Add_Mesh_Action *action = (Add_Mesh_Action *) editor_action;
+            deallocate(*action);
+        } break;
+        default: {
+            assert(!"Unhandled deallocation for action type.");
+        }
     }
     
     deallocate(allocator, editor_action);
@@ -271,9 +293,8 @@ void editor_modify_mesh(Game_State *game_state, Modify_Mesh_Action action, bool3
 
     copy_string(&mesh->name, make_string(action.new_name));
 
-    action.new_name = copy_string_buffer(history->allocator_pointer, action.new_name);
-
     if (!is_redoing) {
+        action.new_name = copy_string_buffer(history->allocator_pointer, action.new_name);
         history_add_action(history, Modify_Mesh_Action, action);
     } else {
         game_state->editor_state.editing_selected_entity_mesh = false;
@@ -292,6 +313,40 @@ void undo_modify_mesh(Game_State *game_state,
     game_state->editor_state.editing_selected_entity_mesh = false;
 
     copy_string(&mesh->name, make_string(action.original_name));
+}
+
+// mesh adding
+void editor_add_mesh(Editor_State *editor_state, Asset_Manager *asset_manager,
+                     Level *level,
+                     Add_Mesh_Action action, bool32 is_redoing) {
+    int32 mesh_id;
+    Mesh new_mesh = add_level_mesh(asset_manager,
+                                   action.relative_filename, action.mesh_name, action.mesh_id,
+                                   &mesh_id);
+
+    Allocator *allocator = editor_state->history.allocator_pointer;
+    if (!is_redoing) {
+        // copy strings if we're adding the action for the first time, i.e. the action is coming from game code
+        // and not from history code
+        action.relative_filename = copy(allocator, action.relative_filename);
+        action.mesh_name = copy(allocator, action.mesh_name);
+    }
+    action.mesh_id = mesh_id;
+
+    if (!is_redoing) {
+        history_add_action(&editor_state->history, Add_Mesh_Action, action);
+    }
+
+    Entity *entity = get_entity(level, action.entity_type, action.entity_id);
+    if (has_mesh_field(entity)) {
+        set_entity_mesh(asset_manager, entity, action.mesh_id);
+    }
+}
+
+void undo_add_mesh(Editor_State *editor_state, Asset_Manager *asset_manager,
+                   Level *level,
+                   Add_Mesh_Action action) {
+    level_delete_mesh(asset_manager, level, action.mesh_id);
 }
 
 int32 history_get_num_entries(Editor_History *history) {
@@ -322,6 +377,7 @@ void history_undo(Game_State *game_state, Editor_History *history) {
     if (history->num_undone == num_entries) return;
 
     Editor_State *editor_state = &game_state->editor_state;
+    Asset_Manager *asset_manager = &game_state->asset_manager;
     Level *level = &game_state->current_level;
 
     // we undo the action at current_index.
@@ -359,6 +415,10 @@ void history_undo(Game_State *game_state, Editor_History *history) {
             Modify_Mesh_Action *action = (Modify_Mesh_Action *) current_action;
             undo_modify_mesh(game_state, *action);
         } break;
+        case ACTION_ADD_MESH: {
+            Add_Mesh_Action *action = (Add_Mesh_Action *) current_action;
+            undo_add_mesh(editor_state, asset_manager, level, *action);
+        } break;
         default: {
             assert(!"Unhandled editor action type.");
             return;
@@ -388,6 +448,7 @@ void history_redo(Game_State *game_state, Editor_History *history) {
     }
 
     Editor_State *editor_state = &game_state->editor_state;
+    Asset_Manager *asset_manager = &game_state->asset_manager;
     Level *level = &game_state->current_level;
 
     Editor_Action *redo_action = history->entries[redo_index];
@@ -423,6 +484,10 @@ void history_redo(Game_State *game_state, Editor_History *history) {
         case ACTION_MODIFY_MESH: {
             Modify_Mesh_Action *action = (Modify_Mesh_Action *) redo_action;
             editor_modify_mesh(game_state, *action, true);
+        } break;
+        case ACTION_ADD_MESH: {
+            Add_Mesh_Action *action = (Add_Mesh_Action *) redo_action;
+            editor_add_mesh(editor_state, asset_manager, level, *action, true);
         } break;
         default: {
             assert(!"Unhandled editor action type.");

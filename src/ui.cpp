@@ -157,11 +157,11 @@ UI_Slider_State make_ui_slider_state(Allocator *string_allocator, char *text) {
 };
 
 void deallocate(UI_Text_Box_State state) {
-    delete_string_buffer(state.buffer);
+    deallocate(state.buffer);
 }
 
 void deallocate(UI_Slider_State state) {
-    delete_string_buffer(state.buffer);
+    deallocate(state.buffer);
 }
 
 // TODO: store UI element state in a hash table, so we can do things like fading transitions.

@@ -77,6 +77,15 @@ void copy_string(String_Buffer *dest, String src) {
     dest->current_length = src.length;
 }
 
+String copy(Allocator *allocator, String src) {
+    String result;
+    result.allocator = allocator;
+    result.length = src.length;
+    result.contents = (char *) allocate(allocator, src.length);
+    memcpy(result.contents, src.contents, src.length);
+    return result;
+}
+
 /*
 // TODO: this may be outdated
 void copy_string(String *dest, String src, uint32 max_size) {
@@ -168,7 +177,7 @@ void set_string_buffer_text(String_Buffer *string_buffer, char *text) {
     string_buffer->current_length = len;
 }
 
-void delete_string_buffer(String_Buffer string_buffer) {
+void deallocate(String_Buffer string_buffer) {
     deallocate(string_buffer.allocator, string_buffer.contents);
 }
 
