@@ -395,10 +395,11 @@
 //       - TODO: change other entity fields to use new modify action
 //       - TODO (done): add history for material modification
 //       - TODO (done): add history for material texture change
-//       - TODO: add history for color changes
+//       - TODO (done): add history for color changes
 //       - TODO: add history for adding and deleting materials
 //       - TODO: add history for adding and deleting textures
 //       - TODO: add history for light falloff changes
+//       - TODO: add history for light color changes
 //       - TODO: add shortcuts for undoing and redoing
 //       - TODO: change set_entity to use a copy function that's closer to the entity struct so that we can easily
 //               change it if we change the entity struct members

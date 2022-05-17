@@ -1116,9 +1116,9 @@ void do_line(UI_Manager *manager,
 }
 
 UI_Hue_Slider_Result do_hue_slider(real32 x, real32 y,
-                     real32 width, real32 height,
-                     real32 hue_degrees,
-                     char *id_string, int32 index = 0) {
+                                   real32 width, real32 height,
+                                   real32 hue_degrees,
+                                   char *id_string, int32 index = 0) {
     using namespace Context;
     UI_Manager *manager = ui_manager;
     UI_Hue_Slider slider = make_ui_hue_slider(x, y, width, height, hue_degrees,
@@ -1281,9 +1281,9 @@ UI_Color_Picker_State make_ui_color_picker_state(Vec4 color, real32 hsv_picker_w
 }
 
 UI_Color_Picker_Result do_color_picker(real32 x, real32 y,
-                                 UI_Color_Picker_Style style,
-                                 Vec4 color,
-                                 char *id_string, int32 index = 0) {
+                                       UI_Color_Picker_Style style,
+                                       Vec4 color,
+                                       char *id_string, int32 index = 0) {
     using namespace Context;
 
     Vec2 current_mouse = controller_state->current_mouse;
@@ -1348,14 +1348,23 @@ UI_Color_Picker_Result do_color_picker(real32 x, real32 y,
     result.color = rgb_to_vec4(state->rgb_color);
     if (hue_slider_result.submitted || hsv_picker_result.submitted) {
         result.submitted = true;
+        result.started = false;
     }
+
+    UI_id hue_slider = make_ui_id(UI_HUE_SLIDER, hue_slider_id, index);
+    UI_id hsv_picker = make_ui_id(UI_HSV_PICKER, hsv_picker_id, index);
+
+    if (is_newly_active(ui_manager, hue_slider) || is_newly_active(ui_manager, hsv_picker)) {
+        result.started = true;
+    }
+    //if (!ui_id_equals(last_active, hue_slider_id) && ui_id_equals(ui_manager->active, hue_slider_id)
 
     // TODO: i think this could be better.. but it's confusing
     if (!in_bounds_on_layer(ui_manager, current_mouse,
                             initial_x, initial_x+style.width,
                             initial_y, initial_y+style.height) &&
-        !ui_id_equals(last_active, { UI_HUE_SLIDER, hue_slider_id, index }) &&
-        !ui_id_equals(last_active, { UI_HSV_PICKER, hsv_picker_id, index })) {
+        !ui_id_equals(last_active, hue_slider) &&
+        !ui_id_equals(last_active, hsv_picker)) {
         if (was_clicked(controller_state->left_mouse)) {
             result.should_hide = true;
         } else {

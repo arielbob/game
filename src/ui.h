@@ -508,6 +508,7 @@ struct UI_Color_Picker_Style {
 };
 
 struct UI_Color_Picker_Result {
+    bool32 started;
     bool32 submitted;
     bool32 should_hide;
     Vec4 color;

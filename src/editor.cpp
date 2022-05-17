@@ -140,6 +140,12 @@ void generate_texture_name(Level *level, String_Buffer *buffer) {
     assert(!"Could not generate texture name.");
 }
 
+void handle_color_picker(Editor_State *editor_state, UI_Color_Picker_Result result) {
+    if (result.should_hide) {
+        editor_state->color_picker_parent = {};
+    }
+}
+
 void generate_mesh_name(Asset_Manager *asset_manager, Level *level, String_Buffer *buffer) {
     int32 num_attempts = 0;
     while (num_attempts < MAX_MESHES + 1) {
@@ -1478,9 +1484,15 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                                                 material->color_override,
                                                                 "editor_color_picker", entity_id);
                 pop_layer(ui_manager);
-                material->color_override = result.color;
-                if (result.should_hide) {
-                    editor_state->color_picker_parent = {};
+                handle_color_picker(editor_state, result);
+
+                if (result.started) {
+                    start_material_change(editor_state, *material);
+                } else if (result.submitted) {
+                    material->color_override = result.color;
+                    finalize_material_change(editor_state, level, normal_entity->material_id, *material);
+                } else {
+                    material->color_override = result.color;
                 }
             } else if (color_override_pressed) {
                 editor_state->color_picker_parent = color_override_button_id;
