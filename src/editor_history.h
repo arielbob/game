@@ -5,6 +5,7 @@
 
 #define MAX_EDITOR_HISTORY_ENTRIES 128
 #define MAX_ENTITIES_WITH_SAME_MESH 64
+#define MAX_ENTITIES_WITH_SAME_MATERIAL 64
 
 struct Editor_State;
 struct Game_State;
@@ -241,6 +242,29 @@ void deallocate(Modify_Material_Action action) {
 }
 
 
+struct Delete_Material_Action {
+    ACTION_HEADER
+    int32 material_id;
+    Material material;
+
+    int32 entity_ids[MAX_ENTITIES_WITH_SAME_MATERIAL];
+    Entity_Type entity_types[MAX_ENTITIES_WITH_SAME_MATERIAL];
+    int32 num_entities;
+};
+
+Delete_Material_Action make_delete_material_action(int32 material_id, Material material) {
+    Delete_Material_Action action = {};
+    action.type = ACTION_DELETE_MATERIAL;
+    action.material_id = material_id;
+    action.material = material;
+    return action;
+}
+
+void deallocate(Delete_Material_Action action) {
+    deallocate(action.material);
+}
+
+
 struct Editor_History {
     Allocator *allocator_pointer;
     Editor_Action *entries[MAX_EDITOR_HISTORY_ENTRIES];
@@ -320,6 +344,8 @@ void editor_delete_mesh(Editor_State *editor_state, Asset_Manager *asset_manager
                         Delete_Mesh_Action action, bool32 is_redoing = false);
 void editor_modify_material(Editor_State *editor_state, Level *level,
                             Modify_Material_Action action, bool32 is_redoing = false);
+void editor_delete_material(Editor_State *editor_state, Level *level,
+                            Delete_Material_Action action, bool32 is_redoing = false);
 void history_undo(Game_State *game_state, Editor_History *history);
 void history_redo(Game_State *game_state, Editor_History *history);
 int32 history_get_num_entries(Editor_History *history);

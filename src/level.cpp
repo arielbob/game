@@ -359,7 +359,43 @@ inline bool32 material_exists(Level *level, int32 material_id) {
     return hash_table_exists(level->material_table, material_id);
 }
 
-void level_delete_material(Game_State *game_state, Level *level, int32 material_id) {
+bool32 level_delete_material(Level *level, int32 material_id,
+                             int32 *num_entities,
+                             int32 *entity_ids, Entity_Type *entity_types,
+                             int32 max_entities) {
+    hash_table_remove(&level->material_table, material_id);
+
+    int32 num_found = 0;
+    {
+    FOR_ENTRY_POINTERS(int32, Normal_Entity, level->normal_entity_table) {
+        Normal_Entity *entity = &entry->value;
+        if (entity->material_id == material_id) {
+            num_found++;
+            if (num_found >= max_entities) {
+                return false;
+            }
+        }
+    }
+    }
+
+    num_found = 0;
+    FOR_ENTRY_POINTERS(int32, Normal_Entity, level->normal_entity_table) {
+        Normal_Entity *entity = &entry->value;
+        if (entity->material_id == material_id) {
+            assert(num_found < max_entities);
+            entity_ids[num_found] = entry->key;
+            entity_types[num_found] = entity->type;
+            num_found++;
+            set_entity_material((Entity *) entity, -1);
+        }
+    }
+
+    *num_entities = num_found;
+
+    return true;
+}
+
+void level_delete_material(Level *level, int32 material_id) {
     hash_table_remove(&level->material_table, material_id);
 
     FOR_ENTRY_POINTERS(int32, Normal_Entity, level->normal_entity_table) {
@@ -527,11 +563,17 @@ int32 level_add_point_light_entity(Level *level, Point_Light_Entity entity) {
     return entity_id;
 }
 
-int32 level_add_material(Level *level, Material material) {
+int32 level_add_material(Level *level, Material material, int32 existing_material_id = -1) {
     if (material.texture_id >= 0) {
         assert(texture_exists(level, material.texture_id));
     }
-    int32 material_id = level->material_table.total_added_ever;
+
+    int32 material_id;
+    if (existing_material_id >= 0) {
+        material_id = existing_material_id;
+    } else {
+        material_id = level->material_table.total_added_ever;
+    }
     hash_table_add(&level->material_table, material_id, material);
     return material_id;
 }
@@ -550,6 +592,10 @@ int32 level_add_material(Level *level) {
     };
 
     return level_add_material(level, new_material);
+}
+
+Material level_copy_material(Level *level, Material material) {
+    return copy((Allocator *) level->string_pool_pointer, material);
 }
 
 int32 level_add_texture(Level *level, Texture texture) {

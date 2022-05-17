@@ -34,6 +34,10 @@ void history_deallocate(Editor_History *history, Editor_Action *editor_action) {
             Modify_Material_Action *action = (Modify_Material_Action *) editor_action;
             deallocate(*action);
         } break;
+        case ACTION_DELETE_MATERIAL: {
+            Delete_Material_Action *action = (Delete_Material_Action *) editor_action;
+            deallocate(*action);
+        } break;
         default: {
             assert(!"Unhandled deallocation for action type.");
         }
@@ -374,6 +378,8 @@ void editor_delete_mesh(Editor_State *editor_state, Asset_Manager *asset_manager
 
     if (!result) {
         add_message(Context::message_manager, make_string("Too many entities have this mesh to be deleted."));
+        deallocate(action.relative_filename);
+        deallocate(action.mesh_name);
         return;
     }
     
@@ -410,6 +416,39 @@ void editor_modify_material(Editor_State *editor_state, Level *level,
 void undo_modify_material(Editor_State *editor_state, Level *level,
                           Modify_Material_Action action) {
     set_material_copy(level, action.material_id, action.old_material);
+}
+
+void editor_delete_material(Editor_State *editor_state, Level *level,
+                            Delete_Material_Action action, bool32 is_redoing) {
+    // FIXME: this leaks if level_delete_material fails
+    if (!is_redoing) {
+        action.material = copy(editor_state->history.allocator_pointer, action.material);
+    }
+
+    bool32 result = level_delete_material(level, action.material_id,
+                                          &action.num_entities,
+                                          action.entity_ids, action.entity_types,
+                                          MAX_ENTITIES_WITH_SAME_MATERIAL);
+    if (!result) {
+        add_message(Context::message_manager, make_string("Too many entities have this material to be deleted."));
+        deallocate(action.material);
+        return;
+    }
+    
+    if (!is_redoing) {
+        history_add_action(&editor_state->history, Delete_Material_Action, action);
+    }
+}
+
+void undo_delete_material(Editor_State *editor_state, Level *level,
+                          Delete_Material_Action action) {
+    Material level_material = level_copy_material(level, action.material);
+    level_add_material(level, level_material, action.material_id);
+
+    for (int32 i = 0; i < action.num_entities; i++) {
+        Entity *entity = get_entity(level, action.entity_types[i], action.entity_ids[i]);
+        set_entity_material(entity, action.material_id);
+    }
 }
 
 int32 history_get_num_entries(Editor_History *history) {
@@ -490,6 +529,10 @@ void history_undo(Game_State *game_state, Editor_History *history) {
             Modify_Material_Action *action = (Modify_Material_Action *) current_action;
             undo_modify_material(editor_state, level, *action);
         } break;
+        case ACTION_DELETE_MATERIAL: {
+            Delete_Material_Action *action = (Delete_Material_Action *) current_action;
+            undo_delete_material(editor_state, level, *action);
+        } break;
         default: {
             assert(!"Unhandled editor action type.");
             return;
@@ -567,6 +610,10 @@ void history_redo(Game_State *game_state, Editor_History *history) {
         case ACTION_MODIFY_MATERIAL: {
             Modify_Material_Action *action = (Modify_Material_Action *) redo_action;
             editor_modify_material(editor_state, level, *action, true);
+        } break;
+        case ACTION_DELETE_MATERIAL: {
+            Delete_Material_Action *action = (Delete_Material_Action *) redo_action;
+            editor_delete_material(editor_state, level, *action, true);
         } break;
         default: {
             assert(!"Unhandled editor action type.");

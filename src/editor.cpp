@@ -1234,7 +1234,10 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                                             "delete_material");
 
             if (delete_material_pressed) {
-                level_delete_material(game_state, level, normal_entity->material_id);
+                Delete_Material_Action action = make_delete_material_action(normal_entity->material_id, *material);
+                editor_delete_material(editor_state, level, action);
+
+                //level_delete_material(level, normal_entity->material_id);
                 editor_state->editing_selected_entity_material = false;
             }
 
