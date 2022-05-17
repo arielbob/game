@@ -6,6 +6,7 @@
 #define MAX_EDITOR_HISTORY_ENTRIES 128
 #define MAX_ENTITIES_WITH_SAME_MESH 64
 #define MAX_ENTITIES_WITH_SAME_MATERIAL 64
+#define MAX_MATERIALS_WITH_SAME_TEXTURE 64
 
 struct Editor_State;
 struct Game_State;
@@ -25,7 +26,10 @@ enum Action_Type {
     ACTION_DELETE_MESH,
     ACTION_MODIFY_MATERIAL,
     ACTION_ADD_MATERIAL,
-    ACTION_DELETE_MATERIAL
+    ACTION_DELETE_MATERIAL,
+    ACTION_MODIFY_TEXTURE,
+    ACTION_ADD_TEXTURE,
+    ACTION_DELETE_TEXTURE
 };
 
 #define ACTION_HEADER                           \
@@ -216,6 +220,7 @@ void deallocate(Delete_Mesh_Action action) {
 }
 
 
+// MATERIALS
 struct Modify_Material_Action {
     ACTION_HEADER
 
@@ -285,6 +290,88 @@ Add_Material_Action make_add_material_action(Entity_Type entity_type, int32 enti
 void deallocate(Add_Material_Action action) {
     deallocate(action.material_name);
 }
+
+
+// TEXTURES
+struct Modify_Texture_Action {
+    ACTION_HEADER
+
+    int32 texture_id;
+    String_Buffer old_name;
+    String_Buffer new_name;
+};
+
+Modify_Texture_Action make_modify_texture_action(int32 texture_id,
+                                                 String_Buffer new_name) {
+    Modify_Texture_Action action = {};
+    action.type = ACTION_MODIFY_TEXTURE;
+    action.texture_id = texture_id;
+    action.new_name = new_name;
+    return action;
+}
+
+void deallocate(Modify_Texture_Action action) {
+    deallocate(action.old_name);
+    deallocate(action.new_name);
+}
+
+
+struct Delete_Texture_Action {
+    ACTION_HEADER
+    int32 texture_id;
+
+    String texture_filename;
+    String texture_name;
+
+    int32 material_ids[MAX_MATERIALS_WITH_SAME_TEXTURE];
+    int32 num_materials;
+};
+
+Delete_Texture_Action make_delete_texture_action(int32 texture_id, String texture_filename, String texture_name) {
+    Delete_Texture_Action action = {};
+    action.type = ACTION_DELETE_TEXTURE;
+    action.texture_id = texture_id;
+    action.texture_filename = texture_filename;
+    action.texture_name = texture_name;
+    return action;
+}
+
+void deallocate(Delete_Texture_Action action) {
+    deallocate(action.texture_filename);
+    deallocate(action.texture_name);
+}
+
+
+struct Add_Texture_Action {
+    ACTION_HEADER
+
+    int32 texture_id;
+    String texture_name;
+    String texture_filename;
+
+    int32 material_id;
+    int32 old_texture_id;
+};
+
+Add_Texture_Action make_add_texture_action(String relative_filename, String texture_name,
+                                           int32 material_id, int32 current_texture_id) {
+    Add_Texture_Action action = {};
+    action.type = ACTION_ADD_TEXTURE;
+    action.texture_id = -1;
+
+    action.texture_filename = relative_filename;
+    action.texture_name = texture_name;
+    action.material_id = material_id;
+    action.old_texture_id = current_texture_id;
+
+    return action;
+}
+
+void deallocate(Add_Texture_Action action) {
+    deallocate(action.texture_name);
+    deallocate(action.texture_filename);
+}
+
 
 
 struct Editor_History {
@@ -371,6 +458,13 @@ void editor_delete_material(Editor_State *editor_state, Level *level,
 int32 editor_add_material(Editor_State *editor_state,
                          Level *level,
                          Add_Material_Action action, bool32 is_redoing = false);
+int32 editor_add_texture(Editor_State *editor_state,
+                         Level *level,
+                         Add_Texture_Action action, bool32 is_redoing = false);
+void editor_modify_texture(Editor_State *editor_state, Level *level,
+                           Modify_Texture_Action action, bool32 is_redoing = false);
+void editor_delete_texture(Editor_State *editor_state, Level *level,
+                           Delete_Texture_Action action, bool32 is_redoing = false);
 void history_undo(Game_State *game_state, Editor_History *history);
 void history_redo(Game_State *game_state, Editor_History *history);
 int32 history_get_num_entries(Editor_History *history);

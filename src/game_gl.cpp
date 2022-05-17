@@ -399,13 +399,12 @@
 //       - TODO (done): add history for deleting materials
 //       - TODO (done): add history for adding materials
 //       - TODO (done): add history for material choosing
-//       - TODO: add history for adding and deleting textures
+//       - TODO (done): add history for adding, deleting, and modifying textures
 //       - TODO: add history for light falloff changes
 //       - TODO: add history for light color changes
+//       - TODO: hide use_color_override button and don't change it, since we want to keep its state when we undo
+//               and redo. if there's no texture, then just disable the button, but don't change the actual value
 //       - TODO: add shortcuts for undoing and redoing
-//       - TODO: change set_entity to use a copy function that's closer to the entity struct so that we can easily
-//               change it if we change the entity struct members
-//       -  TODO: figure out way for changing text boxes when we undo them
 
 
 // TODO (done): (refactor) store all the meshes in the same table so we don't need to constantly differentiate

@@ -42,6 +42,18 @@ void history_deallocate(Editor_History *history, Editor_Action *editor_action) {
             Add_Material_Action *action = (Add_Material_Action *) editor_action;
             deallocate(*action);
         } break;
+        case ACTION_MODIFY_TEXTURE: {
+            Modify_Texture_Action *action = (Modify_Texture_Action *) editor_action;
+            deallocate(*action);
+        } break;
+        case ACTION_DELETE_TEXTURE: {
+            Delete_Texture_Action *action = (Delete_Texture_Action *) editor_action;
+            deallocate(*action);
+        } break;
+        case ACTION_ADD_TEXTURE: {
+            Add_Texture_Action *action = (Add_Texture_Action *) editor_action;
+            deallocate(*action);
+        } break;
         default: {
             assert(!"Unhandled deallocation for action type.");
         }
@@ -485,6 +497,99 @@ void undo_delete_material(Editor_State *editor_state, Level *level,
     }
 }
 
+
+
+
+
+
+
+
+
+
+// texture modifying
+// NOTE: this procedure assumes that we've allocated the old and new textures onto the history allocator
+void editor_modify_texture(Editor_State *editor_state, Level *level,
+                           Modify_Texture_Action action, bool32 is_redoing) {
+    Texture *texture = get_texture_pointer(level, action.texture_id);
+    Editor_History *history = &editor_state->history;
+
+    action.old_name = copy(history->allocator_pointer, texture->name);
+    copy_string(&texture->name, make_string(action.new_name));
+
+    if (!is_redoing) {
+        action.new_name = copy(history->allocator_pointer, action.new_name);
+        history_add_action(history, Modify_Texture_Action, action);
+    }
+}
+
+void undo_modify_texture(Editor_State *editor_state, Level *level,
+                          Modify_Texture_Action action) {
+    Texture *texture = get_texture_pointer(level, action.texture_id);
+    copy_string(&texture->name, make_string(action.old_name));
+}
+
+// texture adding
+int32 editor_add_texture(Editor_State *editor_state,
+                         Level *level,
+                         Add_Texture_Action action, bool32 is_redoing) {
+    //Texture new_texture = make_texture(action.texture_name, action.texture_filename);
+    action.texture_id = level_add_texture(level, action.texture_filename, action.texture_name, action.texture_id);
+
+    Material *material = get_material_pointer(level, action.material_id);
+    material->texture_id = action.texture_id;
+
+    Allocator *allocator = editor_state->history.allocator_pointer;
+    if (!is_redoing) {
+        action.texture_name = copy(allocator, action.texture_name);
+        action.texture_filename = copy(allocator, action.texture_filename);
+        history_add_action(&editor_state->history, Add_Texture_Action, action);
+    }
+    
+    return action.texture_id;
+}
+
+void undo_add_texture(Level *level,
+                      Add_Texture_Action action) {
+    level_delete_texture(level, action.texture_id);
+    Material *material = get_material_pointer(level, action.material_id);
+    material->texture_id = action.old_texture_id;
+}
+
+// texture deleting
+void editor_delete_texture(Editor_State *editor_state, Level *level,
+                           Delete_Texture_Action action, bool32 is_redoing) {
+    if (!is_redoing) {
+        Allocator *allocator = editor_state->history.allocator_pointer;
+        action.texture_name = copy(allocator, action.texture_name);
+        action.texture_filename = copy(allocator, action.texture_filename);
+    }
+
+    bool32 result = level_delete_texture(level, action.texture_id,
+                                         &action.num_materials,
+                                         action.material_ids,
+                                         MAX_MATERIALS_WITH_SAME_TEXTURE);
+    if (!result) {
+        add_message(Context::message_manager, make_string("Too many materials have this texture to be deleted."));
+        deallocate(action.texture_name);
+        deallocate(action.texture_filename);
+        return;
+    }
+    
+    if (!is_redoing) {
+        history_add_action(&editor_state->history, Delete_Texture_Action, action);
+    }
+}
+
+void undo_delete_texture(Editor_State *editor_state, Level *level,
+                          Delete_Texture_Action action) {
+    level_add_texture(level, action.texture_filename, action.texture_name, action.texture_id);
+
+    for (int32 i = 0; i < action.num_materials; i++) {
+        Material *material = get_material_pointer(level, action.material_ids[i]);
+        material->texture_id = action.texture_id;
+    }
+}
+
 int32 history_get_num_entries(Editor_History *history) {
     if (history->start_index == -1 && history->end_index == -1) return 0;
 
@@ -571,6 +676,19 @@ void history_undo(Game_State *game_state, Editor_History *history) {
             Add_Material_Action *action = (Add_Material_Action *) current_action;
             undo_add_material(level, *action);
         } break;
+
+        case ACTION_MODIFY_TEXTURE: {
+            Modify_Texture_Action *action = (Modify_Texture_Action *) current_action;
+            undo_modify_texture(editor_state, level, *action);
+        } break;
+        case ACTION_DELETE_TEXTURE: {
+            Delete_Texture_Action *action = (Delete_Texture_Action *) current_action;
+            undo_delete_texture(editor_state, level, *action);
+        } break;
+        case ACTION_ADD_TEXTURE: {
+            Add_Texture_Action *action = (Add_Texture_Action *) current_action;
+            undo_add_texture(level, *action);
+        } break;
         default: {
             assert(!"Unhandled editor action type.");
             return;
@@ -656,6 +774,19 @@ void history_redo(Game_State *game_state, Editor_History *history) {
         case ACTION_ADD_MATERIAL: {
             Add_Material_Action *action = (Add_Material_Action *) redo_action;
             editor_add_material(editor_state, level, *action, true);
+        } break;
+
+        case ACTION_MODIFY_TEXTURE: {
+            Modify_Texture_Action *action = (Modify_Texture_Action *) redo_action;
+            editor_modify_texture(editor_state, level, *action, true);
+        } break;
+        case ACTION_DELETE_TEXTURE: {
+            Delete_Texture_Action *action = (Delete_Texture_Action *) redo_action;
+            editor_delete_texture(editor_state, level, *action, true);
+        } break;
+        case ACTION_ADD_TEXTURE: {
+            Add_Texture_Action *action = (Add_Texture_Action *) redo_action;
+            editor_add_texture(editor_state, level, *action, true);
         } break;
         default: {
             assert(!"Unhandled editor action type.");

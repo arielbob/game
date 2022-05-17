@@ -69,6 +69,7 @@ Material *get_material_pointer(Level *level, int32 material_id) {
 
 void set_material_copy(Level *level, int32 material_id, Material new_material) {
     Material *material = get_material_pointer(level, material_id);
+    deallocate(*material);
     *material = copy((Allocator *) level->string_pool_pointer, new_material);
 }
 
@@ -598,10 +599,60 @@ Material level_copy_material(Level *level, Material material) {
     return copy((Allocator *) level->string_pool_pointer, material);
 }
 
-int32 level_add_texture(Level *level, Texture texture) {
-    int32 texture_id = level->texture_table.total_added_ever;
+int32 level_add_texture(Level *level, String relative_filename, String name, int32 existing_id = -1) {
+    String_Buffer filename_buffer = make_string_buffer((Allocator *) level->filename_pool_pointer,
+                                                       relative_filename, PLATFORM_MAX_PATH);
+    String_Buffer texture_name_buffer = make_string_buffer((Allocator *) level->string_pool_pointer,
+                                                           name, TEXTURE_NAME_MAX_SIZE);
+    Texture texture = make_texture(texture_name_buffer, filename_buffer);
+
+    int32 texture_id;
+    if (existing_id >= 0) {
+        texture_id = existing_id;
+    } else {
+        texture_id = level->texture_table.total_added_ever;
+    }
+        
     hash_table_add(&level->texture_table, texture_id, texture);
     return texture_id;
+}
+
+inline int32 level_add_texture(Level *level, char *relative_filename, char *name, int32 existing_id = -1) {
+    return level_add_texture(level, make_string(relative_filename), make_string(name), existing_id);
+}
+
+bool32 level_delete_texture(Level *level, int32 texture_id,
+                          int32 *num_materials, int32 *material_ids,
+                          int32 max_materials) {
+    int32 num_found = 0;
+    {
+        FOR_ENTRY_POINTERS(int32, Material, level->material_table) {
+            Material *material = &entry->value;
+            if (material->texture_id == texture_id) {
+                num_found++;
+                if (num_found >= max_materials) {
+                    return false;
+                }
+            }
+        }
+    }
+
+    num_found = 0;
+    hash_table_remove(&level->texture_table, texture_id);
+    FOR_ENTRY_POINTERS(int32, Material, level->material_table) {
+        Material *material = &entry->value;
+        if (material->texture_id == texture_id) {
+            assert(num_found < max_materials);
+            material_ids[num_found] = entry->key;
+            num_found++;
+
+            material->texture_id = -1;
+            material->use_color_override = true;
+        }
+    }
+
+    *num_materials = num_found;
+    return true;
 }
 
 void level_delete_texture(Level *level, int32 texture_id) {
@@ -613,6 +664,10 @@ void level_delete_texture(Level *level, int32 texture_id) {
             material->use_color_override = true;
         }
     }
+}
+
+Texture level_copy_texture(Level *level, Texture texture) {
+    return copy((Allocator *) level->string_pool_pointer, texture);
 }
 
 // NOTE: should only be called once, or at least make sure you deallocate everything before
@@ -649,13 +704,8 @@ void load_default_level(Game_State *game_state, Level *level) {
     AABB sphere_mesh_aabb = mesh.aabb;
 
     // add level textures
-    Texture texture;
-    texture = make_texture(make_string_buffer(string_allocator, "debug", TEXTURE_NAME_MAX_SIZE),
-                           make_string_buffer(filename_allocator, "src/textures/debug_texture.png", MAX_PATH));
-    int32 debug_texture_id = level_add_texture(level, texture);
-    texture = make_texture(make_string_buffer(string_allocator, "white", TEXTURE_NAME_MAX_SIZE),
-                           make_string_buffer(filename_allocator, "src/textures/white.bmp", MAX_PATH));
-    int32 white_texture_id = level_add_texture(level, texture);
+    int32 debug_texture_id = level_add_texture(level, "src/textures/debug_texture.png", "debug");
+    int32 white_texture_id = level_add_texture(level, "src/textures/white.bmp", "white");
 
     // add level materials
     Material shiny_monkey = make_material(make_string_buffer(string_allocator,
@@ -941,7 +991,10 @@ bool32 Level_Loader::load_temp_level(Allocator *temp_allocator,
     Parser_State state = WAIT_FOR_LEVEL_INFO_BLOCK_NAME;
 
     Mesh_Info temp_mesh_info = {};
-    Texture temp_texture = {};
+    //Texture temp_texture = {};
+    String temp_texture_name;
+    String temp_texture_filename;
+
     Material temp_material = {};
     bool32 should_add_new_temp_material = false;
 
@@ -1082,8 +1135,7 @@ bool32 Level_Loader::load_temp_level(Allocator *temp_allocator,
                 if (token.type == STRING) {
                     assert(token.string.length <= TEXTURE_NAME_MAX_SIZE);
                     
-                    temp_texture = {};
-                    temp_texture.name = make_string_buffer(temp_allocator, token.string, token.string.length);
+                    temp_texture_name = token.string;
                     state = WAIT_FOR_TEXTURE_FILENAME_STRING;
                 } else {
                     assert(!"Expected texture name string.");
@@ -1093,8 +1145,8 @@ bool32 Level_Loader::load_temp_level(Allocator *temp_allocator,
                 if (token.type == STRING) {
                     assert(token.string.length <= PLATFORM_MAX_PATH);
 
-                    temp_texture.filename = make_string_buffer(temp_allocator, token.string, token.string.length);
-                    level_add_texture(temp_level, temp_texture);
+                    temp_texture_filename = token.string;
+                    level_add_texture(temp_level, temp_texture_name, temp_texture_filename);
 
                     state = WAIT_FOR_TEXTURE_KEYWORD_OR_TEXTURES_BLOCK_CLOSE;
                 }

@@ -46,6 +46,13 @@ struct Texture {
     bool32 should_unload;
 };
 
+Texture copy(Allocator *allocator, Texture texture) {
+    Texture result = texture;
+    texture.name = copy(allocator, texture.name);
+    texture.filename = copy(allocator, texture.filename);
+    return result;
+}
+
 struct Material {
     String_Buffer name;
     int32 texture_id;

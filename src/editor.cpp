@@ -121,6 +121,31 @@ void start_or_finalize_material_change(Editor_State *editor_state, UI_Manager *u
     }
 }
 
+#if 0
+void start_texture_change(Editor_State *editor_state, Texture texture) {
+    editor_state->old_texture = copy(editor_state->history.allocator_pointer, texture);
+}
+
+void finalize_texture_change(Editor_State *editor_state, Level *level, int32 texture_id, Texture texture) {
+    Texture new_texture = copy(editor_state->history.allocator_pointer, texture);
+    Modify_Texture_Action action = make_modify_texture_action(texture_id,
+                                                              editor_state->old_texture, new_texture);
+    editor_modify_texture(editor_state, level, action);
+    editor_state->old_texture = {};
+}
+
+void start_or_finalize_texture_change(Editor_State *editor_state, UI_Manager *ui_manager,
+                                      Level *level,
+                                      UI_id element_id,
+                                      int32 texture_id) {
+    if (is_newly_active(ui_manager, element_id)) {
+        start_texture_change(editor_state, texture);
+    } else if (is_newly_inactive(ui_manager, element_id)) {
+        finalize_texture_change(editor_state, level, texture_id, texture);
+    }
+}
+#endif
+
 void generate_texture_name(Level *level, String_Buffer *buffer) {
     int32 num_attempts = 0;
     while (num_attempts < MAX_TEXTURES + 1) {
@@ -174,6 +199,7 @@ bool32 editor_add_mesh_press(Editor_State *editor_state, Asset_Manager *asset_ma
     Allocator *filename_allocator = (Allocator *) level->filename_pool_pointer;
 
     if (platform_open_file_dialog(absolute_filename, PLATFORM_MAX_PATH)) {
+        // FIXME: this leaks, i'm pretty sure
         String_Buffer new_mesh_name = make_string_buffer(string_allocator, 64);
         generate_mesh_name(asset_manager, level, &new_mesh_name);
 
@@ -206,28 +232,24 @@ bool32 editor_add_mesh_press(Editor_State *editor_state, Asset_Manager *asset_ma
     return false;
 }
 
-bool32 editor_add_texture_press(Level *level, Material *material) {
+bool32 editor_add_texture_press(Editor_State *editor_state, Level *level,
+                                int32 current_texture_id, int32 material_id) {
     Marker m = begin_region();
     char *absolute_filename = (char *) region_push(PLATFORM_MAX_PATH);
         
-    Allocator *string_allocator = (Allocator *) level->string_pool_pointer;
-    Allocator *filename_allocator = (Allocator *) level->filename_pool_pointer;
-
     if (platform_open_file_dialog(absolute_filename, PLATFORM_MAX_PATH)) {
-        String_Buffer new_texture_name = make_string_buffer(string_allocator,
-                                                                   TEXTURE_NAME_MAX_SIZE);
+        String_Buffer new_texture_name = make_string_buffer((Allocator *) &memory.global_stack,
+                                                            TEXTURE_NAME_MAX_SIZE);
         generate_texture_name(level, &new_texture_name);
 
         char *relative_filename = (char *) region_push(PLATFORM_MAX_PATH);
         platform_get_relative_path(absolute_filename, relative_filename, PLATFORM_MAX_PATH);
-        String_Buffer new_texture_filename = make_string_buffer(filename_allocator,
-                                                                relative_filename, PLATFORM_MAX_PATH);
 
-        Texture new_texture = make_texture(new_texture_name,
-                                           new_texture_filename);
-
-        int32 texture_id = level_add_texture(level, new_texture);
-        material->texture_id = texture_id;
+        Add_Texture_Action action = make_add_texture_action(make_string(relative_filename),
+                                                            make_string(new_texture_name),
+                                                            material_id,
+                                                            current_texture_id);
+        editor_add_texture(editor_state, level, action);
 
         end_region(m);
         return true;
@@ -1367,12 +1389,20 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
             x += choose_texture_button_width;
 
             if (has_texture) {
+                Texture *texture = get_texture_pointer(level, material->texture_id);
                 bool32 delete_texture_pressed = do_text_button(x, y,
                                                                small_button_width, row_height,
                                                                default_text_button_cancel_style, default_text_style,
                                                                "-", editor_font_name, "delete_texture");
                 if (delete_texture_pressed) {
+                    Delete_Texture_Action action = make_delete_texture_action(material->texture_id,
+                                                                              make_string(texture->filename),
+                                                                              make_string(texture->name));
+                    editor_delete_texture(editor_state, level, action);
+#if 0
                     level_delete_texture(level, material->texture_id);
+                    
+#endif
                     has_texture = false;
                     editor_state->editing_selected_entity_texture = false;
                 }
@@ -1388,7 +1418,8 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                                         button_style, default_text_style,
                                                         "+", editor_font_name, "add_texture");
             if (add_texture_pressed) {
-                bool32 texture_added = editor_add_texture_press(&game_state->current_level, material);
+                bool32 texture_added = editor_add_texture_press(editor_state, &game_state->current_level,
+                                                                normal_entity->material_id, material->texture_id);
                 if (texture_added) {
                     editor_state->editing_selected_entity_texture = true;
                 }
@@ -1437,7 +1468,10 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                         add_message(&game_state->message_manager, make_string("Texture name cannot contain {, }, or double quotes!"));
                     } else if (!string_equals(make_string(texture->name), new_name)) {
                         if (!texture_name_exists(level, new_name)) {
-                            copy_string(&texture->name, new_name);
+                            Modify_Texture_Action action = make_modify_texture_action(material->texture_id,
+                                                                                      result.buffer);
+                            editor_modify_texture(editor_state, level, action);
+                            //copy_string(&texture->name, new_name);
                         } else {
                             add_message(&game_state->message_manager, make_string("Texture name already exists!"));
                         }
