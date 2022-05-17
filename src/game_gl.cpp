@@ -425,6 +425,8 @@
 //       - TODO (done): remove color picker state from editor_state
 //       - TODO (done): make do_color_picker() return some type of struct like the textbox
 
+// TODO: collision with OBBs
+
 // TODO: make_string() with formatting built in with arguments
 
 // TODO: i'm pretty sure whenever we make string buffers using PLATFORM_MAX_PATH, we should be adding 1 to it,

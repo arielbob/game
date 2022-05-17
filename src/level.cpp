@@ -599,6 +599,20 @@ Material level_copy_material(Level *level, Material material) {
     return copy((Allocator *) level->string_pool_pointer, material);
 }
 
+int32 level_add_texture(Level *level, String_Buffer relative_filename, String_Buffer name, int32 existing_id = -1) {
+    Texture texture = make_texture(name, relative_filename);
+
+    int32 texture_id;
+    if (existing_id >= 0) {
+        texture_id = existing_id;
+    } else {
+        texture_id = level->texture_table.total_added_ever;
+    }
+        
+    hash_table_add(&level->texture_table, texture_id, texture);
+    return texture_id;
+}
+
 int32 level_add_texture(Level *level, String relative_filename, String name, int32 existing_id = -1) {
     String_Buffer filename_buffer = make_string_buffer((Allocator *) level->filename_pool_pointer,
                                                        relative_filename, PLATFORM_MAX_PATH);
@@ -992,8 +1006,8 @@ bool32 Level_Loader::load_temp_level(Allocator *temp_allocator,
 
     Mesh_Info temp_mesh_info = {};
     //Texture temp_texture = {};
-    String temp_texture_name;
-    String temp_texture_filename;
+    String_Buffer temp_texture_name = {};
+    String_Buffer temp_texture_filename = {};
 
     Material temp_material = {};
     bool32 should_add_new_temp_material = false;
@@ -1135,7 +1149,7 @@ bool32 Level_Loader::load_temp_level(Allocator *temp_allocator,
                 if (token.type == STRING) {
                     assert(token.string.length <= TEXTURE_NAME_MAX_SIZE);
                     
-                    temp_texture_name = token.string;
+                    temp_texture_name = make_string_buffer(temp_allocator, token.string, TEXTURE_NAME_MAX_SIZE);
                     state = WAIT_FOR_TEXTURE_FILENAME_STRING;
                 } else {
                     assert(!"Expected texture name string.");
@@ -1145,8 +1159,8 @@ bool32 Level_Loader::load_temp_level(Allocator *temp_allocator,
                 if (token.type == STRING) {
                     assert(token.string.length <= PLATFORM_MAX_PATH);
 
-                    temp_texture_filename = token.string;
-                    level_add_texture(temp_level, temp_texture_name, temp_texture_filename);
+                    temp_texture_filename = make_string_buffer(temp_allocator, token.string, PLATFORM_MAX_PATH);
+                    level_add_texture(temp_level, temp_texture_filename, temp_texture_name);
 
                     state = WAIT_FOR_TEXTURE_KEYWORD_OR_TEXTURES_BLOCK_CLOSE;
                 }
