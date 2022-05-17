@@ -802,7 +802,9 @@ void draw_material_library(Game_State *game_state, Controller_State *controller_
     }
     
     if (picked_material_id >= 0) {
+        start_entity_change(editor_state, entity);
         set_entity_material(entity, picked_material_id);
+        finalize_entity_change(editor_state, &game_state->current_level, entity);
         editor_state->open_window_flags = 0;
     }
 
@@ -1254,14 +1256,11 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         x += add_material_button_width + padding_left;
 
         if (add_material_pressed) {
-            int32 material_id = level_add_material(level);
-            normal_entity->material_id = material_id;
-            editor_state->editing_selected_entity_material = true;
-
             // update the material variable with the new material
             Add_Material_Action action = make_add_material_action(normal_entity->type, entity_id);
             int32 result_id = editor_add_material(editor_state, level, action);
             material = get_material_pointer(level, result_id);
+            editor_state->editing_selected_entity_material = true;
         }
 
         real32 edit_material_button_width = row_width - (x - initial_x) - padding_right;

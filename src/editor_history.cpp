@@ -426,8 +426,8 @@ void undo_modify_material(Editor_State *editor_state, Level *level,
 int32 editor_add_material(Editor_State *editor_state,
                           Level *level,
                           Add_Material_Action action, bool32 is_redoing) {
-    int32 material_id = level_add_material(level, action.material_id);
-    Material *material = get_material_pointer(level, material_id);
+    action.material_id = level_add_material(level, action.material_id);
+    Material *material = get_material_pointer(level, action.material_id);
 
     Allocator *allocator = editor_state->history.allocator_pointer;
     if (!is_redoing) {
@@ -440,7 +440,6 @@ int32 editor_add_material(Editor_State *editor_state,
     }
 
     if (!is_redoing) {
-        action.material_id = material_id;
         history_add_action(&editor_state->history, Add_Material_Action, action);
     }
 

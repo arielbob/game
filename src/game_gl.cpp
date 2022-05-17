@@ -398,7 +398,7 @@
 //       - TODO (done): add history for color changes
 //       - TODO (done): add history for deleting materials
 //       - TODO (done): add history for adding materials
-//       - TODO: add history for material choosing
+//       - TODO (done): add history for material choosing
 //       - TODO: add history for adding and deleting textures
 //       - TODO: add history for light falloff changes
 //       - TODO: add history for light color changes
