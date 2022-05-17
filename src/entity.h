@@ -144,4 +144,8 @@ bool32 has_mesh_field(Entity *entity) {
     return (entity->type == ENTITY_NORMAL);
 }
 
+bool32 has_material_field(Entity *entity) {
+    return (entity->type == ENTITY_NORMAL);
+}
+
 #endif

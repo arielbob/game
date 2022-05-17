@@ -38,6 +38,10 @@ void history_deallocate(Editor_History *history, Editor_Action *editor_action) {
             Delete_Material_Action *action = (Delete_Material_Action *) editor_action;
             deallocate(*action);
         } break;
+        case ACTION_ADD_MATERIAL: {
+            Add_Material_Action *action = (Add_Material_Action *) editor_action;
+            deallocate(*action);
+        } break;
         default: {
             assert(!"Unhandled deallocation for action type.");
         }
@@ -418,6 +422,37 @@ void undo_modify_material(Editor_State *editor_state, Level *level,
     set_material_copy(level, action.material_id, action.old_material);
 }
 
+// material adding
+int32 editor_add_material(Editor_State *editor_state,
+                          Level *level,
+                          Add_Material_Action action, bool32 is_redoing) {
+    int32 material_id = level_add_material(level, action.material_id);
+    Material *material = get_material_pointer(level, material_id);
+
+    Allocator *allocator = editor_state->history.allocator_pointer;
+    if (!is_redoing) {
+        action.material_name = copy(allocator, material->name);
+    }
+    
+    Entity *entity = get_entity(level, action.entity_type, action.entity_id);
+    if (has_material_field(entity)) {
+        set_entity_material(entity, action.material_id);
+    }
+
+    if (!is_redoing) {
+        action.material_id = material_id;
+        history_add_action(&editor_state->history, Add_Material_Action, action);
+    }
+
+    return action.material_id;
+}
+
+void undo_add_material(Level *level,
+                       Add_Material_Action action) {
+    level_delete_material(level, action.material_id);
+}
+
+// material deleting
 void editor_delete_material(Editor_State *editor_state, Level *level,
                             Delete_Material_Action action, bool32 is_redoing) {
     // FIXME: this leaks if level_delete_material fails
@@ -533,6 +568,10 @@ void history_undo(Game_State *game_state, Editor_History *history) {
             Delete_Material_Action *action = (Delete_Material_Action *) current_action;
             undo_delete_material(editor_state, level, *action);
         } break;
+        case ACTION_ADD_MATERIAL: {
+            Add_Material_Action *action = (Add_Material_Action *) current_action;
+            undo_add_material(level, *action);
+        } break;
         default: {
             assert(!"Unhandled editor action type.");
             return;
@@ -614,6 +653,10 @@ void history_redo(Game_State *game_state, Editor_History *history) {
         case ACTION_DELETE_MATERIAL: {
             Delete_Material_Action *action = (Delete_Material_Action *) redo_action;
             editor_delete_material(editor_state, level, *action, true);
+        } break;
+        case ACTION_ADD_MATERIAL: {
+            Add_Material_Action *action = (Add_Material_Action *) redo_action;
+            editor_add_material(editor_state, level, *action, true);
         } break;
         default: {
             assert(!"Unhandled editor action type.");

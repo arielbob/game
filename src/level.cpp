@@ -578,7 +578,7 @@ int32 level_add_material(Level *level, Material material, int32 existing_materia
     return material_id;
 }
 
-int32 level_add_material(Level *level) {
+int32 level_add_material(Level *level, int32 existing_material_id = -1) {
     String_Buffer new_material_name = make_string_buffer((Allocator *) level->string_pool_pointer,
                                                          MATERIAL_STRING_MAX_SIZE);
     generate_material_name(level, &new_material_name);
@@ -591,7 +591,7 @@ int32 level_add_material(Level *level) {
         true
     };
 
-    return level_add_material(level, new_material);
+    return level_add_material(level, new_material, existing_material_id);
 }
 
 Material level_copy_material(Level *level, Material material) {

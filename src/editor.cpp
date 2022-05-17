@@ -1259,7 +1259,9 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
             editor_state->editing_selected_entity_material = true;
 
             // update the material variable with the new material
-            material = get_material_pointer(level, normal_entity->material_id);
+            Add_Material_Action action = make_add_material_action(normal_entity->type, entity_id);
+            int32 result_id = editor_add_material(editor_state, level, action);
+            material = get_material_pointer(level, result_id);
         }
 
         real32 edit_material_button_width = row_width - (x - initial_x) - padding_right;

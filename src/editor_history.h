@@ -23,8 +23,6 @@ enum Action_Type {
     ACTION_MODIFY_MESH,
     ACTION_ADD_MESH,
     ACTION_DELETE_MESH,
-
-    // TODO: implement these
     ACTION_MODIFY_MATERIAL,
     ACTION_ADD_MATERIAL,
     ACTION_DELETE_MATERIAL
@@ -265,6 +263,30 @@ void deallocate(Delete_Material_Action action) {
 }
 
 
+struct Add_Material_Action {
+    ACTION_HEADER
+
+    int32 material_id;
+    String_Buffer material_name;
+
+    Entity_Type entity_type;
+    int32 entity_id;
+};
+
+Add_Material_Action make_add_material_action(Entity_Type entity_type, int32 entity_id) {
+    Add_Material_Action action = {};
+    action.type = ACTION_ADD_MATERIAL;
+    action.material_id = -1;
+    action.entity_type = entity_type;
+    action.entity_id = entity_id;
+    return action;
+}
+
+void deallocate(Add_Material_Action action) {
+    deallocate(action.material_name);
+}
+
+
 struct Editor_History {
     Allocator *allocator_pointer;
     Editor_Action *entries[MAX_EDITOR_HISTORY_ENTRIES];
@@ -346,6 +368,9 @@ void editor_modify_material(Editor_State *editor_state, Level *level,
                             Modify_Material_Action action, bool32 is_redoing = false);
 void editor_delete_material(Editor_State *editor_state, Level *level,
                             Delete_Material_Action action, bool32 is_redoing = false);
+int32 editor_add_material(Editor_State *editor_state,
+                         Level *level,
+                         Add_Material_Action action, bool32 is_redoing = false);
 void history_undo(Game_State *game_state, Editor_History *history);
 void history_redo(Game_State *game_state, Editor_History *history);
 int32 history_get_num_entries(Editor_History *history);
