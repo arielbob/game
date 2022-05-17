@@ -442,8 +442,8 @@ void deallocate(Mesh mesh) {
 void copy(Allocator *allocator, Mesh *mesh_dest, Mesh *mesh_source) {
     *mesh_dest = *mesh_source;
 
-    mesh_dest->name = copy_string_buffer(allocator, mesh_source->name);
-    mesh_dest->filename = copy_string_buffer(allocator, mesh_source->filename);
+    mesh_dest->name = copy(allocator, mesh_source->name);
+    mesh_dest->filename = copy(allocator, mesh_source->filename);
     mesh_dest->allocator = allocator;
 
     mesh_dest->data = (real32 *) allocate(allocator, mesh_source->data_size);

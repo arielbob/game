@@ -155,7 +155,7 @@ String_Buffer make_string_buffer(Allocator *allocator, String initial_value, int
     return buffer;
 }
 
-String_Buffer copy_string_buffer(Allocator *allocator, String_Buffer source_buffer) {
+String_Buffer copy(Allocator *allocator, String_Buffer source_buffer) {
     String_Buffer buffer = {};
 
     char *contents = (char *) allocate(allocator, source_buffer.size);

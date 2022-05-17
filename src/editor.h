@@ -102,6 +102,7 @@ struct Editor_State {
     Entity_Type last_selected_entity_type;
 
     Entity *old_entity;
+    Material old_material;
 
     Gizmo gizmo;
     Gizmo_Handle hovered_gizmo_handle;

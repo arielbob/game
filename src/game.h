@@ -297,7 +297,7 @@ int32 get_mesh_id_by_name(Game_State *game_state, Level *level, Mesh_Type mesh_t
 Mesh *get_mesh_pointer(Game_State *game_state, Level *level, Mesh_Type mesh_type, int32 mesh_id);
 bool32 mesh_name_exists(Game_State *game_state, Level *level, String name);
 #endif
-Material *get_entity_material(Level *level, Entity *entity);
+Material *get_entity_material(Level *level, Entity *entity, int32 *material_id);
 //void set_entity_mesh(Game_State *game_state, Level *level, Entity *entity, Mesh_Type mesh_type, int32 mesh_id);
 void set_entity_mesh(Asset_Manager *asset_manager, Entity *entity, int32 mesh_id);
 void set_entity_material(Entity *entity, int32 material_id);

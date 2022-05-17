@@ -54,6 +54,15 @@ struct Material {
     bool32 use_color_override;
 };
 
+// NOTE: these copy procedures do not allocate space for the struct itself inside the passed in allocator.
+//       it just allocates the struct itself on the stack. these copy functions procedures are just meant to
+//       copy the struct fields.
+Material copy(Allocator *string_allocator, Material material) {
+    Material result = material;
+    result.name = copy(string_allocator, material.name);
+    return result;
+}
+
 Material default_material = {
     make_empty_string_buffer("", 0),
     -1,

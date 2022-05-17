@@ -98,23 +98,27 @@ void start_or_finalize_entity_change(Game_State *game_state, UI_id element_id,
     }
 }
 
-void generate_material_name(Level *level, String_Buffer *buffer) {
-    int32 num_attempts = 0;
-    while (num_attempts < MAX_MATERIALS + 1) {
-        Marker m = begin_region();
-        char *format = (num_attempts == 0) ? "New Material" : "New Material %d";
-        char *buf = string_format((Allocator *) &memory.global_stack, buffer->size, format, num_attempts + 1);
-        if (!material_name_exists(level, make_string(buf))) {
-            set_string_buffer_text(buffer, buf);
-            end_region(m);
-            return;
-        }
+void start_material_change(Editor_State *editor_state, Material material) {
+    editor_state->old_material = copy(editor_state->history.allocator_pointer, material);
+}
 
-        num_attempts++;
-        end_region(m);
+void finalize_material_change(Editor_State *editor_state, Level *level, int32 material_id, Material material) {
+    Material new_material = copy(editor_state->history.allocator_pointer, material);
+    Modify_Material_Action action = make_modify_material_action(material_id,
+                                                                editor_state->old_material, new_material);
+    editor_modify_material(editor_state, level, action);
+    editor_state->old_material = {};
+}
+
+void start_or_finalize_material_change(Editor_State *editor_state, UI_Manager *ui_manager,
+                                       Level *level,
+                                       UI_id element_id,
+                                       int32 material_id, Material material) {
+    if (is_newly_active(ui_manager, element_id)) {
+        start_material_change(editor_state, material);
+    } else if (is_newly_inactive(ui_manager, element_id)) {
+        finalize_material_change(editor_state, level, material_id, material);
     }
-
-    assert(!"Could not generate material name.");
 }
 
 void generate_texture_name(Level *level, String_Buffer *buffer) {
@@ -160,7 +164,7 @@ bool32 editor_add_mesh_press(Editor_State *editor_state, Asset_Manager *asset_ma
     Marker m = begin_region();
     char *absolute_filename = (char *) region_push(PLATFORM_MAX_PATH);
         
-    Allocator *string_allocator = (Allocator *) level->string64_pool_pointer;
+    Allocator *string_allocator = (Allocator *) level->string_pool_pointer;
     Allocator *filename_allocator = (Allocator *) level->filename_pool_pointer;
 
     if (platform_open_file_dialog(absolute_filename, PLATFORM_MAX_PATH)) {
@@ -200,7 +204,7 @@ bool32 editor_add_texture_press(Level *level, Material *material) {
     Marker m = begin_region();
     char *absolute_filename = (char *) region_push(PLATFORM_MAX_PATH);
         
-    Allocator *string_allocator = (Allocator *) level->string64_pool_pointer;
+    Allocator *string_allocator = (Allocator *) level->string_pool_pointer;
     Allocator *filename_allocator = (Allocator *) level->filename_pool_pointer;
 
     if (platform_open_file_dialog(absolute_filename, PLATFORM_MAX_PATH)) {
@@ -606,7 +610,7 @@ void draw_mesh_library(Game_State *game_state, Controller_State *controller_stat
     pop_layer(ui_manager);
 }
 
-void draw_texture_library(Material *selected_material) {
+void draw_texture_library(int32 material_id, Material *selected_material) {
     using namespace Context;
     Render_State *render_state = &game_state->render_state;
 
@@ -697,7 +701,9 @@ void draw_texture_library(Material *selected_material) {
     if (picked_texture_id >= 0) {
         if (selected_material->texture_id < 0 ||
             picked_texture_id != selected_material->texture_id) {
+            start_material_change(editor_state, *selected_material);
             selected_material->texture_id = picked_texture_id;
+            finalize_material_change(editor_state, &game_state->current_level, material_id, *selected_material);
         }
 
         editor_state->open_window_flags = 0;
@@ -1237,21 +1243,7 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
         x += add_material_button_width + padding_left;
 
         if (add_material_pressed) {
-            Pool_Allocator *string64_pool = &memory.string64_pool;
-
-            String_Buffer new_material_name = make_string_buffer((Allocator *) string64_pool,
-                                                                 MATERIAL_STRING_MAX_SIZE);
-            generate_material_name(level, &new_material_name);
-
-            Material new_material = { 
-                new_material_name,
-                -1,
-                50.0f,
-                make_vec4(0.0f, 0.0f, 0.0f, 1.0f),
-                true
-            };
-
-            int32 material_id = level_add_material(level, new_material);
+            int32 material_id = level_add_material(level);
             normal_entity->material_id = material_id;
             editor_state->editing_selected_entity_material = true;
 
@@ -1315,7 +1307,9 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                     add_message(&game_state->message_manager, make_string("Material name cannot contain {, }, or double quotes!"));
                 } else if (!string_equals(make_string(material->name), new_name)) {
                     if (!material_name_exists(level, new_name)) {
+                        start_material_change(editor_state, *material);
                         copy_string(&material->name, new_name);
+                        finalize_material_change(editor_state, level, normal_entity->material_id, *material);
                     } else {
                         add_message(&game_state->message_manager, make_string("Material name already exists!"));
                     }
@@ -1830,8 +1824,10 @@ void draw_editor_ui(Game_State *game_state, Controller_State *controller_state) 
         if (editor_state->open_window_flags & MATERIAL_LIBRARY_WINDOW) {
             draw_material_library(game_state, controller_state, selected_entity);
         } else if (editor_state->open_window_flags & TEXTURE_LIBRARY_WINDOW) {
-            Material *selected_material = get_entity_material(&game_state->current_level, selected_entity);
-            draw_texture_library(selected_material);
+            int32 material_id;
+            Material *selected_material = get_entity_material(&game_state->current_level,
+                                                              selected_entity, &material_id);
+            draw_texture_library(material_id, selected_material);
         } else if (editor_state->open_window_flags & MESH_LIBRARY_WINDOW) {
             draw_mesh_library(game_state, controller_state, selected_entity);
         }

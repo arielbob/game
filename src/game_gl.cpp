@@ -393,11 +393,16 @@
 //               - we were using the wrong size when zeroing memory in the heap_allocate() procedure (we were
 //                 using the aligned data size, which includes the alignment and not the regular aligned size.)
 //       - TODO: change other entity fields to use new modify action
+//       - TODO (done): add history for material modification
 //       - TODO: add history for adding and deleting materials
 //       - TODO: add history for adding and deleting textures
 //       - TODO: add history for color changes
 //       - TODO: add history for light falloff changes
 //       - TODO: add shortcuts for undoing and redoing
+//       - TODO: change set_entity to use a copy function that's closer to the entity struct so that we can easily
+//               change it if we change the entity struct members
+//       -  TODO: figure out way for changing text boxes when we undo them
+
 
 // TODO (done): (refactor) store all the meshes in the same table so we don't need to constantly differentiate
 //              between primitive and level meshes
@@ -411,7 +416,6 @@
 //       - TODO (done): make sure level loading and exporting works
 //       - TODO (done): make sure asset_manager memory and tables for levels is being cleared on level load
 //       - TODO (done): make sure opengl mesh table is being cleared when new level loads
-
 
 // TODO: make_string() with formatting built in with arguments
 

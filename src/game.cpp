@@ -532,7 +532,7 @@ void init_game(Game_State *game_state,
     Level *current_level = &game_state->current_level;
     current_level->name = make_string_buffer((Allocator *) &memory.level_string64_pool, LEVEL_NAME_MAX_SIZE);
     current_level->arena_pointer = &memory.level_arena;
-    current_level->string64_pool_pointer = &memory.level_string64_pool;
+    current_level->string_pool_pointer = &memory.level_string64_pool;
     current_level->filename_pool_pointer = &memory.level_filename_pool;
     load_default_level(game_state, &game_state->current_level);
 
@@ -1000,7 +1000,7 @@ void set_entity_transform(Asset_Manager *asset_manager, Entity *entity, Transfor
     update_entity_aabb(asset_manager, entity);
 }
 
-Material *get_entity_material(Level *level, Entity *entity) {
+Material *get_entity_material(Level *level, Entity *entity, int32 *material_id) {
     // TODO: maybe just return NULL here instead of asserting
     assert(entity->type == ENTITY_NORMAL);
 
@@ -1011,6 +1011,7 @@ Material *get_entity_material(Level *level, Entity *entity) {
                                                      normal_entity->material_id,
                                                      &selected_material);
     assert(material_exists);
+    *material_id = normal_entity->material_id;
     return selected_material;
 }
 

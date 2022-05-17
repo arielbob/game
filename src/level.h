@@ -15,8 +15,8 @@ struct Level {
     Hash_Table<int32, Point_Light_Entity> point_light_entity_table;
 
     Arena_Allocator *arena_pointer;
-    Pool_Allocator *string64_pool_pointer;
-    Pool_Allocator *filename_pool_pointer;
+    Pool_Allocator *string_pool_pointer; // for material names and texture name strings
+    Pool_Allocator *filename_pool_pointer; // for filename strings
 
     Hash_Table<int32, Material> material_table;
     Hash_Table<int32, Texture> texture_table;

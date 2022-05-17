@@ -30,6 +30,25 @@ Level make_level(String_Buffer name,
 }
 #endif
 
+void generate_material_name(Level *level, String_Buffer *buffer) {
+    int32 num_attempts = 0;
+    while (num_attempts < MAX_MATERIALS + 1) {
+        Marker m = begin_region();
+        char *format = (num_attempts == 0) ? "New Material" : "New Material %d";
+        char *buf = string_format((Allocator *) &memory.global_stack, buffer->size, format, num_attempts + 1);
+        if (!material_name_exists(level, make_string(buf))) {
+            set_string_buffer_text(buffer, buf);
+            end_region(m);
+            return;
+        }
+
+        num_attempts++;
+        end_region(m);
+    }
+
+    assert(!"Could not generate material name.");
+}
+
 Material get_material(Level *level, int32 material_id) {
     Material material;
     bool32 material_exists = hash_table_find(level->material_table,
@@ -46,6 +65,11 @@ Material *get_material_pointer(Level *level, int32 material_id) {
                                                      &material);
     assert(material_exists);
     return material;
+}
+
+void set_material_copy(Level *level, int32 material_id, Material new_material) {
+    Material *material = get_material_pointer(level, material_id);
+    *material = copy((Allocator *) level->string_pool_pointer, new_material);
 }
 
 #if 0
@@ -512,6 +536,22 @@ int32 level_add_material(Level *level, Material material) {
     return material_id;
 }
 
+int32 level_add_material(Level *level) {
+    String_Buffer new_material_name = make_string_buffer((Allocator *) level->string_pool_pointer,
+                                                         MATERIAL_STRING_MAX_SIZE);
+    generate_material_name(level, &new_material_name);
+
+    Material new_material = { 
+        new_material_name,
+        -1,
+        50.0f,
+        make_vec4(0.0f, 0.0f, 0.0f, 1.0f),
+        true
+    };
+
+    return level_add_material(level, new_material);
+}
+
 int32 level_add_texture(Level *level, Texture texture) {
     int32 texture_id = level->texture_table.total_added_ever;
     hash_table_add(&level->texture_table, texture_id, texture);
@@ -533,8 +573,7 @@ void level_delete_texture(Level *level, int32 texture_id) {
 void load_default_level(Game_State *game_state, Level *level) {
     Allocator *arena_allocator = (Allocator *) level->arena_pointer;
     Allocator *filename_allocator = (Allocator *) level->filename_pool_pointer;
-    Allocator *mesh_name_allocator = (Allocator *) level->string64_pool_pointer;
-    Allocator *string64_allocator = (Allocator *) level->string64_pool_pointer;
+    Allocator *string_allocator = (Allocator *) level->string_pool_pointer;
 
     // init tables
     level->normal_entity_table = make_hash_table<int32, Normal_Entity>(arena_allocator,
@@ -565,41 +604,41 @@ void load_default_level(Game_State *game_state, Level *level) {
 
     // add level textures
     Texture texture;
-    texture = make_texture(make_string_buffer(string64_allocator, "debug", TEXTURE_NAME_MAX_SIZE),
+    texture = make_texture(make_string_buffer(string_allocator, "debug", TEXTURE_NAME_MAX_SIZE),
                            make_string_buffer(filename_allocator, "src/textures/debug_texture.png", MAX_PATH));
     int32 debug_texture_id = level_add_texture(level, texture);
-    texture = make_texture(make_string_buffer(string64_allocator, "white", TEXTURE_NAME_MAX_SIZE),
+    texture = make_texture(make_string_buffer(string_allocator, "white", TEXTURE_NAME_MAX_SIZE),
                            make_string_buffer(filename_allocator, "src/textures/white.bmp", MAX_PATH));
     int32 white_texture_id = level_add_texture(level, texture);
 
     // add level materials
-    Material shiny_monkey = make_material(make_string_buffer(string64_allocator,
+    Material shiny_monkey = make_material(make_string_buffer(string_allocator,
                                                              "shiny_monkey", MATERIAL_NAME_MAX_SIZE),
                                           debug_texture_id,
                                           100.0f, make_vec4(0.6f, 0.6f, 0.6f, 1.0f), true);
     int32 shiny_monkey_material_id = level_add_material(level, shiny_monkey);
 
-    Material plane_material = make_material(make_string_buffer(string64_allocator,
+    Material plane_material = make_material(make_string_buffer(string_allocator,
                                                                "diffuse_plane", MATERIAL_NAME_MAX_SIZE),
                                             -1, 1.0f, make_vec4(0.9f, 0.9f, 0.9f, 1.0f), true);
     int32 plane_material_id = level_add_material(level, plane_material);
 
-    Material arrow_material = make_material(make_string_buffer(string64_allocator,
+    Material arrow_material = make_material(make_string_buffer(string_allocator,
                                                                "arrow_material", MATERIAL_NAME_MAX_SIZE),
                                             -1, 100.0f, make_vec4(1.0f, 0.0f, 0.0f, 1.0f), true);
     int32 arrow_material_id = level_add_material(level, arrow_material);
 
-    Material white_light_material = make_material(make_string_buffer(string64_allocator,
+    Material white_light_material = make_material(make_string_buffer(string_allocator,
                                                                      "white_light", MATERIAL_NAME_MAX_SIZE),
                                                   -1, 0.0f, make_vec4(1.0f, 1.0f, 1.0f, 1.0f), true);
     int32 white_light_material_id = level_add_material(level, white_light_material);
 
-    Material blue_light_material = make_material(make_string_buffer(string64_allocator,
+    Material blue_light_material = make_material(make_string_buffer(string_allocator,
                                                                     "blue_light", MATERIAL_NAME_MAX_SIZE),
                                                  -1, 0.0f, make_vec4(0.0f, 0.0f, 1.0f, 1.0f), true);
     int32 blue_light_material_id = level_add_material(level, blue_light_material);
 
-    Material diffuse_sphere_material = make_material(make_string_buffer(string64_allocator,
+    Material diffuse_sphere_material = make_material(make_string_buffer(string_allocator,
                                                                         "diffuse_sphere", MATERIAL_NAME_MAX_SIZE),
                                                      -1, 5.0f, rgb_to_vec4(176, 176, 176), true);
     int32 diffuse_sphere_material_id = level_add_material(level, diffuse_sphere_material);
@@ -676,7 +715,7 @@ void unload_level(Asset_Manager *asset_manager, Level *level) {
 
     clear_heap(asset_manager->level_mesh_heap_pointer);
     clear_arena(level->arena_pointer);
-    clear_pool(level->string64_pool_pointer);
+    clear_pool(level->string_pool_pointer);
     clear_pool(level->filename_pool_pointer);
 
     // technically, we don't need to reset the hash tables if we're loading in a new level and making new
@@ -690,7 +729,7 @@ void unload_level(Asset_Manager *asset_manager, Level *level) {
 
 void new_level(Asset_Manager *asset_manager, Level *current_level) {
     unload_level(asset_manager, current_level);
-    current_level->name = make_string_buffer((Allocator *) current_level->string64_pool_pointer, LEVEL_NAME_MAX_SIZE);
+    current_level->name = make_string_buffer((Allocator *) current_level->string_pool_pointer, LEVEL_NAME_MAX_SIZE);
 }
 
 void add_entity_and_asset_info(Level *level, Entity *entity,
@@ -1377,7 +1416,7 @@ bool32 read_and_load_level(Asset_Manager *asset_manager,
                            Level *level, char *filename,
                            Arena_Allocator *arena,
                            Heap_Allocator *mesh_heap,
-                           Pool_Allocator *string64_pool,
+                           Pool_Allocator *string_pool,
                            Pool_Allocator *filename_pool) {
     Marker m = begin_region();
 
@@ -1411,7 +1450,7 @@ bool32 read_and_load_level(Asset_Manager *asset_manager,
         unload_level(asset_manager, level);
         
         Allocator *level_arena_allocator = (Allocator *) arena;
-        Allocator *level_string64_allocator = (Allocator *) string64_pool;
+        Allocator *level_string_allocator = (Allocator *) string_pool;
         Allocator *level_filename_allocator = (Allocator *) filename_pool;
 
         // copy all the values to start; we'll overwrite some of them
@@ -1422,12 +1461,12 @@ bool32 read_and_load_level(Asset_Manager *asset_manager,
         level->should_clear_gpu_data = true;
 
         // copy strings
-        level->name = make_string_buffer(level_string64_allocator,
+        level->name = make_string_buffer(level_string_allocator,
                                          make_string(temp_level->name),
                                          LEVEL_NAME_MAX_SIZE);
         // set allocators
         level->arena_pointer = arena;
-        level->string64_pool_pointer = string64_pool;
+        level->string_pool_pointer = string_pool;
         level->filename_pool_pointer = filename_pool;
 
         // copy entity tables
@@ -1449,7 +1488,7 @@ bool32 read_and_load_level(Asset_Manager *asset_manager,
             Hash_Table_Entry<int32, Mesh> entry = temp_mesh_table.entries[i];
             Mesh temp_mesh = entry.value;
             if (entry.is_occupied) {
-                String_Buffer mesh_name = make_string_buffer(level_string64_allocator,
+                String_Buffer mesh_name = make_string_buffer(level_string_allocator,
                                                              make_string(temp_mesh.name),
                                                              MESH_NAME_MAX_SIZE);
                 String_Buffer mesh_filename = make_string_buffer(level_filename_allocator,
@@ -1474,7 +1513,7 @@ bool32 read_and_load_level(Asset_Manager *asset_manager,
             Hash_Table_Entry<int32, Texture> entry = temp_texture_table.entries[i];
             Texture temp_texture = entry.value;
             if (entry.is_occupied) {
-                String_Buffer texture_name = make_string_buffer(level_string64_allocator,
+                String_Buffer texture_name = make_string_buffer(level_string_allocator,
                                                                 make_string(temp_texture.name),
                                                                 TEXTURE_NAME_MAX_SIZE);
                 String_Buffer texture_filename = make_string_buffer(level_filename_allocator,
@@ -1500,7 +1539,7 @@ bool32 read_and_load_level(Asset_Manager *asset_manager,
             Hash_Table_Entry<int32, Material> entry = temp_material_table.entries[i];
             Material temp_material = entry.value;
             if (entry.is_occupied) {
-                String_Buffer material_name = make_string_buffer(level_string64_allocator,
+                String_Buffer material_name = make_string_buffer(level_string_allocator,
                                                                  make_string(temp_material.name),
                                                                  MATERIAL_NAME_MAX_SIZE);
 

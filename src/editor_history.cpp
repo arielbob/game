@@ -30,6 +30,10 @@ void history_deallocate(Editor_History *history, Editor_Action *editor_action) {
             Delete_Mesh_Action *action = (Delete_Mesh_Action *) editor_action;
             deallocate(*action);
         } break;
+        case ACTION_MODIFY_MATERIAL: {
+            Modify_Material_Action *action = (Modify_Material_Action *) editor_action;
+            deallocate(*action);
+        } break;
         default: {
             assert(!"Unhandled deallocation for action type.");
         }
@@ -293,12 +297,12 @@ void editor_modify_mesh(Game_State *game_state, Modify_Mesh_Action action, bool3
     Asset_Manager *asset_manager = &game_state->asset_manager;
 
     Mesh *mesh = get_mesh_pointer(asset_manager, action.mesh_id);
-    action.original_name = copy_string_buffer(history->allocator_pointer, mesh->name);
+    action.original_name = copy(history->allocator_pointer, mesh->name);
 
     copy_string(&mesh->name, make_string(action.new_name));
 
     if (!is_redoing) {
-        action.new_name = copy_string_buffer(history->allocator_pointer, action.new_name);
+        action.new_name = copy(history->allocator_pointer, action.new_name);
         history_add_action(history, Modify_Mesh_Action, action);
     } else {
         game_state->editor_state.editing_selected_entity_mesh = false;
@@ -392,6 +396,22 @@ void undo_delete_mesh(Editor_State *editor_state, Asset_Manager *asset_manager,
     }
 }
 
+// material modifying
+// NOTE: this procedure assumes that we've allocated the old and new materials onto the history allocator
+void editor_modify_material(Editor_State *editor_state, Level *level,
+                            Modify_Material_Action action, bool32 is_redoing) {
+    if (!is_redoing) {
+        history_add_action(&editor_state->history, Modify_Material_Action, action);
+    }
+    
+    set_material_copy(level, action.material_id, action.new_material);
+}
+
+void undo_modify_material(Editor_State *editor_state, Level *level,
+                          Modify_Material_Action action) {
+    set_material_copy(level, action.material_id, action.old_material);
+}
+
 int32 history_get_num_entries(Editor_History *history) {
     if (history->start_index == -1 && history->end_index == -1) return 0;
 
@@ -466,6 +486,10 @@ void history_undo(Game_State *game_state, Editor_History *history) {
             Delete_Mesh_Action *action = (Delete_Mesh_Action *) current_action;
             undo_delete_mesh(editor_state, asset_manager, level, *action);
         } break;
+        case ACTION_MODIFY_MATERIAL: {
+            Modify_Material_Action *action = (Modify_Material_Action *) current_action;
+            undo_modify_material(editor_state, level, *action);
+        } break;
         default: {
             assert(!"Unhandled editor action type.");
             return;
@@ -539,6 +563,10 @@ void history_redo(Game_State *game_state, Editor_History *history) {
         case ACTION_DELETE_MESH: {
             Delete_Mesh_Action *action = (Delete_Mesh_Action *) redo_action;
             editor_delete_mesh(editor_state, asset_manager, level, *action, true);
+        } break;
+        case ACTION_MODIFY_MATERIAL: {
+            Modify_Material_Action *action = (Modify_Material_Action *) redo_action;
+            editor_modify_material(editor_state, level, *action, true);
         } break;
         default: {
             assert(!"Unhandled editor action type.");
