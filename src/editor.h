@@ -81,13 +81,6 @@ namespace Editor_Constants {
 #define TEXTURE_LIBRARY_WINDOW  0x2
 #define MESH_LIBRARY_WINDOW     0x4
 
-struct Editor_Color_Picker {
-    Vec2 position;
-    //void *color_picker_color_pointer;
-    UI_id parent_ui_id;
-    UI_Color_Picker_State ui_state;
-};
-
 struct Editor_State {
     Editor_History history;
 
@@ -126,7 +119,7 @@ struct Editor_State {
     bool32 is_new_level;
     String_Buffer current_level_filename;
 
-    Editor_Color_Picker color_picker;
+    UI_id color_picker_parent;
 };
 
 #endif

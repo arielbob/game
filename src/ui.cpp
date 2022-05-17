@@ -441,6 +441,9 @@ void deallocate(UI_Element_State *untyped_state) {
             UI_Text_Box_State *state = (UI_Text_Box_State *) untyped_state;
             deallocate(*state);
         } break;
+        case UI_Element_State_Type::COLOR_PICKER: {
+            // nothing to deallocate
+        } break;
         default: {
             assert(!"Unhandled UI element state type.");
         } break;
@@ -488,6 +491,8 @@ void clear_active_if_gone(UI_Manager *manager) {
     clear_active(manager);
 }
 
+// we may need this
+#if 0
 void clear_editor_state_for_gone_color_pickers(UI_Manager *manager, Editor_State *editor_state) {
     UI_Push_Buffer *push_buffer = &manager->push_buffer;
     UI_Element *element = next_element(NULL, push_buffer);
@@ -506,6 +511,7 @@ void clear_editor_state_for_gone_color_pickers(UI_Manager *manager, Editor_State
     // we didn't find the parent, so it's gone this frame, so reset the color picker parent id
     editor_state->color_picker.parent_ui_id = {};
 }
+#endif
 
 void delete_state_if_gone(UI_Manager *manager) {
     UI_Push_Buffer *push_buffer = &manager->push_buffer;
@@ -729,6 +735,13 @@ UI_Slider_State *add_ui_slider_state(UI_Manager *manager, UI_id id) {
 
 UI_Text_Box_State *add_ui_text_box_state(UI_Manager *manager, UI_id id) {
     UI_Text_Box_State *state = (UI_Text_Box_State *) heap_allocate(manager->heap_pointer, sizeof(UI_Text_Box_State));
+    hash_table_add(&manager->state_table, id, (UI_Element_State *) state);
+    return state;
+}
+
+UI_Color_Picker_State *add_ui_color_picker_state(UI_Manager *manager, UI_id id) {
+    UI_Color_Picker_State *state = (UI_Color_Picker_State *) heap_allocate(manager->heap_pointer,
+                                                                           sizeof(UI_Color_Picker_State));
     hash_table_add(&manager->state_table, id, (UI_Element_State *) state);
     return state;
 }
@@ -1102,14 +1115,16 @@ void do_line(UI_Manager *manager,
     ui_add_line(manager, line);
 }
 
-real32 do_hue_slider(real32 x, real32 y,
-                    real32 width, real32 height,
-                    real32 hue_degrees,
-                    char *id_string) {
+UI_Hue_Slider_Result do_hue_slider(real32 x, real32 y,
+                     real32 width, real32 height,
+                     real32 hue_degrees,
+                     char *id_string, int32 index = 0) {
     using namespace Context;
     UI_Manager *manager = ui_manager;
     UI_Hue_Slider slider = make_ui_hue_slider(x, y, width, height, hue_degrees,
-                                              manager->current_layer, id_string);
+                                              manager->current_layer, id_string, index);
+
+    UI_Hue_Slider_Result result = {};
 
     Vec2 current_mouse = controller_state->current_mouse;
     if (!manager->is_disabled && in_bounds_on_layer(manager, current_mouse, x, x + width, y, y + height)) {
@@ -1121,12 +1136,14 @@ real32 do_hue_slider(real32 x, real32 y,
             hue_degrees = min(hue_degrees, 360.0f);
             hue_degrees = max(hue_degrees, 0.0f);
             manager->active_initial_position = controller_state->current_mouse;
+            result.hue_degrees = hue_degrees;
             //manager->active_initial_time = platform_get_wall_clock_time();
         }
 
         if (!controller_state->left_mouse.is_down) {
             if (ui_id_equals(manager->active, slider.id)) {
                 manager->active = {};
+                result.submitted = true;
             }
         }
     } else {
@@ -1136,6 +1153,7 @@ real32 do_hue_slider(real32 x, real32 y,
 
         if (ui_id_equals(manager->active, slider.id) && !controller_state->left_mouse.is_down) {
             manager->active = {};
+            result.submitted = true;
         }
     }
 
@@ -1147,7 +1165,9 @@ real32 do_hue_slider(real32 x, real32 y,
 
     ui_add_hue_slider(manager, slider);
 
-    return hue_degrees;
+    result.hue_degrees = hue_degrees;
+
+    return result;
 }
 
 // NOTE: we only use this procedure for initializing the picker's cursor position since HSV_Color uses ints
@@ -1180,85 +1200,107 @@ HSV_Color get_hsv_inside_quad(Vec2 current_mouse, real32 hue,
     return result;
 }
 
-UI_HSV_Picker_State do_hsv_picker(real32 x, real32 y,
-                                  real32 width, real32 height,
-                                  UI_HSV_Picker_State state,
-                                  char *id_string) {
+UI_HSV_Picker_Result do_hsv_picker(real32 x, real32 y,
+                                   real32 width, real32 height,
+                                   HSV_Color hsv_color,
+                                   real32 relative_cursor_x, real32 relative_cursor_y,
+                                   char *id_string, int32 index = 0) {
     using namespace Context;
     Vec2 current_mouse = controller_state->current_mouse;
     UI_Manager *manager = ui_manager;
 
-    // TODO: is it possible to move this to the end so that we don't have a frame of lag?
-    UI_HSV_Picker picker = make_ui_hsv_picker(x, y,
-                                              width, height,
-                                              state,
-                                              manager->current_layer, id_string);
-
     real32 relative_x = current_mouse.x - x;
     real32 relative_y = current_mouse.y - y;
 
+    UI_HSV_Picker_Result result = {};
+    result.relative_cursor_x = relative_cursor_x;
+    result.relative_cursor_y = relative_cursor_y;
+    result.hsv_color = hsv_color;
+
+    UI_id id = make_ui_id(UI_HSV_PICKER, id_string, index);
+
     if (!manager->is_disabled && in_bounds_on_layer(manager, current_mouse, x, x + width, y, y + height)) {
-        set_hot(manager, picker.id);
+        set_hot(manager, id);
 
         if (controller_state->left_mouse.is_down && !controller_state->left_mouse.was_down) {
-            manager->active = picker.id;
-            state.hsv_color = get_hsv_inside_quad(current_mouse, state.hsv_color.h, x, y, width, height);
-            state.relative_cursor_x = clamp(relative_x, 0.0f, width);
-            state.relative_cursor_y = clamp(relative_y, 0.0f, height);
+            manager->active = id;
+            result.hsv_color = get_hsv_inside_quad(current_mouse, hsv_color.h, x, y, width, height);
+            result.relative_cursor_x = clamp(relative_x, 0.0f, width);
+            result.relative_cursor_y = clamp(relative_y, 0.0f, height);
         }
 
         if (!controller_state->left_mouse.is_down) {
-            if (ui_id_equals(manager->active, picker.id)) {
+            if (ui_id_equals(manager->active, id)) {
                 manager->active = {};
+                result.submitted = true;
             }
         }
     } else {
-        if (ui_id_equals(manager->hot, picker.id)) {
+        if (ui_id_equals(manager->hot, id)) {
             clear_hot(manager);
         }
 
-        if (ui_id_equals(manager->active, picker.id) && !controller_state->left_mouse.is_down) {
+        if (ui_id_equals(manager->active, id) && !controller_state->left_mouse.is_down) {
             manager->active = {};
+            result.submitted = true;
         }
     }
 
-    if (ui_id_equals(manager->active, picker.id) && being_held(controller_state->left_mouse)) {
-        state.hsv_color = get_hsv_inside_quad(current_mouse, state.hsv_color.h, x, y, width, height);
-        state.relative_cursor_x = clamp(relative_x, 0.0f, width);
-        state.relative_cursor_y = clamp(relative_y, 0.0f, height);
+    if (ui_id_equals(manager->active, id) && being_held(controller_state->left_mouse)) {
+        result.hsv_color = get_hsv_inside_quad(current_mouse, hsv_color.h, x, y, width, height);
+        result.relative_cursor_x = clamp(relative_x, 0.0f, width);
+        result.relative_cursor_y = clamp(relative_y, 0.0f, height);
     }
 
+    // TODO: is it possible to move this to the end so that we don't have a frame of lag?
+    UI_HSV_Picker picker = make_ui_hsv_picker(x, y,
+                                              width, height,
+                                              hsv_color,
+                                              result.relative_cursor_x, result.relative_cursor_y,
+                                              manager->current_layer, id_string, index);
+
     ui_add_hsv_picker(manager, picker);
+
+    return result;
+}
+
+UI_Color_Picker_State make_ui_color_picker_state(Vec4 color, real32 hsv_picker_width, real32 hsv_picker_height) {
+    UI_Color_Picker_State state = {};
+    state.type = UI_Element_State_Type::COLOR_PICKER;
+
+    RGB_Color rgb_color = vec3_to_rgb(truncate_v4_to_v3(color));
+    state.rgb_color = rgb_color;
+    state.hsv_color = rgb_to_hsv(rgb_color);
+
+    Vec2 relative_position = hsv_to_cursor_position_inside_quad(state.hsv_color,
+                                                                hsv_picker_width, hsv_picker_height);
+    state.relative_cursor_x = relative_position.x;
+    state.relative_cursor_y = relative_position.y;
 
     return state;
 }
 
-UI_Color_Picker_State make_color_picker_state(Vec4 rgb_color_v4,
-                                              real32 hsv_picker_width, real32 hsv_picker_height) {
-    RGB_Color rgb_color = vec3_to_rgb(truncate_v4_to_v3(rgb_color_v4));
-    HSV_Color hsv_color = rgb_to_hsv(rgb_color);
-    Vec2 relative_position = hsv_to_cursor_position_inside_quad(hsv_color,
-                                                                hsv_picker_width, hsv_picker_height);
-
-    UI_HSV_Picker_State hsv_picker_state = {
-        hsv_color,
-        relative_position.x, relative_position.y
-    };
-    UI_Color_Picker_State color_picker_state = {
-        false, hsv_picker_state, rgb_color
-    };
-
-    return color_picker_state;
-}
-
-UI_Color_Picker_State do_color_picker(real32 x, real32 y,
-                                      UI_Color_Picker_Style style,
-                                      UI_Color_Picker_State state,
-                                      char *id_string) {
+UI_Color_Picker_Result do_color_picker(real32 x, real32 y,
+                                 UI_Color_Picker_Style style,
+                                 Vec4 color,
+                                 char *id_string, int32 index = 0) {
     using namespace Context;
-    UI_Color_Picker color_picker = make_ui_color_picker(x, y, style, state, ui_manager->current_layer, id_string);
 
     Vec2 current_mouse = controller_state->current_mouse;
+
+    UI_id id = make_ui_id(UI_COLOR_PICKER, id_string, index);
+
+    UI_Color_Picker_State *state = (UI_Color_Picker_State *) get_state(ui_manager, id);
+
+    Marker m = begin_region();
+    if (!state) {
+        UI_Color_Picker_State *new_state = add_ui_color_picker_state(ui_manager, id);
+        *new_state = make_ui_color_picker_state(color, style.hsv_picker_width, style.hsv_picker_height);
+        state = new_state;
+    }
+    end_region(m);
+
+    UI_Color_Picker_Result result = {};
 
     char *box_id = string_format((Allocator *) &memory.frame_arena, 64, "%s_box", id_string);
     UI_Box_Style box_style;
@@ -1269,7 +1311,6 @@ UI_Color_Picker_State do_color_picker(real32 x, real32 y,
 
     uint32 border_flags = SIDE_LEFT | SIDE_RIGHT | SIDE_BOTTOM | SIDE_TOP;
     do_box(x, y, style.width, style.height, box_style, border_flags, box_id);
-    ui_add_color_picker(ui_manager, color_picker);
 
     real32 initial_x = x;
     real32 initial_y = y;
@@ -1285,30 +1326,47 @@ UI_Color_Picker_State do_color_picker(real32 x, real32 y,
     UI_id last_active = ui_manager->active;
 
     char *hue_slider_id = string_format((Allocator *) &memory.frame_arena, 64, "%s_hue_slider", id_string);
-    state.hsv_picker_state.hsv_color.h = do_hue_slider(x + style.hsv_picker_width + style.padding_x, y,
-                                                       style.hue_slider_width, style.hsv_picker_height,
-                                                       state.hsv_picker_state.hsv_color.h,
-                                                       hue_slider_id);
+
+    UI_Hue_Slider_Result hue_slider_result = do_hue_slider(x + style.hsv_picker_width + style.padding_x, y,
+                                                           style.hue_slider_width, style.hsv_picker_height,
+                                                           state->hsv_color.h,
+                                                           hue_slider_id, index);
+
+    state->hsv_color.h = hue_slider_result.hue_degrees;
 
     char *hsv_picker_id = string_format((Allocator *) &memory.frame_arena, 64, "%s_hsv_picker", id_string);
-    state.hsv_picker_state = do_hsv_picker(x, y,
-                                           style.hsv_picker_width, style.hsv_picker_height,
-                                           state.hsv_picker_state,
-                                           hsv_picker_id);
-    state.rgb_color = hsv_to_rgb(state.hsv_picker_state.hsv_color);
+    UI_HSV_Picker_Result hsv_picker_result = do_hsv_picker(x, y,
+                                                           style.hsv_picker_width, style.hsv_picker_height,
+                                                           state->hsv_color,
+                                                           state->relative_cursor_x, state->relative_cursor_y,
+                                                           hsv_picker_id, index);
+    state->hsv_color = hsv_picker_result.hsv_color;
+    state->relative_cursor_x = hsv_picker_result.relative_cursor_x;
+    state->relative_cursor_y = hsv_picker_result.relative_cursor_y;
+    state->rgb_color = hsv_to_rgb(state->hsv_color);
+
+    result.color = rgb_to_vec4(state->rgb_color);
+    if (hue_slider_result.submitted || hsv_picker_result.submitted) {
+        result.submitted = true;
+    }
 
     // TODO: i think this could be better.. but it's confusing
     if (!in_bounds_on_layer(ui_manager, current_mouse,
                             initial_x, initial_x+style.width,
                             initial_y, initial_y+style.height) &&
-        !ui_id_equals(last_active, { UI_HUE_SLIDER, hue_slider_id, 0 }) &&
-        !ui_id_equals(last_active, { UI_HSV_PICKER, hsv_picker_id, 0 })) {
+        !ui_id_equals(last_active, { UI_HUE_SLIDER, hue_slider_id, index }) &&
+        !ui_id_equals(last_active, { UI_HSV_PICKER, hsv_picker_id, index })) {
         if (was_clicked(controller_state->left_mouse)) {
-            state.should_hide = true;
+            result.should_hide = true;
         } else {
-            state.should_hide = false;
+            result.should_hide = false;
         }
     }
 
-    return state;
+    UI_Color_Picker color_picker = make_ui_color_picker(x, y, style,
+                                                        result.color,
+                                                        ui_manager->current_layer, id_string, index);
+    ui_add_color_picker(ui_manager, color_picker);
+
+    return result;
 }

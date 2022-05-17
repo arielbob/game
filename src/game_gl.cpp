@@ -394,9 +394,10 @@
 //                 using the aligned data size, which includes the alignment and not the regular aligned size.)
 //       - TODO: change other entity fields to use new modify action
 //       - TODO (done): add history for material modification
+//       - TODO (done): add history for material texture change
+//       - TODO: add history for color changes
 //       - TODO: add history for adding and deleting materials
 //       - TODO: add history for adding and deleting textures
-//       - TODO: add history for color changes
 //       - TODO: add history for light falloff changes
 //       - TODO: add shortcuts for undoing and redoing
 //       - TODO: change set_entity to use a copy function that's closer to the entity struct so that we can easily
@@ -417,6 +418,11 @@
 //       - TODO (done): make sure asset_manager memory and tables for levels is being cleared on level load
 //       - TODO (done): make sure opengl mesh table is being cleared when new level loads
 
+// TODO (done): color picker with state, instead of storing state in editor_state
+//       - TODO (done): add ui state struct for color picker
+//       - TODO (done): remove color picker state from editor_state
+//       - TODO (done): make do_color_picker() return some type of struct like the textbox
+
 // TODO: make_string() with formatting built in with arguments
 
 // TODO: i'm pretty sure whenever we make string buffers using PLATFORM_MAX_PATH, we should be adding 1 to it,
@@ -426,6 +432,9 @@
 //       we even switched to using tables for them.
 //       - TODO: figure out why we even started using hash tables for entities in the first place
 //       - TODO: create an Array struct
+//       - TODO: ideally, we just store entities in hash maps when editing, but when the game is playing, we just
+//               put them in arrays. but we use different data structures depending on the access and modification
+//               patterns of groups of entities
 
 // TODO: material duplicating
 // TODO: entity duplicating
@@ -2408,16 +2417,16 @@ void gl_draw_ui_hsv_picker(GL_State *gl_state, Render_State *render_state,
     gl_draw_hsv_quad(gl_state, render_state,
                      picker.x, picker.y,
                      picker.width, picker.height,
-                     picker.state.hsv_color.h);
+                     picker.hsv_color.h);
 
     gl_draw_circle(gl_state, render_state,
-                   picker.x + picker.state.relative_cursor_x, picker.y + picker.state.relative_cursor_y,
+                   picker.x + picker.relative_cursor_x, picker.y + picker.relative_cursor_y,
                    14.0f, make_vec4(1.0f, 1.0f, 1.0f, 1.0f), true);
 
-    RGB_Color rgb_color = hsv_to_rgb(picker.state.hsv_color);
+    RGB_Color rgb_color = hsv_to_rgb(picker.hsv_color);
     Vec4 color = make_vec4(rgb_to_vec3(rgb_color), 1.0f);
     gl_draw_circle(gl_state, render_state,
-                   picker.x + picker.state.relative_cursor_x, picker.y + picker.state.relative_cursor_y,
+                   picker.x + picker.relative_cursor_x, picker.y + picker.relative_cursor_y,
                    12.0f, color, true);
                    
 

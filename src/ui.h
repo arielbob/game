@@ -418,10 +418,16 @@ struct UI_Hue_Slider {
     real32 hue_degrees; // between 0 and 360
 };
 
+struct UI_Hue_Slider_Result {
+    bool32 submitted;
+    real32 hue_degrees;
+};
+
 UI_Hue_Slider make_ui_hue_slider(real32 x, real32 y,
                                  real32 width, real32 height,
                                  real32 hue_degrees,
-                                 int32 layer, char *id) {
+                                 int32 layer,
+                                 char *id, int32 index = 0) {
     UI_Hue_Slider hue_slider;
 
     hue_slider.type = UI_HUE_SLIDER;
@@ -433,7 +439,7 @@ UI_Hue_Slider make_ui_hue_slider(real32 x, real32 y,
     hue_slider.height = height;
     hue_slider.hue_degrees = hue_degrees;
 
-    UI_id hue_slider_id = { UI_HUE_SLIDER, id, 0 };
+    UI_id hue_slider_id = { UI_HUE_SLIDER, id, index };
     hue_slider.id = hue_slider_id;
 
     return hue_slider;
@@ -441,12 +447,6 @@ UI_Hue_Slider make_ui_hue_slider(real32 x, real32 y,
 // end hue slider
 
 // start HSV picker
-struct UI_HSV_Picker_State {
-    HSV_Color hsv_color;
-    real32 relative_cursor_x;
-    real32 relative_cursor_y;
-};
-
 struct UI_HSV_Picker {
     UI_HEADER
 
@@ -456,13 +456,24 @@ struct UI_HSV_Picker {
     real32 width;
     real32 height;
 
-    UI_HSV_Picker_State state;
+    HSV_Color hsv_color;
+    real32 relative_cursor_x;
+    real32 relative_cursor_y;
+};
+
+struct UI_HSV_Picker_Result {
+    bool32 submitted;
+    HSV_Color hsv_color;
+    real32 relative_cursor_x;
+    real32 relative_cursor_y;
 };
 
 UI_HSV_Picker make_ui_hsv_picker(real32 x, real32 y,
                                  real32 width, real32 height,
-                                 UI_HSV_Picker_State state,
-                                 int32 layer, char *id) {
+                                 HSV_Color hsv_color,
+                                 real32 relative_cursor_x, real32 relative_cursor_y,
+                                 int32 layer,
+                                 char *id, int32 index) {
     UI_HSV_Picker hsv_picker;
 
     hsv_picker.type = UI_HSV_PICKER;
@@ -472,9 +483,12 @@ UI_HSV_Picker make_ui_hsv_picker(real32 x, real32 y,
     hsv_picker.y = y;
     hsv_picker.width = width;
     hsv_picker.height = height;
-    hsv_picker.state = state;
+    hsv_picker.hsv_color = hsv_color;
 
-    UI_id hsv_picker_id = { UI_HSV_PICKER, id, 0 };
+    hsv_picker.relative_cursor_x = relative_cursor_x;
+    hsv_picker.relative_cursor_y = relative_cursor_y;
+
+    UI_id hsv_picker_id = { UI_HSV_PICKER, id, index }; 
     hsv_picker.id = hsv_picker_id;
 
     return hsv_picker;
@@ -493,10 +507,10 @@ struct UI_Color_Picker_Style {
     Vec4 background_color;
 };
 
-struct UI_Color_Picker_State {
+struct UI_Color_Picker_Result {
+    bool32 submitted;
     bool32 should_hide;
-    UI_HSV_Picker_State hsv_picker_state;
-    RGB_Color rgb_color;
+    Vec4 color;
 };
 
 struct UI_Color_Picker {
@@ -506,13 +520,13 @@ struct UI_Color_Picker {
     real32 y;
     
     UI_Color_Picker_Style style;
-    UI_Color_Picker_State state;
+    Vec4 color;
 };
 
 UI_Color_Picker make_ui_color_picker(real32 x, real32 y,
                                      UI_Color_Picker_Style style,
-                                     UI_Color_Picker_State state,
-                                     int32 layer, char *id) {
+                                     Vec4 color,
+                                     int32 layer, char *id, int32 index = 0) {
     UI_Color_Picker color_picker;
 
     color_picker.type = UI_COLOR_PICKER;
@@ -521,9 +535,8 @@ UI_Color_Picker make_ui_color_picker(real32 x, real32 y,
     color_picker.x = x;
     color_picker.y = y;
     color_picker.style = style;
-    color_picker.state = state;
 
-    UI_id color_picker_id = { UI_COLOR_PICKER, id, 0 };
+    UI_id color_picker_id = { UI_COLOR_PICKER, id, index };
     color_picker.id = color_picker_id;
 
     return color_picker;
@@ -532,7 +545,7 @@ UI_Color_Picker make_ui_color_picker(real32 x, real32 y,
 
 // UI element states
 enum class UI_Element_State_Type {
-    NONE, SLIDER, TEXT_BOX
+    NONE, SLIDER, TEXT_BOX, COLOR_PICKER
 };
 
 #define UI_ELEMENT_STATE_HEADER \
@@ -564,6 +577,15 @@ struct UI_Slider_State {
 
     String_Buffer buffer;
     bool32 is_text_box;
+};
+
+struct UI_Color_Picker_State {
+    UI_ELEMENT_STATE_HEADER
+
+    RGB_Color rgb_color;
+    HSV_Color hsv_color;
+    real32 relative_cursor_x;
+    real32 relative_cursor_y;
 };
 
 struct UI_Push_Buffer {

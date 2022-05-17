@@ -1774,6 +1774,11 @@ Vec4 rgb_to_vec4(real32 r, real32 g, real32 b) {
     return make_vec4(denom*r, denom*g, denom*b, 1.0f);
 }
 
+Vec4 rgb_to_vec4(RGB_Color rgb) {
+    real32 denom = 1.0f / 255.0f;
+    return make_vec4(denom*rgb.r, denom*rgb.g, denom*rgb.b, 1.0f);
+}
+
 Vec4 rgb_to_vec4(int32 r, int32 g, int32 b) {
     real32 denom = 1.0f / 255.0f;
     return make_vec4(denom*r, denom*g, denom*b, 1.0f);

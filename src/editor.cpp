@@ -45,7 +45,7 @@ bool32 selected_entity_changed(Editor_State *editor_state) {
 
 void reset_entity_editors(Editor_State *editor_state) {
     editor_state->open_window_flags = 0;
-    editor_state->color_picker.parent_ui_id = {};
+    editor_state->color_picker_parent = {};
 }
 
 Entity *allocate_and_copy_entity(Allocator *allocator, Entity *entity) {
@@ -803,12 +803,14 @@ void draw_material_library(Game_State *game_state, Controller_State *controller_
     pop_layer(ui_manager);
 };
 
+#if 0
 void open_color_picker(Editor_Color_Picker *editor_color_picker, UI_id parent_id, Vec4 initial_color) {
     editor_color_picker->parent_ui_id = parent_id;
     editor_color_picker->ui_state = make_color_picker_state(initial_color,
                                                             Editor_Constants::hsv_picker_width,
                                                             Editor_Constants::hsv_picker_height);
 }
+#endif
 
 void draw_entity_box(Game_State *game_state, Controller_State *controller_state, int32 entity_id, Entity *entity) {
     int32 row_index = 0;
@@ -1469,20 +1471,19 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                                             material->color_override,
                                                             "material_color_override_button", 0,
                                                             &color_override_button_id);
-            Editor_Color_Picker *editor_color_picker = &editor_state->color_picker;
-            if (ui_id_equals(editor_color_picker->parent_ui_id, color_override_button_id)) {
+            if (ui_id_equals(editor_state->color_picker_parent, color_override_button_id)) {
                 push_layer(ui_manager);
-                editor_color_picker->ui_state = do_color_picker(x + right_column_offset, y + row_height,
+                UI_Color_Picker_Result result = do_color_picker(x + right_column_offset, y + row_height,
                                                                 Editor_Constants::color_picker_style,
-                                                                editor_color_picker->ui_state,
-                                                                "editor_color_picker");
+                                                                material->color_override,
+                                                                "editor_color_picker", entity_id);
                 pop_layer(ui_manager);
-                material->color_override = make_vec4(rgb_to_vec3(editor_color_picker->ui_state.rgb_color), 1.0f);
-                if (editor_color_picker->ui_state.should_hide) {
-                    editor_color_picker->parent_ui_id = {};
+                material->color_override = result.color;
+                if (result.should_hide) {
+                    editor_state->color_picker_parent = {};
                 }
             } else if (color_override_pressed) {
-                open_color_picker(editor_color_picker, color_override_button_id, material->color_override);
+                editor_state->color_picker_parent = color_override_button_id;
             }
 
             y += row_height;
@@ -1534,33 +1535,21 @@ void draw_entity_box(Game_State *game_state, Controller_State *controller_state,
                                                            "point_light_color", 0,
                                                            &point_light_color_button_id);
 
-        Editor_Color_Picker *editor_color_picker = &editor_state->color_picker;
-        if (ui_id_equals(editor_color_picker->parent_ui_id, point_light_color_button_id)) {
+        if (ui_id_equals(editor_state->color_picker_parent, point_light_color_button_id)) {
             push_layer(ui_manager);
-            editor_color_picker->ui_state = do_color_picker(x + right_column_offset, y + row_height,
+            UI_Color_Picker_Result result = do_color_picker(x + right_column_offset, y + row_height,
                                                             Editor_Constants::color_picker_style,
-                                                            editor_color_picker->ui_state,
-                                                            "editor_color_picker");
+                                                            make_vec4(point_light->light_color, 1.0f),
+                                                            "editor_color_picker", entity_id);
             pop_layer(ui_manager);
-            point_light->light_color = rgb_to_vec3(editor_color_picker->ui_state.rgb_color);
-            if (editor_color_picker->ui_state.should_hide) {
-                editor_color_picker->parent_ui_id = {};
+            point_light->light_color = truncate_v4_to_v3(result.color);
+            if (result.should_hide) {
+                editor_state->color_picker_parent = {};
             }
         } else if (point_light_color_pressed) {
-            open_color_picker(editor_color_picker, point_light_color_button_id,
-                              make_vec4(point_light->light_color, 1.0f));
+            editor_state->color_picker_parent = point_light_color_button_id;
         }
 
-#if 0
-        if (point_light_color_pressed) {
-            open_color_picker(editor_state, Editor_Color_Picker::POINT_LIGHT_COLOR,
-                              x + right_column_offset, y + row_height,
-                              make_vec4(point_light->light_color, 1.0f),
-                              &point_light->light_color,
-                              { UI_COLOR_BUTTON, point_light_color_button_id, 0 });
-        }
-#endif
-        
         y += row_height;
 
         // LIGHT MIN DISTANCE

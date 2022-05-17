@@ -49,8 +49,8 @@ use_color_override 1
 
 material "matte monkey"
 texture "white"
-gloss 20.000000
-color_override 0.858824 0.976471 0.890196
+gloss 100.000000
+color_override 1.000000 0.640400 0.380000
 use_color_override 1
 
 material "monkey_4_material"
@@ -174,7 +174,7 @@ falloff_start 0.000000
 falloff_end 4.237289
 
 type point_light
-position 0.000000 36.837246 99.261597
+position 0.000000 36.837242 99.261597
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
 light_color 1.000000 1.000000 1.000000
