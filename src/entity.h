@@ -15,11 +15,16 @@ enum Entity_Type {
 
 #define ENTITY_HEADER                           \
     Entity_Type type;                           \
+    int32 id;                                   \
     Transform transform;                        \
 
 struct Entity {
     ENTITY_HEADER
 };
+
+void deallocate(Entity *) {
+    // nothing to deallocate. usually entity structs are deallocated another way and not through this procedure.
+}
 
 struct Normal_Entity {
     ENTITY_HEADER

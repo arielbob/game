@@ -1,13 +1,72 @@
 #include "linked_list.h"
 #include "editor.h"
 
+int32 add_entity(Editor_State *editor_state, Entity *entity, int32 existing_id = -1) {
+    int32 id;
+    if (existing_id >= 0) {
+        id = existing_id;
+    } else {
+        id = editor_state->level.entities.num_entries;
+    }
+
+    entity->id = id;
+    add(&editor_state->level.entities, entity);
+    return id;
+}
+
 void init_editor_level(Editor_State *editor_state, Editor_Level *editor_level) {
     *editor_level = {};
     make_and_init_linked_list(Entity *, &editor_level->entities, (Allocator *) &editor_state->entity_heap);
 }
 
+void unload_level(Editor_State *editor_state) {
+    // TODO: set assets to be unloaded
+    // TODO (done): deallocate the entities list
+    unload_level_assets(&editor_state->asset_manager);
+
+    Editor_Level *level = &editor_state->level;
+    deallocate(level);
+    editor_state->should_unload_level_gpu_data = true;
+}
+
+void load_level(Editor_State *editor_state, Level_Info *level_info) {
+    Asset_Manager *asset_manager = &editor_state->asset_manager;
+    load_level_assets(asset_manager, level_info);
+
+    Editor_Level *level = &editor_state->level;
+    level->name = copy((Allocator *) &editor_state->general_heap, level_info->name);
+
+    Allocator *entity_allocator = (Allocator *) &editor_state->entity_heap;
+
+    // NOTE: if we ever add allocated members to entities, we have to change these to use a copy procedure
+    FOR_LIST_NODES(Normal_Entity_Info, level_info->normal_entities) {
+        Normal_Entity_Info info = current_node->value;
+        Normal_Entity entity = info.entity;
+
+        if (info.flags & HAS_MESH) {
+            entity.mesh_id = get_mesh_id_by_name(asset_manager, info.mesh_name);
+        }
+        if (info.flags & HAS_MATERIAL) {
+            entity.material_id = get_material_id_by_name(asset_manager, info.material_name);
+        }
+
+        Normal_Entity *e = (Normal_Entity *) allocate(entity_allocator, sizeof(Normal_Entity));
+        *e = entity;
+        add_entity(editor_state, (Entity *) e);
+    }
+
+    FOR_LIST_NODES(Point_Light_Entity_Info, level_info->point_light_entities) {
+        Point_Light_Entity entity = current_node->value.entity;
+        Point_Light_Entity *e = (Point_Light_Entity *) allocate(entity_allocator, sizeof(Point_Light_Entity));
+        *e = entity;
+        add_entity(editor_state, (Entity *) e);
+    }
+}
+
 void init_editor(Arena_Allocator *editor_arena, Editor_State *editor_state, Display_Output display_output) {
     *editor_state = {};
+
+    editor_state->selected_entity_id = -1;
 
     // we can't fill up the arena completely, i.e. if the arena is 2 megabytes, we can't just do two 1 MB
     // allocations since the arena needs space for alignment padding.
@@ -41,45 +100,33 @@ void init_editor(Arena_Allocator *editor_arena, Editor_State *editor_state, Disp
     load_font(asset_manager, "c:/windows/fonts/calibrib.ttf", "calibri24b", 24.0f, 512, 512);
 
     load_font(asset_manager, "c:/windows/fonts/lucon.ttf", "lucidaconsole18", 18.0f, 512, 512);
+
+    // load default level
+    Marker m = begin_region();
+    Level_Info level_info;
+    init_level_info(temp_region, &level_info);
+            
+    //File_Data level_file = platform_open_and_read_file(temp_region, "src/levels/startup.level");
+    File_Data level_file = platform_open_and_read_file(temp_region, "src/levels/monkey_twins_empty_mesh_test.level");
+    bool32 result = Level_Loader::parse_level_info(temp_region, level_file, &level_info);
+    load_level(editor_state, &level_info);
+    end_region(m);
 }
 
-void unload_level(Editor_State *editor_state) {
-    // TODO: set assets to be unloaded
-    // TODO: deallocate the entities list
-}
-
-void load_level(Editor_State *editor_state, Level_Info *level_info) {
-    Asset_Manager *asset_manager = &editor_state->asset_manager;
-    load_level_assets(asset_manager, level_info);
-
+Entity *get_selected_entity(Editor_State *editor_state) {
     Editor_Level *level = &editor_state->level;
-    level->name = copy((Allocator *) &editor_state->general_heap, level_info->name);
+    int32 selected_id = editor_state->selected_entity_id;
 
-    Allocator *entity_allocator = (Allocator *) &editor_state->entity_heap;
+    if (selected_id < 0) return NULL;
 
-    // NOTE: if we ever add allocated members to entities, we have to change these to use a copy procedure
-    FOR_LIST_NODES(Normal_Entity_Info, level_info->normal_entities) {
-        Normal_Entity_Info info = current_node->value;
-        Normal_Entity entity = info.entity;
-
-        if (info.flags & HAS_MESH) {
-            entity.mesh_id = get_mesh_id_by_name(asset_manager, info.mesh_name);
+    FOR_LIST_NODES(Entity *, level->entities) {
+        Entity *entity = current_node->value;
+        if (entity->id == selected_id) {
+            return entity;
         }
-        if (info.flags & HAS_MATERIAL) {
-            entity.material_id = get_material_id_by_name(asset_manager, info.material_name);
-        }
-
-        Normal_Entity *e = (Normal_Entity *) allocate(entity_allocator, sizeof(Normal_Entity));
-        *e = entity;
-        add(&level->entities, (Entity *) e);
     }
 
-    FOR_LIST_NODES(Point_Light_Entity_Info, level_info->point_light_entities) {
-        Point_Light_Entity entity = current_node->value.entity;
-        Point_Light_Entity *e = (Point_Light_Entity *) allocate(entity_allocator, sizeof(Point_Light_Entity));
-        *e = entity;
-        add(&level->entities, (Entity *) e);
-    }
+    return NULL;
 }
 
 void draw_row(real32 x, real32 y,
@@ -240,7 +287,11 @@ void draw_level_box(UI_Manager *ui_manager, Editor_State *editor_state,
             File_Data level_file = platform_open_and_read_file(temp_region, absolute_filename);
             bool32 result = Level_Loader::parse_level_info(temp_region, level_file, &level_info);
 
-            load_level(editor_state, &level_info);
+            if (result) {
+                unload_level(editor_state);
+                load_level(editor_state, &level_info);
+            }
+            
 #if 0
             bool32 result = read_and_load_level(asset_manager,
                                                 &game_state->current_level, absolute_filename,
@@ -457,6 +508,37 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
     update_editor_camera(editor_state, controller_state,
                          platform_window_has_focus(), camera_should_move, dt);
     update_render_state(render_state, editor_state->camera);
+
+    if (editor_state->use_freecam && platform_window_has_focus()) {
+        Vec2 center = make_vec2(display_output->width / 2.0f, display_output->height / 2.0f);
+        platform_set_cursor_pos(center);
+        controller_state->current_mouse = center;
+    }
+
+    if (editor_state->use_freecam) {
+        disable_input(ui_manager);
+    } else {
+        enable_input(ui_manager);
+    }
+
+    if (just_pressed(controller_state->key_z)) {
+        editor_state->show_wireframe = !editor_state->show_wireframe;
+    }
+
+#if 0
+    if (just_pressed(controller_state->key_x)) {
+        if (editor_state->transform_mode == TRANSFORM_GLOBAL) {
+            editor_state->transform_mode = TRANSFORM_LOCAL;
+        } else {
+            editor_state->transform_mode = TRANSFORM_GLOBAL;
+        }
+
+        if (editor_state->selected_gizmo_handle != GIZMO_HANDLE_NONE) {
+            Entity *selected_entity = get_selected_entity(game_state);
+            set_entity_transform(asset_manager, selected_entity, editor_state->old_entity->transform);
+        }
+    }
+#endif
 }
 
 void draw_editor(Game_State *game_state, Controller_State *controller_state) {

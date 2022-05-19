@@ -21,6 +21,11 @@ Texture make_texture(String name, String filename) {
     return result;
 }
 
+void deallocate(Texture texture) {
+    deallocate(texture.name);
+    deallocate(texture.filename);
+}
+
 struct Material {
     String name;
     int32 texture_id;
@@ -33,6 +38,10 @@ Material make_material() {
     Material result = {};
     result.texture_id = -1;
     return result;
+}
+
+void deallocate(Material material) {
+    deallocate(material.name);
 }
 
 struct Asset_Manager {

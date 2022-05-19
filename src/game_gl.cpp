@@ -444,16 +444,13 @@
 //       - TODO (done): load new assets into opengl
 //       - TODO (done): render entities
 
-//       - TODO: unload opengl assets when changing levels
+//       - TODO (done): unload opengl assets when changing levels
+
+//       - TODO: other editor stuff
+//       - TODO: load fonts into game as well
 //       - TODO: unload opengl assets when switching between play and edit mode
 
-//       - TODO: load fonts into game as well
-//       - TODO: unload opengl assets when switching between play and editing mode
-
 //       - TODO: load default level using new format
-
-
-//       - TODO: load level entities into level struct (redo Level struct)
 
 //       - TODO: error handling in level loading
 
@@ -2804,6 +2801,95 @@ void gl_render_editor(GL_State *gl_state, Render_State *render_state, Editor_Sta
 
     Marker m = begin_region();
 
+    if (editor_state->should_unload_level_gpu_data) {
+        // clear texture table
+        // we don't need to set is_occupied to false, since all the textures in this table belong to the level,
+        // so we just clear it all.
+        {
+            FOR_VALUE_POINTERS(int32, GL_Texture, gl_state->texture_table) {
+                gl_delete_texture(*value);
+            }
+        }
+        hash_table_reset(&gl_state->texture_table);
+
+        // delete level meshes
+        int32 num_reset = 0;
+        {
+            FOR_ENTRY_POINTERS(int32, GL_Mesh, gl_state->mesh_table) {
+                if (entry->value.type != Mesh_Type::LEVEL) continue;
+
+                GL_Mesh mesh = entry->value;
+                gl_delete_mesh(mesh);
+                entry->is_occupied = false;
+                num_reset++;
+            }
+        }
+        gl_state->mesh_table.num_entries -= num_reset;
+        assert(gl_state->mesh_table.num_entries >= 0);
+
+        editor_state->should_unload_level_gpu_data = false;
+    }
+
+    // load level meshes
+    {
+        FOR_ENTRY_POINTERS(int32, Mesh, asset_manager->mesh_table) {
+            int32 mesh_key = entry->key;
+            Mesh *mesh = &entry->value;
+            
+            if (!mesh->is_loaded) {
+                if (!hash_table_exists(gl_state->mesh_table, mesh_key)) {
+                    GL_Mesh gl_mesh = gl_load_mesh(gl_state, *mesh);
+                    hash_table_add(&gl_state->mesh_table, mesh_key, gl_mesh);
+                } else {
+                    debug_print("Mesh \"%s\" already loaded.\n", mesh->name);
+                }
+
+                mesh->is_loaded = true;
+            }
+        }
+    }
+
+    // load textures
+    {
+        FOR_ENTRY_POINTERS(int32, Texture, asset_manager->texture_table) {
+            int32 texture_key = entry->key;
+            Texture *texture = &entry->value;
+            
+            if (!texture->is_loaded) {
+                if (!hash_table_exists(gl_state->texture_table, texture_key)) {
+                    GL_Texture gl_texture = gl_load_texture(gl_state, *texture);
+                    hash_table_add(&gl_state->texture_table, texture_key, gl_texture);
+                } else {
+                    debug_print("Texture \"%s\" already loaded.\n", texture->name);
+                }
+
+                texture->is_loaded = true;
+            }
+        }
+    }
+
+    // delete GL mesh data for meshes that no longer exist in level
+    {
+        FOR_ENTRY_POINTERS(int32, GL_Mesh, gl_state->mesh_table) {
+            int32 mesh_key = entry->key;
+            if (!hash_table_exists(asset_manager->mesh_table, mesh_key)) {
+                hash_table_remove(&gl_state->mesh_table, mesh_key);
+                gl_delete_mesh(entry->value);
+            }
+        }
+    }
+
+    // delete GL texture data for textures that no longer exist in level
+    {
+        FOR_ENTRY_POINTERS(int32, GL_Texture, gl_state->texture_table) {
+            int32 texture_key = entry->key;
+            if (!hash_table_exists(asset_manager->texture_table, texture_key)) {
+                hash_table_remove(&gl_state->texture_table, texture_key);
+                gl_delete_texture(entry->value);
+            }
+        }
+    }
+
     // gather entities by type
     Linked_List<Point_Light_Entity *> point_light_entities;
     make_and_init_linked_list(Point_Light_Entity *, &point_light_entities, temp_region);
@@ -2854,6 +2940,8 @@ void gl_render_editor(GL_State *gl_state, Render_State *render_state, Editor_Sta
 
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
+    Entity *selected_entity = get_selected_entity(editor_state);
+
     // entities
     {
         FOR_LIST_NODES(Normal_Entity *, normal_entities) {
@@ -2872,14 +2960,14 @@ void gl_render_editor(GL_State *gl_state, Render_State *render_state, Editor_Sta
                          mesh_id, material,
                          entity->transform);
 
-            // TODO: do these
-#if 0
-            if (editor_state->show_wireframe &&
-                editor_state->selected_entity_type == ENTITY_NORMAL &&
-                editor_state->selected_entity_id == entry->key) {
+            if (selected_entity &&
+                selected_entity->type == ENTITY_NORMAL &&
+                selected_entity->id == entity->id) {
                 gl_draw_wireframe(gl_state, render_state, mesh_id, entity->transform);
             }
 
+            // TODO: do this
+#if 0
             if (editor_state->show_colliders) {
                 gl_draw_collider(gl_state, render_state, entity->collider);
             }
@@ -2941,65 +3029,6 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
     } else {
         asset_manager = &game_state->editor_state.asset_manager;
     }
-
-    // load game meshes
-    {
-        FOR_ENTRY_POINTERS(int32, Mesh, asset_manager->mesh_table) {
-            int32 mesh_key = entry->key;
-            Mesh *mesh = &entry->value;
-            
-            if (!mesh->is_loaded) {
-                if (!hash_table_exists(gl_state->mesh_table, mesh_key)) {
-                    GL_Mesh gl_mesh = gl_load_mesh(gl_state, *mesh);
-                    hash_table_add(&gl_state->mesh_table, mesh_key, gl_mesh);
-                } else {
-                    debug_print("Mesh \"%s\" already loaded.\n", mesh->name);
-                }
-
-                mesh->is_loaded = true;
-            }
-        }
-    }
-
-    // load game textures
-    {
-        FOR_ENTRY_POINTERS(int32, Texture, asset_manager->texture_table) {
-            int32 texture_key = entry->key;
-            Texture *texture = &entry->value;
-            
-            if (!texture->is_loaded) {
-                if (!hash_table_exists(gl_state->texture_table, texture_key)) {
-                    GL_Texture gl_texture = gl_load_texture(gl_state, *texture);
-                    hash_table_add(&gl_state->texture_table, texture_key, gl_texture);
-                } else {
-                    debug_print("Texture \"%s\" already loaded.\n", texture->name);
-                }
-
-                texture->is_loaded = true;
-            }
-        }
-    }
-
-    {
-        FOR_ENTRY_POINTERS(int32, GL_Mesh, gl_state->mesh_table) {
-            int32 mesh_key = entry->key;
-            if (!hash_table_exists(asset_manager->mesh_table, mesh_key)) {
-                hash_table_remove(&gl_state->mesh_table, mesh_key);
-                gl_delete_mesh(entry->value);
-            }
-        }
-    }
-
-    {
-        FOR_ENTRY_POINTERS(int32, GL_Texture, gl_state->texture_table) {
-            int32 texture_key = entry->key;
-            if (!hash_table_exists(asset_manager->texture_table, texture_key)) {
-                hash_table_remove(&gl_state->texture_table, texture_key);
-                gl_delete_texture(entry->value);
-            }
-        }
-    }
-
     
     // load fonts
     Hash_Table<String, Font> *font_table = &asset_manager->font_table;

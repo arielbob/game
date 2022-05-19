@@ -322,6 +322,22 @@ void hash_table_reset(Hash_Table<Key_Type, Value_Type> *hash_table) {
 }
 
 template <class Key_Type, class Value_Type>
+void reset_and_deallocate_entries(Hash_Table<Key_Type, Value_Type> *hash_table) {
+    int32 num_checked = 0;
+    for (int32 i = 0; i < hash_table->max_entries && num_checked < hash_table->num_entries; i++) {
+        Hash_Table_Entry<Key_Type, Value_Type> *entry = &hash_table->entries[i];
+        if (entry->is_occupied) {
+            deallocate(entry->value);
+            entry->is_occupied = false;
+            num_checked++;
+        }
+    }
+
+    hash_table->num_entries = 0;
+    hash_table->total_added_ever = 0;
+}
+
+template <class Key_Type, class Value_Type>
 void hash_table_reset_entry(Hash_Table<Key_Type, Value_Type> *hash_table, Key_Type key) {
     int32 num_checked = 0;
     int32 found = false;

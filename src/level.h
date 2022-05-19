@@ -13,6 +13,11 @@ struct Editor_Level {
     Linked_List<Entity *> entities;
 };
 
+void deallocate(Editor_Level *level) {
+    deallocate(level->name);
+    deallocate(&level->entities);
+}
+
 // we use info structs to store string identifiers to assets. since the actual entity structs use integer
 // identifiers, we need to resolve them, but the integer identifiers for assets are not set until after the
 // assets have been loaded. we may want to just add UUIDs for assets in the future, although those would take

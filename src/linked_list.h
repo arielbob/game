@@ -53,19 +53,28 @@ void add(Linked_List<T> *list, T value) {
 
 template <class T>
 void remove(Linked_List<T> *list, Node<T> *node) {
-    Node *prev = node->prev;
-    Node *next = node->next;
+    Node<T> *prev = node->prev;
+    Node<T> *next = node->next;
     prev->next = next;
     next->prev = prev;
 
     // we may want to try this, but it seems annoying, since unless every struct has a field with its allocator,
     // this will be cumbersome. actually, for some things it doesn't seem too bad, for example with textures.
     // could always add another procedure that does this.
-    // deallocate(node->value);
 
-    // NOTE: this only deallocates the node and not the value inside the node.
+    deallocate(node->value);
     deallocate(list->allocator, node);
     list->num_entries--;
+}
+
+template <class T>
+void deallocate(Linked_List<T> *list) {
+    Node<T> *current_node = list->cap.next;
+    while (current_node != &list->cap) {
+        Node<T> *next = current_node->next;
+        remove(list, current_node);
+        current_node = next;
+    }
 }
 
 #endif

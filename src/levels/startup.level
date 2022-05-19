@@ -1,5 +1,5 @@
 level_info {
-level_name "new_test"
+level_name "startup"
 }
 
 meshes {
@@ -69,8 +69,6 @@ rotation 1.000000 0.000000 0.000000 0.000000
 scale 0.500000 0.500000 0.500000
 
 type point_light
-mesh_primitive "cube"
-material "white_light"
 position 0.800000 1.800000 -2.300000
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 0.100000 0.100000 0.100000
@@ -79,8 +77,6 @@ falloff_start 0.000000
 falloff_end 3.000000
 
 type point_light
-mesh_primitive "cube"
-material "blue_light"
 position -1.000000 1.500000 0.000000
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 0.100000 0.100000 0.100000

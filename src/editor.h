@@ -21,9 +21,13 @@ struct Editor_State {
     
 //String current_level_name;
     Editor_Level level;
+    bool32 should_unload_level_gpu_data;
 
     bool32 use_freecam;
     Camera camera;
+
+    bool32 show_wireframe;
+    int32 selected_entity_id;
 };
 
 namespace Editor_Constants {

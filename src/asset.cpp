@@ -242,6 +242,24 @@ void load_default_assets(Asset_Manager *asset_manager) {
     add_mesh(asset_manager, mesh);
 }
 
+void unload_level_assets(Asset_Manager *asset_manager) {
+    Hash_Table<int32, Mesh> *mesh_table = &asset_manager->mesh_table;
+    int32 num_reset = 0;
+    FOR_ENTRY_POINTERS(int32, Mesh, *mesh_table) {
+        if (entry->value.type != Mesh_Type::LEVEL) continue;
+
+        Mesh mesh = entry->value;
+        deallocate(mesh);
+        entry->is_occupied = false;
+        num_reset++;
+    }
+    mesh_table->num_entries -= num_reset;
+    assert(mesh_table->num_entries >= 0);
+    
+    reset_and_deallocate_entries(&asset_manager->texture_table);
+    reset_and_deallocate_entries(&asset_manager->material_table);
+}
+
 bool32 load_level_assets(Asset_Manager *asset_manager, Level_Info *level_info) {
     FOR_LIST_NODES(Mesh_Info, level_info->meshes) {
         Allocator *allocator = asset_manager->allocator_pointer;
