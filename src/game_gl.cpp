@@ -446,6 +446,7 @@
 
 //       - TODO (done): unload opengl assets when changing levels
 
+//       - TODO: mesh picking is messed up after you click on a point light
 //       - TODO: other editor stuff
 //       - TODO: load fonts into game as well
 //       - TODO: unload opengl assets when switching between play and edit mode
@@ -1120,6 +1121,15 @@ void gl_draw_textured_mesh(GL_State *gl_state, Render_State *render_state,
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindVertexArray(0);
 }
+
+#if 0
+void gl_draw_aabb(GL_State *gl_state, Render_State *render_state,
+                  AABB aabb) {
+    uint32 shader_id = gl_use_shader(gl_state, "solid");
+    
+    GL_Mesh gl_mesh = gl_use_rendering_mesh(
+}
+#endif
 
 void gl_draw_wireframe(GL_State *gl_state, Render_State *render_state,
                        int32 mesh_id, Transform transform) {
@@ -2668,10 +2678,21 @@ void gl_draw_ui(GL_State *gl_state,
     }
 }
 
-#if 0
-void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Editor_State *editor_state) {
-    Transform_Mode transform_mode = editor_state->transform_mode;
-    Gizmo gizmo = editor_state->gizmo;
+void gl_draw_framebuffer(GL_State *gl_state, GL_Framebuffer framebuffer) {
+    gl_use_shader(gl_state, "framebuffer");
+
+    glBindTexture(GL_TEXTURE_2D, framebuffer.color_buffer_texture);
+
+    GL_Mesh gl_mesh = gl_use_rendering_mesh(gl_state, gl_state->framebuffer_quad_mesh_id);
+
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+
+    glUseProgram(0);
+    glBindVertexArray(0);
+}
+
+void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Gizmo_State *gizmo_state) {
+    Transform_Mode transform_mode = gizmo_state->transform_mode;
 
     uint32 shader_id;
     uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("basic_3d"), &shader_id);
@@ -2684,23 +2705,23 @@ void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Editor_State 
     // TODO: if we have the model matrix of the mesh, we could use the columns of that to create the model
     //       matrix of the gizmo when in local mode. but this is fine too.
     if (transform_mode == TRANSFORM_GLOBAL) {
-        x_transform = gizmo.transform;
+        x_transform = gizmo_state->transform;
         x_transform.rotation = make_quaternion();
-        y_transform = gizmo.transform;
+        y_transform = gizmo_state->transform;
         y_transform.rotation = make_quaternion(90.0f, z_axis);
-        z_transform = gizmo.transform;
+        z_transform = gizmo_state->transform;
         z_transform.rotation = make_quaternion(-90.0f, y_axis);
     } else {
-        x_transform = gizmo.transform;
-        y_transform = gizmo.transform;
-        y_transform.rotation = gizmo.transform.rotation*make_quaternion(90.0f, z_axis);
-        z_transform = gizmo.transform;
-        z_transform.rotation = gizmo.transform.rotation*make_quaternion(-90.0f, y_axis);
+        x_transform = gizmo_state->transform;
+        y_transform = gizmo_state->transform;
+        y_transform.rotation = gizmo_state->transform.rotation*make_quaternion(90.0f, z_axis);
+        z_transform = gizmo_state->transform;
+        z_transform.rotation = gizmo_state->transform.rotation*make_quaternion(-90.0f, y_axis);
     }
     
     using namespace Gizmo_Constants;
 
-    Gizmo_Handle hovered_handle = editor_state->hovered_gizmo_handle;
+    Gizmo_Handle hovered_handle = gizmo_state->hovered_gizmo_handle;
 
     // translation arrows
     Vec4 x_handle_color = default_x_handle_color;
@@ -2716,16 +2737,16 @@ void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Editor_State 
     }
 
     GL_Mesh arrow_mesh;
-    uint32 mesh_exists = hash_table_find(gl_state->mesh_table, gizmo.arrow_mesh_id, &arrow_mesh);
+    uint32 mesh_exists = hash_table_find(gl_state->mesh_table, gizmo_state->arrow_mesh_id, &arrow_mesh);
     assert(mesh_exists);
     GL_Mesh sphere_mask_mesh;
-    mesh_exists = hash_table_find(gl_state->mesh_table, gizmo.sphere_mesh_id, &sphere_mask_mesh);
+    mesh_exists = hash_table_find(gl_state->mesh_table, gizmo_state->sphere_mesh_id, &sphere_mask_mesh);
     assert(mesh_exists);
     GL_Mesh ring_mesh;
-    mesh_exists = hash_table_find(gl_state->mesh_table, gizmo.ring_mesh_id, &ring_mesh);
+    mesh_exists = hash_table_find(gl_state->mesh_table, gizmo_state->ring_mesh_id, &ring_mesh);
     assert(mesh_exists);
     GL_Mesh cube_mesh;
-    mesh_exists = hash_table_find(gl_state->mesh_table, gizmo.cube_mesh_id, &cube_mesh);
+    mesh_exists = hash_table_find(gl_state->mesh_table, gizmo_state->cube_mesh_id, &cube_mesh);
     assert(mesh_exists);
 
     gl_draw_solid_color_mesh(gl_state, render_state, arrow_mesh, x_handle_color, x_transform);
@@ -2749,7 +2770,7 @@ void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Editor_State 
     gl_draw_solid_color_mesh(gl_state, render_state, cube_mesh, y_handle_color, y_transform);
     gl_draw_solid_color_mesh(gl_state, render_state, cube_mesh, z_handle_color, z_transform);
 
-    Transform sphere_mask_transform = gizmo.transform;
+    Transform sphere_mask_transform = gizmo_state->transform;
     glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
     gl_draw_solid_color_mesh(gl_state, render_state, sphere_mask_mesh,
                              make_vec4(0.0f, 0.0f, 0.0f, 1.0f), sphere_mask_transform);
@@ -2771,29 +2792,6 @@ void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Editor_State 
     gl_draw_solid_color_mesh(gl_state, render_state, ring_mesh, x_handle_color, x_transform);
     gl_draw_solid_color_mesh(gl_state, render_state, ring_mesh, y_handle_color, y_transform);
     gl_draw_solid_color_mesh(gl_state, render_state, ring_mesh, z_handle_color, z_transform);
-}
-#endif
-
-void gl_draw_framebuffer(GL_State *gl_state, GL_Framebuffer framebuffer) {
-    gl_use_shader(gl_state, "framebuffer");
-
-    glBindTexture(GL_TEXTURE_2D, framebuffer.color_buffer_texture);
-
-    GL_Mesh gl_mesh = gl_use_rendering_mesh(gl_state, gl_state->framebuffer_quad_mesh_id);
-
-    glDrawArrays(GL_TRIANGLES, 0, 6);
-
-    glUseProgram(0);
-    glBindVertexArray(0);
-}
-
-void deallocate(GL_Mesh gl_mesh) {
-    // nothing to deallocate
-}
-
-void deallocate(GL_Texture gl_texture) {
-    // nothing to deallocate - we call gl_delete_texture separately, which unloads it from the GPU, which
-    // i don't think we should call "deallocation"
 }
 
 void gl_render_editor(GL_State *gl_state, Render_State *render_state, Editor_State *editor_state) {
@@ -2960,7 +2958,8 @@ void gl_render_editor(GL_State *gl_state, Render_State *render_state, Editor_Sta
                          mesh_id, material,
                          entity->transform);
 
-            if (selected_entity &&
+            if (editor_state->show_wireframe &&
+                selected_entity &&
                 selected_entity->type == ENTITY_NORMAL &&
                 selected_entity->id == entity->id) {
                 gl_draw_wireframe(gl_state, render_state, mesh_id, entity->transform);
@@ -3010,10 +3009,16 @@ void gl_render_editor(GL_State *gl_state, Render_State *render_state, Editor_Sta
     glBindFramebuffer(GL_FRAMEBUFFER, gl_state->gizmo_framebuffer.fbo);
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    
-    // TODO: do this
-    //gl_draw_gizmo(gl_state, render_state, editor_state);
+
+    if (editor_state->selected_entity_id >= 0) {
+        gl_draw_gizmo(gl_state, render_state, &editor_state->gizmo_state);
+    }
+
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    glDisable(GL_DEPTH_TEST);
+    gl_draw_framebuffer(gl_state, gl_state->gizmo_framebuffer);
+    glEnable(GL_DEPTH_TEST);
 
     end_region(m);
 }

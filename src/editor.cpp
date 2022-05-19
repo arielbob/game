@@ -20,8 +20,6 @@ void init_editor_level(Editor_State *editor_state, Editor_Level *editor_level) {
 }
 
 void unload_level(Editor_State *editor_state) {
-    // TODO: set assets to be unloaded
-    // TODO (done): deallocate the entities list
     unload_level_assets(&editor_state->asset_manager);
 
     Editor_Level *level = &editor_state->level;
@@ -50,6 +48,9 @@ void load_level(Editor_State *editor_state, Level_Info *level_info) {
             entity.material_id = get_material_id_by_name(asset_manager, info.material_name);
         }
 
+        Mesh mesh = get_mesh(asset_manager, entity.mesh_id);
+        entity.transformed_aabb = transform_aabb(mesh.aabb, entity.transform);
+
         Normal_Entity *e = (Normal_Entity *) allocate(entity_allocator, sizeof(Normal_Entity));
         *e = entity;
         add_entity(editor_state, (Entity *) e);
@@ -67,6 +68,8 @@ void init_editor(Arena_Allocator *editor_arena, Editor_State *editor_state, Disp
     *editor_state = {};
 
     editor_state->selected_entity_id = -1;
+    editor_state->last_selected_entity_id = -1;
+    editor_state->show_wireframe = true;
 
     // we can't fill up the arena completely, i.e. if the arena is 2 megabytes, we can't just do two 1 MB
     // allocations since the arena needs space for alignment padding.
@@ -90,6 +93,14 @@ void init_editor(Arena_Allocator *editor_arena, Editor_State *editor_state, Disp
     Asset_Manager *asset_manager = &editor_state->asset_manager;
     load_default_assets(asset_manager);
 
+    // init gizmo
+    Gizmo_State *gizmo_state = &editor_state->gizmo_state;
+    gizmo_state->arrow_mesh_id  = get_mesh_id_by_name(asset_manager, "gizmo_arrow");
+    gizmo_state->ring_mesh_id   = get_mesh_id_by_name(asset_manager, "gizmo_ring");
+    gizmo_state->sphere_mesh_id = get_mesh_id_by_name(asset_manager, "gizmo_sphere");
+    gizmo_state->cube_mesh_id   = get_mesh_id_by_name(asset_manager, "gizmo_cube");;
+
+    // load fonts
     load_font(asset_manager, "c:/windows/fonts/times.ttf", "times32", 32.0f, 512, 512);
     load_font(asset_manager, "c:/windows/fonts/times.ttf", "times24", 24.0f, 512, 512);
 
@@ -127,313 +138,6 @@ Entity *get_selected_entity(Editor_State *editor_state) {
     }
 
     return NULL;
-}
-
-void draw_row(real32 x, real32 y,
-              real32 row_width, real32 row_height,
-              Vec4 color, uint32 side_flags,
-              bool32 inside_border,
-              char *row_id, int32 index) {
-    using namespace Context;
-
-    UI_Box_Style box_style = { color };
-
-    do_box(x, y, row_width, row_height,
-           box_style, row_id, index);
-
-    // we use boxes instead of lines here because our GL code for drawing lines is really finnicky when
-    // trying to draw pixel-perfect horizontal or vertical lines
-    Vec4 line_color = make_vec4(0.3f, 0.3f, 0.3f, 1.0f);
-    UI_Box_Style line_box_style = { line_color };
-
-    // we draw lines on the inside of the box, so we don't change the expected dimensions of the row
-    real32 line_thickness = 1.0f;
-    char *border_id = "row_border";
-    if (side_flags & SIDE_LEFT) {
-        real32 box_x = x;
-        if (!inside_border) box_x -= 1;
-        do_box(box_x, y, line_thickness, row_height,
-               line_box_style, border_id);
-    }
-    if (side_flags & SIDE_BOTTOM) {
-        real32 box_x = x;
-        real32 box_y = y + row_height - 1;
-        real32 box_width = row_width;
-        if (!inside_border) {
-            box_y += 1;
-            if (side_flags & SIDE_LEFT) {
-                box_x -= 1;
-                box_width += 1;
-            }
-            if (side_flags & SIDE_RIGHT) {
-                box_width += 1;
-            }
-        } 
-        do_box(box_x, box_y, box_width, line_thickness,
-               line_box_style, border_id);
-    }
-    if (side_flags & SIDE_TOP) {
-        real32 box_x = x;
-        real32 box_y = y;
-        real32 box_width = row_width;
-        if (!inside_border) {
-            box_y -= 1;
-            if (side_flags & SIDE_LEFT) {
-                box_x -= 1;
-                box_width += 1;
-            }
-            if (side_flags & SIDE_RIGHT) {
-                box_width += 1;
-            }
-        } 
-        do_box(box_x, box_y, box_width, line_thickness,
-               line_box_style, border_id);
-    }
-    if (side_flags & SIDE_RIGHT) {
-        real32 box_x = x + row_width - 1;
-        if (!inside_border) box_x += 1;
-        do_box(box_x, y, line_thickness, row_height,
-               line_box_style, border_id);
-    }
-}
-
-inline void draw_row(real32 x, real32 y,
-                     real32 row_width, real32 row_height,
-                     Vec4 color, uint32 side_flags,
-                     char *row_id, int32 index) {
-    return draw_row(x, y,
-                    row_width, row_height,
-                    color, side_flags,
-                    false,
-                    row_id, index);
-}
-
-inline void draw_row_padding(real32 x, real32 *y,
-                             real32 row_width,
-                             real32 padding,
-                             Vec4 color, uint32 side_flags,
-                             char *row_id, int32 index) {
-    draw_row(x, *y,
-             row_width, padding,
-             color, side_flags,
-             row_id, index);
-    *y += padding;
-    // NOTE: we're assuming we're drawing the ui from top to bottom and that if there's a border above a
-    //       padding row, there won't be another row above it. if there were a row above this type of
-    //       padding row, the border would overlap that box, since we don't change y if there's a top
-    //       border.
-    if (side_flags & SIDE_BOTTOM) {
-        // because we're drawing the border on the outside, we need to offset by the border thickness (1)
-        *y += 1;
-    }
-}
-
-void draw_level_box(UI_Manager *ui_manager, Editor_State *editor_state,
-                    Controller_State *controller_state,
-                    real32 x, real32 y) {
-    Asset_Manager *asset_manager = &editor_state->asset_manager;
-
-    int32 row_index = 0;
-    char *row_id = "level_box_row";
-    real32 row_width = 198.0f;
-    Vec4 row_color = make_vec4(0.1f, 0.1f, 0.1f, 0.9f);
-
-    real32 row_height = 22.0f;
-    uint32 side_flags = SIDE_LEFT | SIDE_RIGHT;
-    real32 padding_x = 6.0f;
-    real32 padding_y = 6.0f;
-    real32 initial_x = x;
-
-    real32 button_height = 25.0f;
-
-    draw_row_padding(x, &y, row_width, padding_y, row_color, side_flags | SIDE_TOP, row_id, row_index);
-
-    draw_row(x, y,
-             row_width, button_height, row_color, side_flags, row_id, row_index++);
-
-    char *editor_font_name = Editor_Constants::editor_font_name;
-    Font font = get_font(asset_manager, editor_font_name);
-    
-    x += padding_x;
-    real32 new_level_button_width = 50.0f;
-    bool32 new_level_clicked = do_text_button(x, y,
-                                              new_level_button_width, button_height,
-                                              default_text_button_style, default_text_style,
-                                              "New",
-                                              editor_font_name, "new_level");
-    if (new_level_clicked) {
-        // TODO: do this
-    }
-
-    x += new_level_button_width + 1;
-
-    real32 open_level_button_width = 60.0f;
-    bool32 open_level_clicked = do_text_button(x, y, 
-                                               open_level_button_width, button_height,
-                                               default_text_button_style, default_text_style,
-                                               "Open",
-                                               editor_font_name, "open_level");
-    bool32 just_loaded_level = false;
-    if (open_level_clicked) {
-        Marker m = begin_region();
-        char *absolute_filename = (char *) region_push(PLATFORM_MAX_PATH);
-        
-        if (platform_open_file_dialog(absolute_filename,
-                                      LEVEL_FILE_FILTER_TITLE, LEVEL_FILE_FILTER_TYPE,
-                                      PLATFORM_MAX_PATH)) {
-            Level_Info level_info;
-            init_level_info(temp_region, &level_info);
-            
-            File_Data level_file = platform_open_and_read_file(temp_region, absolute_filename);
-            bool32 result = Level_Loader::parse_level_info(temp_region, level_file, &level_info);
-
-            if (result) {
-                unload_level(editor_state);
-                load_level(editor_state, &level_info);
-            }
-            
-#if 0
-            bool32 result = read_and_load_level(asset_manager,
-                                                &game_state->current_level, absolute_filename,
-                                                &memory.level_arena,
-                                                &memory.level_mesh_heap,
-                                                &memory.level_string64_pool,
-                                                &memory.level_filename_pool);
-            if (result) {
-                editor_state->is_new_level = false;
-                copy_string(&editor_state->current_level_filename, make_string(absolute_filename));
-                editor_state->selected_entity_id = -1;
-                just_loaded_level = true;
-                history_reset(&editor_state->history);
-            }
-#endif
-        }
-
-        end_region(m);
-    }
-
-    y += button_height;
-    x = initial_x;
-    draw_row_padding(x, &y, row_width, padding_y, row_color, side_flags, row_id, row_index++);
-
-    // level name text
-    real32 label_row_height = 18.0f;
-    draw_row(x, y, row_width, label_row_height, row_color, side_flags, row_id, row_index++);
-    do_text(ui_manager, x + padding_x, y + get_center_baseline_offset(label_row_height, get_adjusted_font_height(font)),
-            "Level Name", editor_font_name, default_text_style, "level_name_text_box_label");
-    y += label_row_height;
-
-    // level name text box
-    draw_row(x, y, row_width, row_height, row_color, side_flags, row_id, row_index++);
-    UI_Text_Box_Result level_name_result = do_text_box(x + padding_x, y,
-                                                       row_width - padding_x*2, row_height,
-                                                       make_string(""), 64,
-                                                       editor_font_name,
-                                                       default_text_box_style, default_text_style,
-                                                       just_loaded_level,
-                                                       "level_name_text_box");
-    String new_level_name = make_string(level_name_result.buffer);
-    if (level_name_result.submitted) {
-        if (is_empty(new_level_name)) {
-            add_message(Context::message_manager, make_string("Level name cannot be empty!"));
-        } else if (string_contains(new_level_name,
-                                   Editor_Constants::disallowed_chars,
-                                   Editor_Constants::num_disallowed_chars)) {
-            add_message(Context::message_manager, make_string("Level name cannot contain {, }, or double quotes!"));
-        } else {
-            if (editor_state->level.name.allocator) {
-                replace_with_copy((Allocator *) &editor_state->general_heap,
-                                  &editor_state->level.name, new_level_name);
-            } else {
-                editor_state->level.name = copy((Allocator *) &editor_state->general_heap, new_level_name);
-            }
-        }
-    }
-    
-    y += row_height;
-
-    // TODO: do this
-#if 0
-    bool32 level_name_is_valid = (!is_empty(game_state->current_level.name) &&
-                                  string_equals(make_string(game_state->current_level.name), new_level_name));
-
-    draw_row_padding(x, &y, row_width, padding_y, row_color, side_flags, row_id, row_index);
-
-    // save level button
-    draw_row(x, y, row_width, button_height, row_color, side_flags, row_id, row_index++);
-
-    real32 save_button_width = 50.0f;
-    bool32 save_level_clicked = do_text_button(x + padding_x, y,
-                                               save_button_width, button_height,
-                                               default_text_button_style, default_text_style,
-                                               "Save",
-                                               editor_font_name,
-                                               !level_name_is_valid,
-                                               "save_level");
-
-    if (save_level_clicked) {
-        assert(!is_empty(game_state->current_level.name));
-
-        Marker m = begin_region();
-        char *filename = (char *) region_push(PLATFORM_MAX_PATH);
-
-        if (editor_state->is_new_level) {
-            bool32 has_filename = platform_open_save_file_dialog(filename,
-                                                                 LEVEL_FILE_FILTER_TITLE, LEVEL_FILE_FILTER_TYPE,
-                                                                 PLATFORM_MAX_PATH);
-
-            if (has_filename) {
-                export_level((Allocator *) &memory.global_stack, asset_manager, &game_state->current_level, filename);
-                copy_string(&editor_state->current_level_filename, make_string(filename));
-                editor_state->is_new_level = false;
-                
-                add_message(&game_state->message_manager, make_string(SAVE_SUCCESS_MESSAGE));
-            }
-        } else {
-            char *level_filename = to_char_array((Allocator *) &memory.global_stack,
-                                                 editor_state->current_level_filename);
-            export_level((Allocator *) &memory.global_stack, asset_manager, &game_state->current_level, level_filename);
-            add_message(&game_state->message_manager, make_string(SAVE_SUCCESS_MESSAGE));
-        }
-        
-        end_region(m);
-    }
-
-    x += save_button_width + 1;
-    real32 save_as_button_width = 110.0f;
-    bool32 save_as_level_clicked = do_text_button(x + padding_x, y,
-                                                  save_as_button_width, button_height,
-                                                  default_text_button_style, default_text_style,
-                                                  "Save As...",
-                                                  editor_font_name,
-                                                  !level_name_is_valid,
-                                                  "save_as_level");
-
-    if (save_as_level_clicked) {
-        assert(!is_empty(game_state->current_level.name));
-
-        Marker m = begin_region();
-        char *filename = (char *) region_push(PLATFORM_MAX_PATH);
-
-        bool32 has_filename = platform_open_save_file_dialog(filename,
-                                                             LEVEL_FILE_FILTER_TITLE, LEVEL_FILE_FILTER_TYPE,
-                                                             PLATFORM_MAX_PATH);
-
-        if (has_filename) {
-            export_level((Allocator *) &memory.global_stack, asset_manager, &game_state->current_level, filename);
-            copy_string(&editor_state->current_level_filename, make_string(filename));
-            editor_state->is_new_level = false;
-            add_message(&game_state->message_manager, make_string(SAVE_SUCCESS_MESSAGE));
-        }
-        
-        end_region(m);
-    }
-    x = initial_x;
-
-    y += button_height;
-    
-#endif
-    draw_row_padding(x, &y, row_width, padding_y, row_color, side_flags | SIDE_BOTTOM, row_id, row_index);
 }
 
 void update_editor_camera(Editor_State *editor_state, Controller_State *controller_state,
@@ -492,9 +196,306 @@ void update_editor_camera(Editor_State *editor_state, Controller_State *controll
     camera->current_basis = current_basis;
 }
 
+void reset_entity_editors(Editor_State *editor_state) {
+    editor_state->open_window_flags = 0;
+    editor_state->color_picker_parent = {};
+}
+
+Entity *pick_entity(Editor_State *editor_state, Ray cursor_ray) {
+    Asset_Manager *asset_manager = &editor_state->asset_manager;
+    Editor_Level *level = &editor_state->level;
+
+    Entity *picked_entity = NULL;
+    real32 t_min = FLT_MAX;
+
+    Basis camera_basis = editor_state->camera.current_basis;
+    Vec3 plane_normal = -camera_basis.forward;
+
+    FOR_LIST_NODES(Entity *, level->entities) {
+        Entity *uncast_entity = current_node->value;
+        switch (uncast_entity->type) {
+            case ENTITY_NORMAL: {
+                real32 aabb_t;
+                Normal_Entity *entity = (Normal_Entity *) uncast_entity;
+                Mesh mesh = get_mesh(asset_manager, entity->mesh_id);
+                if (ray_intersects_aabb(cursor_ray, entity->transformed_aabb, &aabb_t) && (aabb_t < t_min)) {
+                    Ray_Intersects_Mesh_Result result;
+                    if (ray_intersects_mesh(cursor_ray, mesh, entity->transform, true, &result) &&
+                        (result.t < t_min)) {
+                        t_min = result.t;
+                        picked_entity = (Entity *) entity;
+                    }
+                }
+            } break;
+            case ENTITY_POINT_LIGHT: {
+                Point_Light_Entity *entity = (Point_Light_Entity *) uncast_entity;
+                real32 plane_d = dot(entity->transform.position, plane_normal);
+                real32 t;
+                if (ray_intersects_plane(cursor_ray, plane_normal, plane_d, &t)) {
+                    Vec3 hit_position = cursor_ray.origin + t*cursor_ray.direction;
+                    real32 plane_space_hit_x = dot(hit_position - entity->transform.position, camera_basis.right);
+                    real32 plane_space_hit_y = dot(hit_position - entity->transform.position, camera_basis.up);
+
+                    real32 icon_side_length = Editor_Constants::point_light_side_length;
+                    real32 offset = 0.5f * icon_side_length;
+                    if (plane_space_hit_x > -offset && plane_space_hit_x < offset &&
+                        plane_space_hit_y > -offset && plane_space_hit_y < offset) {
+                        if (t < t_min) {
+                            t_min = t;
+                            picked_entity = (Entity *) entity;
+                        }
+                    }
+                }
+            } break;
+            default: {
+                assert(!"Unhandled entity type");
+            }
+        }
+    }
+
+    return picked_entity;
+}
+
+void update_gizmo(Editor_State *editor_state) {
+    if (editor_state->selected_entity_id < 0) return;
+
+    Gizmo_State *gizmo_state = &editor_state->gizmo_state;
+    Camera *camera = &editor_state->camera;
+
+    real32 gizmo_scale_factor = distance(gizmo_state->transform.position - camera->position) / 5.0f;
+    gizmo_state->transform.scale = make_vec3(gizmo_scale_factor, gizmo_scale_factor, gizmo_scale_factor);
+
+    Entity *entity = get_selected_entity(editor_state);
+    gizmo_state->transform.position = entity->transform.position;
+    gizmo_state->transform.rotation = entity->transform.rotation;
+}
+
+Gizmo_Handle pick_gizmo(Editor_State *editor_state, Ray cursor_ray, real32 *t_result) {
+    Asset_Manager *asset_manager = &editor_state->asset_manager;
+    Gizmo_State *gizmo_state = &editor_state->gizmo_state;
+    Transform_Mode transform_mode = gizmo_state->transform_mode;
+
+    Entity *entity = get_selected_entity(editor_state);
+
+    Transform x_transform, y_transform, z_transform;
+    // TODO: maybe add some scale here? for a bit of extra space to click on the gizmo.
+    if (transform_mode == TRANSFORM_GLOBAL) {
+        x_transform = gizmo_state->transform;
+        x_transform.rotation = make_quaternion();
+        y_transform = gizmo_state->transform;
+        y_transform.rotation = make_quaternion(90.0f, z_axis);
+        z_transform = gizmo_state->transform;
+        z_transform.rotation = make_quaternion(-90.0f, y_axis);
+    } else {
+        // local transform
+        x_transform = gizmo_state->transform;
+        y_transform = gizmo_state->transform;
+        y_transform.rotation = gizmo_state->transform.rotation*make_quaternion(90.0f, z_axis);
+        z_transform = gizmo_state->transform;
+        z_transform.rotation = gizmo_state->transform.rotation*make_quaternion(-90.0f, y_axis);
+    }
+
+    Gizmo_Handle picked_handle = GIZMO_HANDLE_NONE;
+
+    Transform gizmo_handle_transforms[3] = { x_transform, y_transform, z_transform };
+
+    // check ray against translation arrows
+    Gizmo_Handle gizmo_translation_handles[3] = { GIZMO_TRANSLATE_X, GIZMO_TRANSLATE_Y, GIZMO_TRANSLATE_Z };
+    assert(gizmo_state->arrow_mesh_id >= 0);
+    Mesh arrow_mesh = get_mesh(asset_manager, gizmo_state->arrow_mesh_id);
+
+    real32 t_min = FLT_MAX;
+    for (int32 i = 0; i < 3; i++) {
+        Transform gizmo_handle_transform = gizmo_handle_transforms[i];
+        Ray_Intersects_Mesh_Result result;
+        if (ray_intersects_mesh(cursor_ray, arrow_mesh, gizmo_handle_transform, true, &result) &&
+            (result.t < t_min)) {
+            t_min = result.t;
+            picked_handle = gizmo_translation_handles[i];
+        }
+    }
+
+    // check ray against scale cube handles
+    Gizmo_Handle gizmo_scale_handles[3] = { GIZMO_SCALE_X, GIZMO_SCALE_Y, GIZMO_SCALE_Z };
+    assert(gizmo_state->cube_mesh_id >= 0);
+    Mesh gizmo_cube_mesh = get_mesh(asset_manager, gizmo_state->cube_mesh_id);
+
+    for (int32 i = 0; i < 3; i++) {
+        Transform gizmo_handle_transform = gizmo_handle_transforms[i];
+        Ray_Intersects_Mesh_Result result;
+        if (ray_intersects_mesh(cursor_ray, gizmo_cube_mesh, gizmo_handle_transform, true, &result) &&
+            (result.t < t_min)) {
+            t_min = result.t;
+            picked_handle = gizmo_scale_handles[i];
+        }
+    }
+
+    // check ray against rotation rings
+    Gizmo_Handle gizmo_rotation_handles[3] = { GIZMO_ROTATE_X, GIZMO_ROTATE_Y, GIZMO_ROTATE_Z };
+    assert(gizmo_state->ring_mesh_id >= 0);
+    Mesh ring_mesh = get_mesh(asset_manager, gizmo_state->ring_mesh_id);
+
+    for (int32 i = 0; i < 3; i++) {
+        Transform gizmo_handle_transform = gizmo_handle_transforms[i];
+        Ray_Intersects_Mesh_Result result;
+        if (ray_intersects_mesh(cursor_ray, ring_mesh, gizmo_handle_transform, true, &result) &&
+            (result.t < t_min)) {
+            t_min = result.t;
+            picked_handle = gizmo_rotation_handles[i];
+        }
+    }
+
+    *t_result = t_min;
+
+    return picked_handle;
+}
+
+Vec3 do_gizmo_translation(Editor_State *editor_state, Ray cursor_ray) {
+    Gizmo_State *gizmo_state = &editor_state->gizmo_state;
+    Camera *camera = &editor_state->camera;
+    Vec3 camera_forward = camera->current_basis.forward;
+
+    real32 t;
+    
+    Vec3 initial_hit;
+    if (gizmo_state->transform_mode == TRANSFORM_GLOBAL) {
+        initial_hit = gizmo_state->global_initial_gizmo_hit;
+    } else {
+        initial_hit = gizmo_state->local_initial_gizmo_hit;
+    }
+
+    Ray transform_ray = make_ray(initial_hit,
+                                 gizmo_state->gizmo_transform_axis);
+    Plane plane = get_plane_containing_ray(transform_ray, camera_forward);
+    bool32 intersects_plane = ray_intersects_plane(cursor_ray, plane, &t);
+
+    Vec3 new_position = gizmo_state->original_entity_transform.position;
+
+    // this will always intersect unless your FOV is >= 180 degrees
+    if (intersects_plane) {
+        Vec3 intersect_point = cursor_ray.origin + t*cursor_ray.direction;
+        real32 delta_length = dot(intersect_point - initial_hit,
+                                  gizmo_state->gizmo_transform_axis);
+        Vec3 delta = gizmo_state->gizmo_transform_axis * delta_length;
+        new_position += delta;
+    }
+
+    return new_position;
+}
+
+Vec3 do_gizmo_scale(Editor_State *editor_state, Ray cursor_ray) {
+    Gizmo_State *gizmo_state = &editor_state->gizmo_state;
+    Camera *camera = &editor_state->camera;
+    Vec3 camera_forward = camera->current_basis.forward;
+
+    real32 t;
+
+    Vec3 initial_hit;
+    if (gizmo_state->transform_mode == TRANSFORM_GLOBAL) {
+        initial_hit = gizmo_state->global_initial_gizmo_hit;
+    } else {
+        initial_hit = gizmo_state->local_initial_gizmo_hit;
+    }
+
+    Gizmo_Handle gizmo_handle = gizmo_state->selected_gizmo_handle;
+    Vec3 scale_transform_axis = {};
+    if (gizmo_handle == GIZMO_SCALE_X) {
+        scale_transform_axis = x_axis;
+    } else if (gizmo_handle == GIZMO_SCALE_Y) {
+        scale_transform_axis = y_axis;
+    } else {
+        scale_transform_axis = z_axis;
+    }
+
+    // we still use the transform ray here since the selected gizmo axis is lined up with the transform ray.
+    Ray transform_ray = make_ray(initial_hit,
+                                 gizmo_state->gizmo_transform_axis);
+    Plane plane = get_plane_containing_ray(transform_ray, camera_forward);
+    bool32 intersects_plane = ray_intersects_plane(cursor_ray, plane, &t);
+
+    Transform original_transform = gizmo_state->original_entity_transform;
+    Vec3 new_scale = original_transform.scale;
+
+    // this will always intersect unless your FOV is >= 180 degrees
+    if (intersects_plane) {
+        Vec3 intersect_point = cursor_ray.origin + t*cursor_ray.direction;
+        real32 delta_length = dot(intersect_point - initial_hit,
+                                  gizmo_state->gizmo_transform_axis);
+        Vec3 delta = scale_transform_axis * delta_length;
+        new_scale += delta;
+        if (gizmo_state->transform_mode == TRANSFORM_LOCAL) {
+            return new_scale;
+        } else {
+            Mat4 model = get_model_matrix(original_transform);
+            delta = make_vec3(1.0f, 1.0f, 1.0f) + delta;
+
+            // NOTE: when delta goes below the zero vector, the entity grows instead of shrinks. i'm pretty sure
+            //       it's because when we call distance() on the columns of the scaled model matrix, it does not
+            //       give signed values. i think this is fine.
+            Mat4 scale_matrix = make_scale_matrix(delta);
+            Mat4 scaled_model = scale_matrix * model;
+            new_scale = make_vec3(distance(truncate_v4_to_v3(scaled_model.col1)),
+                                  distance(truncate_v4_to_v3(scaled_model.col2)),
+                                  distance(truncate_v4_to_v3(scaled_model.col3)));
+        }
+    }
+
+    return new_scale;
+}
+
+Quaternion do_gizmo_rotation(Editor_State *editor_state, Ray cursor_ray) {
+    Gizmo_State *gizmo_state = &editor_state->gizmo_state;
+    Camera *camera = &editor_state->camera;
+
+    real32 t;
+    Vec3 camera_forward = camera->current_basis.forward;
+    Vec3 center = gizmo_state->transform.position;
+    Plane plane = { dot(center, gizmo_state->gizmo_transform_axis),
+                    gizmo_state->gizmo_transform_axis };
+    bool32 intersects_plane = ray_intersects_plane(cursor_ray, plane, &t);
+
+    Vec3 initial_hit;
+    if (gizmo_state->transform_mode == TRANSFORM_GLOBAL) {
+        initial_hit = gizmo_state->global_initial_gizmo_hit;
+    } else {
+        initial_hit = gizmo_state->local_initial_gizmo_hit;
+    }
+
+    Quaternion new_rotation = gizmo_state->original_entity_transform.rotation;
+
+    // this will always intersect unless your FOV is >= 180 degrees
+    if (intersects_plane) {
+        Vec3 intersect_point = cursor_ray.origin + t*cursor_ray.direction;
+
+        Vec3 center_to_intersect_point = intersect_point - center;
+        Vec3 center_to_last_intersect_point = initial_hit - center;
+
+        if (are_collinear(normalize(center_to_last_intersect_point), normalize(center_to_intersect_point))) {
+            return new_rotation;
+        }
+
+        Vec3 out_vector = cross(gizmo_state->gizmo_transform_axis, center_to_last_intersect_point);
+        
+        real32 sign = 1.0f;
+        if (dot(center_to_intersect_point, out_vector) < 0.0f) sign = -1.0f;
+
+        real32 a = distance(center_to_intersect_point);
+        real32 b = distance(center_to_last_intersect_point);
+        real32 c = distance(intersect_point - initial_hit);
+
+        real32 angle_delta_degrees = sign * cosine_law_degrees(a, b, c);
+
+        Quaternion delta_from_start = make_quaternion(angle_delta_degrees, gizmo_state->gizmo_transform_axis);
+        new_rotation = delta_from_start * new_rotation;
+    }
+
+    return new_rotation;
+}
+
 void update_editor(Game_State *game_state, Controller_State *controller_state, real32 dt) {
     UI_Manager *ui_manager = &game_state->ui_manager;
     Editor_State *editor_state = &game_state->editor_state;
+    Gizmo_State *gizmo_state = &editor_state->gizmo_state;
     Render_State *render_state = &game_state->render_state;
     Display_Output *display_output = &game_state->render_state.display_output;
     Asset_Manager *asset_manager = &editor_state->asset_manager;
@@ -525,20 +526,121 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
         editor_state->show_wireframe = !editor_state->show_wireframe;
     }
 
-#if 0
     if (just_pressed(controller_state->key_x)) {
-        if (editor_state->transform_mode == TRANSFORM_GLOBAL) {
-            editor_state->transform_mode = TRANSFORM_LOCAL;
+        if (gizmo_state->transform_mode == TRANSFORM_GLOBAL) {
+            gizmo_state->transform_mode = TRANSFORM_LOCAL;
         } else {
-            editor_state->transform_mode = TRANSFORM_GLOBAL;
+            gizmo_state->transform_mode = TRANSFORM_GLOBAL;
         }
 
-        if (editor_state->selected_gizmo_handle != GIZMO_HANDLE_NONE) {
-            Entity *selected_entity = get_selected_entity(game_state);
-            set_entity_transform(asset_manager, selected_entity, editor_state->old_entity->transform);
+        if (gizmo_state->selected_gizmo_handle != GIZMO_HANDLE_NONE) {
+            Entity *selected_entity = get_selected_entity(editor_state);
+            assert(selected_entity);
+            set_entity_transform(asset_manager, selected_entity, gizmo_state->original_entity_transform);
         }
     }
+
+    // mesh picking
+    Vec3 cursor_world_space = cursor_pos_to_world_space(controller_state->current_mouse,
+                                                        render_state);
+    Ray cursor_ray = { cursor_world_space,
+                       normalize(cursor_world_space - render_state->camera.position) };
+    
+    if (!ui_has_hot(ui_manager) &&
+        !ui_has_active(ui_manager) &&
+        !editor_state->use_freecam && was_clicked(controller_state->left_mouse)) {
+        if (!gizmo_state->selected_gizmo_handle) {
+            Entity *entity = pick_entity(editor_state, cursor_ray);
+            //editor_state->selected_entity_id = entity->id;
+            
+            if (entity) {
+                if (entity->id != editor_state->selected_entity_id) {
+                    editor_state->last_selected_entity_id = editor_state->selected_entity_id;
+                    editor_state->selected_entity_id = entity->id;
+
+                    gizmo_state->transform = entity->transform;
+                    reset_entity_editors(editor_state);
+                }
+            } else {
+                editor_state->selected_entity_id = -1;
+            }
+        }
+    }
+
+    update_gizmo(editor_state);
+
+    // gizmo picking
+    if (editor_state->selected_entity_id >= 0 &&
+        !ui_has_hot(ui_manager) &&
+        !gizmo_state->selected_gizmo_handle) {
+        real32 pick_gizmo_t;
+        Gizmo_Handle picked_handle = pick_gizmo(editor_state, cursor_ray, &pick_gizmo_t);
+        if (controller_state->left_mouse.is_down && !controller_state->left_mouse.was_down) {
+            if (picked_handle) {
+                Entity *selected_entity = get_selected_entity(editor_state);
+                //start_entity_change(editor_state, selected_entity);
+#if 0
+                editor_state->old_entity = allocate_and_copy_entity(editor_state->history.allocator_pointer,
+                                                                    selected_entity);
 #endif
+                Vec3 global_transform_axis = get_gizmo_transform_axis(TRANSFORM_GLOBAL,
+                                                                      picked_handle,
+                                                                      selected_entity->transform);
+                Vec3 local_transform_axis = get_gizmo_transform_axis(TRANSFORM_LOCAL,
+                                                                     picked_handle,
+                                                                     selected_entity->transform);
+                gizmo_state->local_initial_gizmo_hit = get_gizmo_hit(gizmo_state,
+                                                                     picked_handle, pick_gizmo_t,
+                                                                     cursor_ray, local_transform_axis);
+                gizmo_state->global_initial_gizmo_hit = get_gizmo_hit(gizmo_state,
+                                                                      picked_handle, pick_gizmo_t,
+                                                                      cursor_ray, global_transform_axis);
+                gizmo_state->original_entity_transform = selected_entity->transform;
+            }
+
+            gizmo_state->selected_gizmo_handle = picked_handle;
+        } else {
+            gizmo_state->hovered_gizmo_handle = picked_handle;
+        }
+    }
+
+    if (editor_state->use_freecam ||
+        (ui_has_hot(ui_manager) && !controller_state->left_mouse.is_down)) {
+        gizmo_state->hovered_gizmo_handle = GIZMO_HANDLE_NONE;
+        gizmo_state->selected_gizmo_handle = GIZMO_HANDLE_NONE;
+    }
+
+    if (gizmo_state->selected_gizmo_handle) {
+        disable_input(ui_manager);
+        Entity *entity = get_selected_entity(editor_state);
+        if (controller_state->left_mouse.is_down) {
+            gizmo_state->gizmo_transform_axis = get_gizmo_transform_axis(gizmo_state->transform_mode,
+                                                                          gizmo_state->selected_gizmo_handle,
+                                                                          gizmo_state->original_entity_transform);
+
+            if (is_translation(gizmo_state->selected_gizmo_handle)) {
+                Vec3 new_position = do_gizmo_translation(editor_state, cursor_ray);
+                update_entity_position(asset_manager, entity, new_position);
+                
+            } else if (is_rotation(gizmo_state->selected_gizmo_handle)) {
+                Quaternion new_rotation = do_gizmo_rotation(editor_state, cursor_ray);
+                update_entity_rotation(asset_manager, entity, new_rotation);
+            } else if (is_scale(gizmo_state->selected_gizmo_handle)) {
+                Vec3 new_scale = do_gizmo_scale(editor_state, cursor_ray);
+                update_entity_scale(asset_manager, entity, new_scale);
+            } else {
+                assert(!"Should be unreachable.");
+            }
+
+            gizmo_state->transform.position = entity->transform.position;
+            gizmo_state->transform.rotation = entity->transform.rotation;
+        } else {
+            gizmo_state->selected_gizmo_handle = GIZMO_HANDLE_NONE;
+            //finalize_entity_change(editor_state, &game_state->current_level, entity);
+        }
+    }
+
+    update_gizmo(editor_state);
 }
 
 void draw_editor(Game_State *game_state, Controller_State *controller_state) {

@@ -9,6 +9,11 @@
 #include "linked_list.h"
 #include "level.h"
 #include "render.h"
+#include "gizmo.h"
+
+#define MATERIAL_LIBRARY_WINDOW 1 << 1
+#define TEXTURE_LIBRARY_WINDOW  1 << 2
+#define MESH_LIBRARY_WINDOW     1 << 3
 
 struct Editor_State {
     Heap_Allocator entity_heap;
@@ -17,9 +22,6 @@ struct Editor_State {
 
     Asset_Manager asset_manager;
     
-//Linked_List<Entity *> entity_list;
-    
-//String current_level_name;
     Editor_Level level;
     bool32 should_unload_level_gpu_data;
 
@@ -28,6 +30,12 @@ struct Editor_State {
 
     bool32 show_wireframe;
     int32 selected_entity_id;
+    int32 last_selected_entity_id;
+
+    uint32 open_window_flags;
+    UI_id color_picker_parent;
+    
+    Gizmo_State gizmo_state;
 };
 
 namespace Editor_Constants {
@@ -52,5 +60,8 @@ namespace Editor_Constants {
                                  hue_slider_width + small_padding_x);
     real32 color_picker_height = 200.0f + small_padding_y*2;
 };
+
+void unload_level(Editor_State *editor_state);
+void load_level(Editor_State *editor_state, Level_Info *level_info);
 
 #endif

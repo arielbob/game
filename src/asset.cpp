@@ -77,6 +77,10 @@ int32 get_mesh_id_by_name(Asset_Manager *asset_manager, String mesh_name) {
     return -1;
 }
 
+inline int32 get_mesh_id_by_name(Asset_Manager *asset_manager, char *mesh_name) {
+    return get_mesh_id_by_name(asset_manager, make_string(mesh_name));
+}
+
 bool32 mesh_exists(Asset_Manager *asset_manager, int32 mesh_id) {
     return hash_table_exists(asset_manager->mesh_table, mesh_id);
 }

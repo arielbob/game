@@ -122,6 +122,10 @@ struct GL_Mesh {
     uint32 num_triangles;
 };
 
+void deallocate(GL_Mesh gl_mesh) {
+    // nothing to deallocate
+}
+
 struct GL_Font {
     uint32 baked_texture_id;
 };
@@ -133,6 +137,11 @@ struct GL_Texture {
     int32 height;
     int32 num_channels;
 };
+
+void deallocate(GL_Texture gl_texture) {
+    // nothing to deallocate - we call gl_delete_texture separately, which unloads it from the GPU, which
+    // i don't think we should call "deallocation"
+}
 
 // TODO: there are different variations of this (like depth + stencil, instead of just depth).
 //       will need to make different ones if necessary.

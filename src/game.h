@@ -241,14 +241,10 @@ inline bool32 was_clicked(Controller_Button_State button_state);
 inline bool32 being_held(Controller_Button_State button_state);
 inline bool32 just_pressed(Controller_Button_State button_state);
 inline bool32 just_lifted(Controller_Button_State button_state);
-Entity *get_selected_entity(Game_State *game_state);
 void set_entity_mesh(Asset_Manager *asset_manager, Entity *entity, int32 mesh_id);
 void set_entity_material(Entity *entity, int32 material_id);
 void update_render_state(Render_State *render_state);
 Vec3 cursor_pos_to_world_space(Vec2 cursor_pos, Render_State *render_state);
-void update_entity_position(Asset_Manager *asset_manager, Entity *entity, Vec3 new_position);
-void update_entity_rotation(Asset_Manager *asset_manager, Entity *entity, Quaternion new_rotation);
-void update_entity_scale(Asset_Manager *asset_manager, Entity *entity, Vec3 new_scale);
 int32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, bool32 include_backside,
                           Ray_Intersects_Mesh_Result *result);
 bool32 closest_point_below_on_mesh(Vec3 point, Mesh mesh, Transform transform, Vec3 *result);
