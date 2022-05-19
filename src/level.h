@@ -2,37 +2,60 @@
 #define LEVEL_H
 
 #include "parse.h"
-#include "game.h"
 
-// to fix circular dependency between game and level
-// game.h includes level.h first, but level.h needs the Game_State struct
-struct Game_State;
+#define HAS_MESH     1
+#define HAS_MATERIAL 1 << 1
+#define HAS_TEXTURE  1 << 2
 
-struct Level {
-    String_Buffer name;
+// we use info structs to store string identifiers to assets. since the actual entity structs use integer
+// identifiers, we need to resolve them, but the integer identifiers for assets are not set until after the
+// assets have been loaded. we may want to just add UUIDs for assets in the future, although those would take
+// up a lot more space.
 
-    Hash_Table<int32, Normal_Entity> normal_entity_table;
-    Hash_Table<int32, Point_Light_Entity> point_light_entity_table;
+// we also need to resolve texture IDs for materials, so we store texture names in Material_Info.
 
-    Arena_Allocator *arena_pointer;
-    Pool_Allocator *string_pool_pointer; // for material names and texture name strings
-    Pool_Allocator *filename_pool_pointer; // for filename strings
+// the reason why we use this intermediate structure for loading levels is so that we can choose where we store
+// the data. if we're in the game, then a lot of times we can just dump things into an arena and clear it when
+// the level is no longer needed. but if we're in the editor, then level data needs to be able to be modified, and
+// thus we often need to use different data structures and allocators to hold the level data.
+struct Normal_Entity_Info {
+    Normal_Entity entity;
+    uint32 flags;
+    String mesh_name;
+    String material_name;
+};
 
-    Hash_Table<int32, Material> material_table;
-    Hash_Table<int32, Texture> texture_table;
-    
-    bool32 should_clear_gpu_data;
+struct Point_Light_Entity_Info {
+    Point_Light_Entity entity;
 };
 
 struct Mesh_Info {
-    String filename;
     String name;
+    String filename;
 };
 
-struct Normal_Entity_Asset_Info {
-    String mesh_name;
-    // TODO: we don't do materials the way we do meshes yet
-    //String material_name;
+struct Texture_Info {
+    String name;
+    String filename;
+};
+
+// we store the Material struct in Material_Info because some fields can be set with the level file data.
+// since we don't store any mesh/texture info other than their names and filenames, we just store those and
+// when we load them is when we fill in their structs.
+struct Material_Info {
+    uint32 flags;
+    Material material;
+    String texture_name;
+};
+
+struct Level_Info {
+    String name;
+    
+    Linked_List<Normal_Entity_Info> normal_entities;
+    Linked_List<Point_Light_Entity_Info> point_light_entities;
+    Linked_List<Mesh_Info> meshes;
+    Linked_List<Texture_Info> textures;
+    Linked_List<Material_Info> materials;
 };
 
 namespace Level_Loader {
@@ -105,17 +128,7 @@ namespace Level_Loader {
 
     Token make_token(Token_Type type, char *contents, int32 length);
     Token get_token(Tokenizer *tokenizer, char *file_contents);
-    bool32 load_temp_level(Allocator *temp_allocator,
-                           File_Data file_data, Level *temp_level,
-                           Mesh_Info *level_meshes, int32 level_meshes_size, int32 *num_level_meshes,
-                           Hash_Table<int32, Normal_Entity_Asset_Info> *normal_entity_asset_info);
-};
-
-bool32 read_and_load_level(Asset_Manager *asset_manager,
-                           Level *level, char *filename,
-                           Arena_Allocator *arena,
-                           Heap_Allocator *mesh_heap,
-                           Pool_Allocator *string64_pool,
-                           Pool_Allocator *filename_pool);
+    bool32 parse_level_info(Allocator *temp_allocator, File_Data file_data, Level_Info *level_info);
+}
 
 #endif

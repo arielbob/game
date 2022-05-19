@@ -35,7 +35,6 @@
 #include "math.h"
 #include "entity.h"
 #include "game.h"
-#include "level.h"
 #include "memory.h"
 #include "platform.h"
 
@@ -49,7 +48,6 @@ global_variable Memory memory;
 #include "ui.cpp"
 #include "level.cpp"
 #include "editor.cpp"
-#include "editor_history.cpp"
 #include "game.cpp"
 
 global_variable int64 perf_counter_frequency;
@@ -705,7 +703,7 @@ bool32 win32_init_memory() {
     uint32 string64_pool_size = MEGABYTES(64);
     uint32 filename_pool_size = MEGABYTES(8);
     uint32 ui_state_heap_size = MEGABYTES(64);
-    uint32 editor_history_heap_size = MEGABYTES(128);
+    uint32 editor_arena_size = MEGABYTES(256);
 
     // level memory
     uint32 level_mesh_heap_size = MEGABYTES(64);
@@ -723,11 +721,11 @@ bool32 win32_init_memory() {
                                 string64_pool_size +
                                 filename_pool_size +
                                 ui_state_heap_size +
+                                editor_arena_size +
                                 level_arena_size +
                                 level_string64_pool_size +
                                 level_filename_pool_size +
-                                level_mesh_heap_size +
-                                editor_history_heap_size);
+                                level_mesh_heap_size);
     void *memory_base = VirtualAlloc(0, total_memory_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
     if (memory_base) {
@@ -772,9 +770,9 @@ bool32 win32_init_memory() {
         memory.ui_state_heap = ui_state_heap;
         base = (uint8 *) base + ui_state_heap_size;
 
-        Heap_Allocator editor_history_heap = make_heap_allocator(base, editor_history_heap_size);
-        memory.editor_history_heap = editor_history_heap;
-        base = (uint8 *) base + editor_history_heap_size;
+        Arena_Allocator editor_arena = make_arena_allocator(base, editor_arena_size);
+        memory.editor_arena = editor_arena;
+        base = (uint8 *) base + editor_arena_size;
 
         // level memory
         memory.level_arena = make_arena_allocator(base, level_arena_size);

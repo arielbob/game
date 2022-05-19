@@ -404,6 +404,7 @@
 //       - TODO: add history for light color changes
 //       - TODO: hide use_color_override button and don't change it, since we want to keep its state when we undo
 //               and redo. if there's no texture, then just disable the button, but don't change the actual value
+//       - TODO: add history for use_color_override
 //       - TODO: add shortcuts for undoing and redoing
 
 
@@ -424,6 +425,43 @@
 //       - TODO (done): add ui state struct for color picker
 //       - TODO (done): remove color picker state from editor_state
 //       - TODO (done): make do_color_picker() return some type of struct like the textbox
+
+// TODO: (refactor)
+//       - TODO (done): strip out most things
+//       - TODO (done): create editor state with memory
+//       - TODO (done): create intermediate level struct
+//       - TODO (done): change level stuff to use new intermediate level struct
+//       - TODO (done): separate asset_managers for editor and for game
+
+//       - TODO: load level data into asset_manager (editor asset_manager right now, since we're just doing
+//               the editor)
+//       - TODO: unload opengl assets when changing levels
+//       - TODO: load new assets into opengl
+
+//       - TODO: load fonts into game as well
+//       - TODO: unload opengl assets when switching between play and editing mode
+
+//       - TODO: load default level using new format
+
+
+//       - TODO: load level entities into level struct (redo Level struct)
+
+//       - TODO: error handling in level loading
+
+//       - TODO: all editor stuff will be stored using a heap
+//       - TODO: entities will still be stored in a table
+//       - TODO: all strings will be stored in a heap
+//       - TODO: levels will now be loaded into an intermediate temporary structure
+//       - TODO: when we need to play the game, we take the editor state and load it into the intermediate level
+//               struct
+//       - TODO: the game data will store the level data in its own way that makes it more efficient. it can do this
+//               since we don't need to do things like make it so entities can be deleted. we may just be able to
+//               put it all into an arena.
+//       - TODO: redo heap allocator, and just always align on 8 byte boundaries. having the boundary be 8 bytes
+//               makes things a lot easier. you still can't easily just add a struct header.. but you can if you
+//               have a member that's 8 bytes, i.e. if you have a pointer in your header, then alignment will be
+//               handled for you and to get the header you can just subtract sizeof(header) from a pointer to some
+//               allocation.
 
 // TODO: collision with OBBs
 
@@ -2087,12 +2125,12 @@ void draw_sound_buffer(GL_State *gl_state, Render_State *render_state,
                       write_cursor_position, make_vec3(1.0f, 0.0f, 0.0f));
 }
 
-void gl_draw_ui_text(GL_State *gl_state, Game_State *game_state,
-                     UI_Manager *ui_manager,
+void gl_draw_ui_text(GL_State *gl_state, Asset_Manager *asset_manager,
+                     Render_State *render_state,
                      UI_Text ui_text) {
     UI_Text_Style style = ui_text.style;
 
-    Font font = get_font(game_state, ui_text.font);
+    Font font = get_font(asset_manager, ui_text.font);
 
     real32 x = ui_text.x;
 
@@ -2101,22 +2139,23 @@ void gl_draw_ui_text(GL_State *gl_state, Game_State *game_state,
     }
 
     if (style.use_offset_shadow) {
-        gl_draw_text(gl_state, &game_state->render_state, &font,
+        gl_draw_text(gl_state, render_state, &font,
                      x, ui_text.y,
                      ui_text.text, style.color,
                      style.offset_shadow_color, TEXT_SHADOW_OFFSET);
     } else {
-        gl_draw_text(gl_state, &game_state->render_state, &font,
+        gl_draw_text(gl_state, render_state, &font,
                      x, ui_text.y,
                      ui_text.text, style.color);
     }
 }
 
-void gl_draw_ui_text_button(GL_State *gl_state, Game_State *game_state,
+void gl_draw_ui_text_button(GL_State *gl_state, Asset_Manager *asset_manager,
+                            Render_State *render_state,
                             UI_Manager *ui_manager, UI_Text_Button button) {
     Vec4 color;
 
-    Font font = get_font(game_state, button.font);
+    Font font = get_font(asset_manager, button.font);
 
     UI_Text_Button_Style style = button.style;
 
@@ -2133,7 +2172,7 @@ void gl_draw_ui_text_button(GL_State *gl_state, Game_State *game_state,
         color = style.disabled_color;
     }
 
-    gl_draw_quad(gl_state, &game_state->render_state, button.x, button.y,
+    gl_draw_quad(gl_state, render_state, button.x, button.y,
                  button.width, button.height, color);
 
     real32 adjusted_text_height = get_adjusted_font_height(font);
@@ -2153,21 +2192,21 @@ void gl_draw_ui_text_button(GL_State *gl_state, Game_State *game_state,
     UI_Text_Style text_style = button.text_style;
 
     if (text_style.use_offset_shadow) {
-        gl_draw_text(gl_state, &game_state->render_state, &font,
+        gl_draw_text(gl_state, render_state, &font,
                      button.x + x_offset, button.y + y_offset,
                      button.text, text_style.color,
                      text_style.offset_shadow_color, TEXT_SHADOW_OFFSET);
     } else {
-        gl_draw_text(gl_state, &game_state->render_state, &font,
+        gl_draw_text(gl_state, render_state, &font,
                      button.x + x_offset, button.y + y_offset,
                      button.text, text_style.color);
     }
 }
 
-void gl_draw_ui_image_button(GL_State *gl_state, Game_State *game_state,
+void gl_draw_ui_image_button(GL_State *gl_state,
+                             Asset_Manager *asset_manager, Render_State *render_state,
                              UI_Manager *ui_manager,
                              UI_Image_Button button) {
-    Render_State *render_state = &game_state->render_state;
     UI_Image_Button_Style style = button.style;
     Vec4 color;
 
@@ -2216,7 +2255,7 @@ void gl_draw_ui_image_button(GL_State *gl_state, Game_State *game_state,
         real32 footer_height = style.footer_height + style.padding_y;
         assert(footer_height >= 0);
 
-        Font font = get_font(game_state, button.font);
+        Font font = get_font(asset_manager, button.font);
         real32 adjusted_text_height = get_adjusted_font_height(font);
 
         // center text
@@ -2230,12 +2269,12 @@ void gl_draw_ui_image_button(GL_State *gl_state, Game_State *game_state,
         real32 text_y = button.y + image_height + style.padding_y;
         
         if (text_style.use_offset_shadow) {
-            gl_draw_text(gl_state, &game_state->render_state, &font,
+            gl_draw_text(gl_state, render_state, &font,
                          text_x + x_offset, text_y + y_offset,
                          button.text, text_style.color,
                          text_style.offset_shadow_color, TEXT_SHADOW_OFFSET);
         } else {
-            gl_draw_text(gl_state, &game_state->render_state, &font,
+            gl_draw_text(gl_state, render_state, &font,
                          text_x + x_offset, text_y + y_offset,
                          button.text, text_style.color);        
         }
@@ -2263,13 +2302,14 @@ void gl_draw_ui_color_button(GL_State *gl_state, Render_State *render_state,
                  button.width - style.padding_x*2, button.height - style.padding_y*2, button.color);
 }
 
-void gl_draw_ui_text_box(GL_State *gl_state, Game_State *game_state,
-                         Display_Output display_output,
+void gl_draw_ui_text_box(GL_State *gl_state, Asset_Manager *asset_manager,
+                         Render_State *render_state,
                          UI_Manager *ui_manager, UI_Text_Box text_box) {
+    Display_Output display_output = render_state->display_output;
     UI_Text_Box_Style style = text_box.style;
     Vec4 color = style.normal_color;
 
-    Font font = get_font(game_state, text_box.font);
+    Font font = get_font(asset_manager, text_box.font);
 
     if (ui_id_equals(ui_manager->active, text_box.id)) {
         color = style.active_color;
@@ -2277,7 +2317,7 @@ void gl_draw_ui_text_box(GL_State *gl_state, Game_State *game_state,
         color = style.hot_color;
     }
 
-    gl_draw_quad(gl_state, &game_state->render_state, text_box.x, text_box.y,
+    gl_draw_quad(gl_state, render_state, text_box.x, text_box.y,
                  text_box.width, text_box.height,
                  color);
 
@@ -2299,12 +2339,12 @@ void gl_draw_ui_text_box(GL_State *gl_state, Game_State *game_state,
     }
 
     if (text_style.use_offset_shadow) {
-        gl_draw_text(gl_state, &game_state->render_state, &font,
+        gl_draw_text(gl_state, render_state, &font,
                      text_box.x + style.padding_x, text_y,
                      text_box.buffer, text_style.color,
                      text_style.offset_shadow_color, TEXT_SHADOW_OFFSET);
     } else {
-        gl_draw_text(gl_state, &game_state->render_state, &font,
+        gl_draw_text(gl_state, render_state, &font,
                      text_box.x + style.padding_x, text_y,
                      text_box.buffer, text_style.color);
     }
@@ -2321,16 +2361,17 @@ void gl_draw_ui_text_box(GL_State *gl_state, Game_State *game_state,
 
         // in focus
         real32 text_width = get_width(font, text_box.buffer);
-        gl_draw_quad(gl_state, &game_state->render_state,
+        gl_draw_quad(gl_state, render_state,
                      text_box.x + text_width + style.padding_x, text_box.y + style.padding_y,
                      cursor_width, text_box.height - style.padding_y * 2 + TEXT_SHADOW_OFFSET,
                      make_vec3(0.0f, 1.0f, 0.0f));
     }
 }
 
-void gl_draw_ui_slider(GL_State *gl_state, Game_State *game_state,
-                       Display_Output display_output,
+void gl_draw_ui_slider(GL_State *gl_state, Asset_Manager *asset_manager,
+                       Render_State *render_state,
                        UI_Manager *ui_manager, UI_Slider slider) {
+    Display_Output display_output = render_state->display_output;
     UI_Slider_Style style = slider.style;
 
     if (slider.is_text_box) {
@@ -2342,7 +2383,7 @@ void gl_draw_ui_slider(GL_State *gl_state, Game_State *game_state,
                                                 text_box_style, slider.text_style,
                                                 slider.layer, (char *) slider.id.string_ptr, slider.id.index);
 
-        gl_draw_ui_text_box(gl_state, game_state, display_output, ui_manager, text_box);
+        gl_draw_ui_text_box(gl_state, asset_manager, render_state, ui_manager, text_box);
         return;
     }
 
@@ -2355,7 +2396,7 @@ void gl_draw_ui_slider(GL_State *gl_state, Game_State *game_state,
         }
     }
 
-    gl_draw_quad(gl_state, &game_state->render_state, slider.x, slider.y,
+    gl_draw_quad(gl_state, render_state, slider.x, slider.y,
                  slider.width, slider.height,
                  color);
 
@@ -2375,7 +2416,7 @@ void gl_draw_ui_slider(GL_State *gl_state, Game_State *game_state,
         }
 
         real32 bar_width = (slider.value / (slider.max - slider.min)) * slider.width;
-        gl_draw_quad(gl_state, &game_state->render_state, slider.x, slider.y,
+        gl_draw_quad(gl_state, render_state, slider.x, slider.y,
                      bar_width, slider.height,
                      slider_color);
         glDisable(GL_SCISSOR_TEST);
@@ -2383,19 +2424,19 @@ void gl_draw_ui_slider(GL_State *gl_state, Game_State *game_state,
 
     // text
     UI_Text_Style text_style = slider.text_style;
-    Font font = get_font(game_state, slider.font);
+    Font font = get_font(asset_manager, slider.font);
     real32 adjusted_text_height = font.height_pixels - font.scale_for_pixel_height * (font.ascent + font.descent);
     real32 text_width = get_width(font, slider.buffer);
     real32 text_x = slider.x + 0.5f*slider.width - 0.5f*text_width;
     real32 text_y = slider.y + 0.5f*slider.height + 0.5f*adjusted_text_height;
 
     if (text_style.use_offset_shadow) {
-        gl_draw_text(gl_state, &game_state->render_state, &font,
+        gl_draw_text(gl_state, render_state, &font,
                      text_x, text_y,
                      slider.buffer, text_style.color,
                      text_style.offset_shadow_color, TEXT_SHADOW_OFFSET);
     } else {
-        gl_draw_text(gl_state, &game_state->render_state, &font,
+        gl_draw_text(gl_state, render_state, &font,
                      text_x, text_y,
                      slider.buffer, text_style.color);
     }
@@ -2525,11 +2566,12 @@ void gl_draw_ui_line(GL_State *gl_state, Render_State *render_state,
 // TODO: we could, along with gl_draw_quad, replace the model_matrix stuff with just updating the VBO.
 //       the issue with this is that it could make it harder for us to do more interesting transformations like
 //       rotation.
-void gl_draw_ui(GL_State *gl_state, Game_State *game_state,
-                UI_Manager *ui_manager, Display_Output display_output) {
+void gl_draw_ui(GL_State *gl_state,
+                Asset_Manager *asset_manager, Render_State *render_state,
+                UI_Manager *ui_manager) {
     UI_Push_Buffer *push_buffer = &ui_manager->push_buffer;
     uint8 *address = (uint8 *) push_buffer->base;
-    Render_State *render_state = &game_state->render_state;
+    //Render_State *render_state = &game_state->render_state;
 
     // NOTE: we don't store the lowest layer, so technically you could do a bunch of push_layer()'s, and
     //       only add an element on the highest layer, which would cause us to loop a bunch of times until
@@ -2560,15 +2602,15 @@ void gl_draw_ui(GL_State *gl_state, Game_State *game_state,
             switch (element->type) {
                 case UI_TEXT: {
                     UI_Text *ui_text = (UI_Text *) element;
-                    gl_draw_ui_text(gl_state, game_state, ui_manager, *ui_text);
+                    gl_draw_ui_text(gl_state, asset_manager, render_state, *ui_text);
                 } break;
                 case UI_TEXT_BUTTON: {
                     UI_Text_Button *ui_text_button = (UI_Text_Button *) element;
-                    gl_draw_ui_text_button(gl_state, game_state, ui_manager, *ui_text_button);
+                    gl_draw_ui_text_button(gl_state, asset_manager, render_state, ui_manager, *ui_text_button);
                 } break;
                 case UI_IMAGE_BUTTON: {
                     UI_Image_Button *ui_image_button = (UI_Image_Button *) element;
-                    gl_draw_ui_image_button(gl_state, game_state, ui_manager, *ui_image_button);
+                    gl_draw_ui_image_button(gl_state, asset_manager, render_state, ui_manager, *ui_image_button);
                 } break;
                 case UI_COLOR_BUTTON: {
                     UI_Color_Button *ui_color_button = (UI_Color_Button *) element;
@@ -2576,11 +2618,11 @@ void gl_draw_ui(GL_State *gl_state, Game_State *game_state,
                 } break;
                 case UI_TEXT_BOX: {
                     UI_Text_Box *ui_text_box = (UI_Text_Box *) element;
-                    gl_draw_ui_text_box(gl_state, game_state, display_output, ui_manager, *ui_text_box);
+                    gl_draw_ui_text_box(gl_state, asset_manager, render_state, ui_manager, *ui_text_box);
                 } break;
                 case UI_SLIDER: {
                     UI_Slider *ui_slider = (UI_Slider *) element;
-                    gl_draw_ui_slider(gl_state, game_state, display_output, ui_manager, *ui_slider);
+                    gl_draw_ui_slider(gl_state, asset_manager, render_state, ui_manager, *ui_slider);
                 } break;
                 case UI_BOX: {
                     UI_Box *ui_box = (UI_Box *) element;
@@ -2620,6 +2662,7 @@ void gl_draw_ui(GL_State *gl_state, Game_State *game_state,
     }
 }
 
+#if 0
 void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Editor_State *editor_state) {
     Transform_Mode transform_mode = editor_state->transform_mode;
     Gizmo gizmo = editor_state->gizmo;
@@ -2723,6 +2766,7 @@ void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Editor_State 
     gl_draw_solid_color_mesh(gl_state, render_state, ring_mesh, y_handle_color, y_transform);
     gl_draw_solid_color_mesh(gl_state, render_state, ring_mesh, z_handle_color, z_transform);
 }
+#endif
 
 void gl_draw_framebuffer(GL_State *gl_state, GL_Framebuffer framebuffer) {
     gl_use_shader(gl_state, "framebuffer");
@@ -2750,165 +2794,23 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
                Controller_State *controller_state,
                Display_Output display_output, Win32_Sound_Output *win32_sound_output) {
     Render_State *render_state = &game_state->render_state;
-    Asset_Manager *asset_manager = &game_state->asset_manager;
+    
 
-    Level *level = &game_state->current_level;
+    Asset_Manager *asset_manager;
 
-    // NOTE: we do this before we add any of the data because the way we load levels is we replace all the data
-    //       and set should_clear_gpu_data to true at the same time. we don't want to add the data then clear it
-    //       all. (this is a case for setting is_loaded = false when we clear, since if were to do this the other
-    //       way around, then none of the level data would be on the GPU, since it would load, then unload, then
-    //       never load again since is_loaded = true)
-    if (level->should_clear_gpu_data) {
-        // clear texture table
-        Hash_Table<int32, GL_Texture> *gl_level_texture_table = &gl_state->level_texture_table;
-        for (int32 i = 0; i < gl_level_texture_table->max_entries; i++) {
-            Hash_Table_Entry<int32, GL_Texture> *texture_entry = &gl_level_texture_table->entries[i];
-            if (!texture_entry->is_occupied) continue;
-
-            GL_Texture texture = texture_entry->value;
-            gl_delete_texture(texture);
-            // NOTE: we may want to update level->texture_table here: set is_loaded = false?
-            //       but, this only gets called when the level is gonna get cleared, so, it would be kind of
-            //       pointless.
-        }
-        hash_table_reset(gl_level_texture_table);
-
-#if 0
-        // clear mesh table
-        Hash_Table<int32, GL_Mesh> *gl_level_mesh_table = &gl_state->level_mesh_table;
-        for (int32 i = 0; i < gl_level_mesh_table->max_entries; i++) {
-            Hash_Table_Entry<int32, GL_Mesh> *mesh_entry = &gl_level_mesh_table->entries[i];
-            if (!mesh_entry->is_occupied) continue;
-
-            GL_Mesh mesh = mesh_entry->value;
-            gl_delete_mesh(mesh);
-            // NOTE: same as above note
-        }
-        hash_table_reset(gl_level_mesh_table);
-#endif
-
-        // delete level meshes
-        int32 num_reset = 0;
-        FOR_ENTRY_POINTERS(int32, GL_Mesh, gl_state->mesh_table) {
-            if (entry->value.type != Mesh_Type::LEVEL) continue;
-
-            GL_Mesh mesh = entry->value;
-            gl_delete_mesh(mesh);
-            entry->is_occupied = false;
-            num_reset++;
-        }
-
-        gl_state->mesh_table.num_entries -= num_reset;
-        assert(gl_state->mesh_table.num_entries >= 0);
-
-        level->should_clear_gpu_data = false;
-    }
-
-#if 0
-    // load primitive meshes
-    {
-        Hash_Table_Iterator<int32, Mesh> iterator = make_hash_table_iterator(game_state->primitive_mesh_table);
-        Hash_Table_Entry<int32, Mesh> *entry = get_next_entry_pointer(&iterator);
-        while (entry != NULL) {
-            Mesh *mesh = &entry->value;
-
-            if (!mesh->is_loaded) {
-                if (!hash_table_exists(gl_state->primitive_mesh_table, entry->key)) {
-                    GL_Mesh gl_mesh = gl_load_mesh(gl_state, *mesh);
-                    hash_table_add(&gl_state->primitive_mesh_table, entry->key, gl_mesh);
-                } else {
-                    debug_print("%s already loaded.\n", mesh->name);
-                }
-
-                mesh->is_loaded = true;
-            }
-
-            entry = get_next_entry_pointer(&iterator);
-        }
-    }
-
-    // load common meshes
-    Hash_Table<int32, Mesh> *game_common_mesh_table = &game_state->common_mesh_table;
-    for (int32 i = 0; i < game_common_mesh_table->max_entries; i++) {
-        Hash_Table_Entry<int32, Mesh> *game_mesh_entry = &game_common_mesh_table->entries[i];
-        if (!game_mesh_entry->is_occupied) continue;
-
-        Mesh *mesh = &game_mesh_entry->value;
-        
-        if (!mesh->is_loaded) {
-            if (!hash_table_exists(gl_state->common_mesh_table, game_mesh_entry->key)) {
-                GL_Mesh gl_mesh = gl_load_mesh(gl_state, *mesh);
-                hash_table_add(&gl_state->common_mesh_table, game_mesh_entry->key, gl_mesh);
-            } else {
-                debug_print("%s already loaded.\n", mesh->name);
-            }
-
-            mesh->is_loaded = true;
-        }
-    }
-
-    // load level meshes
-    Hash_Table<int32, Mesh> *game_mesh_table = &level->mesh_table;
-    for (int32 i = 0; i < game_mesh_table->max_entries; i++) {
-        Hash_Table_Entry<int32, Mesh> *game_mesh_entry = &game_mesh_table->entries[i];
-        if (!game_mesh_entry->is_occupied) continue;
-
-        Mesh *mesh = &game_mesh_entry->value;
-        
-        // TODO: test this
-        if (!mesh->is_loaded) {
-            if (!hash_table_exists(gl_state->level_mesh_table, game_mesh_entry->key)) {
-                GL_Mesh gl_mesh = gl_load_mesh(gl_state, *mesh);
-                hash_table_add(&gl_state->level_mesh_table, game_mesh_entry->key, gl_mesh);
-            } else {
-                debug_print("%s already loaded.\n", mesh->name);
-            }
-
-            mesh->is_loaded = true;
-        }
-    }
-#endif
-
-    // load game meshes
-    {
-        FOR_ENTRY_POINTERS(int32, Mesh, asset_manager->mesh_table) {
-            int32 mesh_key = entry->key;
-            Mesh *mesh = &entry->value;
-            
-            if (!mesh->is_loaded) {
-                if (!hash_table_exists(gl_state->mesh_table, mesh_key)) {
-                    GL_Mesh gl_mesh = gl_load_mesh(gl_state, *mesh);
-                    hash_table_add(&gl_state->mesh_table, mesh_key, gl_mesh);
-                } else {
-                    debug_print("%s already loaded.\n", mesh->name);
-                }
-
-                mesh->is_loaded = true;
-            }
-        }
-    }
-
-    // delete level meshes if they were deleted in the game
-    {
-        FOR_ENTRY_POINTERS(int32, GL_Mesh, gl_state->mesh_table) {
-            int32 mesh_key = entry->key;
-            if (!hash_table_exists(asset_manager->mesh_table, mesh_key)) {
-                hash_table_remove(&gl_state->mesh_table, mesh_key);
-                gl_delete_mesh(entry->value);
-            }
-        }
+    if (game_state->mode == Game_Mode::PLAYING) {
+        asset_manager = &game_state->asset_manager;
+    } else {
+        asset_manager = &game_state->editor_state.asset_manager;
     }
 
     // load fonts
-    Hash_Table<String, Font> *font_table = &game_state->font_table;
-    for (int32 i = 0; i < font_table->max_entries; i++) {
-        Hash_Table_Entry<String, Font> *entry = &font_table->entries[i];
-        if (!entry->is_occupied) continue;
-
-        Font *font = &entry->value;
+    Hash_Table<String, Font> *font_table = &asset_manager->font_table;
+    FOR_VALUE_POINTERS(String, Font, *font_table) {
+        Font *font = value;
 
         if (!font->is_baked) {
+            // NOTE: the font names are always in read-only memory
             if (!hash_table_exists(gl_state->font_texture_table, make_string(font->name))) {
                 gl_init_font(gl_state, font);
             } else {
@@ -2919,279 +2821,24 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
         }
     }
 
-    // load textures
-    // TODO: we can break out of this loop early if we've already checked texture_table->num_entries
-    //       (this can also be done for the font_table)
-    Hash_Table<int32, Texture> *game_texture_table = &level->texture_table;
-    for (int32 i = 0; i < game_texture_table->max_entries; i++) {
-        Hash_Table_Entry<int32, Texture> *game_texture_entry = &game_texture_table->entries[i];
-        if (!game_texture_entry->is_occupied) continue;
-
-        Texture *game_texture = &game_texture_entry->value;
-
-        if (!game_texture->is_loaded) {
-            if (!hash_table_exists(gl_state->level_texture_table, game_texture_entry->key)) {
-                GL_Texture gl_texture = gl_load_texture(gl_state, *game_texture);
-                hash_table_add(&gl_state->level_texture_table, game_texture_entry->key, gl_texture);
-            } else {
-                debug_print("%s already loaded.\n", game_texture->name);
-            }
-
-            game_texture->is_loaded = true;
-        }
-    }
-
-    // delete textures
-    // loop through the OpenGL level texture table and unload any textures that no longer exist in the
-    // game level's texture table
-    {
-        FOR_ENTRY_POINTERS(int32, GL_Texture, gl_state->level_texture_table) {
-            int32 texture_key = entry->key;
-            if (!hash_table_exists(level->texture_table, texture_key)) {
-                hash_table_remove(&gl_state->level_texture_table, texture_key);
-                gl_delete_texture(entry->value);
-            }
-        }
-    }
-
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLineWidth(1.0f);
 
-    //gl_draw_quad(gl_state, display_output, 0.0f, 0.0f, 50.0f, 50.0f, make_vec3(1.0f, 0.0f, 0.0f));
-    //gl_draw_quad_p(gl_state, display_output, 0.5f, 0.5f, 50.0f, 50.0f, make_vec3(1.0f, 0.0f, 0.0f));
-    /*gl_draw_text(gl_state, display_output,
-                 "times24",
-                 0.0f, 32.0f,
-                 "Hello, world!", make_vec3(1.0f, 1.0f, 1.0f));*/
-
     local_persist real32 t = 0.0f;
     t += 0.01f;
 
-    Editor_State *editor_state = &game_state->editor_state;
-
-    glBindBuffer(GL_UNIFORM_BUFFER, gl_state->global_ubo);
-    int64 ubo_offset = 0;
-    // TODO: marker this has to be a pointer i think (the num entries part)
-    glBufferSubData(GL_UNIFORM_BUFFER, (int32 *) ubo_offset, sizeof(int32),
-                    &level->point_light_entity_table.num_entries);
-    // NOTE: not sure why we use 16 here, instead of 32, which is the size of the GL_Point_Light struct.
-    //       i think we just use the aligned offset of the first member of the struct, which is a vec4, so we offset
-    //       by 16 since it's the closest multiple.
-    ubo_offset += 16;
-
-    {
-        FOR_VALUE_POINTERS(int32, Point_Light_Entity, level->point_light_entity_table) {
-            Point_Light_Entity *entity = value;
-            // TODO: we may just want to replace position and light_color with vec4s in Point_Light_Entity.
-            //       although this would be kind of annoying since we would have to modify the Transform struct.
-            GL_Point_Light gl_point_light = {
-                make_vec4(entity->transform.position, 1.0f),
-                make_vec4(entity->light_color, 1.0f),
-                entity->falloff_start,
-                entity->falloff_end
-            };
-
-            glBufferSubData(GL_UNIFORM_BUFFER, (int32 *) ubo_offset,
-                            sizeof(GL_Point_Light), &gl_point_light);
-            ubo_offset += sizeof(GL_Point_Light) + 8; // add 8 bytes of padding so that it aligns to size of vec4
-        }
-    }
-
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-    // entities
-    {
-        FOR_ENTRY_POINTERS(int32, Normal_Entity, level->normal_entity_table) {
-            Normal_Entity *entity = &entry->value;
-
-            int32 mesh_id = entity->mesh_id;
-
-            Material material;
-            if (entity->material_id >= 0) {
-                material = get_material(level, entity->material_id);
-            } else {
-                material = default_material;
-            }
-
-            gl_draw_mesh(gl_state, render_state,
-                         mesh_id, material,
-                         entity->transform);
-
-            if (game_state->mode == Game_Mode::EDITING &&
-                editor_state->show_wireframe &&
-                editor_state->selected_entity_type == ENTITY_NORMAL &&
-                editor_state->selected_entity_id == entry->key) {
-                gl_draw_wireframe(gl_state, render_state, mesh_id, entity->transform);
-            }
-
-            if (game_state->mode == Game_Mode::EDITING &&
-                editor_state->show_colliders) {
-                gl_draw_collider(gl_state, render_state, entity->collider);
-            }
-        }
-    }
-
-    // point light icons
-    if (game_state->mode == Game_Mode::EDITING) {
-        Marker m = begin_region();
-        Vec3 *positions = (Vec3 *) allocate((Allocator *) &memory.global_stack,
-                                            sizeof(Vec3)*level->point_light_entity_table.num_entries);
-        int32 current_index = 0;
-        FOR_ENTRY_POINTERS(int32, Point_Light_Entity, level->point_light_entity_table) {
-            Point_Light_Entity *entity = &entry->value;
-            positions[current_index++] = truncate_v4_to_v3(render_state->view_matrix *
-                                                           make_vec4(entity->transform.position, 1.0f));
-        }
-
-        // insertion sort
-        for (int32 i = 1; i < level->point_light_entity_table.num_entries; i++) {
-            Vec3 key = positions[i];
-            int32 j = i - 1;
-            for (; j >= 0 && (positions[j].z < key.z); j--) {
-                positions[j + 1] = positions[j];
-            }
-            positions[j + 1] = key;
-        }
-
-        glDepthMask(GL_FALSE);
-        for (int32 i = 0; i < level->point_light_entity_table.num_entries; i++) {
-            Vec3 view_space_position = positions[i];
-            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-            gl_draw_constant_facing_quad_view_space(gl_state, render_state,
-                                                    view_space_position, Editor_Constants::point_light_side_length,
-                                                    gl_state->light_icon_texture_id, true);
-        }
-        glDepthMask(GL_TRUE);
-        end_region(m);
-    }
-
-
-    glBindFramebuffer(GL_FRAMEBUFFER, gl_state->gizmo_framebuffer.fbo);
-    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    if (game_state->mode == Game_Mode::EDITING && editor_state->selected_entity_id >= 0) {
-        gl_draw_gizmo(gl_state, render_state, editor_state);
-    }
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-#if 0
-    real32 quad_x_offset = sinf(t) * (50.0f / display_output.width);
-
-    gl_draw_quad_p(gl_state, display_output,
-                   0.5f + quad_x_offset, 0.5f,
-                   100.0f, 100.0f,
-                   make_vec3(0.0f, 1.0f, 0.0f));
-
-    gl_draw_triangle_p(gl_state, display_output,
-                     make_vec2(0.5f, 0.5f),
-                     100.0f, 100.0f,
-                     make_vec3(1.0f, 0.0f, 0.0f));
-
-    real32 square_width_percentage = (100.0f / display_output.width);
-    real32 square_height_percentage = (100.0f / display_output.height);
-    gl_draw_line_p(gl_state, display_output,
-                   make_vec2(0.75f, 0.25f), make_vec2(0.5f + quad_x_offset, 0.5f),
-                   make_vec3(1.0f, 1.0f, 1.0f));
-    gl_draw_line_p(gl_state, display_output,
-                   make_vec2(0.75f, 0.25f), make_vec2(0.5f + quad_x_offset + square_width_percentage, 0.5f),
-                   make_vec3(1.0f, 1.0f, 1.0f));
-    gl_draw_line_p(gl_state, display_output,
-                   make_vec2(0.75f, 0.25f), make_vec2(0.5f + quad_x_offset, 0.5f + square_height_percentage),
-                   make_vec3(1.0f, 1.0f, 1.0f));
-    gl_draw_line_p(gl_state, display_output,
-                   make_vec2(0.75f, 0.25f),
-                   make_vec2(0.5f + quad_x_offset + square_width_percentage, 0.5f + square_height_percentage),
-                   make_vec3(1.0f, 1.0f, 1.0f));
-#endif
-
     Vec3 text_color = make_vec3(1.0f, 1.0f, 1.0f);
-
-#if 0
-    
-    gl_draw_text(gl_state, display_output, "times32",
-                 200.0f, display_output.height / 3.0f,
-                 "In the midst of winter, I found there was, within me, an invincible summer.\n\nAnd that makes me happy. For it says that no matter how hard the world pushes against me,\nwithin me, there's something stronger - something better, pushing right back.", 
-                 text_color);
-#endif
-
-    // TODO: create a nicer function for this
-#if 0
-    char buf[128];
-    string_format(buf, sizeof(buf), "cursor pos: (%d, %d)",
-                  (int32) game_state->cursor_pos.x, (int32) game_state->cursor_pos.y);
-    gl_draw_text(gl_state, display_output, "times24",
-                 0.0f, 15.0f,
-                 buf,
-                 text_color);
-
-    string_format(buf, sizeof(buf), "hot: %s", game_state->ui_manager.hot);
-    gl_draw_text(gl_state, display_output, "times24",
-                 0.0f, 115.0f,
-                 buf,
-                 text_color);
-
-    string_format(buf, sizeof(buf), "active: %s", game_state->ui_manager.active);
-    gl_draw_text(gl_state, display_output, "times24",
-                 0.0f, 100.0f,
-                 buf,
-                 text_color);
-#endif
-
-#if 0
-    String pressed_chars_string = make_string(buf, 0);
-    append_string(&pressed_chars_string, make_string("current pressed chars: "), make_string(""), sizeof(buf));
-    for (int32 i = 0; i < controller_state->num_pressed_chars; i++) {
-        char c = controller_state->pressed_chars[i];
-        char temp_buf[256];
-        string_format(temp_buf, sizeof(temp_buf), "%d ", c);
-
-        append_string(&pressed_chars_string, pressed_chars_string, make_string(temp_buf), sizeof(buf));
-    }
-
-    char output_buf[256];
-    to_char_array(pressed_chars_string, output_buf, sizeof(output_buf));
-    gl_draw_text(gl_state, display_output, "times24",
-                 0.0f, 200.0f,
-                 output_buf,
-                 text_color);
-#endif
-
-    // NOTE: this looks really broken, since we switched the screen-space coordinate system to have 0,0 at the
-    //       top left
-    // draw_sound_buffer(gl_state, display_output, win32_sound_output);
-
-/*
-    Transform transform = { make_vec3(-.25f, -.25f, -0.25f),
-                            t*50.0f, t*50.0f, 0.0f,
-                            make_vec3(0.5f, 0.5f, 0.5f) };
-*/
-    // gl_draw_mesh(gl_state, render_state, "cube", "basic_3d", transform);    
-
-#if 0
-    gl_draw_line(gl_state, render_state, make_vec3(), make_vec3(5.0f, 0.0f, 0.0f),
-                 make_vec4(1.0f, 0.0f, 0.0f, 1.0f));
-#endif
 
     glDisable(GL_DEPTH_TEST);
     
-    // debug lines
-    glLineWidth(6.0f);
-    Debug_State *debug_state = &game_state->debug_state;
-    for (int32 i = 0; i < debug_state->num_debug_lines; i++) {
-        Debug_Line *line = &debug_state->debug_lines[i];
-        gl_draw_line(gl_state, render_state,
-                     line->start, line->end, line->color);
-    }
-    glLineWidth(1.0f);
-
     gl_draw_framebuffer(gl_state, gl_state->gizmo_framebuffer);
 
     // TODO: for some reason, if we comment out this line, nothing renders at all, other than the gizmos
     //       if we happen to click in an area where there is an entity
     //       - pretty sure it has to do with gl_draw_text(), since if we never call that, then nothing
     //         renders
-    gl_draw_ui(gl_state, game_state,  &game_state->ui_manager, display_output);
+    gl_draw_ui(gl_state, asset_manager, render_state, &game_state->ui_manager);
 
     glEnable(GL_DEPTH_TEST);
 }

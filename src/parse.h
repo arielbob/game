@@ -26,7 +26,7 @@ inline uint32 ascii_to_uint32(char c) {
     return c - 48;
 }
 
-inline uint32 string_to_uint32(char *str, uint32 length) {
+uint32 string_to_uint32(char *str, uint32 length) {
     uint32 result = 0;
     uint32 place_value = 1;
 
@@ -38,7 +38,11 @@ inline uint32 string_to_uint32(char *str, uint32 length) {
     return result;
 }
 
-inline real32 string_to_real32(char *str, uint32 length) {
+inline uint32 string_to_uint32(String string) {
+    return string_to_uint32(string.contents, string.length);
+}
+
+real32 string_to_real32(char *str, uint32 length) {
     real32 result = 0;
     bool32 has_decimal = false;
     real32 decimal_denom = 10.0f;
@@ -68,6 +72,10 @@ inline real32 string_to_real32(char *str, uint32 length) {
     }
 
     return result;
+}
+
+inline real32 string_to_real32(String string) {
+    return string_to_real32(string.contents, string.length);
 }
 
 bool32 string_to_real32(char *str, uint32 length, real32 *real32_result) {

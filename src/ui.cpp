@@ -810,33 +810,27 @@ bool32 do_text_box_logic(UI_Manager *ui_manager, Controller_State *controller_st
 //       
 UI_Text_Box_Result do_text_box(real32 x, real32 y,
                                real32 width, real32 height,
-                               String_Buffer *buffer,
+                               String text, int32 max_length,
                                char *font,
                                UI_Text_Box_Style style, UI_Text_Style text_style,
-                               bool32 use_state, bool32 reset_state,
+                               bool32 reset_state,
                                char *id_string, int32 index = 0) {
     using namespace Context;
 
     UI_id text_box_id = make_ui_id(UI_TEXT_BOX, id_string, index);
     UI_Text_Box_State *state = (UI_Text_Box_State *) get_state(ui_manager, text_box_id);
-    if (state) {
-        // use_state should not change over the lifetime of the text box
-        assert(use_state);
+
+    if (!state) {
+        UI_Text_Box_State *new_state = add_ui_text_box_state(ui_manager, text_box_id);
+        *new_state = make_ui_text_box_state((Allocator *) ui_manager->heap_pointer,
+                                            text, max_length);
+        state = new_state;
     }
+    String_Buffer *buffer = &state->buffer;
 
-    if (use_state) {
-        if (!state) {
-            UI_Text_Box_State *new_state = add_ui_text_box_state(ui_manager, text_box_id);
-            *new_state = make_ui_text_box_state((Allocator *) ui_manager->heap_pointer,
-                                                make_string(*buffer), buffer->size);
-            state = new_state;
-        }
-
-        if (reset_state) {
-            copy_string(&state->buffer, buffer);
-        }
-
-        buffer = &state->buffer;
+    if (reset_state) {
+        // TODO: may want to change max_length here?
+        copy_string(&state->buffer, buffer);
     }
 
     UI_Text_Box text_box =  make_ui_text_box(x, y, width, height,
@@ -854,37 +848,6 @@ UI_Text_Box_Result do_text_box(real32 x, real32 y,
     result.buffer = *buffer;
 
     return result;
-}
-
-UI_Text_Box_Result do_text_box(real32 x, real32 y,
-                               real32 width, real32 height,
-                               String_Buffer *buffer,
-                               char *font,
-                               UI_Text_Box_Style style, UI_Text_Style text_style,
-                               bool32 use_state,
-                               char *id_string, int32 index = 0) {
-    return do_text_box(x, y,
-                       width, height,
-                       buffer,
-                       font,
-                       style, text_style,
-                       use_state, false,
-                       id_string, index);
-}
-
-UI_Text_Box_Result do_text_box(real32 x, real32 y,
-                               real32 width, real32 height,
-                               String_Buffer *buffer,
-                               char *font,
-                               UI_Text_Box_Style style, UI_Text_Style text_style,
-                               char *id_string, int32 index = 0) {
-    return do_text_box(x, y,
-                       width, height,
-                       buffer,
-                       font,
-                       style, text_style,
-                       false, false,
-                       id_string, index);
 }
 
 real32 do_slider(real32 x, real32 y,
@@ -1305,7 +1268,7 @@ UI_Color_Picker_Result do_color_picker(real32 x, real32 y,
     char *box_id = string_format((Allocator *) &memory.frame_arena, 64, "%s_box", id_string);
     UI_Box_Style box_style;
     box_style.background_color = style.background_color;
-    box_style.border_color = Editor_Constants::border_color;
+    box_style.border_color = make_vec4(0.3f, 0.3f, 0.3f, 1.0f);
     box_style.border_width = 1.0f;
     box_style.inside_border = false;
 

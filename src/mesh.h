@@ -15,8 +15,8 @@ enum class Mesh_Type { NONE, LEVEL, PRIMITIVE, ENGINE, RENDERING };
 struct Mesh {
     Mesh_Type type;
 
-    String_Buffer name;
-    String_Buffer filename;
+    String name;
+    String filename;
 
     Allocator *allocator;
 
@@ -43,10 +43,5 @@ struct Mesh {
     bool32 should_unload;
     bool32 is_double_sided;
 };
-
-Mesh read_and_load_mesh(Allocator *allocator,
-                        Mesh_Type type,
-                        String_Buffer filename_buffer,
-                        String_Buffer name_buffer);
 
 #endif

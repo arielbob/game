@@ -1,91 +1,15 @@
 #include "asset.h"
 
-// NOTE: filenames should always be relative, since that's what we put into the level file when saving levels.
-Mesh add_level_mesh(Asset_Manager *asset_manager, String filename, String name,
-                    int32 mesh_id, int32 *result_id = NULL) {
-    String_Buffer filename_buffer = make_string_buffer((Allocator *) asset_manager->filename_pool_pointer,
-                                                       filename, PLATFORM_MAX_PATH);
-    String_Buffer mesh_name_buffer = make_string_buffer((Allocator *) asset_manager->string_pool_pointer,
-                                                        name, MAX_ASSET_STRING_SIZE);
-
-    Mesh mesh = read_and_load_mesh((Allocator *) asset_manager->level_mesh_heap_pointer,
-                                   Mesh_Type::LEVEL,
-                                   filename_buffer, mesh_name_buffer);
-
-    Hash_Table<int32, Mesh> *mesh_table = &asset_manager->mesh_table;
-    int32 new_mesh_id;
-    if (mesh_id >= 0) {
-        new_mesh_id = mesh_id;
-    } else {
-        new_mesh_id = mesh_table->total_added_ever;
-    }
-    hash_table_add(mesh_table, new_mesh_id, mesh);
-
-    if (result_id) {
-        *result_id = new_mesh_id;
-    }
-
-    return mesh;
-}
-
-inline Mesh add_level_mesh(Asset_Manager *asset_manager, String filename, String name,
-                           int32 *result_id = NULL) {
-    return add_level_mesh(asset_manager, filename, name,
-                          -1, result_id);
-}
-
-inline Mesh add_level_mesh(Asset_Manager *asset_manager, char *filename, char *name,
-                           int32 mesh_id = -1, int32 *result_id = NULL) {
-    return add_level_mesh(asset_manager, make_string(filename), make_string(name), mesh_id, result_id);
-}
-
-inline Mesh add_level_mesh(Asset_Manager *asset_manager, char *filename, char *name,
-                           int32 *result_id = NULL) {
-    return add_level_mesh(asset_manager, make_string(filename), make_string(name), -1, result_id);
-}
-
-Mesh add_primitive_mesh(Asset_Manager *asset_manager, char *filename, char *name, int32 *result_id = NULL) {
-    Allocator *string_allocator = (Allocator *) asset_manager->persistent_string_arena_pointer;
-    String_Buffer filename_buffer = make_string_buffer(string_allocator, filename, PLATFORM_MAX_PATH);
-    String_Buffer mesh_name_buffer = make_string_buffer(string_allocator, name, MAX_ASSET_STRING_SIZE);
-
-    Allocator *mesh_allocator = (Allocator *) asset_manager->persistent_mesh_arena_pointer;
-    Mesh mesh = read_and_load_mesh(mesh_allocator,
-                                   Mesh_Type::PRIMITIVE,
-                                   filename_buffer, mesh_name_buffer);
-
-    Hash_Table<int32, Mesh> *mesh_table = &asset_manager->mesh_table;
-    int32 mesh_id = mesh_table->total_added_ever;
-    hash_table_add(mesh_table, mesh_id, mesh);
-
-    if (result_id) {
-        *result_id = mesh_id;
-    }
-
-    return mesh;
-}
-
-Mesh add_engine_mesh(Asset_Manager *asset_manager, char *filename, char *name, int32 *result_id = NULL) {
-    // TODO: in OpenGL code, we can just differentiate between them. it's nicer to just have a single one
-    //       since we don't have to constantly switch on type because we have to use different tables.
-    Allocator *string_allocator = (Allocator *) asset_manager->persistent_string_arena_pointer;
-    String_Buffer filename_buffer = make_string_buffer(string_allocator, filename, PLATFORM_MAX_PATH);
-    String_Buffer mesh_name_buffer = make_string_buffer(string_allocator, name, MAX_ASSET_STRING_SIZE);
-
-    Allocator *mesh_allocator = (Allocator *) asset_manager->persistent_mesh_arena_pointer;
-    Mesh mesh = read_and_load_mesh(mesh_allocator,
-                                   Mesh_Type::ENGINE,
-                                   filename_buffer, mesh_name_buffer);
-
-    Hash_Table<int32, Mesh> *mesh_table = &asset_manager->mesh_table;
-    int32 mesh_id = mesh_table->total_added_ever;
-    hash_table_add(mesh_table, mesh_id, mesh);
-
-    if (result_id) {
-        *result_id = mesh_id;
-    }
-
-    return mesh;
+Asset_Manager make_asset_manager(Allocator *allocator) {
+    Asset_Manager asset_manager = {};
+    asset_manager.allocator_pointer = allocator;
+    asset_manager.font_table = make_hash_table<String, Font>((Allocator *) &memory.hash_table_stack,
+                                                             HASH_TABLE_SIZE,
+                                                             &string_equals);
+    asset_manager.font_file_table = make_hash_table<String, File_Data>((Allocator *) &memory.hash_table_stack,
+                                                                       HASH_TABLE_SIZE,
+                                                                       &string_equals);
+    return asset_manager;
 }
 
 // NOTE: doesn't delete, since we clear level meshes all at once since they're all stored with the same allocator
@@ -104,7 +28,7 @@ void reset_mesh_table_level_entries(Asset_Manager *asset_manager) {
 
 bool32 mesh_name_exists(Asset_Manager *asset_manager, String name) {
     FOR_VALUE_POINTERS(int32, Mesh, asset_manager->mesh_table) {
-        if (string_equals(make_string(value->name), name)) {
+        if (string_equals(value->name, name)) {
             return true;
         }
     }
@@ -116,7 +40,7 @@ Mesh get_mesh_by_name(Asset_Manager *asset_manager, String mesh_name, int32 *mes
     Hash_Table<int32, Mesh> mesh_table = asset_manager->mesh_table;
 
     FOR_ENTRY_POINTERS(int32, Mesh, mesh_table) {
-        if (string_equals(make_string(entry->value.name), mesh_name)) {
+        if (string_equals(entry->value.name, mesh_name)) {
             *mesh_id = entry->key;
             return entry->value;
         }
@@ -131,7 +55,7 @@ int32 get_mesh_id_by_name(Asset_Manager *asset_manager, String mesh_name) {
 
     FOR_ENTRY_POINTERS(int32, Mesh, mesh_table) {
         if (entry->is_occupied) {
-            if (string_equals(make_string(entry->value.name), mesh_name)) {
+            if (string_equals(entry->value.name, mesh_name)) {
                 return entry->key;
             }
         }
@@ -159,4 +83,54 @@ Mesh *get_mesh_pointer(Asset_Manager *asset_manager, int32 mesh_id) {
     mesh_exists = hash_table_find_pointer(asset_manager->mesh_table, mesh_id, &mesh);
     assert(mesh_exists);
     return mesh;
+}
+
+Font load_font(Asset_Manager *asset_manager,
+               char *font_filename, char *font_name,
+               real32 font_height_pixels,
+               int32 font_texture_width, int32 font_texture_height) {
+    Font font = {};
+    font.height_pixels = font_height_pixels;
+    font.texture_width = font_texture_width;
+    font.texture_height = font_texture_height;
+    
+    stbtt_fontinfo font_info;
+    
+    File_Data font_file_data;
+    String font_filename_string = make_string(font_filename);
+    if (!hash_table_find(asset_manager->font_file_table, font_filename_string, &font_file_data)) {
+        font_file_data = platform_open_and_read_file((Allocator *) &memory.font_arena,
+                                                     font_filename);
+        hash_table_add(&asset_manager->font_file_table, font_filename_string, font_file_data);
+    }
+    
+    // get font info
+    // NOTE: this assumes that the TTF file only has a single font and is at index 0, or else
+    //       stbtt_GetFontOffsetForIndex will return a negative value.
+    // NOTE: font_info uses the raw data from the file contents, so the file data allocation should NOT
+    //       be temporary.
+    stbtt_InitFont(&font_info, (uint8 *) font_file_data.contents,
+                   stbtt_GetFontOffsetForIndex((uint8 *) font_file_data.contents, 0));
+    font.scale_for_pixel_height = stbtt_ScaleForPixelHeight(&font_info, font_height_pixels);
+    stbtt_GetFontVMetrics(&font_info, &font.ascent, &font.descent, &font.line_gap);
+    font.font_info = font_info;
+    font.file_data = font_file_data;
+    
+    int32 first_char = 32;
+    int32 num_chars = 96;
+    font.cdata = (stbtt_bakedchar *) arena_push(&memory.font_arena, num_chars * sizeof(stbtt_bakedchar), false);
+    font.first_char = first_char;
+    font.num_chars = num_chars;
+    font.name = make_string_buffer((Allocator *) &memory.string_arena, font_name, FONT_NAME_MAX_SIZE);
+    
+    hash_table_add(&asset_manager->font_table, make_string(font.name), font);
+    
+    return font;
+}
+
+Font get_font(Asset_Manager *asset_manager, char *font_name) {
+    Font font;
+    bool32 font_exists = hash_table_find(asset_manager->font_table, make_string(font_name), &font);
+    assert(font_exists);
+    return font;
 }

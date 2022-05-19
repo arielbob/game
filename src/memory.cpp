@@ -72,7 +72,9 @@ void *arena_push(Arena_Allocator *arena, uint32 size, bool32 zero_memory = true,
     }
     
     // we add align_offset to size, since we need to move our arena->used variable by the size +
-    // the bytes we added for alignment.
+    // the bytes we added for alignment. we do NOT want to instead subtract it, since the actual size would
+    // then be smaller than size. this is not desirable since we often push structs and the size allocated
+    // should be the size passed in.
     size += align_offset;
     assert((arena->used + size) <= arena->size);
 

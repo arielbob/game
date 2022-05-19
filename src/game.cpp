@@ -2,6 +2,7 @@
 #include "memory.h"
 #include "entity.h"
 #include "game.h"
+#include "level.h"
 
 global_variable int32 samples_written_2;
 
@@ -75,254 +76,6 @@ Audio_Source make_audio_source(uint32 total_samples, uint32 current_sample,
     return audio_source;
 }
 
-#if 0
-Material get_material(Game_State *game_state, int32 material_id) {
-    Material material;
-    bool32 material_exists = hash_table_find(game_state->material_table,
-                                             material_id,
-                                             &material);
-    assert(material_exists);
-    return material;
-}
-
-Material *get_material_pointer(Game_State *game_state, int32 material_id) {
-    Material *material;
-    bool32 material_exists = hash_table_find_pointer(game_state->material_table,
-                                                     material_id,
-                                                     &material);
-    assert(material_exists);
-    return material;
-}
-
-Mesh get_mesh(Game_State *game_state, int32 mesh_id) {
-    Mesh mesh;
-    bool32 mesh_exists = hash_table_find(game_state->mesh_table,
-                                         mesh_id,
-                                         &mesh);
-    assert(mesh_exists);
-    return mesh;
-}
-
-Mesh *get_mesh_pointer(Game_State *game_state, int32 mesh_id) {
-    Mesh *mesh;
-    bool32 mesh_exists = hash_table_find_pointer(game_state->mesh_table,
-                                                 mesh_id,
-                                                 &mesh);
-    assert(mesh_exists);
-    return mesh;
-}
-
-Texture get_texture(Game_State *game_state, int32 texture_id) {
-    assert(texture_id >= 0);
-    Texture texture;
-    bool32 texture_exists = hash_table_find(game_state->texture_table,
-                                            texture_id,
-                                            &texture);
-    assert(texture_exists);
-    return texture;
-}
-#endif
-
-bool32 material_name_exists(Level *level, String name) {
-    FOR_VALUE_POINTERS(int32, Material, level->material_table) {
-        Material *material = value;
-        if (string_equals(make_string(value->name), name)) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-bool32 texture_name_exists(Level *level, String name) {
-    FOR_VALUE_POINTERS(int32, Texture, level->texture_table) {
-        if (string_equals(make_string(value->name), name)) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-#if 0
-int32 add_common_mesh(Game_State *game_state, Mesh mesh) {
-    int32 mesh_id = game_state->common_mesh_table.total_added_ever;
-    hash_table_add(&game_state->common_mesh_table, mesh_id, mesh);
-    return mesh_id;
-}
-
-Mesh get_common_mesh(Game_State *game_state, int32 mesh_id) {
-    Mesh mesh;
-    bool32 mesh_exists = hash_table_find(game_state->common_mesh_table,
-                                         mesh_id,
-                                         &mesh);
-    assert(mesh_exists);
-    return mesh;
-}
-
-int32 add_primitive_mesh(Game_State *game_state, Mesh mesh) {
-    //assert(mesh.is_primitive);
-    int32 mesh_id = game_state->primitive_mesh_table.total_added_ever;
-    hash_table_add(&game_state->primitive_mesh_table, mesh_id, mesh);
-    return mesh_id;
-}
-#endif
-
-#if 0
-int32 get_primitive_mesh_id_by_name(Game_State *game_state, String mesh_name) {
-    Hash_Table_Iterator<int32, Mesh> iterator = make_hash_table_iterator(game_state->primitive_mesh_table);
-
-    Hash_Table_Entry<int32, Mesh> *entry = get_next_entry_pointer(&iterator);
-    while (entry != NULL) {
-        if (string_equals(make_string(entry->value.name), mesh_name)) {
-            return entry->key;
-        }
-
-        entry = get_next_entry_pointer(&iterator);
-    }
-
-    return -1;
-}
-#endif
-
-#if 0
-int32 get_mesh_id_by_name(Game_State *game_state, Level *level, Mesh_Type mesh_type, String mesh_name) {
-    int32 num_checked = 0;
-
-    Hash_Table<int32, Mesh> mesh_table;
-
-    if (mesh_type == Mesh_Type::LEVEL) {
-        mesh_table = level->mesh_table;
-    } else if (mesh_type == Mesh_Type::PRIMITIVE) {
-        mesh_table = game_state->primitive_mesh_table;
-    } else {
-        assert(!"Unhandled mesh type.");
-        return -1;
-    }
-
-    for (int32 i = 0; (i < mesh_table.max_entries) && (num_checked < mesh_table.num_entries); i++) {
-        Hash_Table_Entry<int32, Mesh> entry = mesh_table.entries[i];
-        if (entry.is_occupied) {
-            if (string_equals(make_string(entry.value.name), mesh_name)) {
-                return entry.key;
-            }
-            num_checked++;
-        }
-    }
-
-    return -1;
-}
-#endif
-
-#if 0
-bool32 mesh_exists(Game_State *game_state, Level *level, Mesh_Type mesh_type, int32 mesh_id) {
-    bool32 mesh_exists = false;
-    switch (mesh_type) {
-        case Mesh_Type::LEVEL: {
-            mesh_exists = hash_table_exists(level->mesh_table, mesh_id);
-        } break;
-        case Mesh_Type::PRIMITIVE: {
-            mesh_exists = hash_table_exists(game_state->primitive_mesh_table, mesh_id);
-        } break;
-        default: {
-            assert(!"Unhandled mesh type.");
-        } break;
-    }
-    return mesh_exists;
-}
-
-Mesh get_mesh(Game_State *game_state, Level *level, Mesh_Type mesh_type, int32 mesh_id) {
-    Mesh mesh = {};
-    bool32 mesh_exists = false;
-    switch (mesh_type) {
-        case Mesh_Type::LEVEL: {
-            mesh_exists = hash_table_find(level->mesh_table, mesh_id, &mesh);
-        } break;
-        case Mesh_Type::PRIMITIVE: {
-            mesh_exists = hash_table_find(game_state->primitive_mesh_table, mesh_id, &mesh);
-        } break;
-        default: {
-            assert(!"Unhandled mesh type.");
-        } break;
-    }
-
-    assert(mesh_exists);
-    return mesh;
-}
-
-Mesh *get_mesh_pointer(Game_State *game_state, Level *level, Mesh_Type mesh_type, int32 mesh_id) {
-    Mesh *mesh = NULL;
-    bool32 mesh_exists = false;
-        switch (mesh_type) {
-            case Mesh_Type::LEVEL: {
-                mesh_exists = hash_table_find_pointer(level->mesh_table, mesh_id, &mesh);
-            } break;
-            case Mesh_Type::PRIMITIVE: {
-                mesh_exists = hash_table_find_pointer(game_state->primitive_mesh_table, mesh_id, &mesh);
-            } break;
-            default: {
-                assert(!"Unhandled mesh type.");
-            } break;
-        }
-
-    assert(mesh_exists);
-    return mesh;
-}
-Mesh *get_mesh_pointer(Game_State *game_state, Level *level, Mesh_Type mesh_type, int32 mesh_id) {
-    Mesh *mesh = NULL;
-    bool32 mesh_exists = false;
-        switch (mesh_type) {
-            case Mesh_Type::LEVEL: {
-                mesh_exists = hash_table_find_pointer(level->mesh_table, mesh_id, &mesh);
-            } break;
-            case Mesh_Type::PRIMITIVE: {
-                mesh_exists = hash_table_find_pointer(game_state->primitive_mesh_table, mesh_id, &mesh);
-            } break;
-            default: {
-                assert(!"Unhandled mesh type.");
-            } break;
-        }
-
-    assert(mesh_exists);
-    return mesh;
-}
-#endif
-
-#if 0
-void add_entity(Game_State *game_state, Normal_Entity entity) {
-    assert(game_state->num_normal_entities < MAX_ENTITIES);
-    game_state->normal_entities[game_state->num_normal_entities++] = entity;
-}
-
-void add_point_light_entity(Game_State *game_state, Point_Light_Entity entity) {
-    assert(game_state->num_point_lights < MAX_POINT_LIGHTS);
-    game_state->point_lights[game_state->num_point_lights++] = entity;
-}
-
-int32 add_material(Game_State *game_state, Material material) {
-    int32 material_id = game_state->material_table.total_added_ever;
-    hash_table_add(&game_state->material_table, material_id, material);
-    return material_id;
-}
-
-int32 add_texture(Game_State *game_state, Texture texture) {
-    int32 texture_id = game_state->texture_table.total_added_ever;
-    hash_table_add(&game_state->texture_table, texture_id, texture);
-    return texture_id;
-}
-#endif
-
-void add_font(Game_State *game_state, Font font) {
-    hash_table_add(&game_state->font_table, make_string(font.name), font);
-}
-
-Font get_font(Game_State *game_state, char *font_name) {
-    Font font;
-    bool32 font_exists = hash_table_find(game_state->font_table, make_string(font_name), &font);
-    assert(font_exists);
-    return font;
-}
-
 void init_camera(Camera *camera, Display_Output *display_output) {
     camera->position = make_vec3(0.0f, 3.0f, -5.0f);
     camera->pitch = 10.0f;
@@ -331,212 +84,6 @@ void init_camera(Camera *camera, Display_Output *display_output) {
     camera->near = 0.1f;
     camera->far = 1000.0f;
     camera->initial_basis = { z_axis, x_axis, y_axis };
-}
-
-void init_game(Game_State *game_state,
-               Sound_Output *sound_output, uint32 num_samples) {
-#if 0
-    Heap_Allocator *heap = &memory.level_mesh_heap;
-    void *a = heap_allocate(heap, 64);
-    void *b = heap_allocate(heap, 24);
-    void *c = heap_allocate(heap, 20);
-
-    heap_deallocate(heap, b);
-    heap_deallocate(heap, c);
-    heap_deallocate(heap, a);
-    heap_allocate(heap, 2);
-#endif
-
-#if 0
-    char *buf = (char *) pool_push(&memory.string64_pool);
-    string_format(buf, 64, "%s", "hello, world!");
-    pool_remove(&memory.string64_pool, buf);
-    char *buf2 = (char *) pool_push(&memory.string64_pool);
-    string_format(buf2, 64, "%s", "wassup");
-    char *buf3 = (char *) pool_push(&memory.string64_pool);
-    string_format(buf3, 64, "%s", "a profound silence has entered the chat");
-    pool_remove(&memory.string64_pool, buf3);
-#endif
-
-    game_state->mode = Game_Mode::EDITING;
-    Editor_State *editor_state = &game_state->editor_state;
-
-    game_state->player.height = 1.6f;
-
-    real64 current_time = platform_get_wall_clock_time();
-    game_state->last_update_time = current_time;
-    game_state->last_fps_update_time = current_time;
-
-    Arena_Allocator *game_data_arena = &memory.game_data;
-    File_Data music_file_data = platform_open_and_read_file((Allocator *) game_data_arena,
-                                                            "../drive my car.wav");
-    Wav_Data *wav_data = (Wav_Data *) music_file_data.contents;
-
-    Audio_Source *music = &game_state->music;
-    *music = make_audio_source(wav_data->subchunk_2_size / (wav_data->bits_per_sample / 8 * 2),
-                               0, 1.0f, true, (int16 *) &wav_data->data);
-
-    Camera *camera = &game_state->render_state.camera;
-    Display_Output *display_output = &game_state->render_state.display_output;
-
-    // init message manager
-    game_state->message_manager = {};
-    game_state->message_manager.message_time_limit = MESSAGE_TIME_LIMIT;
-    Context::message_manager = &game_state->message_manager;
-
-    // init asset manager
-    Asset_Manager asset_manager = {};
-    asset_manager.persistent_mesh_arena_pointer = &memory.common_mesh_arena;
-    asset_manager.persistent_string_arena_pointer = &memory.string_arena;
-    asset_manager.level_mesh_heap_pointer = &memory.level_mesh_heap;
-    asset_manager.string_pool_pointer = &memory.string64_pool;
-    asset_manager.filename_pool_pointer = &memory.filename_pool;
-    asset_manager.mesh_table = make_hash_table<int32, Mesh>((Allocator *) &memory.hash_table_stack,
-                                                            MAX_MESHES,
-                                                            &int32_equals);
-    game_state->asset_manager = asset_manager;
-
-    // string pool allocators
-    Allocator *string64_allocator = (Allocator *) &memory.string64_pool;
-    Allocator *filename_allocator = (Allocator *) &memory.filename_pool;
-    
-    // init tables
-    game_state->font_table = make_hash_table<String, Font>((Allocator *) &memory.hash_table_stack,
-                                                           HASH_TABLE_SIZE,
-                                                           &string_equals);
-    game_state->font_file_table = make_hash_table<String, File_Data>((Allocator *) &memory.hash_table_stack,
-                                                                     HASH_TABLE_SIZE,
-                                                                     &string_equals);
-
-    // init camera
-    init_camera(camera, display_output);
-
-    // init fonts
-    Font font;
-    font = load_font(game_state, "c:/windows/fonts/times.ttf", "times32", 32.0f, 512, 512);
-    add_font(game_state, font);
-    font = load_font(game_state, "c:/windows/fonts/times.ttf", "times24", 24.0f, 512, 512);
-    add_font(game_state, font);
-
-    font = load_font(game_state, "c:/windows/fonts/courbd.ttf", "courier24b", 24.0f, 512, 512);
-    add_font(game_state, font);
-
-    font = load_font(game_state, "c:/windows/fonts/calibri.ttf", "calibri14", 14.0f, 512, 512);
-    add_font(game_state, font);
-    font = load_font(game_state, "c:/windows/fonts/calibrib.ttf", "calibri14b", 14.0f, 512, 512);
-    add_font(game_state, font);
-
-    font = load_font(game_state, "c:/windows/fonts/calibrib.ttf", "calibri24b", 24.0f, 512, 512);
-    add_font(game_state, font);
-
-#if 0
-    font = load_font(game_state, "c:/windows/fonts/courbd.ttf", "courier16", 16.0f, 512, 512);
-    add_font(game_state, font);
-    font = load_font(game_state, "c:/windows/fonts/courbd.ttf", "courier16b", 16.0f, 512, 512);
-    add_font(game_state, font);
-#endif
-
-    font = load_font(game_state, "c:/windows/fonts/lucon.ttf", "lucidaconsole18", 18.0f, 512, 512);
-    add_font(game_state, font);
-
-    // add common meshes
-#if 0
-    // NOTE: we just use the string_arena here since we're never going to need to remove these meshes
-    Allocator *mesh_name_allocator = (Allocator *) &memory.string_arena;
-    Mesh mesh;
-    mesh = read_and_load_mesh((Allocator *) &memory.common_mesh_arena,
-                              Mesh_Type::ENGINE,
-                              make_string_buffer(filename_allocator, "blender/gizmo_arrow.mesh", PLATFORM_MAX_PATH),
-                              make_string_buffer(mesh_name_allocator, "gizmo_arrow", MESH_NAME_MAX_SIZE));
-    int32 gizmo_arrow_mesh_id = add_common_mesh(game_state, mesh);
-
-    mesh = read_and_load_mesh((Allocator *) &memory.common_mesh_arena,
-                              Mesh_Type::ENGINE,
-                              make_string_buffer(filename_allocator, "blender/gizmo_ring.mesh", PLATFORM_MAX_PATH),
-                              make_string_buffer(mesh_name_allocator, "gizmo_ring", MESH_NAME_MAX_SIZE));
-    int32 gizmo_ring_mesh_id = add_common_mesh(game_state, mesh);
-
-    mesh = read_and_load_mesh((Allocator *) &memory.common_mesh_arena,
-                              Mesh_Type::ENGINE,
-                              make_string_buffer(filename_allocator, "blender/gizmo_sphere.mesh", PLATFORM_MAX_PATH),
-                              make_string_buffer(mesh_name_allocator, "gizmo_sphere", MESH_NAME_MAX_SIZE));
-    int32 gizmo_sphere_mesh_id = add_common_mesh(game_state, mesh);
-
-    mesh = read_and_load_mesh((Allocator *) &memory.common_mesh_arena,
-                              Mesh_Type::ENGINE,
-                              make_string_buffer(filename_allocator, "blender/gizmo_cube.mesh",
-                                                 PLATFORM_MAX_PATH),
-                              make_string_buffer(mesh_name_allocator, "gizmo_cube", MESH_NAME_MAX_SIZE));
-    int32 gizmo_cube_mesh_id = add_common_mesh(game_state, mesh);
-
-    mesh = read_and_load_mesh((Allocator *) &memory.common_mesh_arena,
-                              Mesh_Type::PRIMITIVE,
-                              make_string_buffer(filename_allocator, "blender/cube.mesh", PLATFORM_MAX_PATH),
-                              make_string_buffer(mesh_name_allocator, "cube", MESH_NAME_MAX_SIZE));
-    add_primitive_mesh(game_state, mesh);
-#else
-    int32 gizmo_arrow_mesh_id;
-    add_engine_mesh(&game_state->asset_manager, "blender/gizmo_arrow.mesh", "gizmo_arrow", &gizmo_arrow_mesh_id);
-
-    int32 gizmo_ring_mesh_id;
-    add_engine_mesh(&game_state->asset_manager, "blender/gizmo_ring.mesh", "gizmo_ring", &gizmo_ring_mesh_id);
-
-    int32 gizmo_sphere_mesh_id;
-    add_engine_mesh(&game_state->asset_manager, "blender/gizmo_sphere.mesh", "gizmo_sphere", &gizmo_sphere_mesh_id);
-
-    int32 gizmo_cube_mesh_id;
-    add_engine_mesh(&game_state->asset_manager, "blender/gizmo_cube.mesh", "gizmo_cube", &gizmo_cube_mesh_id);
-
-    add_primitive_mesh(&game_state->asset_manager, "blender/cube.mesh", "cube");
-#endif
-
-
-    Vec3 origin = make_vec3(0.0f, 10.0f, 0.0f);
-    Vec3 direction = make_vec3(0.0f, -1.0f, 0.0f);
-    Ray ray = make_ray(origin, direction);
-    Transform transform = make_transform();
-    transform.scale = make_vec3(1.0f, 0.5f, 1.0f);
-
-    // init editor_state
-    editor_state->gizmo.arrow_mesh_id = gizmo_arrow_mesh_id;
-    editor_state->gizmo.ring_mesh_id = gizmo_ring_mesh_id;
-    editor_state->gizmo.sphere_mesh_id = gizmo_sphere_mesh_id;
-    editor_state->gizmo.cube_mesh_id = gizmo_cube_mesh_id;
-    editor_state->selected_entity_id = -1;
-    editor_state->show_wireframe = true;
-    editor_state->open_window_flags = 0;
-    editor_state->is_new_level = true;
-    editor_state->current_level_filename = make_string_buffer(filename_allocator, PLATFORM_MAX_PATH);
-    Context::editor_state = editor_state;
-    
-    Editor_History editor_history = {};
-    editor_history.allocator_pointer = (Allocator *) &memory.editor_history_heap;
-    editor_state->history = editor_history;
-    
-    // init ui state
-    UI_Manager *ui_manager = &game_state->ui_manager;
-    UI_Push_Buffer ui_push_buffer = {};
-    ui_push_buffer.size = MEGABYTES(1);
-    ui_push_buffer.base = allocate((Allocator *) game_data_arena, ui_push_buffer.size);
-    ui_push_buffer.used = 0;
-    ui_manager->push_buffer = ui_push_buffer;
-    ui_manager->current_layer = 0;
-    // ui_manager->state_table = make_hash_table<UI_id, UI_State_Variant>((Allocator *) &memory.hash_table_stack,
-    //                                                                    HASH_TABLE_SIZE, &ui_id_equals);
-    ui_manager->heap_pointer = &memory.ui_state_heap;
-    ui_manager->state_table = make_hash_table<UI_id, UI_Element_State *>((Allocator *) &memory.hash_table_stack,
-                                                                         HASH_TABLE_SIZE, &ui_id_equals);
-    Context::ui_manager = ui_manager;
-
-    // init level
-    Level *current_level = &game_state->current_level;
-    current_level->name = make_string_buffer((Allocator *) &memory.level_string64_pool, LEVEL_NAME_MAX_SIZE);
-    current_level->arena_pointer = &memory.level_arena;
-    current_level->string_pool_pointer = &memory.level_string64_pool;
-    current_level->filename_pool_pointer = &memory.level_filename_pool;
-    load_default_level(game_state, &game_state->current_level);
-
-    game_state->is_initted = true;
 }
 
 void reset_debug_state(Debug_State *debug_state) {
@@ -807,62 +354,6 @@ bool32 closest_vertical_point_on_mesh(Vec3 point, Mesh *mesh, Transform transfor
     return found;
 }
 
-bool32 get_new_walk_state(Game_State *game_state, Walk_State current_walk_state, Vec3 player_position,
-                          Walk_State *walk_state_result, Vec3 *grounded_position) {
-    Level *level = &game_state->current_level;
-    Asset_Manager *asset_manager = &game_state->asset_manager;
-
-    Circle_Collider player_collider = make_circle_collider(player_position, Player_Constants::walk_radius);
-    real32 max_lower_offset = Player_Constants::max_lower_ground_offset;
-    real32 max_upper_offset = Player_Constants::max_upper_ground_offset;
-
-    Vec3 highest_point = make_vec3(0.0f, player_collider.center.y - max_lower_offset, 0.0f);
-    int32 triangle_index = -1;
-    Vec3 triangle_normal = make_vec3();
-    bool32 found_walkable_point = false;
-    Entity_Type ground_entity_type = ENTITY_NONE;
-    int32 ground_entity_id = -1;
-
-    FOR_ENTRY_POINTERS(int32, Normal_Entity, level->normal_entity_table) {
-        Normal_Entity *entity = &entry->value;
-        if (entity->is_walkable) {
-            Mesh *mesh = get_mesh_pointer(asset_manager, entity->mesh_id);
-            Get_Walkable_Triangle_On_Mesh_Result result;
-            bool32 found_triangle = get_walkable_triangle_on_mesh(player_collider.center, player_collider.radius,
-                                                                  mesh,
-                                                                  entity->transform,
-                                                                  player_collider.center.y - max_lower_offset,
-                                                                  player_collider.center.y + max_upper_offset,
-                                                                  &result);
-            if (found_triangle && (result.point.y > highest_point.y)) {
-                highest_point = result.point;
-                triangle_index = result.triangle_index;
-                triangle_normal = result.triangle_normal;
-
-                ground_entity_type = entity->type;
-                ground_entity_id = entry->key;
-                
-                found_walkable_point = true;
-            }
-        }
-    }
-
-    if (found_walkable_point) {
-        walk_state_result->triangle_normal = triangle_normal;
-        walk_state_result->triangle_index = triangle_index;
-        walk_state_result->ground_entity_type = ground_entity_type;
-        walk_state_result->ground_entity_id = ground_entity_id;
-        *grounded_position = highest_point;
-
-#if 1
-        add_debug_line(&game_state->debug_state, player_position, highest_point,
-                       make_vec4(1.0f, 1.0f, 0.0f, 1.0f));
-#endif
-    }
-
-    return found_walkable_point;
-}
-
 void update_render_state(Render_State *render_state) {
     Camera camera = render_state->camera;
     Mat4 view_matrix = get_view_matrix(camera);
@@ -879,336 +370,9 @@ void update_render_state(Render_State *render_state) {
     render_state->ortho_clip_matrix = ortho_clip_matrix;
 }
 
-Entity *get_entity(Level *level, Entity_Type entity_type, int32 entity_id) {
-    Entity *entity = NULL;
-
-    switch (entity_type) {
-        case ENTITY_NORMAL:
-        {
-            Normal_Entity *normal_entity;
-            bool32 found = hash_table_find_pointer(level->normal_entity_table,
-                                                   entity_id, &normal_entity);
-            assert(found);
-            entity = (Entity *) normal_entity;
-        } break;
-        case ENTITY_POINT_LIGHT:
-        {
-            Point_Light_Entity *point_light_entity;
-            bool32 found = hash_table_find_pointer(level->point_light_entity_table,
-                                                   entity_id, &point_light_entity);
-            assert(found);
-            entity = (Entity *) point_light_entity;
-        } break;
-        default: {
-            assert(!"Unhandled entity type.");
-        } break;
-    }
-
-    return entity;
-}
-
-Entity *get_selected_entity(Game_State *game_state) {
-    Editor_State *editor_state = &game_state->editor_state;
-    Level *level = &game_state->current_level;
-
-    int32 index = editor_state->selected_entity_id;
-
-    Entity *entity = NULL;
-    entity = get_entity(level, editor_state->selected_entity_type, index);
-
-    assert(entity);
-    return entity;
-}
-
-Mesh *get_entity_mesh_pointer(Asset_Manager *asset_manager, Entity *entity) {
-    if (entity->type == ENTITY_NORMAL) {
-        Normal_Entity *normal_entity = (Normal_Entity *) entity;
-        Mesh *mesh = get_mesh_pointer(asset_manager, normal_entity->mesh_id);
-        return mesh;
-    }
-
-    return NULL;
-}
-
-void update_entity_aabb(Asset_Manager *asset_manager, Entity *entity) {
-    Mesh *mesh = get_entity_mesh_pointer(asset_manager, entity);
-    if (mesh) {
-        if (entity->type == ENTITY_NORMAL) {
-            Normal_Entity *normal_entity = (Normal_Entity *) entity;
-            normal_entity->transformed_aabb = transform_aabb(mesh->aabb, get_model_matrix(entity->transform));
-        } else {
-            assert(!"Unhandled entity type with mesh and AABB");
-        }
-    }
-}
-
-// TODO: we probably don't always need to update the AABB in some cases; well, idk, there might be uses for AABBs
-//       outside of the editor, but that's the only place we're using them right now. although, it is convenient
-//       that as long as we use these procedures when transforming entities, the entities will always have an
-//       up to date AABB.
-void update_entity_position(Asset_Manager *asset_manager, Entity *entity, Vec3 new_position) {
-    entity->transform.position = new_position;
-
-    update_entity_aabb(asset_manager, entity);
-
-    if (entity->type == ENTITY_NORMAL) {
-        Normal_Entity *normal_entity = (Normal_Entity *) entity;
-        Collider_Variant *collider = &normal_entity->collider;
-        switch (collider->type) {
-            case Collider_Type::NONE: break;
-            case Collider_Type::CIRCLE: {
-                collider->circle.center = new_position;
-            } break;
-            default: {
-                assert(!"Unhandled collider type.");
-            } break;
-        }
-    }
-}
-
-void update_entity_rotation(Asset_Manager *asset_manager, Entity *entity, Quaternion new_rotation) {
-    entity->transform.rotation = new_rotation;
-    update_entity_aabb(asset_manager, entity);
-
-    // TODO: modify colliders when rotating
-}
-
-void update_entity_scale(Asset_Manager *asset_manager, Entity *entity, Vec3 new_scale) {
-    entity->transform.scale = new_scale;
-    update_entity_aabb(asset_manager, entity);
-
-    // TODO: modify colliders when scaling
-#if 0
-    if (entity->type == ENTITY_NORMAL) {
-        Normal_Entity *normal_entity = (Normal_Entity *) entity;
-        Collider_Variant *collider = &normal_entity->collider;
-        switch (collider->type) {
-            case Collider_Type::NONE: break;
-            case Collider_Type::CIRCLE: {
-                collider->circle.center = new_position;
-            } break;
-            default: {
-                assert(!"Unhandled collider type.");
-            } break;
-        }
-    }
-#endif
-}
-
-void set_entity_transform(Asset_Manager *asset_manager, Entity *entity, Transform transform) {
-    entity->transform = transform;
-    update_entity_aabb(asset_manager, entity);
-}
-
-Material *get_entity_material(Level *level, Entity *entity, int32 *material_id) {
-    // TODO: maybe just return NULL here instead of asserting
-    assert(entity->type == ENTITY_NORMAL);
-
-    // TODO: entities other than normal entities will have materials
-    Normal_Entity *normal_entity = (Normal_Entity *) entity;
-    Material *selected_material;
-    bool32 material_exists = hash_table_find_pointer(level->material_table,
-                                                     normal_entity->material_id,
-                                                     &selected_material);
-    assert(material_exists);
-    *material_id = normal_entity->material_id;
-    return selected_material;
-}
-
-#if 0
-void set_entity_mesh(Game_State *game_state, Level *level, Entity *entity, Mesh_Type mesh_type, int32 mesh_id) {
-    // TODO: we'll probably add entities other than normal entities in the future that have meshes, but for now just check
-    //       for ENTITY_NORMAL
-    assert(entity->type == ENTITY_NORMAL);
-    Mesh mesh = get_mesh(game_state, level, mesh_type, mesh_id);
-
-    switch (entity->type) {
-        case ENTITY_NORMAL: {
-            Normal_Entity *normal_entity = (Normal_Entity *) entity;
-            normal_entity->mesh_type = mesh_type;
-            normal_entity->mesh_id = mesh_id;
-            normal_entity->transformed_aabb = transform_aabb(mesh.aabb, entity->transform);
-        } break;
-        default: {
-            assert(!"Unhandled entity with mesh type");
-        } break;
-    }
-}
-#endif
-
-void set_entity_mesh(Asset_Manager *asset_manager, Entity *entity, int32 mesh_id) {
-    // TODO: we'll probably add entities other than normal entities in the future that have meshes, but for now
-    //       just check for ENTITY_NORMAL
-    assert(has_mesh_field(entity));
-    Mesh mesh = get_mesh(asset_manager, mesh_id);
-
-    switch (entity->type) {
-        case ENTITY_NORMAL: {
-            Normal_Entity *normal_entity = (Normal_Entity *) entity;
-            normal_entity->mesh_id = mesh_id;
-            normal_entity->transformed_aabb = transform_aabb(mesh.aabb, entity->transform);
-        } break;
-        default: {
-            assert(!"Unhandled entity with mesh type");
-        } break;
-    }
-}
-
-void set_entity_material(Entity *entity, int32 material_id) {
-    assert(entity->type == ENTITY_NORMAL);
-
-    switch (entity->type) {
-        case ENTITY_NORMAL: {
-            Normal_Entity *normal_entity = (Normal_Entity *) entity;
-            normal_entity->material_id = material_id;
-        } break;
-        default: {
-            assert(!"Unhandled entity with material type");
-        } break;
-    }
-}
-
 void add_debug_line(Debug_State *debug_state, Vec3 start, Vec3 end, Vec4 color) {
     assert(debug_state->num_debug_lines < MAX_DEBUG_LINES);
     debug_state->debug_lines[debug_state->num_debug_lines++] = { start, end, color };
-}
-
-void check_player_collisions(Game_State *game_state) {
-    Level *level = &game_state->current_level;
-    Player *player = &game_state->player;
-    Asset_Manager *asset_manager = &game_state->asset_manager;
-
-    Capsule player_capsule = { player->position,
-                               player->position + make_vec3(0.0f, player->height, 0.0f),
-                               1.0f };
-
-        
-        
-    FOR_VALUE_POINTERS(int32, Normal_Entity, level->normal_entity_table) {
-        Normal_Entity *entity = value;
-        Mesh mesh = get_mesh(asset_manager, entity->mesh_id);
-        if (capsule_intersects_mesh(player_capsule, mesh, entity->transform)) {
-            char *buf = string_format((Allocator *) &memory.frame_arena, 128,
-                                      "capsule is intersecting: %s",
-                                      to_char_array((Allocator *) &memory.frame_arena, mesh.name));
-            do_text(&game_state->ui_manager, 5.0f, 650.0f, buf, "calibri14", "capsule_intersecting_mesh");
-        }
-    }
-}
-
-void update_player(Game_State *game_state, Controller_State *controller_state,
-                   real32 dt) {
-    Debug_State *debug_state = &game_state->debug_state;
-    Asset_Manager *asset_manager = &game_state->asset_manager;
-    Player *player = &game_state->player;
-
-    if (platform_window_has_focus()) {
-        real32 delta_x = controller_state->current_mouse.x - controller_state->last_mouse.x;
-        real32 delta_y = controller_state->current_mouse.y - controller_state->last_mouse.y;
-
-        real32 heading_delta = 0.2f * delta_x;
-        real32 pitch_delta = 0.2f * delta_y;
-
-        int32 heading_rotations = (int32) floorf((player->heading + heading_delta) / 360.0f);
-        int32 pitch_rotations = (int32) floorf((player->pitch + pitch_delta) / 360.0f);
-        player->heading = (player->heading + heading_delta) - heading_rotations*360.0f;
-        player->pitch = clamp(player->pitch + pitch_delta, -90.0f, 90.0f);
-
-        Display_Output display_output = game_state->render_state.display_output;
-        Vec2 center = make_vec2(display_output.width / 2.0f, display_output.height / 2.0f);
-        platform_set_cursor_pos(center);
-        controller_state->current_mouse = center;
-    }
-
-    Vec3 player_forward = normalize(truncate_v4_to_v3(make_rotate_matrix(y_axis, player->heading) *
-                                                      make_vec4(Player_Constants::forward, 1.0f)));
-    Vec3 player_right = normalize(truncate_v4_to_v3(make_rotate_matrix(y_axis, player->heading) *
-                                                    make_vec4(Player_Constants::right, 1.0f)));
-    if (player->is_grounded) {
-        // make basis
-        Walk_State *walk_state = &player->walk_state;
-
-        Vec3 forward_point = player->position + player_forward;
-        forward_point = get_point_on_plane_from_xz(forward_point.x, forward_point.z,
-                                                   walk_state->triangle_normal, player->position);
-        player_forward = normalize(forward_point - player->position);
-
-        Vec3 right_point = player->position + player_right;
-        right_point = get_point_on_plane_from_xz(right_point.x, right_point.z,
-                                                 walk_state->triangle_normal, player->position);
-        player_right = normalize(right_point - player->position);
-
-#if 1
-        add_debug_line(debug_state,
-                       player->position, player->position + player_right, make_vec4(x_axis, 1.0f));
-        add_debug_line(debug_state,
-                       player->position, player->position + walk_state->triangle_normal, make_vec4(y_axis, 1.0f));
-        add_debug_line(debug_state,
-                       player->position, player->position + player_forward, make_vec4(z_axis, 1.0f));
-#endif
-    }
-
-    Vec3 move_vector = make_vec3();
-    if (controller_state->key_w.is_down) {
-        //move_vector = dot(heading_direction, player_direction) * heading_direction;
-        move_vector += player_forward;
-    }
-    if (controller_state->key_s.is_down) {
-        move_vector += -player_forward;
-    }
-    if (controller_state->key_d.is_down) {
-        move_vector += player_right;
-    }
-    if (controller_state->key_a.is_down) {
-        move_vector += -player_right;
-    }
-    move_vector = normalize(move_vector) * player->speed;
-
-    if (player->is_grounded) {
-        player->velocity = move_vector;
-    } else {
-        player->acceleration = make_vec3(0.0f, -9.81f, 0.0f);
-    }
-
-    Vec3 displacement_vector = player->velocity*dt + 0.5f*player->acceleration*dt*dt;
-    player->velocity += player->acceleration * dt;
-
-    Vec3 next_position = player->position + displacement_vector;
-
-    Walk_State new_walk_state;
-    Vec3 grounded_position;
-    bool32 found_new_ground = get_new_walk_state(game_state, player->walk_state, next_position,
-                                                 &new_walk_state, &grounded_position);
-    if (found_new_ground) {
-        player->walk_state = new_walk_state;
-        displacement_vector = grounded_position - player->position;
-        player->is_grounded = true;
-        
-        Entity *entity = get_entity(&game_state->current_level,
-                                    new_walk_state.ground_entity_type, new_walk_state.ground_entity_id);
-        Mesh *mesh = get_entity_mesh_pointer(asset_manager, entity);
-        assert(mesh);
-
-        Vec3 triangle[3];
-        get_triangle(mesh, new_walk_state.triangle_index, triangle);
-        
-        Mat4 model = get_model_matrix(entity->transform);
-        transform_triangle(triangle, &model);
-
-        Vec4 triangle_color = make_vec4(0.0f, 1.0f, 1.0f, 1.0f);
-        add_debug_line(debug_state, triangle[0], triangle[1], triangle_color);
-        add_debug_line(debug_state, triangle[1], triangle[2], triangle_color);
-        add_debug_line(debug_state, triangle[2], triangle[0], triangle_color);
-    } else {
-        if (player->is_grounded) {
-            player->is_grounded = false;
-            //player->velocity = make_vec3();
-        }
-    }
-
-    player->position += displacement_vector;
-
-    //check_player_collisions(game_state);
 }
 
 void update_camera(Camera *camera, Vec3 position, real32 heading, real32 pitch, real32 roll) {
@@ -1310,6 +474,86 @@ void draw_messages(Message_Manager *manager, real32 x_start, real32 y_start) {
     }
 }
 
+void init_game(Game_State *game_state,
+               Sound_Output *sound_output, uint32 num_samples) {
+    game_state->mode = Game_Mode::EDITING;
+
+    init_editor(&memory.editor_arena, &game_state->editor_state);
+    Context::editor_state = &game_state->editor_state;
+
+    game_state->player.height = 1.6f;
+
+    real64 current_time = platform_get_wall_clock_time();
+    game_state->last_update_time = current_time;
+    game_state->last_fps_update_time = current_time;
+
+    Arena_Allocator *game_data_arena = &memory.game_data;
+    File_Data music_file_data = platform_open_and_read_file((Allocator *) game_data_arena,
+                                                            "../drive my car.wav");
+    Wav_Data *wav_data = (Wav_Data *) music_file_data.contents;
+
+    Audio_Source *music = &game_state->music;
+    *music = make_audio_source(wav_data->subchunk_2_size / (wav_data->bits_per_sample / 8 * 2),
+                               0, 1.0f, true, (int16 *) &wav_data->data);
+
+    Camera *camera = &game_state->render_state.camera;
+    Display_Output *display_output = &game_state->render_state.display_output;
+
+    // init message manager
+    game_state->message_manager = {};
+    game_state->message_manager.message_time_limit = MESSAGE_TIME_LIMIT;
+    Context::message_manager = &game_state->message_manager;
+
+    // init asset manager
+    Asset_Manager asset_manager = make_asset_manager((Allocator *) &memory.game_data);
+    game_state->asset_manager = asset_manager;
+    //Context::asset_manager = &game_state->asset_manager;
+
+    // string pool allocators
+    Allocator *string64_allocator = (Allocator *) &memory.string64_pool;
+    Allocator *filename_allocator = (Allocator *) &memory.filename_pool;
+    
+    // init camera
+    init_camera(camera, display_output);
+
+#if 0
+    // init fonts
+    load_font(asset_manager, "c:/windows/fonts/times.ttf", "times32", 32.0f, 512, 512);
+    load_font(asset_manager, "c:/windows/fonts/times.ttf", "times24", 24.0f, 512, 512);
+
+    load_font(asset_manager, "c:/windows/fonts/courbd.ttf", "courier24b", 24.0f, 512, 512);
+
+    load_font(asset_manager, "c:/windows/fonts/calibri.ttf", "calibri14", 14.0f, 512, 512);
+    load_font(asset_manager, "c:/windows/fonts/calibrib.ttf", "calibri14b", 14.0f, 512, 512);
+    load_font(asset_manager, "c:/windows/fonts/calibrib.ttf", "calibri24b", 24.0f, 512, 512);
+
+    load_font(asset_manager, "c:/windows/fonts/lucon.ttf", "lucidaconsole18", 18.0f, 512, 512);
+#endif
+
+    Vec3 origin = make_vec3(0.0f, 10.0f, 0.0f);
+    Vec3 direction = make_vec3(0.0f, -1.0f, 0.0f);
+    Ray ray = make_ray(origin, direction);
+    Transform transform = make_transform();
+    transform.scale = make_vec3(1.0f, 0.5f, 1.0f);
+
+    // init ui state
+    UI_Manager *ui_manager = &game_state->ui_manager;
+    UI_Push_Buffer ui_push_buffer = {};
+    ui_push_buffer.size = MEGABYTES(1);
+    ui_push_buffer.base = allocate((Allocator *) game_data_arena, ui_push_buffer.size);
+    ui_push_buffer.used = 0;
+    ui_manager->push_buffer = ui_push_buffer;
+    ui_manager->current_layer = 0;
+    // ui_manager->state_table = make_hash_table<UI_id, UI_State_Variant>((Allocator *) &memory.hash_table_stack,
+    //                                                                    HASH_TABLE_SIZE, &ui_id_equals);
+    ui_manager->heap_pointer = &memory.ui_state_heap;
+    ui_manager->state_table = make_hash_table<UI_id, UI_Element_State *>((Allocator *) &memory.hash_table_stack,
+                                                                         HASH_TABLE_SIZE, &ui_id_equals);
+    Context::ui_manager = ui_manager;
+
+    game_state->is_initted = true;
+}
+
 void update(Game_State *game_state,
             Controller_State *controller_state,
             Sound_Output *sound_output, uint32 num_samples) {
@@ -1337,41 +581,12 @@ void update(Game_State *game_state,
 
     ui_manager->last_frame_active = ui_manager->active;
 
-    if (was_clicked(controller_state->key_f5)) {
-        if (game_state->mode == Game_Mode::EDITING) {
-            if (!game_state->editor_state.use_freecam) platform_set_cursor_visible(false);
-            game_state->mode = Game_Mode::PLAYING;
-            Player *player = &game_state->player;
-            Camera camera = render_state->camera;
-            player->position = render_state->camera.position - make_vec3(0.0f, player->height, 0.0f);
-            player->heading = camera.heading;
-            player->pitch = camera.pitch;
-            player->roll = camera.roll;
-            player->velocity = make_vec3();
-            // just set is_grounded to false, since we don't have a way to check if the player is on a mesh
-            // right now.
-            player->is_grounded = false;
-        } else {
-            game_state->mode = Game_Mode::EDITING;
-            if (!game_state->editor_state.use_freecam) {
-                platform_set_cursor_visible(true);
-            }
-        }
+    update_render_state(render_state);
+    
+    if (game_state->mode == Game_Mode::EDITING) {
+        draw_editor_ui();
     }
 
-    if (game_state->mode == Game_Mode::EDITING) {
-        update_editor(game_state, controller_state, dt);
-        draw_editor_ui(game_state, controller_state);
-        //clear_editor_state_for_gone_color_pickers(ui_manager, &game_state->editor_state);
-    } else {
-        update_player(game_state, controller_state, dt);
-        Player player = game_state->player;
-        update_camera(&render_state->camera, player.position + make_vec3(0.0f, player.height, 0.0f),
-                      player.heading, player.pitch, player.roll);
-        update_render_state(render_state);
-    }
-    
-        
     char *buf = (char *) arena_push(&memory.frame_arena, 128);
 #if 0
     buf = (char *) arena_push(&memory.frame_arena, 128);
@@ -1384,38 +599,6 @@ void update(Game_State *game_state,
     char *dt_string = string_format((Allocator *) &memory.frame_arena, 128, "FPS %d / dt %.3f", 
                                     (int32) round(game_state->last_second_fps), dt);
     do_text(ui_manager, 5.0f, 14.0f, dt_string, "calibri14", "dt_string");
-
-    buf = (char *) arena_push(&memory.frame_arena, 128);
-    string_format(buf, 128, "hot: %s\nactive: %s",
-                  (char *) ui_manager->hot.string_ptr,
-                  (char *) ui_manager->active.string_ptr);
-    do_text(ui_manager, 800.0f, 24.0f, buf, "times24", "current_hot");
-
-    buf = (char *) arena_push(&memory.frame_arena, 128);
-    string_format(buf, 128, "num ui states: %d",
-                  ui_manager->state_table.num_entries);
-    do_text(ui_manager, 500.0f, 24.0f, buf, "times24", "num_ui_states");
-    buf = (char *) arena_push(&memory.frame_arena, 128);
-
-    buf = (char *) arena_push(&memory.frame_arena, 128);
-    string_format(buf, 128, "pool->first: %p",
-                  memory.string64_pool.first);
-    do_text(ui_manager, 500.0f, 48.0f, buf, "times24", "pool->first");
-    buf = (char *) arena_push(&memory.frame_arena, 128);
-    
-    buf = (char *) arena_push(&memory.frame_arena, 128);
-    string_format(buf, 128, "pool->blocks_used: %d",
-                  memory.string64_pool.blocks_used);
-    do_text(ui_manager, 500.0f, 72.0f, buf, "times24", "pool->blocks_used");
-    buf = (char *) arena_push(&memory.frame_arena, 128);
-
-#if 0
-    buf = (char *) arena_push(&memory.frame_arena, 128);
-    string_format(buf, 128, "level string64_pool->first: %p",
-                  game_state->current_level.string64_pool_pointer->first);
-    do_text(ui_manager, 500.0f, 72.0f, buf, "times24", "pool->first");
-    buf = (char *) arena_push(&memory.frame_arena, 128);
-#endif
 
     fill_sound_buffer_with_audio(sound_output, game_state->is_playing_music, &game_state->music, num_samples);
 

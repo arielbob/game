@@ -223,6 +223,11 @@ void deallocate(String string) {
     deallocate(string.allocator, string.contents);
 }
 
+void replace_with_copy(Allocator *allocator, String *old_string, String new_string) {
+    deallocate(*old_string);
+    *old_string = copy(allocator, new_string);
+}
+
 String_Iterator make_string_iterator(String string) {
     String_Iterator it = {};
     it.string = string;

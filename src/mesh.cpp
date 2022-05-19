@@ -408,29 +408,6 @@ inline void get_triangle(Mesh *mesh, int32 triangle_index, Vec3 triangle[3]) {
     triangle[2] = get_vertex_from_index(mesh, mesh->indices[triangle_index*3 + 2]);
 }
 
-// TODO: we may want to just get rid of the mesh_name_size parameter, and have it just be set to
-//       MESH_NAME_MAX_SIZE.
-Mesh read_and_load_mesh(Allocator *allocator,
-                        Mesh_Type type,
-                        String_Buffer filename_buffer,
-                        String_Buffer name_buffer) {
-    Marker m = begin_region();
-
-    Allocator *global_stack = (Allocator *) &memory.global_stack;
-    char *filename = to_char_array(global_stack, filename_buffer);
-    File_Data mesh_file = platform_open_and_read_file(global_stack, filename);
-
-    Mesh mesh = Mesh_Loader::load_mesh(mesh_file, allocator);
-    mesh.allocator = allocator;
-    mesh.filename = filename_buffer;
-    mesh.name = name_buffer;
-    mesh.type = type;
-
-    end_region(m);
-    
-    return mesh;
-}
-
 void deallocate(Mesh mesh) {
     deallocate(mesh.name);
     deallocate(mesh.filename);
