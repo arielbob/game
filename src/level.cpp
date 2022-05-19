@@ -11,6 +11,36 @@ void init_level_info(Allocator *temp_allocator, Level_Info *level_info) {
     make_and_init_linked_list(Material_Info,           &level_info->materials,            temp_allocator);
 }
 
+bool32 mesh_name_exists(Level_Info *level_info, String mesh_name) {
+    FOR_LIST_NODES(Mesh_Info, level_info->meshes) {
+        Mesh_Info info = current_node->value;
+        if (string_equals(info.name, mesh_name)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool32 texture_name_exists(Level_Info *level_info, String texture_name) {
+    FOR_LIST_NODES(Texture_Info, level_info->textures) {
+        Texture_Info info = current_node->value;
+        if (string_equals(info.name, texture_name)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool32 material_name_exists(Level_Info *level_info, String material_name) {
+    FOR_LIST_NODES(Material_Info, level_info->materials) {
+        Material_Info info = current_node->value;
+        if (string_equals(info.name, material_name)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 inline Level_Loader::Token Level_Loader::make_token(Token_Type type, char *contents, int32 length) {
     Token token = {
         type,
@@ -238,7 +268,8 @@ bool32 Level_Loader::parse_level_info(Allocator *temp_allocator, File_Data file_
             case WAIT_FOR_MESH_NAME_STRING: {
                 if (token.type == STRING) {
                     assert(token.string.length <= MESH_NAME_MAX_SIZE);
-                    
+                    assert(!mesh_name_exists(level_info, token.string));
+
                     temp_mesh_info = {};
                     temp_mesh_info.name = token.string;
                     state = WAIT_FOR_MESH_FILENAME_STRING;
@@ -284,7 +315,8 @@ bool32 Level_Loader::parse_level_info(Allocator *temp_allocator, File_Data file_
             case WAIT_FOR_TEXTURE_NAME_STRING: {
                 if (token.type == STRING) {
                     assert(token.string.length <= TEXTURE_NAME_MAX_SIZE);
-                    
+                    assert(!texture_name_exists(level_info, token.string));
+
                     temp_texture_info.name = token.string;
                     state = WAIT_FOR_TEXTURE_FILENAME_STRING;
                 } else {
@@ -332,7 +364,8 @@ bool32 Level_Loader::parse_level_info(Allocator *temp_allocator, File_Data file_
             case WAIT_FOR_MATERIAL_NAME_STRING: {
                 if (token.type == STRING) {
                     assert(token.string.length <= MATERIAL_NAME_MAX_SIZE);
-                    
+                    assert(!material_name_exists(level_info, token.string));
+
                     temp_material_info.name = token.string;
                     should_add_new_temp_material = true;
 

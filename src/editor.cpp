@@ -48,12 +48,6 @@ void unload_level(Editor_State *editor_state) {
 }
 
 void load_level(Editor_State *editor_state, Level_Info *level_info) {
-    // TODO (done): load meshes
-    // TODO (done): load textures
-    // TODO (done): load materials
-    // TODO (done): load entities
-    // TODO (done): resolve entity asset IDs
-
     Asset_Manager *asset_manager = &editor_state->asset_manager;
     load_level_assets(asset_manager, level_info);
 

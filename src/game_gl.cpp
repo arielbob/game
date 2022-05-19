@@ -438,8 +438,8 @@
 //       - TODO (done): load entities
 //       - TODO (done): resolve entity asset IDs
 
-//       - TODO: in level_info loading, ensure that duplicate names don't exist. do this BEFORE you load the level
-//               since everything in level_info is temporary
+//       - TODO (done): in level_info loading, ensure that duplicate names don't exist. do this BEFORE you load
+//               the level since everything in level_info is temporary
 //       - TODO: load level data into asset_manager (editor asset_manager right now, since we're just doing
 //               the editor)
 //       - TODO: unload opengl assets when changing levels
