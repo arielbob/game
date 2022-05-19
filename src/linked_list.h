@@ -17,6 +17,7 @@ template <class T>
 struct Linked_List {
     Allocator *allocator;
     Node<T> cap;
+    int32 num_entries;
 };
 
 #define make_and_init_linked_list(type, linked_list_pointer, allocator_pointer) \
@@ -47,6 +48,7 @@ void add(Linked_List<T> *list, T value) {
     new_node->next = cap;
     new_node->prev = cap->prev;
     cap->prev = new_node;
+    list->num_entries++;
 }
 
 template <class T>
@@ -63,6 +65,7 @@ void remove(Linked_List<T> *list, Node<T> *node) {
 
     // NOTE: this only deallocates the node and not the value inside the node.
     deallocate(list->allocator, node);
+    list->num_entries--;
 }
 
 #endif

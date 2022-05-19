@@ -76,16 +76,6 @@ Audio_Source make_audio_source(uint32 total_samples, uint32 current_sample,
     return audio_source;
 }
 
-void init_camera(Camera *camera, Display_Output *display_output) {
-    camera->position = make_vec3(0.0f, 3.0f, -5.0f);
-    camera->pitch = 10.0f;
-    camera->fov_x_degrees = 90.0f;
-    camera->aspect_ratio = (real32) display_output->width / display_output->height;
-    camera->near = 0.1f;
-    camera->far = 1000.0f;
-    camera->initial_basis = { z_axis, x_axis, y_axis };
-}
-
 void reset_debug_state(Debug_State *debug_state) {
     debug_state->num_debug_lines = 0;
 }
@@ -104,11 +94,6 @@ inline bool32 just_pressed(Controller_Button_State button_state) {
 
 inline bool32 just_lifted(Controller_Button_State button_state) {
     return (!button_state.is_down && button_state.was_down);
-}
-
-Mat4 get_view_matrix(Camera camera) {
-    Basis basis = camera.current_basis;
-    return get_view_matrix(camera.position, basis.forward, basis.right, basis.up);
 }
 
 Vec3 cursor_pos_to_world_space(Vec2 cursor_pos, Render_State *render_state) {
@@ -354,48 +339,9 @@ bool32 closest_vertical_point_on_mesh(Vec3 point, Mesh *mesh, Transform transfor
     return found;
 }
 
-void update_render_state(Render_State *render_state) {
-    Camera camera = render_state->camera;
-    Mat4 view_matrix = get_view_matrix(camera);
-    Mat4 perspective_clip_matrix = make_perspective_clip_matrix(camera.fov_x_degrees, camera.aspect_ratio,
-                                                                camera.near, camera.far);
-    render_state->view_matrix = view_matrix;
-    render_state->perspective_clip_matrix = perspective_clip_matrix;
-    render_state->cpv_matrix = perspective_clip_matrix * view_matrix;
-
-    Display_Output display_output = render_state->display_output;
-    Mat4 ortho_clip_matrix = make_ortho_clip_matrix((real32) display_output.width,
-                                                    (real32) display_output.height,
-                                                    0.0f, 100.0f);
-    render_state->ortho_clip_matrix = ortho_clip_matrix;
-}
-
 void add_debug_line(Debug_State *debug_state, Vec3 start, Vec3 end, Vec4 color) {
     assert(debug_state->num_debug_lines < MAX_DEBUG_LINES);
     debug_state->debug_lines[debug_state->num_debug_lines++] = { start, end, color };
-}
-
-void update_camera(Camera *camera, Vec3 position, real32 heading, real32 pitch, real32 roll) {
-    Basis initial_basis = camera->initial_basis;
-
-    camera->heading = heading;
-    camera->pitch = pitch;
-    camera->roll = roll;
-
-    Mat4 model_matrix = make_rotate_matrix(camera->roll, camera->pitch, camera->heading);
-    Vec3 transformed_forward = truncate_v4_to_v3(model_matrix * make_vec4(initial_basis.forward, 1.0f));
-    Vec3 transformed_right = truncate_v4_to_v3(model_matrix * make_vec4(initial_basis.right, 1.0f));
-    Vec3 transformed_up = cross(transformed_forward, transformed_right);
-
-    Vec3 corrected_right = cross(transformed_up, transformed_forward);
-    Vec3 forward = normalize(transformed_forward);
-    Vec3 right = normalize(corrected_right);
-    Vec3 up = normalize(transformed_up);
-
-    camera->position = position;
-
-    Basis current_basis = { forward, right, up };
-    camera->current_basis = current_basis;
 }
 
 void add_message(Message_Manager *manager, String text) {
@@ -478,7 +424,8 @@ void init_game(Game_State *game_state,
                Sound_Output *sound_output, uint32 num_samples) {
     game_state->mode = Game_Mode::EDITING;
 
-    init_editor(&memory.editor_arena, &game_state->editor_state);
+    Display_Output *display_output = &game_state->render_state.display_output;
+    init_editor(&memory.editor_arena, &game_state->editor_state, *display_output);
     Context::editor_state = &game_state->editor_state;
 
     game_state->player.height = 1.6f;
@@ -496,9 +443,6 @@ void init_game(Game_State *game_state,
     *music = make_audio_source(wav_data->subchunk_2_size / (wav_data->bits_per_sample / 8 * 2),
                                0, 1.0f, true, (int16 *) &wav_data->data);
 
-    Camera *camera = &game_state->render_state.camera;
-    Display_Output *display_output = &game_state->render_state.display_output;
-
     // init message manager
     game_state->message_manager = {};
     game_state->message_manager.message_time_limit = MESSAGE_TIME_LIMIT;
@@ -514,7 +458,8 @@ void init_game(Game_State *game_state,
     Allocator *filename_allocator = (Allocator *) &memory.filename_pool;
     
     // init camera
-    init_camera(camera, display_output);
+    // TODO: have separate camera for game and init it
+    //init_camera(camera, display_output);
 
 #if 0
     // init fonts
@@ -560,7 +505,7 @@ void update(Game_State *game_state,
     Display_Output *display_output = &game_state->render_state.display_output;
     if (!game_state->is_initted) {
         init_game(game_state, sound_output, num_samples);
-        return;
+        //return;
     }
 
     real64 current_time = platform_get_wall_clock_time();
@@ -581,10 +526,11 @@ void update(Game_State *game_state,
 
     ui_manager->last_frame_active = ui_manager->active;
 
-    update_render_state(render_state);
+    //update_render_state(render_state);
     
     if (game_state->mode == Game_Mode::EDITING) {
-        draw_editor_ui();
+        update_editor(game_state, controller_state, dt);
+        draw_editor(game_state, controller_state);
     }
 
     char *buf = (char *) arena_push(&memory.frame_arena, 128);

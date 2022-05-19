@@ -44,6 +44,7 @@ global_variable Allocator *temp_region;
 #include "memory.cpp"
 #include "math.cpp"
 #include "mesh.cpp"
+#include "render.cpp"
 #include "font.cpp"
 #include "asset.cpp"
 #include "ui.cpp"
@@ -1274,7 +1275,6 @@ int WinMain(HINSTANCE hInstance,
                         sound_output.sound_buffer->Play(0, 0, DSBPLAY_LOOPING);
                         sound_output.is_playing = true;
                     }
-
 
                     gl_render(&gl_state, game_state,
                               controller_state,

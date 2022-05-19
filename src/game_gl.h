@@ -165,15 +165,16 @@ struct GL_State {
 #endif
 
     Hash_Table<int32, GL_Mesh> rendering_mesh_table;
-    Hash_Table<int32, GL_Mesh> mesh_table;
+    
 
     // for GL specific textures
     Hash_Table<int32, GL_Texture> rendering_texture_table;
 
     Hash_Table<String, uint32> font_texture_table;
 
-    //Hash_Table<int32, GL_Mesh> level_mesh_table;
-    Hash_Table<int32, GL_Texture> level_texture_table;
+    // game assets
+    Hash_Table<int32, GL_Mesh> mesh_table;
+    Hash_Table<int32, GL_Texture> texture_table;
     
     // TODO: will have to delete these and remake them on window resize
     GL_Framebuffer gizmo_framebuffer;

@@ -1,6 +1,14 @@
 #include "asset.h"
 #include "level.h"
 
+Material default_material = {
+    make_string(""),
+    -1,
+    0.5f,
+    make_vec4(0.5f, 0.5f, 0.5f, 1.0f),
+    true
+};
+
 Asset_Manager make_asset_manager(Allocator *allocator) {
     Asset_Manager asset_manager = {};
     asset_manager.allocator_pointer = allocator;
@@ -168,6 +176,15 @@ int32 add_material(Asset_Manager *asset_manager, Material material) {
     int32 material_id = asset_manager->material_table.total_added_ever;
     hash_table_add(&asset_manager->material_table, material_id, material);
     return material_id;
+}
+
+Material get_material(Asset_Manager *asset_manager, int32 material_id) {
+    Material material;
+    bool32 material_exists = hash_table_find(asset_manager->material_table,
+                                             material_id,
+                                             &material);
+    assert(material_exists);
+    return material;
 }
 
 int32 get_material_id_by_name(Asset_Manager *asset_manager, String material_name) {

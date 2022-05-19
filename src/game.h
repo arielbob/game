@@ -14,6 +14,7 @@
 #include "font.h"
 #include "ui.h"
 #include "mesh.h"
+#include "render.h"
 #include "editor.h"
 //#include "level.h"
 
@@ -26,11 +27,6 @@
 #define MATERIAL_NAME_MAX_SIZE   64
 #define MATERIAL_STRING_MAX_SIZE 64
 #define LEVEL_NAME_MAX_SIZE 64
-
-struct Display_Output {
-    int32 width;
-    int32 height;
-};
 
 struct Sound_Output {
     int16 *sound_buffer;
@@ -110,31 +106,6 @@ struct Controller_State {
     // these are in screen-space coordinates in pixels (0,0 at top left)
     Vec2 last_mouse;
     Vec2 current_mouse;
-};
-
-struct Camera {
-    real32 fov_x_degrees;
-    real32 aspect_ratio;
-    real32 near;
-    real32 far;
-    
-    real32 heading;
-    real32 pitch;
-    real32 roll;
-
-    // NOTE: direction and right must be unit vectors and orthogonal
-    Basis initial_basis;
-    Basis current_basis;
-    Vec3 position;
-};
-
-struct Render_State {
-    Display_Output display_output;
-    Camera camera;
-    Mat4 perspective_clip_matrix;
-    Mat4 view_matrix;
-    Mat4 cpv_matrix;
-    Mat4 ortho_clip_matrix;
 };
 
 enum class Game_Mode {

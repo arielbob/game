@@ -6,7 +6,7 @@ void init_editor_level(Editor_State *editor_state, Editor_Level *editor_level) {
     make_and_init_linked_list(Entity *, &editor_level->entities, (Allocator *) &editor_state->entity_heap);
 }
 
-void init_editor(Arena_Allocator *editor_arena, Editor_State *editor_state) {
+void init_editor(Arena_Allocator *editor_arena, Editor_State *editor_state, Display_Output display_output) {
     *editor_state = {};
 
     // we can't fill up the arena completely, i.e. if the arena is 2 megabytes, we can't just do two 1 MB
@@ -24,6 +24,7 @@ void init_editor(Arena_Allocator *editor_arena, Editor_State *editor_state) {
     void *general_heap_base = arena_push(editor_arena, general_heap_size, false);
     editor_state->general_heap = make_heap_allocator(general_heap_base, entity_heap_size);
 
+    init_camera(&editor_state->camera, &display_output);
     init_editor_level(editor_state, &editor_state->level);
 
     editor_state->asset_manager = make_asset_manager((Allocator *) &editor_state->general_heap);
@@ -384,13 +385,86 @@ void draw_level_box(UI_Manager *ui_manager, Editor_State *editor_state,
     draw_row_padding(x, &y, row_width, padding_y, row_color, side_flags | SIDE_BOTTOM, row_id, row_index);
 }
 
-void update_editor() {
-    // TODO: do this
+void update_editor_camera(Editor_State *editor_state, Controller_State *controller_state,
+                          bool32 has_focus, bool32 should_move,
+                          real32 dt) {
+    Camera *camera = &editor_state->camera;
+    bool32 use_freecam = editor_state->use_freecam;
+    Basis initial_basis = camera->initial_basis;
+
+    if (use_freecam && has_focus) {
+        real32 delta_x = controller_state->current_mouse.x - controller_state->last_mouse.x;
+        real32 delta_y = controller_state->current_mouse.y - controller_state->last_mouse.y;
+
+        real32 heading_delta = 0.2f * delta_x;
+        real32 pitch_delta = 0.2f * delta_y;
+
+        int32 heading_rotations = (int32) floorf((camera->heading + heading_delta) / 360.0f);
+        int32 pitch_rotations = (int32) floorf((camera->pitch + pitch_delta) / 360.0f);
+        camera->heading = (camera->heading + heading_delta) - heading_rotations*360.0f;
+        camera->pitch = clamp(camera->pitch + pitch_delta, -90.0f, 90.0f);
+    }
+    
+    Mat4 model_matrix = make_rotate_matrix(camera->roll, camera->pitch, camera->heading);
+    Vec3 transformed_forward = truncate_v4_to_v3(model_matrix * make_vec4(initial_basis.forward, 1.0f));
+    Vec3 transformed_right = truncate_v4_to_v3(model_matrix * make_vec4(initial_basis.right, 1.0f));
+    Vec3 transformed_up = cross(transformed_forward, transformed_right);
+    // we calculate a new right vector to correct for any error to ensure that our vectors form an
+    // orthonormal basis
+    Vec3 corrected_right = cross(transformed_up, transformed_forward);
+
+    Vec3 forward = normalize(transformed_forward);
+    Vec3 right = normalize(corrected_right);
+    Vec3 up = normalize(transformed_up);
+
+    if (should_move) {
+        Vec3 movement_delta = make_vec3();
+        if (controller_state->key_w.is_down) {
+            movement_delta += forward;
+        }
+        if (controller_state->key_s.is_down) {
+            movement_delta -= forward;
+        }
+        if (controller_state->key_d.is_down) {
+            movement_delta += right;
+        }
+        if (controller_state->key_a.is_down) {
+            movement_delta -= right;
+        }
+
+        real32 camera_speed = Editor_Constants::camera_speed;
+        movement_delta = normalize(movement_delta) * camera_speed;
+        camera->position += movement_delta * dt;
+    }
+    
+    Basis current_basis = { forward, right, up };
+    camera->current_basis = current_basis;
 }
 
-void draw_editor_ui() {
-    Render_State render_state = Context::game_state->render_state;
-    draw_level_box(Context::ui_manager, Context::editor_state,
-                   Context::controller_state,
-                   render_state.display_output.width - 198.0f - 1.0f, 1.0f);
+void update_editor(Game_State *game_state, Controller_State *controller_state, real32 dt) {
+    UI_Manager *ui_manager = &game_state->ui_manager;
+    Editor_State *editor_state = &game_state->editor_state;
+    Render_State *render_state = &game_state->render_state;
+    Display_Output *display_output = &game_state->render_state.display_output;
+    Asset_Manager *asset_manager = &editor_state->asset_manager;
+
+    if (just_pressed(controller_state->key_tab) && !has_focus(ui_manager)) {
+        editor_state->use_freecam = !editor_state->use_freecam;
+        platform_set_cursor_visible(!editor_state->use_freecam);
+    }
+    
+    bool32 camera_should_move = editor_state->use_freecam && !has_focus(ui_manager);
+    update_editor_camera(editor_state, controller_state,
+                         platform_window_has_focus(), camera_should_move, dt);
+    update_render_state(render_state, editor_state->camera);
+}
+
+void draw_editor(Game_State *game_state, Controller_State *controller_state) {
+    Render_State *render_state = &game_state->render_state;
+    Editor_State *editor_state = &game_state->editor_state;
+    update_render_state(render_state, editor_state->camera);
+
+    draw_level_box(&game_state->ui_manager, editor_state,
+                   controller_state,
+                   render_state->display_output.width - 198.0f - 1.0f, 1.0f);
 }

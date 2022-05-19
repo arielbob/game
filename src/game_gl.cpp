@@ -432,18 +432,20 @@
 //       - TODO (done): create intermediate level struct
 //       - TODO (done): change level stuff to use new intermediate level struct
 //       - TODO (done): separate asset_managers for editor and for game
+//       - TODO (done): load level data into asset_manager (editor asset_manager right now, since we're just doing
+//               the editor)
 //       - TODO (done): load meshes
 //       - TODO (done): load textures
 //       - TODO (done): load materials
 //       - TODO (done): load entities
 //       - TODO (done): resolve entity asset IDs
-
 //       - TODO (done): in level_info loading, ensure that duplicate names don't exist. do this BEFORE you load
 //               the level since everything in level_info is temporary
-//       - TODO: load level data into asset_manager (editor asset_manager right now, since we're just doing
-//               the editor)
+//       - TODO (done): load new assets into opengl
+//       - TODO (done): render entities
+
 //       - TODO: unload opengl assets when changing levels
-//       - TODO: load new assets into opengl
+//       - TODO: unload opengl assets when switching between play and edit mode
 
 //       - TODO: load fonts into game as well
 //       - TODO: unload opengl assets when switching between play and editing mode
@@ -977,7 +979,7 @@ uint32 gl_use_shader(GL_State *gl_state, char *shader_name) {
 void gl_use_texture(GL_State *gl_state, int32 texture_id) {
     // TODO: will have to add parameter to specify which texture slot to use
     GL_Texture texture;
-    uint32 texture_exists = hash_table_find(gl_state->level_texture_table, texture_id, &texture);
+    uint32 texture_exists = hash_table_find(gl_state->texture_table, texture_id, &texture);
     assert(texture_exists);
     glBindTexture(GL_TEXTURE_2D, texture.id); 
 }
@@ -1432,8 +1434,8 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
                                                            MAX_MESHES, &int32_equals);
     gl_state->rendering_texture_table = make_hash_table<int32, GL_Texture>((Allocator *) &memory.hash_table_stack,
                                                                            HASH_TABLE_SIZE, &int32_equals);
-    gl_state->level_texture_table = make_hash_table<int32, GL_Texture>((Allocator *) &memory.hash_table_stack,
-                                                                  HASH_TABLE_SIZE, &int32_equals);
+    gl_state->texture_table = make_hash_table<int32, GL_Texture>((Allocator *) &memory.hash_table_stack,
+                                                                 HASH_TABLE_SIZE, &int32_equals);
     gl_state->font_texture_table = make_hash_table<String, uint32>((Allocator *) &memory.hash_table_stack,
                                                                    HASH_TABLE_SIZE, &string_equals);
     
@@ -2230,7 +2232,7 @@ void gl_draw_ui_image_button(GL_State *gl_state,
                  button.width, button.height + style.footer_height, color);
 
     GL_Texture texture;
-    uint32 texture_exists = hash_table_find(gl_state->level_texture_table, button.texture_id, &texture);
+    uint32 texture_exists = hash_table_find(gl_state->texture_table, button.texture_id, &texture);
     assert(texture_exists);
 
     real32 width_to_height_ratio = (real32) texture.width / texture.height;
@@ -2797,20 +2799,208 @@ void deallocate(GL_Texture gl_texture) {
     // i don't think we should call "deallocation"
 }
 
+void gl_render_editor(GL_State *gl_state, Render_State *render_state, Editor_State *editor_state) {
+    Asset_Manager *asset_manager = &editor_state->asset_manager;
+
+    Marker m = begin_region();
+
+    // gather entities by type
+    Linked_List<Point_Light_Entity *> point_light_entities;
+    make_and_init_linked_list(Point_Light_Entity *, &point_light_entities, temp_region);
+    Linked_List<Normal_Entity *> normal_entities;
+    make_and_init_linked_list(Normal_Entity *, &normal_entities, temp_region);
+
+    Editor_Level *level = &editor_state->level;
+    FOR_LIST_NODES(Entity *, level->entities) {
+        Entity *entity = current_node->value;
+        switch (entity->type) {
+            case ENTITY_NORMAL: {
+                add(&normal_entities, (Normal_Entity *) entity);
+            } break;
+            case ENTITY_POINT_LIGHT: {
+                add(&point_light_entities, (Point_Light_Entity *) entity);
+            } break;
+            default: {
+                assert(!"Unhandled entity type.");
+            }
+        }
+    }
+
+    glBindBuffer(GL_UNIFORM_BUFFER, gl_state->global_ubo);
+    int64 ubo_offset = 0;
+    glBufferSubData(GL_UNIFORM_BUFFER, (int32 *) ubo_offset, sizeof(int32),
+                    &point_light_entities.num_entries);
+    // NOTE: not sure why we use 16 here, instead of 32, which is the size of the GL_Point_Light struct.
+    //       i think we just use the aligned offset of the first member of the struct, which is a vec4, so we offset
+    //       by 16 since it's the closest multiple.
+    ubo_offset += 16;
+    FOR_LIST_NODES(Point_Light_Entity *, point_light_entities) {
+        Point_Light_Entity *entity = current_node->value;
+        if (entity->type == ENTITY_POINT_LIGHT) {
+            // TODO: we may just want to replace position and light_color with vec4s in Point_Light_Entity.
+            //       although this would be kind of annoying since we would have to modify the Transform struct.
+            GL_Point_Light gl_point_light = {
+                make_vec4(entity->transform.position, 1.0f),
+                make_vec4(entity->light_color, 1.0f),
+                entity->falloff_start,
+                entity->falloff_end
+            };
+
+            glBufferSubData(GL_UNIFORM_BUFFER, (int32 *) ubo_offset,
+                            sizeof(GL_Point_Light), &gl_point_light);
+            ubo_offset += sizeof(GL_Point_Light) + 8; // add 8 bytes of padding so that it aligns to size of vec4
+        }
+    }
+
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+    // entities
+    {
+        FOR_LIST_NODES(Normal_Entity *, normal_entities) {
+            Normal_Entity *entity = current_node->value;
+
+            int32 mesh_id = entity->mesh_id;
+
+            Material material;
+            if (entity->material_id >= 0) {
+                material = get_material(asset_manager, entity->material_id);
+            } else {
+                material = default_material;
+            }
+
+            gl_draw_mesh(gl_state, render_state,
+                         mesh_id, material,
+                         entity->transform);
+
+            // TODO: do these
+#if 0
+            if (editor_state->show_wireframe &&
+                editor_state->selected_entity_type == ENTITY_NORMAL &&
+                editor_state->selected_entity_id == entry->key) {
+                gl_draw_wireframe(gl_state, render_state, mesh_id, entity->transform);
+            }
+
+            if (editor_state->show_colliders) {
+                gl_draw_collider(gl_state, render_state, entity->collider);
+            }
+#endif
+        }
+    }
+
+    // point light icons
+    
+    int32 num_point_lights = point_light_entities.num_entries;
+
+    Vec3 *positions = (Vec3 *) allocate(temp_region, sizeof(Vec3)*num_point_lights);
+    int32 current_index = 0;
+    FOR_LIST_NODES(Point_Light_Entity *, point_light_entities) {
+        Point_Light_Entity *entity = current_node->value;
+        positions[current_index++] = truncate_v4_to_v3(render_state->view_matrix *
+                                                       make_vec4(entity->transform.position, 1.0f));
+    }
+
+    // insertion sort
+    for (int32 i = 1; i < num_point_lights; i++) {
+        Vec3 key = positions[i];
+        int32 j = i - 1;
+        for (; j >= 0 && (positions[j].z < key.z); j--) {
+            positions[j + 1] = positions[j];
+        }
+        positions[j + 1] = key;
+    }
+
+    glDepthMask(GL_FALSE);
+    for (int32 i = 0; i < num_point_lights; i++) {
+        Vec3 view_space_position = positions[i];
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        gl_draw_constant_facing_quad_view_space(gl_state, render_state,
+                                                view_space_position, Editor_Constants::point_light_side_length,
+                                                gl_state->light_icon_texture_id, true);
+    }
+    glDepthMask(GL_TRUE);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, gl_state->gizmo_framebuffer.fbo);
+    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    
+    // TODO: do this
+    //gl_draw_gizmo(gl_state, render_state, editor_state);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    end_region(m);
+}
+
 void gl_render(GL_State *gl_state, Game_State *game_state,
                Controller_State *controller_state,
                Display_Output display_output, Win32_Sound_Output *win32_sound_output) {
     Render_State *render_state = &game_state->render_state;
-    
 
     Asset_Manager *asset_manager;
-
     if (game_state->mode == Game_Mode::PLAYING) {
         asset_manager = &game_state->asset_manager;
     } else {
         asset_manager = &game_state->editor_state.asset_manager;
     }
 
+    // load game meshes
+    {
+        FOR_ENTRY_POINTERS(int32, Mesh, asset_manager->mesh_table) {
+            int32 mesh_key = entry->key;
+            Mesh *mesh = &entry->value;
+            
+            if (!mesh->is_loaded) {
+                if (!hash_table_exists(gl_state->mesh_table, mesh_key)) {
+                    GL_Mesh gl_mesh = gl_load_mesh(gl_state, *mesh);
+                    hash_table_add(&gl_state->mesh_table, mesh_key, gl_mesh);
+                } else {
+                    debug_print("Mesh \"%s\" already loaded.\n", mesh->name);
+                }
+
+                mesh->is_loaded = true;
+            }
+        }
+    }
+
+    // load game textures
+    {
+        FOR_ENTRY_POINTERS(int32, Texture, asset_manager->texture_table) {
+            int32 texture_key = entry->key;
+            Texture *texture = &entry->value;
+            
+            if (!texture->is_loaded) {
+                if (!hash_table_exists(gl_state->texture_table, texture_key)) {
+                    GL_Texture gl_texture = gl_load_texture(gl_state, *texture);
+                    hash_table_add(&gl_state->texture_table, texture_key, gl_texture);
+                } else {
+                    debug_print("Texture \"%s\" already loaded.\n", texture->name);
+                }
+
+                texture->is_loaded = true;
+            }
+        }
+    }
+
+    {
+        FOR_ENTRY_POINTERS(int32, GL_Mesh, gl_state->mesh_table) {
+            int32 mesh_key = entry->key;
+            if (!hash_table_exists(asset_manager->mesh_table, mesh_key)) {
+                hash_table_remove(&gl_state->mesh_table, mesh_key);
+                gl_delete_mesh(entry->value);
+            }
+        }
+    }
+
+    {
+        FOR_ENTRY_POINTERS(int32, GL_Texture, gl_state->texture_table) {
+            int32 texture_key = entry->key;
+            if (!hash_table_exists(asset_manager->texture_table, texture_key)) {
+                hash_table_remove(&gl_state->texture_table, texture_key);
+                gl_delete_texture(entry->value);
+            }
+        }
+    }
+
+    
     // load fonts
     Hash_Table<String, Font> *font_table = &asset_manager->font_table;
     FOR_VALUE_POINTERS(String, Font, *font_table) {
@@ -2832,15 +3022,14 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLineWidth(1.0f);
 
-    local_persist real32 t = 0.0f;
-    t += 0.01f;
-
-    Vec3 text_color = make_vec3(1.0f, 1.0f, 1.0f);
+    if (game_state->mode == Game_Mode::PLAYING) {
+        // TODO: render game
+    } else {
+        gl_render_editor(gl_state, render_state, &game_state->editor_state);
+    }
 
     glDisable(GL_DEPTH_TEST);
     
-    gl_draw_framebuffer(gl_state, gl_state->gizmo_framebuffer);
-
     // TODO: for some reason, if we comment out this line, nothing renders at all, other than the gizmos
     //       if we happen to click in an area where there is an entity
     //       - pretty sure it has to do with gl_draw_text(), since if we never call that, then nothing
