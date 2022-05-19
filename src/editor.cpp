@@ -1,6 +1,11 @@
 #include "linked_list.h"
 #include "editor.h"
 
+void init_editor_level(Editor_State *editor_state, Editor_Level *editor_level) {
+    *editor_level = {};
+    make_and_init_linked_list(Entity *, &editor_level->entities, (Allocator *) &editor_state->entity_heap);
+}
+
 void init_editor(Arena_Allocator *editor_arena, Editor_State *editor_state) {
     *editor_state = {};
 
@@ -19,11 +24,11 @@ void init_editor(Arena_Allocator *editor_arena, Editor_State *editor_state) {
     void *general_heap_base = arena_push(editor_arena, general_heap_size, false);
     editor_state->general_heap = make_heap_allocator(general_heap_base, entity_heap_size);
 
-    editor_state->entity_list = make_linked_list<Entity *>((Allocator *) &editor_state->entity_heap);
-    init_linked_list(&editor_state->entity_list);
+    init_editor_level(editor_state, &editor_state->level);
 
     editor_state->asset_manager = make_asset_manager((Allocator *) &editor_state->general_heap);
     Asset_Manager *asset_manager = &editor_state->asset_manager;
+    load_default_assets(asset_manager);
 
     load_font(asset_manager, "c:/windows/fonts/times.ttf", "times32", 32.0f, 512, 512);
     load_font(asset_manager, "c:/windows/fonts/times.ttf", "times24", 24.0f, 512, 512);
@@ -35,6 +40,51 @@ void init_editor(Arena_Allocator *editor_arena, Editor_State *editor_state) {
     load_font(asset_manager, "c:/windows/fonts/calibrib.ttf", "calibri24b", 24.0f, 512, 512);
 
     load_font(asset_manager, "c:/windows/fonts/lucon.ttf", "lucidaconsole18", 18.0f, 512, 512);
+}
+
+void unload_level(Editor_State *editor_state) {
+    // TODO: set assets to be unloaded
+    // TODO: deallocate the entities list
+}
+
+void load_level(Editor_State *editor_state, Level_Info *level_info) {
+    // TODO (done): load meshes
+    // TODO (done): load textures
+    // TODO (done): load materials
+    // TODO (done): load entities
+    // TODO (done): resolve entity asset IDs
+
+    Asset_Manager *asset_manager = &editor_state->asset_manager;
+    load_level_assets(asset_manager, level_info);
+
+    Editor_Level *level = &editor_state->level;
+    level->name = copy((Allocator *) &editor_state->general_heap, level_info->name);
+
+    Allocator *entity_allocator = (Allocator *) &editor_state->entity_heap;
+
+    // NOTE: if we ever add allocated members to entities, we have to change these to use a copy procedure
+    FOR_LIST_NODES(Normal_Entity_Info, level_info->normal_entities) {
+        Normal_Entity_Info info = current_node->value;
+        Normal_Entity entity = info.entity;
+
+        if (info.flags & HAS_MESH) {
+            entity.mesh_id = get_mesh_id_by_name(asset_manager, info.mesh_name);
+        }
+        if (info.flags & HAS_MATERIAL) {
+            entity.material_id = get_material_id_by_name(asset_manager, info.material_name);
+        }
+
+        Normal_Entity *e = (Normal_Entity *) allocate(entity_allocator, sizeof(Normal_Entity));
+        *e = entity;
+        add(&level->entities, (Entity *) e);
+    }
+
+    FOR_LIST_NODES(Point_Light_Entity_Info, level_info->point_light_entities) {
+        Point_Light_Entity entity = current_node->value.entity;
+        Point_Light_Entity *e = (Point_Light_Entity *) allocate(entity_allocator, sizeof(Point_Light_Entity));
+        *e = entity;
+        add(&level->entities, (Entity *) e);
+    }
 }
 
 void draw_row(real32 x, real32 y,
@@ -189,20 +239,13 @@ void draw_level_box(UI_Manager *ui_manager, Editor_State *editor_state,
         if (platform_open_file_dialog(absolute_filename,
                                       LEVEL_FILE_FILTER_TITLE, LEVEL_FILE_FILTER_TYPE,
                                       PLATFORM_MAX_PATH)) {
-
-            // TODO: do this
-
-            Allocator *temp_allocator = (Allocator *) &memory.global_stack;
             Level_Info level_info;
-            init_level_info(temp_allocator, &level_info);
+            init_level_info(temp_region, &level_info);
             
-            File_Data level_file = platform_open_and_read_file(temp_allocator, absolute_filename);
-            bool32 result = Level_Loader::parse_level_info(temp_allocator, level_file, &level_info);
+            File_Data level_file = platform_open_and_read_file(temp_region, absolute_filename);
+            bool32 result = Level_Loader::parse_level_info(temp_region, level_file, &level_info);
 
-
-            if (result) {
-                debug_print("woohoo!\n");
-            }
+            load_level(editor_state, &level_info);
 #if 0
             bool32 result = read_and_load_level(asset_manager,
                                                 &game_state->current_level, absolute_filename,
@@ -252,11 +295,11 @@ void draw_level_box(UI_Manager *ui_manager, Editor_State *editor_state,
                                    Editor_Constants::num_disallowed_chars)) {
             add_message(Context::message_manager, make_string("Level name cannot contain {, }, or double quotes!"));
         } else {
-            if (editor_state->current_level_name.allocator) {
+            if (editor_state->level.name.allocator) {
                 replace_with_copy((Allocator *) &editor_state->general_heap,
-                                  &editor_state->current_level_name, new_level_name);
+                                  &editor_state->level.name, new_level_name);
             } else {
-                editor_state->current_level_name = copy((Allocator *) &editor_state->general_heap, new_level_name);
+                editor_state->level.name = copy((Allocator *) &editor_state->general_heap, new_level_name);
             }
         }
     }

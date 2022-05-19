@@ -333,7 +333,7 @@ bool32 Level_Loader::parse_level_info(Allocator *temp_allocator, File_Data file_
                 if (token.type == STRING) {
                     assert(token.string.length <= MATERIAL_NAME_MAX_SIZE);
                     
-                    temp_material_info.material.name = token.string;
+                    temp_material_info.name = token.string;
                     should_add_new_temp_material = true;
 
                     state = WAIT_FOR_MATERIAL_PROPERTY_NAME_OR_MATERIAL_KEYWORD_OR_MATERIALS_BLOCK_CLOSE;

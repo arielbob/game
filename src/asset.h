@@ -7,20 +7,19 @@
 #define MAX_MESHES 64
 #define MAX_ASSET_STRING_SIZE 64
 
-struct Asset_Manager {
-    Allocator *allocator_pointer;
-    
-    Hash_Table<int32, Mesh> mesh_table;
-    Hash_Table<String, File_Data> font_file_table;
-    Hash_Table<String, Font> font_table;
-};
-
 struct Texture {
     String name;
     String filename;
     bool32 is_loaded;
     bool32 should_unload;
 };
+
+Texture make_texture(String name, String filename) {
+    Texture result = {};
+    result.name = name;
+    result.filename = filename;
+    return result;
+}
 
 struct Material {
     String name;
@@ -35,5 +34,16 @@ Material make_material() {
     result.texture_id = -1;
     return result;
 }
+
+struct Asset_Manager {
+    Allocator *allocator_pointer;
+    
+    Hash_Table<int32, Mesh> mesh_table;
+    Hash_Table<int32, Material> material_table;
+    Hash_Table<int32, Texture> texture_table;
+
+    Hash_Table<String, File_Data> font_file_table;
+    Hash_Table<String, Font> font_table;
+};
 
 #endif

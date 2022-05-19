@@ -432,7 +432,14 @@
 //       - TODO (done): create intermediate level struct
 //       - TODO (done): change level stuff to use new intermediate level struct
 //       - TODO (done): separate asset_managers for editor and for game
+//       - TODO (done): load meshes
+//       - TODO (done): load textures
+//       - TODO (done): load materials
+//       - TODO (done): load entities
+//       - TODO (done): resolve entity asset IDs
 
+//       - TODO: in level_info loading, ensure that duplicate names don't exist. do this BEFORE you load the level
+//               since everything in level_info is temporary
 //       - TODO: load level data into asset_manager (editor asset_manager right now, since we're just doing
 //               the editor)
 //       - TODO: unload opengl assets when changing levels

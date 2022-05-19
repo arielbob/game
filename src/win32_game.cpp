@@ -39,6 +39,7 @@
 #include "platform.h"
 
 global_variable Memory memory;
+global_variable Allocator *temp_region;
 
 #include "memory.cpp"
 #include "math.cpp"
@@ -788,6 +789,7 @@ bool32 win32_init_memory() {
         base = (uint8 *) base + level_mesh_heap_size;
 
         memory.is_initted = true;
+        temp_region = (Allocator *) &memory.global_stack;
 
         return true;
     }

@@ -1,6 +1,11 @@
 #ifndef LINKED_LIST_H
 #define LINKED_LIST_H
 
+#define FOR_LIST_NODES(type, linked_list) \
+    for (Node<type> *current_node = linked_list.cap.next; \
+         current_node != &linked_list.cap; \
+         current_node = current_node->next) 
+
 template <class T>
 struct Node {
     T value;

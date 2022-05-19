@@ -7,6 +7,12 @@
 #define HAS_MATERIAL 1 << 1
 #define HAS_TEXTURE  1 << 2
 
+struct Editor_Level {
+    String name;
+    
+    Linked_List<Entity *> entities;
+};
+
 // we use info structs to store string identifiers to assets. since the actual entity structs use integer
 // identifiers, we need to resolve them, but the integer identifiers for assets are not set until after the
 // assets have been loaded. we may want to just add UUIDs for assets in the future, although those would take
@@ -45,6 +51,7 @@ struct Texture_Info {
 struct Material_Info {
     uint32 flags;
     Material material;
+    String name;
     String texture_name;
 };
 
@@ -53,6 +60,7 @@ struct Level_Info {
     
     Linked_List<Normal_Entity_Info> normal_entities;
     Linked_List<Point_Light_Entity_Info> point_light_entities;
+
     Linked_List<Mesh_Info> meshes;
     Linked_List<Texture_Info> textures;
     Linked_List<Material_Info> materials;
