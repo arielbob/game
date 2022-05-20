@@ -52,7 +52,7 @@ struct Asset_Manager {
     Hash_Table<int32, Texture> texture_table;
 
     Hash_Table<String, File_Data> font_file_table;
-    Hash_Table<String, Font> font_table;
+    Hash_Table<int32, Font> font_table;
 };
 
 #endif

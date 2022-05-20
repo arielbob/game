@@ -445,8 +445,9 @@
 //       - TODO (done): render entities
 
 //       - TODO (done): unload opengl assets when changing levels
-
-//       - TODO: mesh picking is messed up after you click on a point light
+//       - TODO (done): gizmo
+//       - TODO: work through errors for entity box stuff
+//       - TODO: editor UI stuff
 //       - TODO: other editor stuff
 //       - TODO: load fonts into game as well
 //       - TODO: unload opengl assets when switching between play and edit mode
@@ -906,7 +907,7 @@ GL_Texture gl_load_texture(GL_State *gl_state, Texture texture, bool32 has_alpha
 // TODO: use the better stb_truetype packing procedures
 void gl_init_font(GL_State *gl_state, Font *font) {
     Marker m = begin_region();
-    uint8 *temp_bitmap = (uint8 *) region_push(&memory.global_stack, font->texture_width*font->texture_height);
+    uint8 *temp_bitmap = (uint8 *) allocate(temp_region, font->texture_width*font->texture_height);
     // NOTE: no guarantee that the bitmap will fit the font, so choose temp_bitmap dimensions carefully
     // TODO: we may want to maybe render this out to an image so that we can verify that the font fits
     int32 result = stbtt_BakeFontBitmap((uint8 *) font->file_data.contents, 0,
@@ -925,7 +926,8 @@ void gl_init_font(GL_State *gl_state, Font *font) {
 
     end_region(m);
 
-    hash_table_add(&gl_state->font_texture_table, make_string(font->name), baked_texture_id);
+    int32 font_id = gl_state->font_texture_table.total_added_ever;
+    hash_table_add(&gl_state->font_texture_table, font_id, baked_texture_id);
 }
 
 GL_Mesh gl_load_mesh(GL_State *gl_state, Mesh mesh) {
@@ -990,9 +992,9 @@ void gl_use_rendering_texture(GL_State *gl_state, int32 texture_id) {
     glBindTexture(GL_TEXTURE_2D, texture.id); 
 }
 
-void gl_use_font_texture(GL_State *gl_state, String font_texture_name) {
+void gl_use_font_texture(GL_State *gl_state, int32 font_id) {
     uint32 texture_id;
-    uint32 texture_exists = hash_table_find(gl_state->font_texture_table, font_texture_name, &texture_id);
+    uint32 texture_exists = hash_table_find(gl_state->font_texture_table, font_id, &texture_id);
     assert(texture_exists);
     glBindTexture(GL_TEXTURE_2D, texture_id);
 }
@@ -1218,7 +1220,7 @@ void copy_aligned_quad_to_arrays(stbtt_aligned_quad q, real32 *vertices, real32 
 }
 
 void gl_draw_text(GL_State *gl_state, Render_State *render_state,
-                  Font *font,
+                  int32 font_id, Font *font,
                   real32 x_pos_pixels, real32 y_pos_pixels,
                   char *text, int32 num_chars, bool32 is_null_terminated,
                   Vec4 color,
@@ -1231,7 +1233,7 @@ void gl_draw_text(GL_State *gl_state, Render_State *render_state,
     GL_Mesh glyph_mesh = gl_use_rendering_mesh(gl_state, gl_state->glyph_quad_mesh_id);
 
     uint32 font_texture_id;
-    uint32 font_texture_exists = hash_table_find(gl_state->font_texture_table, make_string(font->name),
+    uint32 font_texture_exists = hash_table_find(gl_state->font_texture_table, font_id,
                                                  &font_texture_id);
     assert(font_texture_exists);
 
@@ -1291,46 +1293,46 @@ void gl_draw_text(GL_State *gl_state, Render_State *render_state,
 
 
 void gl_draw_text(GL_State *gl_state, Render_State *render_state,
-                  Font *font,
+                  int32 font_id, Font *font,
                   real32 x_pos_pixels, real32 y_pos_pixels,
                   char *text, Vec4 color,
                   Vec4 shadow_color, real32 shadow_offset) {
     return gl_draw_text(gl_state, render_state,
-                        font,
+                        font_id, font,
                         x_pos_pixels, y_pos_pixels,
                         text, 0, true, color,
                         true, shadow_color, shadow_offset);
 }
 
 void gl_draw_text(GL_State *gl_state, Render_State *render_state,
-                  Font *font,
+                  int32 font_id, Font *font,
                   real32 x_pos_pixels, real32 y_pos_pixels,
                   String_Buffer buffer, Vec4 color,
                   Vec4 shadow_color, real32 shadow_offset) {
     return gl_draw_text(gl_state, render_state,
-                        font,
+                        font_id, font,
                         x_pos_pixels, y_pos_pixels,
                         buffer.contents, buffer.current_length, false, color,
                         true, shadow_color, shadow_offset);
 }
 
 void gl_draw_text(GL_State *gl_state, Render_State *render_state,
-                  Font *font,
+                  int32 font_id, Font *font,
                   real32 x_pos_pixels, real32 y_pos_pixels,
                   char *text, Vec4 color) {
     return gl_draw_text(gl_state, render_state,
-                        font,
+                        font_id, font,
                         x_pos_pixels, y_pos_pixels,
                         text, 0, true, color,
                         false, {}, 0);
 }
 
 void gl_draw_text(GL_State *gl_state, Render_State *render_state,
-                  Font *font,
+                  int32 font_id, Font *font,
                   real32 x_pos_pixels, real32 y_pos_pixels,
                   String_Buffer buffer, Vec4 color) {
     return gl_draw_text(gl_state, render_state,
-                        font,
+                        font_id, font,
                         x_pos_pixels, y_pos_pixels,
                         buffer.contents, buffer.current_length, false, color,
                         false, {}, 0);
@@ -1443,8 +1445,8 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
                                                                            HASH_TABLE_SIZE, &int32_equals);
     gl_state->texture_table = make_hash_table<int32, GL_Texture>((Allocator *) &memory.hash_table_stack,
                                                                  HASH_TABLE_SIZE, &int32_equals);
-    gl_state->font_texture_table = make_hash_table<String, uint32>((Allocator *) &memory.hash_table_stack,
-                                                                   HASH_TABLE_SIZE, &string_equals);
+    gl_state->font_texture_table = make_hash_table<int32, uint32>((Allocator *) &memory.hash_table_stack,
+                                                                  HASH_TABLE_SIZE, &int32_equals);
     
     uint32 vbo, vao, ebo;
 
@@ -2146,7 +2148,7 @@ void gl_draw_ui_text(GL_State *gl_state, Asset_Manager *asset_manager,
                      UI_Text ui_text) {
     UI_Text_Style style = ui_text.style;
 
-    Font font = get_font(asset_manager, ui_text.font);
+    Font font = get_font(asset_manager, ui_text.font_id);
 
     real32 x = ui_text.x;
 
@@ -2155,12 +2157,12 @@ void gl_draw_ui_text(GL_State *gl_state, Asset_Manager *asset_manager,
     }
 
     if (style.use_offset_shadow) {
-        gl_draw_text(gl_state, render_state, &font,
+        gl_draw_text(gl_state, render_state, ui_text.font_id, &font,
                      x, ui_text.y,
                      ui_text.text, style.color,
                      style.offset_shadow_color, TEXT_SHADOW_OFFSET);
     } else {
-        gl_draw_text(gl_state, render_state, &font,
+        gl_draw_text(gl_state, render_state, ui_text.font_id, &font,
                      x, ui_text.y,
                      ui_text.text, style.color);
     }
@@ -2171,7 +2173,7 @@ void gl_draw_ui_text_button(GL_State *gl_state, Asset_Manager *asset_manager,
                             UI_Manager *ui_manager, UI_Text_Button button) {
     Vec4 color;
 
-    Font font = get_font(asset_manager, button.font);
+    Font font = get_font(asset_manager, button.font_id);
 
     UI_Text_Button_Style style = button.style;
 
@@ -2208,12 +2210,12 @@ void gl_draw_ui_text_button(GL_State *gl_state, Asset_Manager *asset_manager,
     UI_Text_Style text_style = button.text_style;
 
     if (text_style.use_offset_shadow) {
-        gl_draw_text(gl_state, render_state, &font,
+        gl_draw_text(gl_state, render_state, button.font_id, &font,
                      button.x + x_offset, button.y + y_offset,
                      button.text, text_style.color,
                      text_style.offset_shadow_color, TEXT_SHADOW_OFFSET);
     } else {
-        gl_draw_text(gl_state, render_state, &font,
+        gl_draw_text(gl_state, render_state, button.font_id, &font,
                      button.x + x_offset, button.y + y_offset,
                      button.text, text_style.color);
     }
@@ -2271,7 +2273,7 @@ void gl_draw_ui_image_button(GL_State *gl_state,
         real32 footer_height = style.footer_height + style.padding_y;
         assert(footer_height >= 0);
 
-        Font font = get_font(asset_manager, button.font);
+        Font font = get_font(asset_manager, button.font_id);
         real32 adjusted_text_height = get_adjusted_font_height(font);
 
         // center text
@@ -2285,12 +2287,12 @@ void gl_draw_ui_image_button(GL_State *gl_state,
         real32 text_y = button.y + image_height + style.padding_y;
         
         if (text_style.use_offset_shadow) {
-            gl_draw_text(gl_state, render_state, &font,
+            gl_draw_text(gl_state, render_state, button.font_id, &font,
                          text_x + x_offset, text_y + y_offset,
                          button.text, text_style.color,
                          text_style.offset_shadow_color, TEXT_SHADOW_OFFSET);
         } else {
-            gl_draw_text(gl_state, render_state, &font,
+            gl_draw_text(gl_state, render_state, button.font_id, &font,
                          text_x + x_offset, text_y + y_offset,
                          button.text, text_style.color);        
         }
@@ -2325,7 +2327,7 @@ void gl_draw_ui_text_box(GL_State *gl_state, Asset_Manager *asset_manager,
     UI_Text_Box_Style style = text_box.style;
     Vec4 color = style.normal_color;
 
-    Font font = get_font(asset_manager, text_box.font);
+    Font font = get_font(asset_manager, text_box.font_id);
 
     if (ui_id_equals(ui_manager->active, text_box.id)) {
         color = style.active_color;
@@ -2355,12 +2357,12 @@ void gl_draw_ui_text_box(GL_State *gl_state, Asset_Manager *asset_manager,
     }
 
     if (text_style.use_offset_shadow) {
-        gl_draw_text(gl_state, render_state, &font,
+        gl_draw_text(gl_state, render_state, text_box.font_id, &font,
                      text_box.x + style.padding_x, text_y,
                      text_box.buffer, text_style.color,
                      text_style.offset_shadow_color, TEXT_SHADOW_OFFSET);
     } else {
-        gl_draw_text(gl_state, render_state, &font,
+        gl_draw_text(gl_state, render_state, text_box.font_id, &font,
                      text_box.x + style.padding_x, text_y,
                      text_box.buffer, text_style.color);
     }
@@ -2390,12 +2392,14 @@ void gl_draw_ui_slider(GL_State *gl_state, Asset_Manager *asset_manager,
     Display_Output display_output = render_state->display_output;
     UI_Slider_Style style = slider.style;
 
+
+
     if (slider.is_text_box) {
         UI_Text_Box_Style text_box_style = { TEXT_ALIGN_X | TEXT_ALIGN_Y, 5.0f, 5.0f,
                                              style.normal_color, style.hot_color, style.normal_color };
 
         UI_Text_Box text_box = make_ui_text_box(slider.x, slider.y, slider.width, slider.height,
-                                                slider.buffer, slider.font,
+                                                slider.buffer, slider.font_id,
                                                 text_box_style, slider.text_style,
                                                 slider.layer, (char *) slider.id.string_ptr, slider.id.index);
 
@@ -2440,19 +2444,19 @@ void gl_draw_ui_slider(GL_State *gl_state, Asset_Manager *asset_manager,
 
     // text
     UI_Text_Style text_style = slider.text_style;
-    Font font = get_font(asset_manager, slider.font);
+    Font font = get_font(asset_manager, slider.font_id);
     real32 adjusted_text_height = font.height_pixels - font.scale_for_pixel_height * (font.ascent + font.descent);
     real32 text_width = get_width(font, slider.buffer);
     real32 text_x = slider.x + 0.5f*slider.width - 0.5f*text_width;
     real32 text_y = slider.y + 0.5f*slider.height + 0.5f*adjusted_text_height;
 
     if (text_style.use_offset_shadow) {
-        gl_draw_text(gl_state, render_state, &font,
+        gl_draw_text(gl_state, render_state, slider.font_id, &font,
                      text_x, text_y,
                      slider.buffer, text_style.color,
                      text_style.offset_shadow_color, TEXT_SHADOW_OFFSET);
     } else {
-        gl_draw_text(gl_state, render_state, &font,
+        gl_draw_text(gl_state, render_state, slider.font_id, &font,
                      text_x, text_y,
                      slider.buffer, text_style.color);
     }
@@ -3036,13 +3040,13 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
     }
     
     // load fonts
-    Hash_Table<String, Font> *font_table = &asset_manager->font_table;
-    FOR_VALUE_POINTERS(String, Font, *font_table) {
-        Font *font = value;
+    Hash_Table<int32, Font> *font_table = &asset_manager->font_table;
+    FOR_ENTRY_POINTERS(int32, Font, *font_table) {
+        Font *font = &entry->value;
 
         if (!font->is_baked) {
             // NOTE: the font names are always in read-only memory
-            if (!hash_table_exists(gl_state->font_texture_table, make_string(font->name))) {
+            if (!hash_table_exists(gl_state->font_texture_table, entry->key)) {
                 gl_init_font(gl_state, font);
             } else {
                 debug_print("%s already loaded.\n", font->name);

@@ -66,12 +66,12 @@ struct UI_Text {
     real32 y;
 
     char *text;
-    char *font;
+    int32 font_id;
 
     UI_Text_Style style;
 };
 
-UI_Text make_ui_text(real32 x, real32 y, char *text, char *font, UI_Text_Style style, int32 layer, char *id, int32 index = 0) {
+UI_Text make_ui_text(real32 x, real32 y, char *text, int32 font_id, UI_Text_Style style, int32 layer, char *id, int32 index = 0) {
     UI_Text ui_text = {};
 
     ui_text.type = UI_TEXT;
@@ -80,7 +80,7 @@ UI_Text make_ui_text(real32 x, real32 y, char *text, char *font, UI_Text_Style s
     ui_text.x = x;
     ui_text.y = y;
     ui_text.text = text;
-    ui_text.font = font;
+    ui_text.font_id = font_id;
     ui_text.style = style;
 
     UI_id ui_text_id = { UI_TEXT, id, index };
@@ -111,14 +111,14 @@ struct UI_Text_Button {
     UI_Text_Style text_style;
 
     char *text;
-    char *font;
+    int32 font_id;
 
     bool32 is_disabled;
 };
 
 UI_Text_Button make_ui_text_button(real32 x, real32 y, real32 width, real32 height,
                                    UI_Text_Button_Style style, UI_Text_Style text_style,
-                                       char *text, char *font, bool32 is_disabled, int32 layer, char *id, int32 index = 0) {
+                                       char *text, int32 font_id, bool32 is_disabled, int32 layer, char *id, int32 index = 0) {
     UI_Text_Button button = {};
 
     button.type = UI_TEXT_BUTTON;
@@ -131,7 +131,7 @@ UI_Text_Button make_ui_text_button(real32 x, real32 y, real32 width, real32 heig
     button.style = style;
     button.text_style = text_style;
     button.text = text;
-    button.font = font;
+    button.font_id = font_id;
     button.is_disabled = is_disabled;
 
     UI_id button_id = { UI_TEXT_BUTTON, id, index };
@@ -168,7 +168,7 @@ struct UI_Image_Button {
     bool32 has_text;
     int32 texture_id;
     char *text;
-    char *font;
+    int32 font_id;
 };
 
 UI_Image_Button make_ui_image_button(real32 x, real32 y, real32 width, real32 height,
@@ -195,7 +195,7 @@ UI_Image_Button make_ui_image_button(real32 x, real32 y, real32 width, real32 he
 UI_Image_Button make_ui_image_button(real32 x, real32 y, real32 width, real32 height,
                                      UI_Image_Button_Style style,
                                      UI_Text_Style text_style,
-                                     int32 texture_id, char *text, char *font,
+                                     int32 texture_id, char *text, int32 font_id,
                                      int32 layer, char *id, int32 index = 0) {
     UI_Image_Button button = {};
 
@@ -211,7 +211,7 @@ UI_Image_Button make_ui_image_button(real32 x, real32 y, real32 width, real32 he
     button.has_text = true;
     button.texture_id = texture_id;
     button.text = text;
-    button.font = font;
+    button.font_id = font_id;
 
     UI_id button_id = { UI_IMAGE_BUTTON, id, index };
     button.id = button_id;
@@ -288,7 +288,7 @@ struct UI_Text_Box {
     UI_Text_Box_Style style;
     UI_Text_Style text_style;
 
-    char *font;
+    int32 font_id;
 };
 
 // start slider
@@ -312,7 +312,7 @@ struct UI_Slider {
     real32 height;
 
     String_Buffer buffer;
-    char *font;
+    int32 font_id;
     
     UI_Slider_Style style;
     UI_Text_Style text_style;

@@ -18,7 +18,7 @@ Asset_Manager make_asset_manager(Allocator *allocator) {
     asset_manager.material_table = make_hash_table<int32, Material>(allocator, HASH_TABLE_SIZE, &int32_equals);
     asset_manager.texture_table = make_hash_table<int32, Texture>(  allocator, HASH_TABLE_SIZE, &int32_equals);
 
-    asset_manager.font_table = make_hash_table<String, Font>(          allocator, HASH_TABLE_SIZE, &string_equals);
+    asset_manager.font_table = make_hash_table<int32, Font>(           allocator, HASH_TABLE_SIZE, &int32_equals);
     asset_manager.font_file_table = make_hash_table<String, File_Data>(allocator, HASH_TABLE_SIZE, &string_equals);
 
     return asset_manager;
@@ -137,18 +137,38 @@ Font load_font(Asset_Manager *asset_manager,
     font.cdata = (stbtt_bakedchar *) arena_push(&memory.font_arena, num_chars * sizeof(stbtt_bakedchar), false);
     font.first_char = first_char;
     font.num_chars = num_chars;
-    font.name = make_string_buffer((Allocator *) &memory.string_arena, font_name, FONT_NAME_MAX_SIZE);
+
+    // NOTE: these font names are expected to be char array constants
+    font.name = make_string(font_name);
     
-    hash_table_add(&asset_manager->font_table, make_string(font.name), font);
+    // TODO: make sure font with same name doesn't already exist
+    int32 font_id = asset_manager->font_table.total_added_ever;
+    hash_table_add(&asset_manager->font_table, font_id, font);
     
     return font;
 }
 
-Font get_font(Asset_Manager *asset_manager, char *font_name) {
+Font get_font(Asset_Manager *asset_manager, int32 id) {
     Font font;
-    bool32 font_exists = hash_table_find(asset_manager->font_table, make_string(font_name), &font);
+    bool32 font_exists = hash_table_find(asset_manager->font_table, id, &font);
     assert(font_exists);
     return font;
+}
+
+Font get_font(Asset_Manager *asset_manager, char *font_name, int32 *id = NULL) {
+    Hash_Table<int32, Font> font_table = asset_manager->font_table;
+
+    FOR_ENTRY_POINTERS(int32, Font, font_table) {
+        if (string_equals(entry->value.name, font_name)) {
+            if (id) {
+                *id = entry->key;
+            }
+            return entry->value;
+        }
+    }
+
+    assert(false);
+    return {};
 }
 
 int32 add_mesh(Asset_Manager *asset_manager, Mesh mesh) {
@@ -163,6 +183,24 @@ int32 add_texture(Asset_Manager *asset_manager, Texture texture) {
     return texture_id;
 }
 
+Texture get_texture(Asset_Manager *asset_manager, int32 texture_id) {
+    Texture texture;
+    bool32 texture_exists = hash_table_find(asset_manager->texture_table,
+                                            texture_id,
+                                            &texture);
+    assert(texture_exists);
+    return texture;
+}
+
+Texture *get_texture_pointer(Asset_Manager *asset_manager, int32 texture_id) {
+    Texture *texture;
+    bool32 texture_exists = hash_table_find_pointer(asset_manager->texture_table,
+                                                     texture_id,
+                                                     &texture);
+    assert(texture_exists);
+    return texture;
+}
+
 int32 get_texture_id_by_name(Asset_Manager *asset_manager, String texture_name) {
     Hash_Table<int32, Texture> texture_table = asset_manager->texture_table;
 
@@ -174,6 +212,18 @@ int32 get_texture_id_by_name(Asset_Manager *asset_manager, String texture_name) 
 
     assert(false);
     return -1;
+}
+
+int32 texture_name_exists(Asset_Manager *asset_manager, String texture_name) {
+    Hash_Table<int32, Texture> texture_table = asset_manager->texture_table;
+
+    FOR_ENTRY_POINTERS(int32, Texture, texture_table) {
+        if (string_equals(entry->value.name, texture_name)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 int32 add_material(Asset_Manager *asset_manager, Material material) {
@@ -191,6 +241,15 @@ Material get_material(Asset_Manager *asset_manager, int32 material_id) {
     return material;
 }
 
+Material *get_material_pointer(Asset_Manager *asset_manager, int32 material_id) {
+    Material *material;
+    bool32 material_exists = hash_table_find_pointer(asset_manager->material_table,
+                                                     material_id,
+                                                     &material);
+    assert(material_exists);
+    return material;
+}
+
 int32 get_material_id_by_name(Asset_Manager *asset_manager, String material_name) {
     Hash_Table<int32, Material> material_table = asset_manager->material_table;
 
@@ -202,6 +261,18 @@ int32 get_material_id_by_name(Asset_Manager *asset_manager, String material_name
 
     assert(false);
     return -1;
+}
+
+int32 material_name_exists(Asset_Manager *asset_manager, String material_name) {
+    Hash_Table<int32, Material> material_table = asset_manager->material_table;
+
+    FOR_ENTRY_POINTERS(int32, Material, material_table) {
+        if (string_equals(entry->value.name, material_name)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 Mesh read_and_load_mesh(Allocator *allocator, String filename, String name, Mesh_Type type) {

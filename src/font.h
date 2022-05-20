@@ -2,7 +2,7 @@
 #define FONT_H
 
 struct Font {
-    String_Buffer name;
+    String name;
     File_Data file_data;
     stbtt_fontinfo font_info;
     stbtt_bakedchar *cdata;

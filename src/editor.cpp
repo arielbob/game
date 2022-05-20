@@ -644,11 +644,189 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
 }
 
 void draw_editor(Game_State *game_state, Controller_State *controller_state) {
-    Render_State *render_state = &game_state->render_state;
     Editor_State *editor_state = &game_state->editor_state;
-    update_render_state(render_state, editor_state->camera);
+    UI_Manager *ui_manager = &game_state->ui_manager;
+    Render_State *render_state = &game_state->render_state;
 
+    Entity *selected_entity = get_selected_entity(editor_state);
+    if (selected_entity) {
+        draw_entity_box(editor_state, ui_manager, controller_state, selected_entity);
+
+        if (editor_state->open_window_flags & MATERIAL_LIBRARY_WINDOW) {
+            // TODO: do this
+            //draw_material_library(game_state, controller_state, selected_entity);
+        } else if (editor_state->open_window_flags & TEXTURE_LIBRARY_WINDOW) {
+            // TODO: do this
+#if 0
+            int32 material_id;
+            Material *selected_material = get_entity_material(&game_state->current_level,
+                                                              selected_entity, &material_id);
+            draw_texture_library(material_id, selected_material);
+#endif
+        } else if (editor_state->open_window_flags & MESH_LIBRARY_WINDOW) {
+            // TODO: do this
+            //draw_mesh_library(game_state, controller_state, selected_entity);
+        }
+    } else {
+        reset_entity_editors(editor_state);
+    }
+
+#if 0
+    real32 y = 0.0f;
+    real32 button_gap = 1.0f;
+    real32 sidebar_button_width = 200.0f;
+
+    real32 button_height = 25.0f;
+    char *button_font_name = editor_font_name;
+    // wireframe toggle
+    real32 wireframe_button_width = sidebar_button_width;
+    bool32 toggle_show_wireframe_clicked = do_text_button(render_state->display_output.width - sidebar_button_width,
+                                                          y,
+                                                          wireframe_button_width, button_height,
+                                                          default_text_button_style, default_text_style,
+                                                          editor_state->show_wireframe ?
+                                                          "Hide Wireframe" : "Show Wireframe",
+                                                          button_font_name, "toggle_wireframe");
+    if (toggle_show_wireframe_clicked) {
+        editor_state->show_wireframe = !editor_state->show_wireframe;
+    }
+    y += button_height + button_gap;
+
+    // transform mode toggle
+    bool32 toggle_global_clicked = do_text_button(render_state->display_output.width - sidebar_button_width, y,
+                                                  sidebar_button_width, button_height,
+                                                  default_text_button_style, default_text_style,
+                                                  editor_state->transform_mode == TRANSFORM_GLOBAL ?
+                                                  "Use Local Transform" : "Use Global Transform",
+                                                  button_font_name, "toggle_transform");
+    if (toggle_global_clicked) {
+        if (editor_state->transform_mode == TRANSFORM_GLOBAL) {
+            editor_state->transform_mode = TRANSFORM_LOCAL;
+        } else {
+            editor_state->transform_mode = TRANSFORM_GLOBAL;
+        }
+    }
+    y += button_height + button_gap;
+
+    y += 5;
     draw_level_box(&game_state->ui_manager, editor_state,
                    controller_state,
-                   render_state->display_output.width - 198.0f - 1.0f, 1.0f);
+                   render_state->display_output.width - 198.0f - 1.0f, y);
+
+    y += 120.0f;
+
+    bool32 add_normal_entity_clicked = do_text_button(render_state->display_output.width - sidebar_button_width, y,
+                                                      sidebar_button_width, button_height,
+                                                      default_text_button_style, default_text_style,
+                                                      "Add Normal Entity",
+                                                      button_font_name, "add_entity");
+    y += button_height + button_gap;
+    if (add_normal_entity_clicked) {
+        Add_Normal_Entity_Action action = make_add_normal_entity_action();
+        editor_add_normal_entity(editor_state, game_state, action);
+    }
+
+    bool32 add_point_light_entity_clicked = do_text_button(render_state->display_output.width - sidebar_button_width, y,
+                                                           sidebar_button_width, button_height,
+                                                           default_text_button_style, default_text_style,
+                                                           "Add Point Light Entity",
+                                                           button_font_name, "add_point_light_entity");
+    y += button_height + button_gap;
+    if (add_point_light_entity_clicked) {
+        Add_Point_Light_Entity_Action action = make_add_point_light_entity_action();
+        editor_add_point_light_entity(editor_state, game_state, action);
+    }
+
+    bool32 toggle_colliders_clicked = do_text_button(render_state->display_output.width - sidebar_button_width, y,
+                                                     sidebar_button_width, button_height,
+                                                     default_text_button_style, default_text_style,
+                                                     editor_state->show_colliders ?
+                                                     "Hide Colliders" : "Show Colliders",
+                                                     button_font_name, "toggle_show_colliders");
+
+    if (toggle_colliders_clicked) {
+        editor_state->show_colliders = !editor_state->show_colliders;
+    }
+
+    y += button_height + button_height;
+
+    int32 num_history_entries = history_get_num_entries(&editor_state->history);
+    bool32 undo_clicked = do_text_button(render_state->display_output.width - sidebar_button_width, y,
+                                         0.5f * sidebar_button_width - 1, button_height,
+                                         default_text_button_style, default_text_style,
+                                         "Undo",
+                                         button_font_name,
+                                         editor_state->history.num_undone == num_history_entries,
+                                         "editor_undo");
+    if (undo_clicked) {
+        history_undo(game_state, &editor_state->history);
+    }
+
+    bool32 redo_clicked = do_text_button(render_state->display_output.width - 0.5f * sidebar_button_width, y,
+                                         0.5f * sidebar_button_width, button_height,
+                                         default_text_button_style, default_text_style,
+                                         "Redo",
+                                         button_font_name,
+                                         num_history_entries == 0 || editor_state->history.num_undone == 0,
+                                         "editor_redo");
+    if (redo_clicked) {
+        history_redo(game_state, &editor_state->history);
+    }
+
+    if (!editor_state->is_new_level) {
+        char *filename_buf = to_char_array((Allocator *) &memory.frame_arena, editor_state->current_level_filename);
+        char *buf = string_format((Allocator *) &memory.frame_arena, PLATFORM_MAX_PATH + 32,
+                                  "current level: %s", filename_buf);
+        do_text(ui_manager,
+                5.0f, render_state->display_output.height - 9.0f,
+                buf, editor_font_name, default_text_style, "editor_current_level_filename");
+    }
+
+    char *buf = string_format((Allocator *) &memory.frame_arena, 64, "heap size: %d", ui_manager->heap_pointer->size);
+    do_text(ui_manager,
+            5.0f, render_state->display_output.height - 62.0f,
+            buf, editor_font_name, default_text_style, "heap size");
+
+    buf = string_format((Allocator *) &memory.frame_arena, 64, "heap used: %d", ui_manager->heap_pointer->used);
+    do_text(ui_manager,
+            5.0f, render_state->display_output.height - 48.0f,
+            buf, editor_font_name, default_text_style, "heap used");
+
+    buf = string_format((Allocator *) &memory.frame_arena, 64, "editor history heap used: %d",
+                        memory.editor_history_heap.used);
+    do_text(ui_manager,
+            5.0f, render_state->display_output.height - 90.0f,
+            buf, editor_font_name, default_text_style, "editor history heap size");
+
+    buf = string_format((Allocator *) &memory.frame_arena, 64, "num_undone: %d", editor_state->history.num_undone);
+    do_text(ui_manager,
+            5.0f, render_state->display_output.height - 129.0f,
+            buf, editor_font_name, default_text_style, "num undone");
+
+    buf = string_format((Allocator *) &memory.frame_arena, 64, "num_history_entries: %d", num_history_entries);
+    do_text(ui_manager,
+            5.0f, render_state->display_output.height - 143.0f,
+            buf, editor_font_name, default_text_style, "num history entries");
+
+    Heap_Allocator *history_heap = &memory.editor_history_heap;
+    String_Buffer history_buf = make_string_buffer((Allocator *) &memory.frame_arena, 512);
+    append_string(&history_buf, "[ ");
+
+    Heap_Block *block = history_heap->first_block;
+    while (block) {
+        Marker m = begin_region();
+        char *whatever = string_format((Allocator *) &memory.global_stack, 16, "| %d | ", block->size);
+        append_string(&history_buf, whatever);
+        end_region(m);
+
+        block = block->next;
+    }
+
+    append_string(&history_buf, "]");
+
+    buf = to_char_array((Allocator *) &memory.frame_arena, history_buf);
+    do_text(ui_manager,
+            5.0f, render_state->display_output.height - 114.0f,
+            buf, editor_font_name, default_text_style, "editor history");
+#endif
 }

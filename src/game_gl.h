@@ -179,7 +179,7 @@ struct GL_State {
     // for GL specific textures
     Hash_Table<int32, GL_Texture> rendering_texture_table;
 
-    Hash_Table<String, uint32> font_texture_table;
+    Hash_Table<int32, uint32> font_texture_table;
 
     // game assets
     Hash_Table<int32, GL_Mesh> mesh_table;

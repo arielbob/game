@@ -92,7 +92,7 @@ inline UI_id make_ui_id(UI_Type type, void *id, int32 index) {
 UI_Text_Box make_ui_text_box(real32 x, real32 y,
                              real32 width, real32 height,
                              String_Buffer buffer,
-                             char *font,
+                             int32 font_id,
                              UI_Text_Box_Style style, UI_Text_Style text_style,
                              int32 layer, char *id, int32 index = 0) {
     UI_Text_Box text_box = {};
@@ -105,7 +105,7 @@ UI_Text_Box make_ui_text_box(real32 x, real32 y,
     text_box.width = width;
     text_box.height = height;
     text_box.buffer = buffer;
-    text_box.font = font;
+    text_box.font_id = font_id;
     text_box.style = style;
     text_box.text_style = text_style;
 
@@ -117,7 +117,7 @@ UI_Text_Box make_ui_text_box(real32 x, real32 y,
                                    
 UI_Slider make_ui_slider(real32 x, real32 y,
                          real32 width, real32 height,
-                         String_Buffer buffer, char *font,
+                         String_Buffer buffer, int32 font_id,
                          bool32 is_bounded, real32 min, real32 max,
                          real32 value,
                          bool32 is_text_box,
@@ -133,7 +133,7 @@ UI_Slider make_ui_slider(real32 x, real32 y,
     slider.width = width;
     slider.height = height;
     slider.buffer = buffer;
-    slider.font = font;
+    slider.font_id = font_id;
     slider.style = style;
     slider.text_style = text_style;
     slider.is_bounded = is_bounded;
@@ -546,9 +546,9 @@ void delete_state_if_gone(UI_Manager *manager) {
 
 void do_text(UI_Manager *manager,
              real32 x_px, real32 y_px,
-             char *text, char *font, char *id_string, int32 index = 0) {
+             char *text, int32 font_id, char *id_string, int32 index = 0) {
     UI_Text ui_text = make_ui_text(x_px, y_px,
-                                   text, font, default_text_style, manager->current_layer, id_string, index);
+                                   text, font_id, default_text_style, manager->current_layer, id_string, index);
 
     bool32 was_clicked = false;
 
@@ -557,36 +557,39 @@ void do_text(UI_Manager *manager,
 
 void do_text(UI_Manager *manager,
              real32 x_px, real32 y_px,
-             char *text, char *font, 
+             char *text, int32 font_id,
              UI_Text_Style style,
              char *id_string, int32 index = 0) {
     UI_Text ui_text = make_ui_text(x_px, y_px,
-                                   text, font, style, manager->current_layer, id_string, index);
+                                   text, font_id, style, manager->current_layer, id_string, index);
 
     bool32 was_clicked = false;
 
     ui_add_text(manager, ui_text);
 }
 
+#if 0
+
 void do_text(real32 x_px, real32 y_px,
-             char *text, char *font, char *id_string, int32 index = 0) {
+             char *text, char *font_id, char *id_string, int32 index = 0) {
     using namespace Context;
     UI_Text ui_text = make_ui_text(x_px, y_px,
-                                   text, font, default_text_style, ui_manager->current_layer, id_string, index);
+                                   text, font_id, default_text_style, ui_manager->current_layer, id_string, index);
 
     bool32 was_clicked = false;
 
     ui_add_text(ui_manager, ui_text);
 }
+#endif
 
 bool32 do_text_button(real32 x_px, real32 y_px,
                       real32 width, real32 height,
                       UI_Text_Button_Style style, UI_Text_Style text_style,
-                      char *text, char *font, bool32 is_disabled, char *id_string, int32 index = 0) {
+                      char *text, int32 font_id, bool32 is_disabled, char *id_string, int32 index = 0) {
     using namespace Context;
     UI_Text_Button button = make_ui_text_button(x_px, y_px, width, height,
                                                 style, text_style,
-                                                text, font, is_disabled,
+                                                text, font_id, is_disabled,
                                                 ui_manager->current_layer, id_string, index);
 
     bool32 was_clicked = false;
@@ -630,23 +633,23 @@ bool32 do_text_button(real32 x_px, real32 y_px,
 inline bool32 do_text_button(real32 x_px, real32 y_px,
                       real32 width, real32 height,
                       UI_Text_Button_Style style, UI_Text_Style text_style,
-                      char *text, char *font, char *id_string, int32 index = 0) {
+                      char *text, int32 font_id, char *id_string, int32 index = 0) {
     return do_text_button(x_px, y_px,
                           width, height,
                           style, text_style,
-                          text, font, false, id_string, index);
+                          text, font_id, false, id_string, index);
 }
 
 bool32 do_image_button(real32 x_px, real32 y_px,
                        real32 width, real32 height,
                        UI_Image_Button_Style style,
                        UI_Text_Style text_style,
-                       int32 texture_id, char *text, char *font,
+                       int32 texture_id, char *text, int32 font_id,
                        char *id_string, int32 index = 0) {
     using namespace Context;
     UI_Image_Button button = make_ui_image_button(x_px, y_px, width, height,
                                                   style, text_style,
-                                                  texture_id, text, font,
+                                                  texture_id, text, font_id,
                                                   ui_manager->current_layer,
                                                   id_string, index);
 
@@ -808,10 +811,9 @@ bool32 do_text_box_logic(UI_Manager *ui_manager, Controller_State *controller_st
 
 // NOTE: this returns the state's buffer if use_state = true, otherwise, it returns the passed in buffer.
 //       
-UI_Text_Box_Result do_text_box(real32 x, real32 y,
-                               real32 width, real32 height,
+UI_Text_Box_Result do_text_box(real32 x, real32 y, real32 width, real32 height,
                                String text, int32 max_length,
-                               char *font,
+                               int32 font_id,
                                UI_Text_Box_Style style, UI_Text_Style text_style,
                                bool32 reset_state,
                                char *id_string, int32 index = 0) {
@@ -835,7 +837,7 @@ UI_Text_Box_Result do_text_box(real32 x, real32 y,
 
     UI_Text_Box text_box =  make_ui_text_box(x, y, width, height,
                                              *buffer,
-                                             font,
+                                             font_id,
                                              style, text_style,
                                              ui_manager->current_layer, id_string, index);
 
@@ -852,7 +854,7 @@ UI_Text_Box_Result do_text_box(real32 x, real32 y,
 
 real32 do_slider(real32 x, real32 y,
                  real32 width, real32 height,
-                 char *font,
+                 int32 font_id,
                  bool32 is_bounded, real32 min, real32 max,
                  real32 value,
                  UI_Slider_Style style, UI_Text_Style text_style,
@@ -983,7 +985,7 @@ real32 do_slider(real32 x, real32 y,
     }
     
     UI_Slider slider = make_ui_slider(x, y, width, height,
-                                      state->buffer, font,
+                                      state->buffer, font_id,
                                       is_bounded, min, max, value,
                                       state->is_text_box,
                                       style, text_style,
@@ -996,14 +998,14 @@ real32 do_slider(real32 x, real32 y,
 
 inline real32 do_slider(real32 x, real32 y,
                         real32 width, real32 height,
-                        char *font,
+                        int32 font_id,
                         real32 min, real32 max, real32 value,
                         UI_Slider_Style style, UI_Text_Style text_style,
                 char *id_string, int32 index,
                 UI_id *result_id) {
     return do_slider(x, y,
                      width, height,
-                     font,
+                     font_id,
                      true, min, max,
                      value,
                      style, text_style,
@@ -1013,14 +1015,14 @@ inline real32 do_slider(real32 x, real32 y,
 
 inline real32 do_slider(real32 x, real32 y,
                         real32 width, real32 height,
-                        char *font,
+                        int32 font_id,
                         real32 value,
                         UI_Slider_Style style, UI_Text_Style text_style,
                 char *id_string, int32 index,
                 UI_id *result_id) {
     return do_slider(x, y,
                      width, height,
-                     font,
+                     font_id,
                      false, 0.0f, 0.0f,
                      value,
                      style, text_style,

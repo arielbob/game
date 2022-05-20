@@ -1,6 +1,21 @@
 #include "editor.h"
 #include "level.h"
 
+void draw_row_line(real32 x, real32 *y,
+                   real32 row_width, bool32 draw_outside_row = true) {
+    Vec4 line_color = make_vec4(0.3f, 0.3f, 0.3f, 1.0f);
+    UI_Box_Style line_box_style = { line_color };
+    real32 line_thickness = 1.0f;
+    char *box_id = "row_line";
+    if (draw_outside_row) {
+        x -= 1.0f;
+        row_width += 2.0f;
+    }
+    do_box(x, *y, row_width, line_thickness,
+           line_box_style, box_id);
+    *y += 1;
+}
+
 void draw_row(real32 x, real32 y,
               real32 row_width, real32 row_height,
               Vec4 color, uint32 side_flags,
@@ -80,6 +95,44 @@ inline void draw_row(real32 x, real32 y,
                     row_id, index);
 }
 
+void draw_centered_text(real32 box_x, real32 box_y,
+                        real32 row_width, real32 row_height,
+                        char *text, int32 font_id, UI_Text_Style text_style) {
+    using namespace Context;
+    Font font = get_font(&editor_state->asset_manager, font_id);
+
+    real32 adjusted_text_height = font.height_pixels - font.scale_for_pixel_height * (font.ascent + font.descent);
+    real32 x_offset = 0.5f * row_width - 0.5f * get_width(font, text);
+    real32 y_offset = 0.5f * (row_height + adjusted_text_height);
+    do_text(ui_manager, box_x + x_offset, box_y + y_offset,
+            text, font_id, text_style, "entity_properties_text");
+}
+
+void draw_v_centered_text(real32 box_x, real32 box_y,
+                          real32 row_height,
+                          char *text, int32 font_id, UI_Text_Style text_style) {
+    using namespace Context;
+    Font font = get_font(&editor_state->asset_manager, font_id);
+
+    real32 adjusted_text_height = font.height_pixels - font.scale_for_pixel_height * (font.ascent + font.descent);
+    real32 y_offset = 0.5f * (row_height + adjusted_text_height);
+    do_text(ui_manager, box_x, box_y + y_offset,
+            text, font_id, text_style, "entity_properties_text");
+}
+
+void draw_labeled_text(real32 x, real32 y,
+                       real32 row_height,
+                       int32 label_font_id, char *label,
+                       int32 text_font_id, char *text,
+                       UI_Text_Style text_style) {
+    using namespace Context;
+    real32 small_spacing = 20.0f;
+    draw_v_centered_text(x, y, row_height,
+                         label, label_font_id, text_style);
+    draw_v_centered_text(x+small_spacing, y, row_height,
+                         text, text_font_id, text_style);
+}
+
 inline void draw_row_padding(real32 x, real32 *y,
                              real32 row_width,
                              real32 padding,
@@ -97,6 +150,855 @@ inline void draw_row_padding(real32 x, real32 *y,
     if (side_flags & SIDE_BOTTOM) {
         // because we're drawing the border on the outside, we need to offset by the border thickness (1)
         *y += 1;
+    }
+}
+
+void handle_color_picker(Editor_State *editor_state, UI_Color_Picker_Result result) {
+    if (result.should_hide) {
+        editor_state->color_picker_parent = {};
+    }
+}
+
+void draw_entity_box(Editor_State *editor_state, UI_Manager *ui_manager, Controller_State *controller_state,
+                     Entity *entity) {
+    int32 row_index = 0;
+
+    Asset_Manager *asset_manager = &editor_state->asset_manager;
+
+    real32 box_x = 5.0f;
+    real32 box_y = 50.0f;
+
+    real32 box_padding_x = 10.0f;
+    real32 box_padding_y = 10.0f;
+
+    Allocator *allocator = (Allocator *) &memory.frame_arena;
+
+    Editor_Level *level = &editor_state->level;
+    //Mesh *mesh = get_mesh_pointer(game_state, level, entity->mesh_type, entity->mesh_id);
+    // bool32 material_exists = hash_table_find_pointer(game_state->current_level.material_table,
+    //                                                  entity->material_id,
+    //                                                  &material);
+    // assert(material_exists);
+    Transform transform = entity->transform;
+
+    UI_Text_Button_Style button_style = default_text_button_style;
+    
+    UI_Text_Style text_style = default_text_style;
+    
+    real32 padding_x = Editor_Constants::small_padding_x;
+    real32 padding_y = Editor_Constants::small_padding_y;
+    real32 x_nested_offset = Editor_Constants::x_nested_offset;
+    real32 right_column_offset = padding_x + 130.0f;
+    real32 small_spacing = 20.0f;
+
+    real32 initial_row_height = 22.0f;
+    real32 row_height = initial_row_height;
+    real32 small_row_height = Editor_Constants::small_row_height;
+    //real32 small_row_height = SMALL_ROW_HEIGHT;
+    real32 row_width = 400.0f;
+
+    Vec4 row_color = Editor_Constants::row_color;
+    Vec4 darkened_row_color = Editor_Constants::darkened_row_color;
+    Vec4 title_row_color = make_vec4(0.05f, 0.2f, 0.5f, 1.0f);
+
+    real32 initial_x = box_x;
+    real32 x = box_x;
+    real32 y = box_y;
+
+    real32 title_row_height = 30.0f;
+    uint32 side_flags = SIDE_LEFT | SIDE_RIGHT;
+
+    char *row_id = "entity_properties_title";
+
+    int32 font_id;
+    Font editor_font = get_font(asset_manager, Editor_Constants::editor_font_name, &font_id);
+
+    draw_row(x, y, row_width, title_row_height, title_row_color,
+             side_flags | SIDE_TOP, row_id, row_index++);
+    draw_centered_text(x, y, row_width, title_row_height,
+                       "Entity Properties", font_id, text_style);
+    y += title_row_height;
+    draw_row_line(x, &y, row_width);
+        
+    int32 entity_id = entity->id;
+
+    char *buf;
+    int32 buffer_size = 16;
+    
+    Allocator *persistent_string_allocator = (Allocator *) &memory.string64_pool;
+
+    // POSITION
+    draw_row(x, y, row_width, small_row_height, row_color, side_flags, row_id, row_index++);
+    draw_v_centered_text(x+padding_x, y, small_row_height,
+                         "Position", font_id, text_style);
+    // x
+    //buf = string_format(allocator, buffer_size, "%f", transform.position.x);
+    x += right_column_offset;
+    real32 transform_button_width = 80.0f;
+
+    UI_id x_slider, y_slider, z_slider;
+    real32 new_x = do_slider(x, y,
+                             transform_button_width, small_row_height,
+                             font_id,
+                             transform.position.x,
+                             default_slider_style, default_text_style,
+                             "x", entity_id,
+                             &x_slider);
+    x += transform_button_width + 5.0f;
+
+    real32 new_y = do_slider(x, y,
+                             transform_button_width, small_row_height,
+                             font_id,
+                             transform.position.y,
+                             default_slider_style, default_text_style,
+                             "y", entity_id,
+                             &y_slider);
+    x += transform_button_width + 5.0f;
+
+    real32 new_z = do_slider(x, y,
+                             transform_button_width, small_row_height,
+                             font_id,
+                             transform.position.z,
+                             default_slider_style, default_text_style,
+                             "z", entity_id,
+                             &z_slider);
+    x += transform_button_width + 5.0f;
+
+    update_entity_position(asset_manager, entity, make_vec3(new_x, new_y, new_z));
+    //start_or_finalize_entity_change(game_state, x_slider, entity);
+    //start_or_finalize_entity_change(game_state, y_slider, entity);
+    //start_or_finalize_entity_change(game_state, z_slider, entity);
+
+    y += small_row_height;
+    x = initial_x;
+
+    draw_row_line(x, &y, row_width);
+
+    // ROTATION
+    draw_row(x, y, row_width, small_row_height, row_color, side_flags, row_id, row_index++);
+    draw_v_centered_text(x+padding_x, y, small_row_height,
+                         "Rotation", font_id, text_style);
+    // w
+    buf = string_format(allocator, buffer_size, "%f", transform.rotation.w);
+    draw_labeled_text(x + right_column_offset, y, small_row_height,
+                      font_id, "w", font_id, buf, text_style);
+    y += small_row_height;
+    // x
+    draw_row(x, y, row_width, small_row_height, row_color, side_flags, row_id, row_index++);
+    buf = string_format(allocator, buffer_size, "%f", transform.rotation.v.x);
+    draw_labeled_text(x + right_column_offset, y, small_row_height,
+                      font_id, "x", font_id, buf, text_style);
+    y += small_row_height;
+    // y
+    draw_row(x, y, row_width, small_row_height, row_color, side_flags, row_id, row_index++);
+    buf = string_format(allocator, buffer_size, "%f", transform.rotation.v.y);
+    draw_labeled_text(x + right_column_offset, y, small_row_height,
+                      font_id, "y", font_id, buf, text_style);
+    y += small_row_height;
+    // z
+    draw_row(x, y, row_width, small_row_height, row_color, side_flags,
+             row_id, row_index++);
+    buf = string_format(allocator, buffer_size, "%f", transform.rotation.v.z);
+    draw_labeled_text(x + right_column_offset, y, small_row_height,
+                      font_id, "z", font_id, buf, text_style);
+    y += small_row_height;
+
+    draw_row_line(x, &y, row_width);
+
+    // SCALE
+    draw_row(x, y, row_width, small_row_height, row_color, side_flags, row_id, row_index++);
+    draw_v_centered_text(x+padding_x, y, small_row_height,
+                         "Scale", font_id, text_style);
+    x += right_column_offset;
+
+    UI_id scale_x_slider, scale_y_slider, scale_z_slider;
+    real32 new_scale_x = do_slider(x, y, transform_button_width, small_row_height,
+                                   font_id,
+                                   transform.scale.x,
+                                   default_slider_style, default_text_style,
+                                   "scale_x", entity_id,
+                                   &scale_x_slider);
+    x += transform_button_width + 5.0f;
+
+    real32 new_scale_y = do_slider(x, y, transform_button_width, small_row_height,
+                                   font_id,
+                                   transform.scale.y,
+                                   default_slider_style, default_text_style,
+                                   "scale_y", entity_id,
+                                   &scale_y_slider);
+    x += transform_button_width + 5.0f;
+
+    real32 new_scale_z = do_slider(x, y, transform_button_width, small_row_height,
+                                   font_id,
+                                   transform.scale.z,
+                                   default_slider_style, default_text_style,
+                                   "scale_z", entity_id,
+                                   &scale_z_slider);
+    x += transform_button_width + 5.0f;
+
+    update_entity_scale(asset_manager, entity, make_vec3(new_scale_x, new_scale_y, new_scale_z));
+    //start_or_finalize_entity_change(game_state, scale_x_slider, entity);
+    //start_or_finalize_entity_change(game_state, scale_y_slider, entity);
+    //start_or_finalize_entity_change(game_state, scale_z_slider, entity);
+
+    y += small_row_height;
+    x = initial_x;
+
+    draw_row_line(x, &y, row_width);
+
+    real32 wide_button_width = 200.0f;
+    real32 small_button_width = 30.0f;
+    real32 edit_box_width = wide_button_width - small_button_width;
+    
+    if (entity->type == ENTITY_NORMAL) {
+        Normal_Entity *normal_entity = (Normal_Entity *) entity;
+
+        Mesh *mesh = get_mesh_pointer(asset_manager, normal_entity->mesh_id);
+        
+        row_id = "mesh_properties_line";
+    
+        // MESH PROPERTIES
+        real32 choose_mesh_button_width = edit_box_width - small_button_width;
+
+        char *mesh_name = to_char_array(allocator, mesh->name);
+        draw_row_padding(x, &y, row_width, padding_y, row_color, side_flags,
+                         row_id, row_index++);
+        draw_row(x, y, row_width, row_height, row_color, side_flags,
+                 row_id, row_index++);
+        char *mesh_label_string = "Mesh";
+        if (mesh->type == Mesh_Type::PRIMITIVE) mesh_label_string = "Mesh (primitive)";
+        draw_v_centered_text(x + padding_x, y, row_height,
+                             mesh_label_string, font_id, text_style);
+
+        x += right_column_offset;
+        bool32 choose_mesh_pressed = do_text_button(x, y, choose_mesh_button_width, row_height,
+                                                    button_style, default_text_style,
+                                                    to_char_array(allocator, mesh->name),
+                                                    font_id, "choose_mesh");
+
+        if (!editor_state->open_window_flags && choose_mesh_pressed) {
+            editor_state->open_window_flags |= MESH_LIBRARY_WINDOW;
+        }
+        x += choose_mesh_button_width;
+
+        bool32 delete_mesh_pressed = do_text_button(x, y, small_button_width, row_height,
+                                                    default_text_button_cancel_style, default_text_style,
+                                                    "-", font_id,
+                                                    mesh->type == Mesh_Type::PRIMITIVE,
+                                                    "delete_mesh");
+
+        if (delete_mesh_pressed) {
+            assert(mesh->type == Mesh_Type::LEVEL);
+            // TODO: do this
+#if 0
+            Delete_Mesh_Action action = make_delete_mesh_action(normal_entity->mesh_id,
+                                                                make_string(mesh->filename),
+                                                                make_string(mesh->name));
+            //editor_delete_mesh(editor_state, asset_manager, level, action);
+#if 0
+            level_delete_mesh(asset_manager, level, normal_entity->mesh_id);
+#endif
+            editor_state->editing_selected_entity_mesh = false;
+#endif
+        }
+
+        x += small_button_width + padding_x;
+
+        bool32 add_mesh_pressed = do_text_button(x, y,
+                                                 small_button_width, row_height,
+                                                 button_style, default_text_style,
+                                                 "+", font_id,
+                                                 "add_mesh");
+        x += small_button_width + padding_x;
+
+        bool32 mesh_added = false;
+        if (add_mesh_pressed) {
+            // TODO: do this
+#if 0
+            mesh_added = editor_add_mesh_press(editor_state, asset_manager, &game_state->current_level);
+            if (mesh_added) {
+                editor_state->editing_selected_entity_mesh = true;
+                mesh = get_mesh_pointer(asset_manager, normal_entity->mesh_id);
+            }
+#endif
+        }
+
+        real32 edit_mesh_button_width = row_width - (x - initial_x) - padding_x;
+        bool32 edit_mesh_pressed = do_text_button(x, y,
+                                                  edit_mesh_button_width, row_height,
+                                                  button_style, default_text_style,
+                                                  "Edit", font_id,
+                                                  mesh->type == Mesh_Type::PRIMITIVE,
+                                                  "edit_mesh");
+
+        if (edit_mesh_pressed) {
+            editor_state->editing_selected_entity_mesh = !editor_state->editing_selected_entity_mesh;
+        }
+
+        y += row_height;
+        x = initial_x;
+        if (mesh->type == Mesh_Type::LEVEL && editor_state->editing_selected_entity_mesh) {
+            draw_row_padding(x, &y, row_width, padding_y, row_color, side_flags,
+                             row_id, row_index++);
+
+            row_color = Editor_Constants::darkened_row_color;
+            draw_row_padding(x, &y, row_width, padding_y, row_color, side_flags,
+                             row_id, row_index++);
+            UI_Text_Box_Style text_box_style = default_text_box_style;
+
+            draw_row(x, y, row_width, row_height, row_color, side_flags,
+                     row_id, row_index++);
+            draw_v_centered_text(x + padding_x + Editor_Constants::x_nested_offset, y, row_height,
+                                 "Mesh Name", font_id, default_text_style);
+
+            UI_Text_Box_Result result = do_text_box(x + right_column_offset, y,
+                                                    edit_box_width, row_height,
+                                                    mesh->name, MESH_NAME_MAX_SIZE,
+                                                    font_id,
+                                                    text_box_style, default_text_style,
+                                                    mesh_added,
+                                                    "mesh_name_text_box", normal_entity->mesh_id);
+            if (result.submitted) {
+                String new_name = make_string(result.buffer);
+                if (is_empty(new_name)) {
+                    add_message(Context::message_manager, make_string("Mesh name cannot be empty!"));
+                } else if (string_contains(new_name,
+                                           Editor_Constants::disallowed_chars,
+                                           Editor_Constants::num_disallowed_chars)) {
+                    add_message(Context::message_manager, make_string("Mesh name cannot contain {, }, or double quotes!"));
+                } else if (!string_equals(mesh->name, new_name)) {
+                    if (!mesh_name_exists(asset_manager, new_name)) {
+                        // TODO: do this
+#if 0
+                        Modify_Mesh_Action action = make_modify_mesh_action(mesh->type,
+                                                                            normal_entity->mesh_id,
+                                                                            result.buffer);
+                        editor_modify_mesh(game_state, action);
+#endif
+                    } else {
+                        add_message(Context::message_manager, make_string("Mesh name already exists!"));
+                    }
+                }
+            }
+
+            y += row_height;
+
+            draw_row_padding(x, &y, row_width, padding_y, row_color,
+                             side_flags | SIDE_BOTTOM,
+                             row_id, row_index++);
+            row_color = Editor_Constants::row_color;
+        } else {
+            draw_row_padding(x, &y, row_width, padding_y, row_color,
+                             side_flags | SIDE_BOTTOM,
+                             row_id, row_index++);
+        }
+        
+
+        x = initial_x;
+
+        // COLLIDER PROPERTIES
+        draw_row(x, y, row_width, row_height, row_color, side_flags | SIDE_BOTTOM,
+                 row_id, row_index++);
+        draw_v_centered_text(x + padding_x, y, row_height,
+                             "Collider", font_id, default_text_style);
+        x += right_column_offset;
+
+        char *collider_type_text = get_collider_type_string(normal_entity->collider.type);
+        draw_v_centered_text(x, y, row_height,
+                             collider_type_text, font_id, default_text_style);
+        y += row_height + 1;
+        x = initial_x;
+
+        // WALKABLE PROPERTY
+        draw_row_padding(x, &y, row_width, padding_y, row_color, side_flags,
+                         row_id, row_index++);
+        draw_row(x, y, row_width, row_height, row_color, side_flags,
+                 row_id, row_index++);
+        draw_v_centered_text(x + padding_x, y, row_height,
+                             "Is Walkable", font_id, default_text_style);
+        x += right_column_offset;
+
+        char *is_walkable_text = normal_entity->is_walkable ? "true" : "false";
+        bool32 toggle_is_walkable_pressed = do_text_button(x, y, 100.0f, row_height,
+                                                           button_style, default_text_style,
+                                                           is_walkable_text,
+                                                           font_id,
+                                                           false,
+                                                           "toggle_is_walkable");
+        y += row_height;
+        x = initial_x;
+
+        draw_row_padding(x, &y, row_width, padding_y, row_color, side_flags | SIDE_BOTTOM,
+                         row_id, row_index++);
+        
+        if (toggle_is_walkable_pressed) {
+            // TODO: do this
+#if 0
+            start_entity_change(editor_state, (Entity *) normal_entity);
+            normal_entity->is_walkable = !normal_entity->is_walkable;
+            finalize_entity_change(editor_state, level, (Entity *) normal_entity);
+#endif
+        }
+
+            
+        // MATERIAL
+        draw_row_padding(x, &y, row_width, padding_y, row_color,
+                         side_flags, row_id, row_index++);
+
+        draw_row(x, y, row_width, row_height, row_color, side_flags,
+                 row_id, row_index++);
+        draw_v_centered_text(x+padding_x, y, row_height,
+                             "Material", font_id, text_style);
+
+        side_flags = SIDE_LEFT | SIDE_RIGHT;
+
+        x += right_column_offset;
+        Material *material = NULL;
+        char *material_name = "";
+        bool32 has_material = normal_entity->material_id >= 0;
+        if (has_material) {
+            material = get_material_pointer(asset_manager, normal_entity->material_id);
+            material_name = to_char_array(allocator, material->name);
+        }
+
+        real32 choose_material_button_width = edit_box_width - small_button_width;
+        if (!has_material) {
+            choose_material_button_width += small_button_width;
+        }
+
+        bool32 choose_material_pressed = do_text_button(x, y, choose_material_button_width, row_height,
+                                                        button_style, default_text_style,
+                                                        material_name,
+                                                        font_id, "choose_material");
+
+        if (!editor_state->open_window_flags && choose_material_pressed) {
+            editor_state->open_window_flags |= MATERIAL_LIBRARY_WINDOW;
+        }
+        x += choose_material_button_width;
+
+        if (has_material) {
+            bool32 delete_material_pressed = do_text_button(x, y, small_button_width, row_height,
+                                                            default_text_button_cancel_style, default_text_style,
+                                                            "-", font_id,
+                                                            "delete_material");
+
+            if (delete_material_pressed) {
+                // TODO: do this
+#if 0
+                Delete_Material_Action action = make_delete_material_action(normal_entity->material_id, *material);
+                editor_delete_material(editor_state, level, action);
+
+                //level_delete_material(level, normal_entity->material_id);
+                editor_state->editing_selected_entity_material = false;
+#endif
+
+            }
+
+            x += small_button_width;
+        }
+
+        x += padding_x;
+
+        real32 add_material_button_width = small_button_width;
+        bool32 add_material_pressed = do_text_button(x, y,
+                                                     add_material_button_width, row_height,
+                                                     button_style, default_text_style,
+                                                     "+", font_id, "add_material");
+        x += add_material_button_width + padding_x;
+
+        if (add_material_pressed) {
+            // update the material variable with the new material
+            // TODO: do this
+#if 0
+            Add_Material_Action action = make_add_material_action(normal_entity->type, entity_id);
+            int32 result_id = editor_add_material(editor_state, level, action);
+            material = get_material_pointer(level, result_id);
+            editor_state->editing_selected_entity_material = true;
+#endif
+        }
+
+        real32 edit_material_button_width = row_width - (x - initial_x) - padding_x;
+        bool32 edit_material_pressed = do_text_button(x, y,
+                                                      edit_material_button_width, row_height,
+                                                      button_style, default_text_style,
+                                                      "Edit", font_id,
+                                                      !has_material,
+                                                      "edit_material");
+    
+        x = initial_x;
+        y += row_height;
+
+        if (edit_material_pressed) {
+            editor_state->editing_selected_entity_material = !editor_state->editing_selected_entity_material;
+        }
+
+        if (has_material && editor_state->editing_selected_entity_material) {
+            draw_row_padding(x, &y, row_width, padding_y, row_color,
+                             side_flags, row_id, row_index++);
+            row_color = Editor_Constants::darkened_row_color;
+
+            draw_row_padding(x, &y, row_width, padding_y, row_color,
+                             side_flags, row_id, row_index++);
+
+            UI_Text_Box_Style text_box_style = default_text_box_style;
+
+            real32 label_x = x + padding_x + x_nested_offset;
+
+            // MATERIAL NAME
+            draw_row(x, y, row_width, row_height, row_color, side_flags,
+                     row_id, row_index++);
+            draw_v_centered_text(label_x, y, row_height,
+                                 "Material Name", font_id, default_text_style);
+            // NOTE: we pass in normal_entity->material_id as the text button's index, because if the material id
+            //       changes, for example, from switching materials or creating a new material, AND the name
+            //       editing panel is still open, then we want the state to be reset. since the material_id's are
+            //       always different from each other (since they're created from an incrementing int), the text
+            //       box state will automatically be regenerated if the entity's material changes.
+            UI_Text_Box_Result material_name_text_box_result = do_text_box(x + right_column_offset, y,
+                                                                           edit_box_width, row_height,
+                                                                           material->name, MATERIAL_NAME_MAX_SIZE,
+                                                                           font_id,
+                                                                           text_box_style, default_text_style,
+                                                                           false,
+                                                                           "material_name_text_box",
+                                                                           normal_entity->material_id);
+            if (material_name_text_box_result.submitted) {
+                String new_name = make_string(material_name_text_box_result.buffer);
+                if (is_empty(new_name)) {
+                    add_message(Context::message_manager, make_string("Material name cannot be empty!"));
+                } else if (string_contains(new_name,
+                                           Editor_Constants::disallowed_chars,
+                                           Editor_Constants::num_disallowed_chars)) {
+                    add_message(Context::message_manager, make_string("Material name cannot contain {, }, or double quotes!"));
+                } else if (!string_equals(material->name, new_name)) {
+                    if (!material_name_exists(asset_manager, new_name)) {
+                        // TODO: do this
+#if 0
+                        start_material_change(editor_state, *material);
+                        copy_string(&material->name, new_name);
+                        finalize_material_change(editor_state, level, normal_entity->material_id, *material);
+#endif
+                    } else {
+                        add_message(Context::message_manager, make_string("Material name already exists!"));
+                    }
+                }
+            }
+
+#if 0
+            String_Buffer text_result = do_text_box(x + right_column_offset, y,
+                                                    edit_box_width, row_height,
+                                                    &material->name, font_id,
+                                                    text_box_style, default_text_style,
+                                                    "material_name_text_box");
+#endif
+
+            y += row_height;
+            draw_row_padding(x, &y, row_width, padding_y, row_color,
+                             side_flags, row_id, row_index++);
+
+            // TEXTURE
+            char *texture_name = "";
+            if (material->texture_id >= 0) {
+                Texture texture = get_texture(asset_manager, material->texture_id);
+                texture_name = to_char_array(allocator, texture.name);
+            }
+            draw_row(x, y, row_width, row_height, row_color, side_flags,
+                     row_id, row_index++);
+            draw_v_centered_text(label_x, y, row_height,
+                                 "Texture", font_id, text_style);
+
+            x += right_column_offset;
+            bool32 has_texture = material->texture_id >= 0;
+
+            real32 choose_texture_button_width = edit_box_width;
+            if (has_texture) choose_texture_button_width -= small_button_width;
+
+            bool32 choose_texture_pressed = do_text_button(x, y,
+                                                           choose_texture_button_width, row_height,
+                                                           button_style, default_text_style,
+                                                           texture_name, font_id, "choose_texture");
+            if (!editor_state->open_window_flags && choose_texture_pressed) {
+                editor_state->open_window_flags |= TEXTURE_LIBRARY_WINDOW;
+            }
+            x += choose_texture_button_width;
+
+            if (has_texture) {
+                Texture *texture = get_texture_pointer(asset_manager, material->texture_id);
+                bool32 delete_texture_pressed = do_text_button(x, y,
+                                                               small_button_width, row_height,
+                                                               default_text_button_cancel_style, default_text_style,
+                                                               "-", font_id, "delete_texture");
+                if (delete_texture_pressed) {
+                    // TODO: do this
+#if 0
+                    Delete_Texture_Action action = make_delete_texture_action(material->texture_id,
+                                                                              make_string(texture->filename),
+                                                                              make_string(texture->name));
+                    editor_delete_texture(editor_state, level, action);
+
+                    has_texture = false;
+                    editor_state->editing_selected_entity_texture = false;
+#endif
+                }
+
+                x += small_button_width;
+            }
+            
+
+            x += padding_x;
+
+            bool32 add_texture_pressed = do_text_button(x, y,
+                                                        small_button_width, row_height,
+                                                        button_style, default_text_style,
+                                                        "+", font_id, "add_texture");
+            if (add_texture_pressed) {
+                // TODO: do this
+#if 0
+                bool32 texture_added = editor_add_texture_press(editor_state, &game_state->current_level,
+                                                                normal_entity->material_id, material->texture_id);
+                if (texture_added) {
+                    editor_state->editing_selected_entity_texture = true;
+                }
+#endif
+            }
+
+            x += small_button_width + padding_x;
+            real32 edit_texture_button_width = row_width - (x - initial_x) - padding_x;
+            bool32 edit_texture_pressed = do_text_button(x, y,
+                                                         edit_texture_button_width, row_height,
+                                                         button_style, default_text_style,
+                                                         "Edit", font_id,
+                                                         !has_texture,
+                                                         "edit_texture");
+    
+            x = initial_x;
+            y += row_height;
+
+            if (edit_texture_pressed) {
+                //editor_state->editing_selected_entity_texture = !editor_state->editing_selected_entity_texture;
+            }
+
+            if (has_texture && editor_state->editing_selected_entity_texture) {
+                Texture *texture = get_texture_pointer(asset_manager, material->texture_id);
+                draw_row_padding(x, &y, row_width, padding_y, row_color,
+                                 side_flags, row_id, row_index++);
+
+                // TEXTURE NAME
+                draw_row(x, y, row_width, row_height, darkened_row_color, side_flags,
+                         row_id, row_index++);
+                draw_v_centered_text(label_x + x_nested_offset, y, row_height,
+                                     "Texture Name", font_id, default_text_style);
+                UI_Text_Box_Result result = do_text_box(x + right_column_offset, y, edit_box_width, row_height,
+                                                        texture->name, TEXTURE_NAME_MAX_SIZE,
+                                                        font_id,
+                                                        text_box_style, default_text_style,
+                                                        false,
+                                                        "texture_name_text_box", material->texture_id);
+
+                if (result.submitted) {
+                    String new_name = make_string(result.buffer);
+                    if (is_empty(new_name)) {
+                        add_message(Context::message_manager, make_string("Texture name cannot be empty!"));
+                    } else if (string_contains(new_name,
+                                               Editor_Constants::disallowed_chars,
+                                               Editor_Constants::num_disallowed_chars)) {
+                        add_message(Context::message_manager, make_string("Texture name cannot contain {, }, or double quotes!"));
+                    } else if (!string_equals(texture->name, new_name)) {
+                        if (!texture_name_exists(asset_manager, new_name)) {
+                            // TODO: do this
+#if 0
+                            Modify_Texture_Action action = make_modify_texture_action(material->texture_id,
+                                                                                      result.buffer);
+                            editor_modify_texture(editor_state, level, action);
+                            //copy_string(&texture->name, new_name);
+#endif
+                        } else {
+                            add_message(Context::message_manager, make_string("Texture name already exists!"));
+                        }
+                    }
+                }
+
+                y += row_height;
+            }
+
+            x = initial_x;
+            draw_row_padding(x, &y, row_width, padding_y, row_color,
+                             side_flags, row_id, row_index++);
+
+            // GLOSS
+            draw_row(x, y, row_width, row_height, row_color, side_flags,
+                     row_id, row_index++);
+            draw_v_centered_text(label_x, y, row_height,
+                                 "Gloss", font_id, text_style);
+            UI_id gloss_slider;
+            material->gloss = do_slider(x+right_column_offset, y,
+                                        edit_box_width, row_height,
+                                        font_id,
+                                        0.0f, 100.0f, material->gloss,
+                                        default_slider_style, default_text_style,
+                                        "edit_material_gloss_slider", normal_entity->material_id,
+                                        &gloss_slider);
+            y += row_height;
+            draw_row_padding(x, &y, row_width, padding_y, row_color,
+                             side_flags, row_id, row_index++);
+
+            // COLOR OVERRIDE
+            draw_row(x, y, row_width, row_height, row_color, side_flags,
+                     row_id, row_index++);
+            buf = string_format(allocator, buffer_size, "%f", material->gloss);
+            draw_v_centered_text(label_x, y, row_height,
+                                 "Color Override", font_id, text_style);
+            UI_id color_override_button_id;
+            bool32 color_override_pressed = do_color_button(x + right_column_offset, y,
+                                                            row_height, row_height,
+                                                            default_color_button_style,
+                                                            material->color_override,
+                                                            "material_color_override_button", 0,
+                                                            &color_override_button_id);
+            if (ui_id_equals(editor_state->color_picker_parent, color_override_button_id)) {
+                push_layer(ui_manager);
+                UI_Color_Picker_Result result = do_color_picker(x + right_column_offset, y + row_height,
+                                                                Editor_Constants::color_picker_style,
+                                                                material->color_override,
+                                                                "editor_color_picker", entity_id);
+                pop_layer(ui_manager);
+                handle_color_picker(editor_state, result);
+
+                // TODO: do this
+#if 0
+                if (result.started) {
+                    start_material_change(editor_state, *material);
+                } else if (result.submitted) {
+                    material->color_override = result.color;
+                    finalize_material_change(editor_state, level, normal_entity->material_id, *material);
+                } else {
+                    material->color_override = result.color;
+                }
+#endif
+            } else if (color_override_pressed) {
+                editor_state->color_picker_parent = color_override_button_id;
+            }
+
+            y += row_height;
+            draw_row_padding(x, &y, row_width, padding_y, row_color,
+                             side_flags, row_id, row_index++);
+
+            // USE COLOR OVERRIDE
+            draw_row(x, y, row_width, row_height, row_color, side_flags,
+                     row_id, row_index++);
+            draw_v_centered_text(label_x, y, row_height,
+                                 "Use Color Override", font_id, text_style);
+            bool32 toggle_color_override_pressed = do_text_button(x + right_column_offset, y,
+                                                                  100.0f, row_height,
+                                                                  button_style, default_text_style,
+                                                                  material->use_color_override ? "true" : "false",
+                                                                  font_id,
+                                                                  material->texture_id < 0,
+                                                                  "material_toggle_use_color_override");
+            y += row_height;
+        
+            if (toggle_color_override_pressed) {
+                material->use_color_override = !material->use_color_override;
+                if (material->texture_id < 0 && !material->use_color_override) {
+                    material->use_color_override = true;
+                }
+            }
+        }
+        draw_row_padding(x, &y, row_width, padding_y, row_color,
+                         side_flags | SIDE_BOTTOM, row_id, row_index++);
+
+        row_color = Editor_Constants::row_color;
+    }
+    
+    if (entity->type == ENTITY_POINT_LIGHT) {
+        draw_row_padding(x, &y, row_width, padding_y, row_color,
+                         side_flags, row_id, row_index++);
+        Point_Light_Entity *point_light = (Point_Light_Entity *) entity;
+
+        // LIGHT COLOR
+        draw_row(x, y, row_width, row_height, row_color, side_flags,
+                 row_id, row_index++);
+        draw_v_centered_text(x + padding_x, y, row_height,
+                             "Light Color", font_id, text_style);
+        UI_id point_light_color_button_id;
+        bool32 point_light_color_pressed = do_color_button(x + right_column_offset, y,
+                                                           row_height, row_height,
+                                                           default_color_button_style,
+                                                           make_vec4(point_light->light_color, 1.0f),
+                                                           "point_light_color", 0,
+                                                           &point_light_color_button_id);
+
+        if (ui_id_equals(editor_state->color_picker_parent, point_light_color_button_id)) {
+            push_layer(ui_manager);
+            UI_Color_Picker_Result result = do_color_picker(x + right_column_offset, y + row_height,
+                                                            Editor_Constants::color_picker_style,
+                                                            make_vec4(point_light->light_color, 1.0f),
+                                                            "editor_color_picker", entity_id);
+            pop_layer(ui_manager);
+            point_light->light_color = truncate_v4_to_v3(result.color);
+            if (result.should_hide) {
+                editor_state->color_picker_parent = {};
+            }
+        } else if (point_light_color_pressed) {
+            editor_state->color_picker_parent = point_light_color_button_id;
+        }
+
+        y += row_height;
+
+        // LIGHT MIN DISTANCE
+        draw_row_padding(x, &y, row_width, padding_y, row_color,
+                         side_flags, row_id, row_index++);
+        draw_row(x, y, row_width, row_height, row_color, side_flags,
+                 row_id, row_index++);
+        draw_v_centered_text(x + padding_x, y, row_height,
+                             "Falloff Start", font_id, text_style);
+        UI_id falloff_start_slider;
+        point_light->falloff_start = do_slider(x+right_column_offset, y,
+                                               edit_box_width, row_height,
+                                               font_id,
+                                               0.0f, 100.0f, point_light->falloff_start,
+                                               default_slider_style, default_text_style,
+                                               "edit_point_light_falloff_start_slider", entity_id,
+                                               &falloff_start_slider);
+        y += row_height;
+        draw_row_padding(x, &y, row_width, padding_y, row_color,
+                         side_flags, row_id, row_index++);
+
+        // LIGHT MAX DISTANCE
+        draw_row(x, y, row_width, row_height, row_color, side_flags,
+                 row_id, row_index++);
+        draw_v_centered_text(x + padding_x, y, row_height,
+                             "Falloff Distance", font_id, text_style);
+        UI_id falloff_end_slider;
+        point_light->falloff_end = do_slider(x+right_column_offset, y,
+                                             edit_box_width, row_height,
+                                             font_id,
+                                             0.0f, 100.0f, point_light->falloff_end,
+                                             default_slider_style, default_text_style,
+                                             "edit_point_light_falloff_end_slider", entity_id,
+                                             &falloff_end_slider);
+        y += row_height;
+        draw_row_padding(x, &y, row_width, padding_y, row_color,
+                         side_flags | SIDE_BOTTOM, row_id, row_index++);
+    }
+
+    // DELETE ENTITY
+    draw_row_padding(x, &y, row_width, padding_y, row_color,
+                     side_flags, row_id, row_index++);
+    draw_row(x, y, row_width, row_height, row_color, side_flags,
+             row_id, row_index++);
+    bool32 delete_entity_pressed = do_text_button(x + padding_x, y,
+                                                  100.0f, row_height,
+                                                  default_text_button_cancel_style, default_text_style,
+                                                  "Delete Entity",
+                                                  font_id,
+                                                  false,
+                                                  "entity_box_delete_entity");
+    y += row_height;
+    draw_row_padding(x, &y, row_width, padding_y, row_color,
+                     side_flags | SIDE_BOTTOM, row_id, row_index++);
+    if (delete_entity_pressed) {
+        //editor_delete_entity(editor_state, level, editor_state->selected_entity_type, editor_state->selected_entity_id);
     }
 }
 
@@ -124,7 +1026,8 @@ void draw_level_box(UI_Manager *ui_manager, Editor_State *editor_state,
              row_width, button_height, row_color, side_flags, row_id, row_index++);
 
     char *editor_font_name = Editor_Constants::editor_font_name;
-    Font font = get_font(asset_manager, editor_font_name);
+    int32 font_id;
+    Font font = get_font(asset_manager, editor_font_name, &font_id);
     
     x += padding_x;
     real32 new_level_button_width = 50.0f;
@@ -132,7 +1035,7 @@ void draw_level_box(UI_Manager *ui_manager, Editor_State *editor_state,
                                               new_level_button_width, button_height,
                                               default_text_button_style, default_text_style,
                                               "New",
-                                              editor_font_name, "new_level");
+                                              font_id, "new_level");
     if (new_level_clicked) {
         // TODO: do this
     }
@@ -144,7 +1047,7 @@ void draw_level_box(UI_Manager *ui_manager, Editor_State *editor_state,
                                                open_level_button_width, button_height,
                                                default_text_button_style, default_text_style,
                                                "Open",
-                                               editor_font_name, "open_level");
+                                               font_id, "open_level");
     bool32 just_loaded_level = false;
     if (open_level_clicked) {
         Marker m = begin_region();
@@ -192,7 +1095,7 @@ void draw_level_box(UI_Manager *ui_manager, Editor_State *editor_state,
     real32 label_row_height = 18.0f;
     draw_row(x, y, row_width, label_row_height, row_color, side_flags, row_id, row_index++);
     do_text(ui_manager, x + padding_x, y + get_center_baseline_offset(label_row_height, get_adjusted_font_height(font)),
-            "Level Name", editor_font_name, default_text_style, "level_name_text_box_label");
+            "Level Name", font_id, default_text_style, "level_name_text_box_label");
     y += label_row_height;
 
     // level name text box
@@ -200,7 +1103,7 @@ void draw_level_box(UI_Manager *ui_manager, Editor_State *editor_state,
     UI_Text_Box_Result level_name_result = do_text_box(x + padding_x, y,
                                                        row_width - padding_x*2, row_height,
                                                        make_string(""), 64,
-                                                       editor_font_name,
+                                                       font_id,
                                                        default_text_box_style, default_text_style,
                                                        just_loaded_level,
                                                        "level_name_text_box");
@@ -239,7 +1142,7 @@ void draw_level_box(UI_Manager *ui_manager, Editor_State *editor_state,
                                                save_button_width, button_height,
                                                default_text_button_style, default_text_style,
                                                "Save",
-                                               editor_font_name,
+                                               font_id,
                                                !level_name_is_valid,
                                                "save_level");
 
@@ -259,13 +1162,13 @@ void draw_level_box(UI_Manager *ui_manager, Editor_State *editor_state,
                 copy_string(&editor_state->current_level_filename, make_string(filename));
                 editor_state->is_new_level = false;
                 
-                add_message(&game_state->message_manager, make_string(SAVE_SUCCESS_MESSAGE));
+                add_message(Context::message_manager, make_string(SAVE_SUCCESS_MESSAGE));
             }
         } else {
             char *level_filename = to_char_array((Allocator *) &memory.global_stack,
                                                  editor_state->current_level_filename);
             export_level((Allocator *) &memory.global_stack, asset_manager, &game_state->current_level, level_filename);
-            add_message(&game_state->message_manager, make_string(SAVE_SUCCESS_MESSAGE));
+            add_message(Context::message_manager, make_string(SAVE_SUCCESS_MESSAGE));
         }
         
         end_region(m);
@@ -277,7 +1180,7 @@ void draw_level_box(UI_Manager *ui_manager, Editor_State *editor_state,
                                                   save_as_button_width, button_height,
                                                   default_text_button_style, default_text_style,
                                                   "Save As...",
-                                                  editor_font_name,
+                                                  font_id,
                                                   !level_name_is_valid,
                                                   "save_as_level");
 
@@ -295,7 +1198,7 @@ void draw_level_box(UI_Manager *ui_manager, Editor_State *editor_state,
             export_level((Allocator *) &memory.global_stack, asset_manager, &game_state->current_level, filename);
             copy_string(&editor_state->current_level_filename, make_string(filename));
             editor_state->is_new_level = false;
-            add_message(&game_state->message_manager, make_string(SAVE_SUCCESS_MESSAGE));
+            add_message(Context::message_manager, make_string(SAVE_SUCCESS_MESSAGE));
         }
         
         end_region(m);

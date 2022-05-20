@@ -389,7 +389,7 @@ void update_messages(Message_Manager *manager, real32 dt) {
     }
 }
 
-void draw_messages(Message_Manager *manager, real32 x_start, real32 y_start) {
+void draw_messages(Asset_Manager *asset_manager, Message_Manager *manager, real32 x_start, real32 y_start) {
     int32 index = (MAX_MESSAGES + (manager->current_message_index - 1)) % MAX_MESSAGES;
     Message *messages = manager->messages;
     real32 y_offset = 30.0f;
@@ -402,6 +402,8 @@ void draw_messages(Message_Manager *manager, real32 x_start, real32 y_start) {
     text_style.text_align_flags = TEXT_JUSTIFY_CENTER;
 
     Allocator *frame_allocator = (Allocator *) &memory.frame_arena;
+    int32 font_id;
+    Font font = get_font(asset_manager, "calibri24b", &font_id);
     for (int32 messages_visited = 0; messages_visited < manager->num_messages; messages_visited++) {
         Message *message = &messages[index];
         char *string = to_char_array(frame_allocator, message->text);
@@ -413,7 +415,7 @@ void draw_messages(Message_Manager *manager, real32 x_start, real32 y_start) {
         text_style.offset_shadow_color.w = opacity;
 
         do_text(Context::ui_manager, x_start, y_start + messages_visited*y_offset,
-                string, "calibri24b", text_style,
+                string, font_id, text_style,
                 "message_text", index);
                 
         index = (MAX_MESSAGES + (index - 1)) % MAX_MESSAGES;
@@ -528,7 +530,9 @@ void update(Game_State *game_state,
 
     //update_render_state(render_state);
     
+    Asset_Manager *asset_manager = &game_state->asset_manager;
     if (game_state->mode == Game_Mode::EDITING) {
+        asset_manager = &game_state->editor_state.asset_manager;
         update_editor(game_state, controller_state, dt);
         draw_editor(game_state, controller_state);
     }
@@ -541,15 +545,18 @@ void update(Game_State *game_state,
     do_text(ui_manager, 0.0f, 24.0f, buf, "times24", "current_mouse_text");
 #endif
 
+    int32 font_id;
+    Font font = get_font(asset_manager, "calibri14", &font_id);    
 
     char *dt_string = string_format((Allocator *) &memory.frame_arena, 128, "FPS %d / dt %.3f", 
                                     (int32) round(game_state->last_second_fps), dt);
-    do_text(ui_manager, 5.0f, 14.0f, dt_string, "calibri14", "dt_string");
+    do_text(ui_manager, 5.0f, 14.0f, dt_string, font_id, "dt_string");
 
     fill_sound_buffer_with_audio(sound_output, game_state->is_playing_music, &game_state->music, num_samples);
 
     update_messages(&game_state->message_manager, dt);
-    draw_messages(&game_state->message_manager, display_output->width / 2.0f, display_output->height / 2.0f);
+    draw_messages(asset_manager, &game_state->message_manager,
+                  display_output->width / 2.0f, display_output->height / 2.0f);
 
     clear_hot_if_gone(ui_manager);
     clear_active_if_gone(ui_manager);
