@@ -631,9 +631,9 @@ bool32 do_text_button(real32 x_px, real32 y_px,
 }
 
 inline bool32 do_text_button(real32 x_px, real32 y_px,
-                      real32 width, real32 height,
-                      UI_Text_Button_Style style, UI_Text_Style text_style,
-                      char *text, int32 font_id, char *id_string, int32 index = 0) {
+                             real32 width, real32 height,
+                             UI_Text_Button_Style style, UI_Text_Style text_style,
+                             char *text, int32 font_id, char *id_string, int32 index = 0) {
     return do_text_button(x_px, y_px,
                           width, height,
                           style, text_style,
@@ -831,8 +831,7 @@ UI_Text_Box_Result do_text_box(real32 x, real32 y, real32 width, real32 height,
     String_Buffer *buffer = &state->buffer;
 
     if (reset_state) {
-        // TODO: may want to change max_length here?
-        copy_string(&state->buffer, buffer);
+        copy_string(buffer, text);
     }
 
     UI_Text_Box text_box =  make_ui_text_box(x, y, width, height,

@@ -33,16 +33,19 @@ color_override 0.870000 0.673641 0.548100
 use_color_override 1
 
 material "white_light"
+texture "debug"
 gloss 0.000000
 color_override 1.000000 1.000000 1.000000
 use_color_override 1
 
 material "blue_light"
+texture "debug"
 gloss 0.000000
 color_override 0.000000 0.000000 1.000000
 use_color_override 1
 
 material "diffuse_sphere"
+texture "debug"
 gloss 5.000000
 color_override 0.690196 0.690196 0.690196
 use_color_override 1
@@ -54,16 +57,19 @@ color_override 1.000000 0.640400 0.380000
 use_color_override 1
 
 material "monkey_4_material"
+texture "white"
 gloss 0.970874
 color_override 1.000000 0.000000 0.000000
 use_color_override 1
 
 material "matter monkey"
+texture "white"
 gloss 0.500000
 color_override 0.840000 0.840000 0.840000
 use_color_override 1
 
 material "big monkey"
+texture "white"
 gloss 0.239283
 color_override 0.485000 0.485000 0.485000
 use_color_override 1
@@ -174,7 +180,7 @@ falloff_start 0.000000
 falloff_end 4.237289
 
 type point_light
-position 0.000000 36.837242 99.261597
+position 0.000000 36.837234 99.261597
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
 light_color 1.000000 1.000000 1.000000

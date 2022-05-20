@@ -1,7 +1,13 @@
 #ifndef MEMORY_H
 #define MEMORY_H
 
+// we have an allocator type for read only memory where allocating is an error and deallocating is a no-op.
+// we do this so we don't have to check if an allocator is null. we treat a null allocator differently from
+// having a type of READ_ONLY_ALLOCATOR, since we can easily assert if an allocator is null in the case where we
+// forget to set an allocator.
 enum Allocator_Type {
+    NONE_ALLOCATOR,
+    READ_ONLY_ALLOCATOR, 
     STACK_ALLOCATOR,
     ARENA_ALLOCATOR,
     POOL_ALLOCATOR,
@@ -11,6 +17,13 @@ enum Allocator_Type {
 struct Allocator {
     Allocator_Type type;
 };
+
+struct Read_Only_Allocator {
+    Allocator_Type type;
+};
+
+Read_Only_Allocator _read_only_allocator = { READ_ONLY_ALLOCATOR };
+Allocator *read_only_allocator = (Allocator *) &_read_only_allocator;
 
 struct Stack_Allocator {
     Allocator_Type type;

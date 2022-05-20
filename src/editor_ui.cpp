@@ -1042,13 +1042,14 @@ void draw_level_box(UI_Manager *ui_manager, Editor_State *editor_state,
 
     x += new_level_button_width + 1;
 
+    bool32 just_loaded_level = editor_state->is_startup;
+
     real32 open_level_button_width = 60.0f;
     bool32 open_level_clicked = do_text_button(x, y, 
                                                open_level_button_width, button_height,
                                                default_text_button_style, default_text_style,
                                                "Open",
                                                font_id, "open_level");
-    bool32 just_loaded_level = false;
     if (open_level_clicked) {
         Marker m = begin_region();
         char *absolute_filename = (char *) region_push(PLATFORM_MAX_PATH);
@@ -1056,6 +1057,13 @@ void draw_level_box(UI_Manager *ui_manager, Editor_State *editor_state,
         if (platform_open_file_dialog(absolute_filename,
                                       LEVEL_FILE_FILTER_TITLE, LEVEL_FILE_FILTER_TYPE,
                                       PLATFORM_MAX_PATH)) {
+            bool32 result = read_and_load_level(editor_state, absolute_filename);
+            if (result) {
+                just_loaded_level = true;
+            } else {
+                assert(!"Failed to load level.");
+            }
+#if 0
             Level_Info level_info;
             init_level_info(temp_region, &level_info);
             
@@ -1064,22 +1072,9 @@ void draw_level_box(UI_Manager *ui_manager, Editor_State *editor_state,
 
             if (result) {
                 unload_level(editor_state);
+                reset_editor(editor_state);
                 load_level(editor_state, &level_info);
-            }
-            
-#if 0
-            bool32 result = read_and_load_level(asset_manager,
-                                                &game_state->current_level, absolute_filename,
-                                                &memory.level_arena,
-                                                &memory.level_mesh_heap,
-                                                &memory.level_string64_pool,
-                                                &memory.level_filename_pool);
-            if (result) {
-                editor_state->is_new_level = false;
-                copy_string(&editor_state->current_level_filename, make_string(absolute_filename));
-                editor_state->selected_entity_id = -1;
                 just_loaded_level = true;
-                history_reset(&editor_state->history);
             }
 #endif
         }
@@ -1102,7 +1097,7 @@ void draw_level_box(UI_Manager *ui_manager, Editor_State *editor_state,
     draw_row(x, y, row_width, row_height, row_color, side_flags, row_id, row_index++);
     UI_Text_Box_Result level_name_result = do_text_box(x + padding_x, y,
                                                        row_width - padding_x*2, row_height,
-                                                       make_string(""), 64,
+                                                       editor_state->level.name, 64,
                                                        font_id,
                                                        default_text_box_style, default_text_style,
                                                        just_loaded_level,
@@ -1116,21 +1111,16 @@ void draw_level_box(UI_Manager *ui_manager, Editor_State *editor_state,
                                    Editor_Constants::num_disallowed_chars)) {
             add_message(Context::message_manager, make_string("Level name cannot contain {, }, or double quotes!"));
         } else {
-            if (editor_state->level.name.allocator) {
-                replace_with_copy((Allocator *) &editor_state->general_heap,
-                                  &editor_state->level.name, new_level_name);
-            } else {
-                editor_state->level.name = copy((Allocator *) &editor_state->general_heap, new_level_name);
-            }
+            replace_with_copy((Allocator *) &editor_state->general_heap,
+                              &editor_state->level.name, new_level_name);
         }
     }
     
     y += row_height;
 
-    // TODO: do this
-#if 0
-    bool32 level_name_is_valid = (!is_empty(game_state->current_level.name) &&
-                                  string_equals(make_string(game_state->current_level.name), new_level_name));
+#if 1
+    bool32 level_name_is_valid = (!is_empty(editor_state->level.name) &&
+                                  string_equals(editor_state->level.name, new_level_name));
 
     draw_row_padding(x, &y, row_width, padding_y, row_color, side_flags, row_id, row_index);
 
@@ -1147,7 +1137,7 @@ void draw_level_box(UI_Manager *ui_manager, Editor_State *editor_state,
                                                "save_level");
 
     if (save_level_clicked) {
-        assert(!is_empty(game_state->current_level.name));
+        assert(!is_empty(editor_state->level.name));
 
         Marker m = begin_region();
         char *filename = (char *) region_push(PLATFORM_MAX_PATH);
@@ -1158,16 +1148,19 @@ void draw_level_box(UI_Manager *ui_manager, Editor_State *editor_state,
                                                                  PLATFORM_MAX_PATH);
 
             if (has_filename) {
-                export_level((Allocator *) &memory.global_stack, asset_manager, &game_state->current_level, filename);
-                copy_string(&editor_state->current_level_filename, make_string(filename));
+                export_level(asset_manager, &editor_state->level, filename);
+                if (editor_state->level_filename.allocator) {
+                    replace_with_copy((Allocator *) &editor_state->general_heap,
+                                      &editor_state->level_filename, make_string(filename));
+                }
+                
                 editor_state->is_new_level = false;
                 
                 add_message(Context::message_manager, make_string(SAVE_SUCCESS_MESSAGE));
             }
         } else {
-            char *level_filename = to_char_array((Allocator *) &memory.global_stack,
-                                                 editor_state->current_level_filename);
-            export_level((Allocator *) &memory.global_stack, asset_manager, &game_state->current_level, level_filename);
+            char *level_filename = to_char_array(temp_region, editor_state->level_filename);
+            export_level(asset_manager, &editor_state->level, level_filename);
             add_message(Context::message_manager, make_string(SAVE_SUCCESS_MESSAGE));
         }
         
@@ -1185,7 +1178,7 @@ void draw_level_box(UI_Manager *ui_manager, Editor_State *editor_state,
                                                   "save_as_level");
 
     if (save_as_level_clicked) {
-        assert(!is_empty(game_state->current_level.name));
+        assert(!is_empty(editor_state->level.name));
 
         Marker m = begin_region();
         char *filename = (char *) region_push(PLATFORM_MAX_PATH);
@@ -1195,8 +1188,11 @@ void draw_level_box(UI_Manager *ui_manager, Editor_State *editor_state,
                                                              PLATFORM_MAX_PATH);
 
         if (has_filename) {
-            export_level((Allocator *) &memory.global_stack, asset_manager, &game_state->current_level, filename);
-            copy_string(&editor_state->current_level_filename, make_string(filename));
+            export_level(asset_manager, &editor_state->level, filename);
+            if (editor_state->level_filename.allocator) {
+                replace_with_copy((Allocator *) &editor_state->general_heap,
+                                  &editor_state->level_filename, make_string(filename));
+            }
             editor_state->is_new_level = false;
             add_message(Context::message_manager, make_string(SAVE_SUCCESS_MESSAGE));
         }

@@ -509,11 +509,13 @@ void heap_deallocate(Heap_Allocator *heap, void *address) {
     assert(free_block != free_block->next);
     
     // debug
+#if 0
     block = heap->first_block;
     while (block != NULL) {
         assert(block->size >= 0);
         block = block->next;
     }
+#endif
 
     heap_coalesce_blocks(heap);
 }
@@ -540,6 +542,10 @@ void clear_heap(Heap_Allocator *heap) {
 // TODO: should have alignment parameter too, i think
 void *allocate(Allocator *allocator, uint32 size, bool32 zero_memory) {
     switch (allocator->type) {
+        case READ_ONLY_ALLOCATOR: {
+            assert(!"Cannot allocate to read-only memory.");
+            return NULL;
+        }
         case STACK_ALLOCATOR:
         {
             Stack_Allocator *stack = (Stack_Allocator *) allocator;
@@ -562,7 +568,7 @@ void *allocate(Allocator *allocator, uint32 size, bool32 zero_memory) {
         }
         default:
         {
-            assert(false);
+            assert(!"Unhandled allocator type");
         } break;
     }
 
@@ -571,6 +577,10 @@ void *allocate(Allocator *allocator, uint32 size, bool32 zero_memory) {
 
 void deallocate(Allocator *allocator, void *address) {
     switch (allocator->type) {
+        case READ_ONLY_ALLOCATOR: {
+            // no-op
+            return;
+        }
         case STACK_ALLOCATOR: {
             assert(!"Stacks are cleared using end_region()");
             return;

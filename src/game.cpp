@@ -535,6 +535,7 @@ void update(Game_State *game_state,
         asset_manager = &game_state->editor_state.asset_manager;
         update_editor(game_state, controller_state, dt);
         draw_editor(game_state, controller_state);
+        game_state->editor_state.is_startup = false;
     }
 
     char *buf = (char *) arena_push(&memory.frame_arena, 128);

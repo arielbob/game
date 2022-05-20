@@ -77,4 +77,9 @@ void deallocate(Linked_List<T> *list) {
     }
 }
 
+template <class T>
+bool32 is_last(Linked_List<T> *list, Node<T> *node) {
+    return (node->next == &list->cap);
+}
+
 #endif

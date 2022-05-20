@@ -183,6 +183,7 @@ void deallocate(String_Buffer string_buffer) {
 
 String make_string(char *contents, uint32 length) {
     String result = {};
+    result.allocator = read_only_allocator;
     result.contents = contents;
     result.length = length;
     return result;
@@ -199,6 +200,7 @@ String make_string(String_Buffer string_buffer) {
 // NOTE: creates a string from a null-terminated char array
 String make_string(char *contents) {
     String result = {};
+    result.allocator = read_only_allocator;
     result.contents = contents;
     result.length = string_length(contents);
     return result;

@@ -446,7 +446,8 @@
 
 //       - TODO (done): unload opengl assets when changing levels
 //       - TODO (done): gizmo
-//       - TODO: work through errors for entity box stuff
+//       - TODO (done): work through errors for entity box stuff
+//       - TODO (done): level exporting using new format
 //       - TODO: editor UI stuff
 //       - TODO: other editor stuff
 //       - TODO: load fonts into game as well

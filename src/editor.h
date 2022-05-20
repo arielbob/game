@@ -21,14 +21,18 @@ struct Editor_State {
     Heap_Allocator general_heap;
 
     Asset_Manager asset_manager;
-    
+
     Editor_Level level;
+    String level_filename;
+    bool32 is_startup;
+    bool32 is_new_level;
     bool32 should_unload_level_gpu_data;
 
     bool32 use_freecam;
     Camera camera;
 
     bool32 show_wireframe;
+    bool32 show_colliders;
     int32 selected_entity_id;
     int32 last_selected_entity_id;
 
@@ -76,5 +80,7 @@ namespace Editor_Constants {
 
 void unload_level(Editor_State *editor_state);
 void load_level(Editor_State *editor_state, Level_Info *level_info);
+bool32 read_and_load_level(Editor_State *editor_state, char *filename);
+void reset_editor(Editor_State *editor_state);
 
 #endif
