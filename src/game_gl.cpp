@@ -778,6 +778,12 @@ inline void gl_set_uniform_mat4(uint32 shader_id, char* uniform_name, Mat4 *m) {
     glUniformMatrix4fv(uniform_location, 1, GL_FALSE, (real32 *) m);
 }
 
+inline void gl_set_uniform_vec2(uint32 shader_id, char* uniform_name, Vec2 *v) {
+    int32 uniform_location = glGetUniformLocation(shader_id, uniform_name);
+    assert(uniform_location > -1);
+    glUniform2fv(uniform_location, 1, (real32 *) v);
+}
+
 inline void gl_set_uniform_vec3(uint32 shader_id, char* uniform_name, Vec3 *v) {
     int32 uniform_location = glGetUniformLocation(shader_id, uniform_name);
     assert(uniform_location > -1);
@@ -794,6 +800,12 @@ inline void gl_set_uniform_int(uint32 shader_id, char* uniform_name, int32 i) {
     int32 uniform_location = glGetUniformLocation(shader_id, uniform_name);
     assert(uniform_location > -1);
     glUniform1i(uniform_location, i);
+}
+
+inline void gl_set_uniform_uint(uint32 shader_id, char* uniform_name, uint32 ui) {
+    int32 uniform_location = glGetUniformLocation(shader_id, uniform_name);
+    assert(uniform_location > -1);
+    glUniform1ui(uniform_location, ui);
 }
 
 inline void gl_set_uniform_float(uint32 shader_id, char* uniform_name, real32 f) {
@@ -1649,6 +1661,9 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
     gl_load_shader(gl_state,
                    "src/shaders/constant_facing_quad.vs", "src/shaders/constant_facing_quad.fs",
                    "constant_facing_quad");
+    gl_load_shader(gl_state,
+                   "src/shaders/rounded_quad.vs", "src/shaders/rounded_quad.fs",
+                   "rounded_quad");
 
     // NOTE: framebuffers
     gl_state->gizmo_framebuffer = gl_make_framebuffer(display_output.width, display_output.height);
@@ -1948,6 +1963,72 @@ void gl_draw_quad(GL_State *gl_state,
     glBindVertexArray(0);
 }
 
+void gl_draw_quad(GL_State *gl_state,
+                  Render_State *render_state,
+                  real32 x_pos_pixels, real32 y_pos_pixels,
+                  real32 width_pixels, real32 height_pixels,
+                  Vec4 color) {
+    uint32 basic_shader_id = gl_use_shader(gl_state, "basic2");
+    GL_Mesh quad_mesh = gl_use_rendering_mesh(gl_state, gl_state->quad_mesh_id);
+    
+    real32 quad_vertices[8] = {
+        x_pos_pixels, y_pos_pixels + height_pixels,               // bottom left
+        x_pos_pixels, y_pos_pixels,                               // top left
+        x_pos_pixels + width_pixels, y_pos_pixels,                // top right
+        x_pos_pixels + width_pixels, y_pos_pixels + height_pixels // bottom right
+    };
+    //real32 quad_uvs[8];
+    glBindBuffer(GL_ARRAY_BUFFER, quad_mesh.vbo);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(quad_vertices), quad_vertices);
+    gl_set_uniform_mat4(basic_shader_id, "ortho_matrix", &render_state->ortho_clip_matrix);
+    gl_set_uniform_vec4(basic_shader_id, "color", &color);
+    gl_set_uniform_int(basic_shader_id, "use_color", true);
+
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    glUseProgram(0);
+    glBindVertexArray(0);
+}
+
+void gl_draw_quad(GL_State *gl_state,
+                  Render_State *render_state,
+                  real32 x_pos_pixels, real32 y_pos_pixels,
+                  real32 width_pixels, real32 height_pixels,
+                  Vec3 color) {
+    gl_draw_quad(gl_state, render_state, x_pos_pixels, y_pos_pixels, width_pixels, height_pixels,
+                 make_vec4(color, 1.0f));
+}
+
+void gl_draw_rounded_quad(GL_State *gl_state, Render_State *render_state,
+                          Rect rect, real32 corner_radius, uint32 corner_flags, Vec4 color) {
+    uint32 shader_id = gl_use_shader(gl_state, "rounded_quad");
+    GL_Mesh quad_mesh = gl_use_rendering_mesh(gl_state, gl_state->quad_mesh_id);
+    
+    real32 quad_vertices[8] = {
+        rect.x, rect.y + rect.height,             // bottom left
+        rect.x, rect.y,                           // top left
+        rect.x + rect.width, rect.y,              // top right
+        rect.x + rect.width, rect.y + rect.height // bottom right
+    };
+    
+    glBindBuffer(GL_ARRAY_BUFFER, quad_mesh.vbo);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(quad_vertices), quad_vertices);
+    gl_set_uniform_mat4(shader_id, "ortho_matrix", &render_state->ortho_clip_matrix);
+    gl_set_uniform_vec4(shader_id, "color", &color);
+
+    Vec2 position = make_vec2(rect.x, rect.y);
+    gl_set_uniform_vec2(shader_id, "position", &position); 
+    gl_set_uniform_float(shader_id, "width", rect.width);
+    gl_set_uniform_float(shader_id, "height", rect.height);
+    gl_set_uniform_float(shader_id, "corner_radius", corner_radius);
+    gl_set_uniform_uint(shader_id, "corner_flags", corner_flags);
+
+    //gl_set_uniform_int(shader_id, "use_color", true);
+
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    glUseProgram(0);
+    glBindVertexArray(0);
+}
+
 void gl_draw_hue_slider_quad(GL_State *gl_state,
                              Render_State *render_state,
                              real32 x_pos_pixels, real32 y_pos_pixels,
@@ -1992,41 +2073,6 @@ void gl_draw_hsv_quad(GL_State *gl_state,
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     glUseProgram(0);
     glBindVertexArray(0);
-}
-
-void gl_draw_quad(GL_State *gl_state,
-                  Render_State *render_state,
-                  real32 x_pos_pixels, real32 y_pos_pixels,
-                  real32 width_pixels, real32 height_pixels,
-                  Vec4 color) {
-    uint32 basic_shader_id = gl_use_shader(gl_state, "basic2");
-    GL_Mesh quad_mesh = gl_use_rendering_mesh(gl_state, gl_state->quad_mesh_id);
-    
-    real32 quad_vertices[8] = {
-        x_pos_pixels, y_pos_pixels + height_pixels,               // bottom left
-        x_pos_pixels, y_pos_pixels,                               // top left
-        x_pos_pixels + width_pixels, y_pos_pixels,                // top right
-        x_pos_pixels + width_pixels, y_pos_pixels + height_pixels // bottom right
-    };
-    //real32 quad_uvs[8];
-    glBindBuffer(GL_ARRAY_BUFFER, quad_mesh.vbo);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(quad_vertices), quad_vertices);
-    gl_set_uniform_mat4(basic_shader_id, "ortho_matrix", &render_state->ortho_clip_matrix);
-    gl_set_uniform_vec4(basic_shader_id, "color", &color);
-    gl_set_uniform_int(basic_shader_id, "use_color", true);
-
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-    glUseProgram(0);
-    glBindVertexArray(0);
-}
-
-void gl_draw_quad(GL_State *gl_state,
-                  Render_State *render_state,
-                  real32 x_pos_pixels, real32 y_pos_pixels,
-                  real32 width_pixels, real32 height_pixels,
-                  Vec3 color) {
-    gl_draw_quad(gl_state, render_state, x_pos_pixels, y_pos_pixels, width_pixels, height_pixels,
-                 make_vec4(color, 1.0f));
 }
 
 void gl_draw_circle(GL_State *gl_state, Render_State *render_state,
@@ -2191,8 +2237,8 @@ void gl_draw_ui_text_button(GL_State *gl_state, Asset_Manager *asset_manager,
         color = style.disabled_color;
     }
 
-    gl_draw_quad(gl_state, render_state, button.x, button.y,
-                 button.width, button.height, color);
+    Rect rect = button.rect;
+    gl_draw_rounded_quad(gl_state, render_state, rect, style.corner_radius, style.corner_flags, color);
 
     real32 adjusted_text_height = get_adjusted_font_height(font);
 
@@ -2202,22 +2248,22 @@ void gl_draw_ui_text_button(GL_State *gl_state, Asset_Manager *asset_manager,
     real32 y_offset = 0;
 
     if (style.text_align_flags & TEXT_ALIGN_X) {
-        x_offset = get_center_x_offset(button.width, text_width);
+        x_offset = get_center_x_offset(rect.width, text_width);
     }
     if (style.text_align_flags & TEXT_ALIGN_Y) {
-        y_offset = get_center_baseline_offset(button.height, adjusted_text_height);
+        y_offset = get_center_baseline_offset(rect.height, adjusted_text_height);
     }
     
     UI_Text_Style text_style = button.text_style;
 
     if (text_style.use_offset_shadow) {
         gl_draw_text(gl_state, render_state, button.font_id, &font,
-                     button.x + x_offset, button.y + y_offset,
+                     rect.x + x_offset, rect.y + y_offset,
                      button.text, text_style.color,
                      text_style.offset_shadow_color, TEXT_SHADOW_OFFSET);
     } else {
         gl_draw_text(gl_state, render_state, button.font_id, &font,
-                     button.x + x_offset, button.y + y_offset,
+                     rect.x + x_offset, rect.y + y_offset,
                      button.text, text_style.color);
     }
 }

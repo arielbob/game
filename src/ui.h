@@ -30,10 +30,26 @@ enum UI_Type {
 #define CONSTRAINT_FILL_BUTTON_HEIGHT     0x2
 #define CONSTRAINT_KEEP_IMAGE_PROPORTIONS 0x4
 
+#define CORNER_TOP_LEFT     0x1
+#define CORNER_TOP_RIGHT    0x2
+#define CORNER_BOTTOM_LEFT  0x4
+#define CORNER_BOTTOM_RIGHT 0x8
+
 #define UI_HEADER                               \
     UI_id id;                                   \
     UI_Type type;                               \
     int32 layer;
+
+struct Rect {
+    real32 x;
+    real32 y;
+    real32 width;
+    real32 height;
+};
+
+inline Rect make_rect(real32 x, real32 y, real32 width, real32 height) {
+    return { x, y, width, height };
+}
 
 struct UI_id {
     UI_Type type;
@@ -95,17 +111,22 @@ struct UI_Text_Button_Style {
     Vec4 hot_color;
     Vec4 active_color;
     Vec4 disabled_color;
+    real32 corner_radius;
+    uint32 corner_flags;
 };
 
 // TODO: this is a text button - will probably want to add different types of buttons
 struct UI_Text_Button {
     UI_HEADER
 
+    Rect rect;
+    #if 0
     real32 x;
     real32 y;
 
     real32 width;
     real32 height;
+    #endif
 
     UI_Text_Button_Style style;
     UI_Text_Style text_style;
@@ -116,18 +137,22 @@ struct UI_Text_Button {
     bool32 is_disabled;
 };
 
-UI_Text_Button make_ui_text_button(real32 x, real32 y, real32 width, real32 height,
+UI_Text_Button make_ui_text_button(//real32 x, real32 y, real32 width, real32 height,
+    Rect rect,
                                    UI_Text_Button_Style style, UI_Text_Style text_style,
-                                       char *text, int32 font_id, bool32 is_disabled, int32 layer, char *id, int32 index = 0) {
+                                   char *text, int32 font_id, bool32 is_disabled, int32 layer, char *id, int32 index = 0) {
     UI_Text_Button button = {};
 
     button.type = UI_TEXT_BUTTON;
     button.layer = layer;
 
+    button.rect = rect;
+    #if 0
     button.x = x;
     button.y = y;
     button.width = width;
     button.height = height;
+    #endif
     button.style = style;
     button.text_style = text_style;
     button.text = text;

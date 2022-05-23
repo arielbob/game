@@ -12,13 +12,17 @@ UI_Text_Button_Style default_text_button_style = { TEXT_ALIGN_X | TEXT_ALIGN_Y,
                                                    rgb_to_vec4(33, 62, 69),
                                                    rgb_to_vec4(47, 84, 102),
                                                    rgb_to_vec4(19, 37, 46),
-                                                   rgb_to_vec4(102, 102, 102) };
+                                                   rgb_to_vec4(102, 102, 102),
+                                                   5.0f,
+                                                   CORNER_TOP_LEFT | CORNER_TOP_RIGHT | CORNER_BOTTOM_LEFT | CORNER_BOTTOM_RIGHT };
 
 UI_Text_Button_Style default_text_button_cancel_style = { TEXT_ALIGN_X | TEXT_ALIGN_Y,
                                                           rgb_to_vec4(140, 38, 60),
                                                           rgb_to_vec4(199, 66, 103),
                                                           rgb_to_vec4(102, 22, 45),
-                                                          rgb_to_vec4(102, 102, 102) };
+                                                          rgb_to_vec4(102, 102, 102),
+                                                          5.0f,
+                                                          CORNER_TOP_LEFT | CORNER_TOP_RIGHT | CORNER_BOTTOM_LEFT | CORNER_BOTTOM_RIGHT };
 
 UI_Text_Button_Style default_text_button_save_style = { TEXT_ALIGN_X | TEXT_ALIGN_Y,
                                                         rgb_to_vec4(37, 179, 80),
@@ -313,13 +317,18 @@ void add_state(UI_Manager *manager, UI_id id, UI_Element_State *state) {
     hash_table_add(&manager->state_table, id, state);
 }
 
-bool32 in_bounds(Vec2 p, real32 x_min, real32 x_max, real32 y_min, real32 y_max) {
+inline bool32 in_bounds(Vec2 p, real32 x_min, real32 x_max, real32 y_min, real32 y_max) {
     return (p.x >= x_min && p.x <= x_max && p.y >= y_min && p.y <= y_max);
 }
 
 inline bool32 in_bounds_on_layer(UI_Manager *manager, Vec2 p, real32 x_min, real32 x_max, real32 y_min, real32 y_max) {
     return ((manager->current_layer >= manager->hot_layer) &&
             in_bounds(p, x_min, x_max, y_min, y_max));
+}
+
+inline bool32 in_bounds_on_layer(UI_Manager *manager, Vec2 p, Rect rect) {
+    return ((manager->current_layer >= manager->hot_layer) &&
+            in_bounds(p, rect.x, rect.x + rect.width, rect.y, rect.y + rect.height));
 }
 
 inline bool32 ui_has_hot(UI_Manager *manager) {
@@ -582,12 +591,11 @@ void do_text(real32 x_px, real32 y_px,
 }
 #endif
 
-bool32 do_text_button(real32 x_px, real32 y_px,
-                      real32 width, real32 height,
+bool32 do_text_button(Rect rect,
                       UI_Text_Button_Style style, UI_Text_Style text_style,
                       char *text, int32 font_id, bool32 is_disabled, char *id_string, int32 index = 0) {
     using namespace Context;
-    UI_Text_Button button = make_ui_text_button(x_px, y_px, width, height,
+    UI_Text_Button button = make_ui_text_button(rect,
                                                 style, text_style,
                                                 text, font_id, is_disabled,
                                                 ui_manager->current_layer, id_string, index);
@@ -598,7 +606,7 @@ bool32 do_text_button(real32 x_px, real32 y_px,
 
     if (!ui_manager->is_disabled &&
         !is_disabled &&
-        in_bounds_on_layer(ui_manager, current_mouse, x_px, x_px + width, y_px, y_px + height)) {
+        in_bounds_on_layer(ui_manager, current_mouse, rect)) {
         // NOTE: ui state is modified in sequence that the immediate mode calls are done. this is why we have to always
         //       set hot again. if we didn't have this, if we drew a box, then drew a button on top of it, and then moved
         //       our cursor over top of the button, hot would be the box and NOT the button. which is not desired.
@@ -630,14 +638,24 @@ bool32 do_text_button(real32 x_px, real32 y_px,
     return was_clicked;
 }
 
-inline bool32 do_text_button(real32 x_px, real32 y_px,
-                             real32 width, real32 height,
+inline bool32 do_text_button(real32 x, real32 y, real32 width, real32 height,
+                             UI_Text_Button_Style style, UI_Text_Style text_style,
+                             char *text, int32 font_id, bool32 is_disabled, char *id_string, int32 index = 0) {
+    Rect rect = make_rect(x, y, width, height);
+    return do_text_button(rect, style, text_style, text, font_id, is_disabled, id_string, index);
+}
+
+inline bool32 do_text_button(Rect rect,
                              UI_Text_Button_Style style, UI_Text_Style text_style,
                              char *text, int32 font_id, char *id_string, int32 index = 0) {
-    return do_text_button(x_px, y_px,
-                          width, height,
-                          style, text_style,
-                          text, font_id, false, id_string, index);
+    return do_text_button(rect, style, text_style, text, font_id, false, id_string, index);
+}
+
+inline bool32 do_text_button(real32 x, real32 y, real32 width, real32 height,
+                             UI_Text_Button_Style style, UI_Text_Style text_style,
+                             char *text, int32 font_id, char *id_string, int32 index = 0) {
+    Rect rect = make_rect(x, y, width, height);
+    return do_text_button(rect, style, text_style, text, font_id, false, id_string, index);
 }
 
 bool32 do_image_button(real32 x_px, real32 y_px,

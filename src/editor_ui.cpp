@@ -371,8 +371,10 @@ void draw_entity_box(Editor_State *editor_state, UI_Manager *ui_manager, Control
                              mesh_label_string, font_id, text_style);
 
         x += right_column_offset;
+        UI_Text_Button_Style choose_mesh_button_style = button_style;
+        choose_mesh_button_style.corner_flags = CORNER_TOP_LEFT | CORNER_BOTTOM_LEFT;
         bool32 choose_mesh_pressed = do_text_button(x, y, choose_mesh_button_width, row_height,
-                                                    button_style, default_text_style,
+                                                    choose_mesh_button_style, default_text_style,
                                                     to_char_array(allocator, mesh->name),
                                                     font_id, "choose_mesh");
 
@@ -381,8 +383,10 @@ void draw_entity_box(Editor_State *editor_state, UI_Manager *ui_manager, Control
         }
         x += choose_mesh_button_width;
 
+        UI_Text_Button_Style delete_mesh_button_style = default_text_button_cancel_style;
+        delete_mesh_button_style.corner_flags = CORNER_TOP_RIGHT | CORNER_BOTTOM_RIGHT;
         bool32 delete_mesh_pressed = do_text_button(x, y, small_button_width, row_height,
-                                                    default_text_button_cancel_style, default_text_style,
+                                                    delete_mesh_button_style, default_text_style,
                                                     "-", font_id,
                                                     mesh->type == Mesh_Type::PRIMITIVE,
                                                     "delete_mesh");
@@ -566,8 +570,10 @@ void draw_entity_box(Editor_State *editor_state, UI_Manager *ui_manager, Control
             choose_material_button_width += small_button_width;
         }
 
+        UI_Text_Button_Style choose_material_button_style = button_style;
+        choose_material_button_style.corner_flags = CORNER_TOP_LEFT | CORNER_BOTTOM_LEFT;
         bool32 choose_material_pressed = do_text_button(x, y, choose_material_button_width, row_height,
-                                                        button_style, default_text_style,
+                                                        choose_material_button_style, default_text_style,
                                                         material_name,
                                                         font_id, "choose_material");
 
@@ -577,8 +583,10 @@ void draw_entity_box(Editor_State *editor_state, UI_Manager *ui_manager, Control
         x += choose_material_button_width;
 
         if (has_material) {
+            UI_Text_Button_Style delete_material_button_style = default_text_button_cancel_style;
+            delete_material_button_style.corner_flags = CORNER_TOP_RIGHT | CORNER_BOTTOM_RIGHT;
             bool32 delete_material_pressed = do_text_button(x, y, small_button_width, row_height,
-                                                            default_text_button_cancel_style, default_text_style,
+                                                            delete_material_button_style, default_text_style,
                                                             "-", font_id,
                                                             "delete_material");
 
