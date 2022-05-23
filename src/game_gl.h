@@ -106,6 +106,10 @@
 #define GL_UNIFORM_BUFFER                 0x8A11
 #define GL_SRGB                           0x8C40
 #define GL_SRGB_ALPHA                     0x8C42
+#define GL_TEXTURE_2D_MULTISAMPLE         0x9100
+#define GL_READ_FRAMEBUFFER               0x8CA8
+#define GL_DRAW_FRAMEBUFFER               0x8CA9
+
 
 #define TEXT_SHADOW_OFFSET 2.0f
 #define NUM_CIRCLE_VERTICES 64
@@ -149,6 +153,8 @@ struct GL_Framebuffer {
     uint32 fbo;
     uint32 color_buffer_texture;
     uint32 render_buffer;
+    bool32 is_multisampled;
+    int32 num_samples;
 };
 
 struct GL_Point_Light {
@@ -187,6 +193,7 @@ struct GL_State {
     
     // TODO: will have to delete these and remake them on window resize
     GL_Framebuffer gizmo_framebuffer;
+    GL_Framebuffer msaa_framebuffer;
     uint32 global_ubo;
 
     // TODO: maybe figure out a better way of doing this.

@@ -111,6 +111,9 @@ typedef void GL_BIND_BUFFER_RANGE (GLenum target, GLuint index, GLuint buffer, G
 typedef void GL_DELETE_BUFFERS (GLsizei n, const GLuint *buffers);
 typedef void GL_DELETE_VERTEX_ARRAYS (GLsizei n, const GLuint *arrays);
 typedef void GL_DRAW_ELEMENTS_INSTANCED (GLenum mode, GLsizei count, GLenum type, const void *indices, GLsizei instancecount);
+typedef void GL_TEX_IMAGE_2D_MULTISAMPLE (GLenum target, GLsizei samples, GLenum internalformat, GLsizei width, GLsizei height, GLboolean fixedsamplelocations);
+typedef void GL_RENDER_BUFFER_STORAGE_MULTISAMPLE (GLenum target, GLsizei samples, GLenum internalformat, GLsizei width, GLsizei height);
+typedef void GL_BLIT_FRAMEBUFFER (GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1, GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1, GLbitfield mask, GLenum filter);
 
 GL_GEN_VERTEX_ARRAYS *glGenVertexArrays;
 GL_GEN_BUFFERS *glGenBuffers;
@@ -157,6 +160,9 @@ GL_BIND_BUFFER_RANGE *glBindBufferRange;
 GL_DELETE_BUFFERS *glDeleteBuffers;
 GL_DELETE_VERTEX_ARRAYS *glDeleteVertexArrays;
 GL_DRAW_ELEMENTS_INSTANCED *glDrawElementsInstanced;
+GL_TEX_IMAGE_2D_MULTISAMPLE *glTexImage2DMultisample;
+GL_RENDER_BUFFER_STORAGE_MULTISAMPLE *glRenderbufferStorageMultisample;
+GL_BLIT_FRAMEBUFFER *glBlitFramebuffer;
 
 #include "game_gl.cpp"
 
@@ -396,7 +402,10 @@ internal bool32 win32_init_opengl(HDC hdc) {
                     glDeleteBuffers = (GL_DELETE_BUFFERS *) wglGetProcAddress("glDeleteBuffers");
                     glDeleteVertexArrays = (GL_DELETE_VERTEX_ARRAYS *) wglGetProcAddress("glDeleteVertexArrays");
                     glDrawElementsInstanced = (GL_DRAW_ELEMENTS_INSTANCED *) wglGetProcAddress("glDrawElementsInstanced");
-                  
+                    glTexImage2DMultisample = (GL_TEX_IMAGE_2D_MULTISAMPLE *) wglGetProcAddress("glTexImage2DMultisample");
+                    glRenderbufferStorageMultisample = (GL_RENDER_BUFFER_STORAGE_MULTISAMPLE *) wglGetProcAddress("glRenderbufferStorageMultisample");
+                    glBlitFramebuffer = (GL_BLIT_FRAMEBUFFER *) wglGetProcAddress("glBlitFramebuffer");
+                    
                     return true;
                 } else {
                     // TODO: logging
@@ -1287,7 +1296,7 @@ int WinMain(HINSTANCE hInstance,
 
                     gl_render(&gl_state, game_state,
                               controller_state,
-                              game_display_output, &sound_output);
+                              &sound_output);
 
                     reset_debug_state(&game_state->debug_state);
                     clear_push_buffer(&game_state->ui_manager.push_buffer);

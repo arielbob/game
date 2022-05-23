@@ -479,6 +479,9 @@
 // TODO: i'm pretty sure whenever we make string buffers using PLATFORM_MAX_PATH, we should be adding 1 to it,
 //       since PLATFORM_MAX_PATH includes the null terminator.
 
+// TODO: use sRGB framebuffers (this will also allow us to do gamma correct alpha blending, since everything will
+//       be in linear space before converting)
+
 // TODO: we may want to just use arrays again for level entities, since it's more cache-friendly. i'm not sure why
 //       we even switched to using tables for them.
 //       - TODO: figure out why we even started using hash tables for entities in the first place
@@ -486,6 +489,9 @@
 //       - TODO: ideally, we just store entities in hash maps when editing, but when the game is playing, we just
 //               put them in arrays. but we use different data structures depending on the access and modification
 //               patterns of groups of entities
+// TODO: when using MSAA, there are sometimes white artifacts in areas with sharp corners and specular highlights.
+//       this can be fixed by just limiting gloss, but there are othere ways as well. see:
+//       https://gamedev.stackexchange.com/questions/84186/fighting-aliasing-on-specular-highlights
 
 // TODO: material duplicating
 // TODO: entity duplicating
@@ -1352,7 +1358,7 @@ void gl_draw_text(GL_State *gl_state, Render_State *render_state,
 }
 
 GL_Framebuffer gl_make_framebuffer(int32 width, int32 height) {
-    GL_Framebuffer framebuffer;
+    GL_Framebuffer framebuffer = {};
 
     glGenFramebuffers(1, &framebuffer.fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.fbo);
@@ -1372,6 +1378,39 @@ GL_Framebuffer gl_make_framebuffer(int32 width, int32 height) {
     glGenRenderbuffers(1, &framebuffer.render_buffer);
     glBindRenderbuffer(GL_RENDERBUFFER, framebuffer.render_buffer);
     glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, width, height);
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, framebuffer.render_buffer);
+
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        debug_print("Framebuffer is not complete.\n");
+        assert(false);
+    }
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    return framebuffer;
+}
+
+GL_Framebuffer gl_make_msaa_framebuffer(int32 width, int32 height, int32 num_samples, bool32 has_alpha) {
+    GL_Framebuffer framebuffer;
+
+    framebuffer.is_multisampled = true;
+    framebuffer.num_samples = num_samples;
+    
+    glGenFramebuffers(1, &framebuffer.fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.fbo);
+
+    // color buffer texture
+    glGenTextures(1, &framebuffer.color_buffer_texture);
+    glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, framebuffer.color_buffer_texture);
+    glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, num_samples,
+                            has_alpha ? GL_RGBA : GL_RGB, width, height, true);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE,
+                           framebuffer.color_buffer_texture, 0);
+
+    // render buffer (depth only)
+    glGenRenderbuffers(1, &framebuffer.render_buffer);
+    glBindRenderbuffer(GL_RENDERBUFFER, framebuffer.render_buffer);
+    glRenderbufferStorageMultisample(GL_RENDERBUFFER, num_samples, GL_DEPTH_COMPONENT24, width, height);
     glBindRenderbuffer(GL_RENDERBUFFER, 0);
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, framebuffer.render_buffer);
 
@@ -1647,6 +1686,9 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
                    "src/shaders/framebuffer.vs", "src/shaders/framebuffer.fs",
                    "framebuffer");
     gl_load_shader(gl_state,
+                   "src/shaders/multisampled_framebuffer.vs", "src/shaders/multisampled_framebuffer.fs",
+                   "multisampled_framebuffer");
+    gl_load_shader(gl_state,
                    "src/shaders/hue_slider.vs", "src/shaders/hue_slider.fs",
                    "hue_slider");
     gl_load_shader(gl_state,
@@ -1666,7 +1708,9 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
                    "rounded_quad");
 
     // NOTE: framebuffers
-    gl_state->gizmo_framebuffer = gl_make_framebuffer(display_output.width, display_output.height);
+    int32 num_samples = 4;
+    gl_state->gizmo_framebuffer = gl_make_msaa_framebuffer(display_output.width, display_output.height, num_samples, true);
+    gl_state->msaa_framebuffer = gl_make_msaa_framebuffer(display_output.width, display_output.height, num_samples, true);
 
     // NOTE: unified buffer object
     glGenBuffers(1, &gl_state->global_ubo);
@@ -2730,10 +2774,18 @@ void gl_draw_ui(GL_State *gl_state,
 }
 
 void gl_draw_framebuffer(GL_State *gl_state, GL_Framebuffer framebuffer) {
-    gl_use_shader(gl_state, "framebuffer");
-
-    glBindTexture(GL_TEXTURE_2D, framebuffer.color_buffer_texture);
-
+    // use premultiplied alpha to prevent dark edges when transitioning from opaque to transparent
+    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+    
+    if (framebuffer.is_multisampled) {
+        int32 shader_id = gl_use_shader(gl_state, "multisampled_framebuffer");
+        gl_set_uniform_int(shader_id, "num_samples", framebuffer.num_samples);
+        glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, framebuffer.color_buffer_texture);
+    } else {
+        gl_use_shader(gl_state, "framebuffer");
+        glBindTexture(GL_TEXTURE_2D, framebuffer.color_buffer_texture);
+    }
+    
     GL_Mesh gl_mesh = gl_use_rendering_mesh(gl_state, gl_state->framebuffer_quad_mesh_id);
 
     glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -2845,9 +2897,11 @@ void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Gizmo_State *
     gl_draw_solid_color_mesh(gl_state, render_state, ring_mesh, z_handle_color, z_transform);
 }
 
-void gl_render_editor(GL_State *gl_state, Render_State *render_state, Editor_State *editor_state) {
+void gl_render_editor(GL_State *gl_state, Render_State *render_state, GL_Framebuffer framebuffer,
+                      Editor_State *editor_state) {
     Asset_Manager *asset_manager = &editor_state->asset_manager;
-
+    Display_Output display_output = render_state->display_output;
+    
     Marker m = begin_region();
 
     if (editor_state->should_unload_level_gpu_data) {
@@ -3064,21 +3118,19 @@ void gl_render_editor(GL_State *gl_state, Render_State *render_state, Editor_Sta
     if (editor_state->selected_entity_id >= 0) {
         gl_draw_gizmo(gl_state, render_state, &editor_state->gizmo_state);
     }
-
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-    glDisable(GL_DEPTH_TEST);
+    
+    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.fbo);
     gl_draw_framebuffer(gl_state, gl_state->gizmo_framebuffer);
-    glEnable(GL_DEPTH_TEST);
-
+    
     end_region(m);
 }
 
 void gl_render(GL_State *gl_state, Game_State *game_state,
                Controller_State *controller_state,
-               Display_Output display_output, Win32_Sound_Output *win32_sound_output) {
+               Win32_Sound_Output *win32_sound_output) {
     Render_State *render_state = &game_state->render_state;
-
+    Display_Output display_output = render_state->display_output;
+    
     Asset_Manager *asset_manager;
     if (game_state->mode == Game_Mode::PLAYING) {
         asset_manager = &game_state->asset_manager;
@@ -3103,6 +3155,8 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
         }
     }
 
+    glBindFramebuffer(GL_FRAMEBUFFER, gl_state->msaa_framebuffer.fbo);
+    
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLineWidth(1.0f);
@@ -3110,16 +3164,22 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
     if (game_state->mode == Game_Mode::PLAYING) {
         // TODO: render game
     } else {
-        gl_render_editor(gl_state, render_state, &game_state->editor_state);
+        gl_render_editor(gl_state, render_state, gl_state->msaa_framebuffer,
+                         &game_state->editor_state);
+
+        glDisable(GL_DEPTH_TEST);
+        // TODO: for some reason, if we comment out this line, nothing renders at all, other than the gizmos
+        //       if we happen to click in an area where there is an entity
+        //       - pretty sure it has to do with gl_draw_text(), since if we never call that, then nothing
+        //         renders
+        gl_draw_ui(gl_state, asset_manager, render_state, &game_state->ui_manager);
+        glEnable(GL_DEPTH_TEST);
+        
+        // draw msaa framebuffer
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, gl_state->msaa_framebuffer.fbo);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+        glBlitFramebuffer(0, 0, display_output.width, display_output.height, 0, 0,
+                          display_output.width, display_output.height,
+                          GL_COLOR_BUFFER_BIT, GL_NEAREST);
     }
-
-    glDisable(GL_DEPTH_TEST);
-    
-    // TODO: for some reason, if we comment out this line, nothing renders at all, other than the gizmos
-    //       if we happen to click in an area where there is an entity
-    //       - pretty sure it has to do with gl_draw_text(), since if we never call that, then nothing
-    //         renders
-    gl_draw_ui(gl_state, asset_manager, render_state, &game_state->ui_manager);
-
-    glEnable(GL_DEPTH_TEST);
 }
