@@ -9,6 +9,10 @@ void history_deallocate(Editor_State *editor_state, Editor_Action *editor_action
             assert(!"Action has no type.");
         } break;
         case ACTION_ADD_NORMAL_ENTITY: {} break;
+        case ACTION_DELETE_ENTITY: {
+            Delete_Entity_Action *action = (Delete_Entity_Action *) editor_action;
+            deallocate(allocator, action->entity);
+        } break;
         default: {
             assert(!"Unhandled deallocation for action type.");
         }
@@ -93,7 +97,7 @@ void _history_add_action(Editor_State *editor_state, Editor_Action *editor_actio
     *allocated = value;                                                 \
     _history_add_action(editor_state_pointer, (Editor_Action *) allocated)
 
-void add_normal_entity(Editor_State *editor_state, int32 entity_id = -1, bool32 is_redoing = false) {
+void do_add_normal_entity(Editor_State *editor_state, int32 entity_id = -1, bool32 is_redoing = false) {
     Asset_Manager *asset_manager = &editor_state->asset_manager;
     int32 mesh_id;
     Mesh default_mesh = get_mesh_by_name(asset_manager, make_string("cube"), &mesh_id);
@@ -121,7 +125,7 @@ void undo_add_normal_entity(Editor_State *editor_state, Add_Normal_Entity_Action
 }
 
 // TODO: the entity already has an id field, so maybe we just use that instead of having it as an argument?
-void add_point_light_entity(Editor_State *editor_state, int32 entity_id = -1, bool32 is_redoing = false) {
+void do_add_point_light_entity(Editor_State *editor_state, int32 entity_id = -1, bool32 is_redoing = false) {
     Point_Light_Entity new_entity = make_point_light_entity(make_vec3(0.5f, 0.5f, 0.5f), 0.0f, 5.0f);
     Point_Light_Entity *entity = (Point_Light_Entity *) allocate((Allocator *) &editor_state->entity_heap,
                                                                  sizeof(Point_Light_Entity));
@@ -141,6 +145,68 @@ void add_point_light_entity(Editor_State *editor_state, int32 entity_id = -1, bo
 void undo_add_point_light_entity(Editor_State *editor_state, Add_Point_Light_Entity_Action action) {
     delete_entity(editor_state, action.entity_id);
     editor_state->selected_entity_id = -1;
+}
+
+void do_delete_entity(Editor_State *editor_state, int32 entity_id, bool32 is_redoing = false) {
+    if (!is_redoing) {
+        Editor_History *history = &editor_state->history;
+        Allocator *history_allocator = (Allocator *) &editor_state->history_heap;
+
+        Delete_Entity_Action action;
+        action.type = ACTION_DELETE_ENTITY;
+
+        Entity *uncast_entity = get_entity(editor_state, entity_id);
+        switch (uncast_entity->type) {
+            case ENTITY_NORMAL: {
+                Normal_Entity *entity = (Normal_Entity *) uncast_entity;
+                Normal_Entity *allocated = (Normal_Entity *) allocate(history_allocator, sizeof(Normal_Entity));
+
+                *allocated = copy(history_allocator, *entity);
+                action.entity = (Entity *) allocated;
+            } break;
+            case ENTITY_POINT_LIGHT: {
+                Point_Light_Entity *entity = (Point_Light_Entity *) uncast_entity;
+                Point_Light_Entity *allocated = (Point_Light_Entity *) allocate(history_allocator,
+                                                                                sizeof(Point_Light_Entity));
+                *allocated = copy(history_allocator, *entity);
+                action.entity = (Entity *) allocated;
+            } break;
+            default: {
+                assert(!"Unhandled entity type.");
+            }
+        }
+
+        history_add_action(editor_state, Delete_Entity_Action, action);
+    }
+
+    delete_entity(editor_state, entity_id);
+    editor_state->selected_entity_id = -1;
+}
+
+void undo_delete_entity(Editor_State *editor_state, Delete_Entity_Action action) {
+    Allocator *entity_allocator = (Allocator *) &editor_state->entity_heap;
+    Entity *to_add = NULL;
+    switch (action.entity->type) {
+        case ENTITY_NORMAL: {
+            Normal_Entity *deleted_entity = (Normal_Entity *) action.entity;
+            Normal_Entity *allocated = (Normal_Entity *) allocate(entity_allocator, sizeof(Normal_Entity));
+            *allocated = copy(entity_allocator, *deleted_entity);
+            to_add = (Entity *) allocated;
+        } break;
+        case ENTITY_POINT_LIGHT: {
+            Point_Light_Entity *deleted_entity = (Point_Light_Entity *) action.entity;
+            Point_Light_Entity *allocated = (Point_Light_Entity *) allocate(entity_allocator,
+                                                                            sizeof(Point_Light_Entity));
+            *allocated = copy(entity_allocator, *deleted_entity);
+            to_add = (Entity *) allocated;
+        } break;
+        default: {
+            assert(!"Unhandled entity type.");
+        } break;
+    }
+
+    assert(to_add);
+    add_entity(&editor_state->level, to_add, to_add->id);
 }
 
 int32 history_get_num_entries(Editor_History *history) {
@@ -191,6 +257,10 @@ void history_undo(Editor_State *editor_state) {
             Add_Point_Light_Entity_Action *action = (Add_Point_Light_Entity_Action *) current_action;
             undo_add_point_light_entity(editor_state, *action);
         } break;
+        case ACTION_DELETE_ENTITY: {
+            Delete_Entity_Action *action = (Delete_Entity_Action *) current_action;
+            undo_delete_entity(editor_state, *action);
+        } break;
         default: {
             assert(!"Unhandled editor action type.");
             return;
@@ -228,11 +298,15 @@ void history_redo(Editor_State *editor_state) {
         }
         case ACTION_ADD_NORMAL_ENTITY: {
             Add_Normal_Entity_Action *action = (Add_Normal_Entity_Action *) redo_action;
-            add_normal_entity(editor_state, action->entity_id, true);
+            do_add_normal_entity(editor_state, action->entity_id, true);
         } break;
         case ACTION_ADD_POINT_LIGHT_ENTITY: {
             Add_Point_Light_Entity_Action *action = (Add_Point_Light_Entity_Action *) redo_action;
-            add_point_light_entity(editor_state, action->entity_id, true);
+            do_add_point_light_entity(editor_state, action->entity_id, true);
+        } break;
+        case ACTION_DELETE_ENTITY: {
+            Delete_Entity_Action *action = (Delete_Entity_Action *) redo_action;
+            do_delete_entity(editor_state, action->entity->id, true);
         } break;
         default: {
             assert(!"Unhandled editor action type.");

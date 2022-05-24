@@ -84,6 +84,7 @@ namespace Editor_Constants {
 
 int32 add_entity(Editor_Level *level, Entity *entity, int32 existing_id = -1);
 void delete_entity(Editor_State *editor_state, int32 id);
+Entity *get_entity(Editor_State *editor_state, int32 id);
 void unload_level(Editor_State *editor_state);
 void load_level(Editor_State *editor_state, Level_Info *level_info);
 bool32 read_and_load_level(Editor_State *editor_state, char *filename);

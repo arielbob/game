@@ -456,7 +456,9 @@
 
 // TODO: editor actions
 //       - TODO (done): adding normal entities
-//       - TODO: adding point light entities
+//       - TODO (done): adding point light entities
+//       - TODO (done): deleting entities
+//       - TODO: entity transforms
 
 //       - TODO: load default level using new format
 

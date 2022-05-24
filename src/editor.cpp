@@ -31,6 +31,21 @@ void delete_entity(Editor_State *editor_state, int32 id) {
     remove(&level->entities, node_to_remove);
 }
 
+Entity *get_entity(Editor_State *editor_state, int32 id) {
+    Editor_Level *level = &editor_state->level;
+
+    Node <Entity *> *node_to_remove = NULL;
+    FOR_LIST_NODES(Entity *, level->entities) {
+        Entity *entity = current_node->value;
+        if (entity->id == id) {
+            return entity;
+        }
+    }
+
+    assert(!"Entity not found.");
+    return NULL;
+}
+
 void init_editor_level(Editor_State *editor_state, Editor_Level *editor_level) {
     *editor_level = {};
     make_and_init_linked_list(Entity *, &editor_level->entities, (Allocator *) &editor_state->entity_heap);
@@ -777,7 +792,7 @@ void draw_editor(Game_State *game_state, Controller_State *controller_state) {
                                                       font_id, "add_entity");
     y += button_height + button_gap;
     if (add_normal_entity_clicked) {
-        add_normal_entity(editor_state);
+        do_add_normal_entity(editor_state);
     }
 
     bool32 add_point_light_entity_clicked = do_text_button(render_state->display_output.width - sidebar_button_width, y,
@@ -787,7 +802,7 @@ void draw_editor(Game_State *game_state, Controller_State *controller_state) {
                                                            font_id, "add_point_light_entity");
     y += button_height + button_gap;
     if (add_point_light_entity_clicked) {
-        add_point_light_entity(editor_state);
+        do_add_point_light_entity(editor_state);
     }
 
     bool32 toggle_colliders_clicked = do_text_button(render_state->display_output.width - sidebar_button_width, y,

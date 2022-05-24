@@ -1007,7 +1007,7 @@ void draw_entity_box(Editor_State *editor_state, UI_Manager *ui_manager, Control
     draw_row_padding(x, &y, row_width, padding_y, row_color,
                      side_flags | SIDE_BOTTOM, row_id, row_index++);
     if (delete_entity_pressed) {
-        //editor_delete_entity(editor_state, level, editor_state->selected_entity_type, editor_state->selected_entity_id);
+        do_delete_entity(editor_state, editor_state->selected_entity_id);
     }
 }
 

@@ -50,9 +50,9 @@ global_variable Allocator *temp_region;
 #include "ui.cpp"
 #include "level.cpp"
 #include "entity.cpp"
-#include "editor_ui.cpp"
 #include "gizmo.cpp"
 #include "editor_actions.cpp"
+#include "editor_ui.cpp"
 #include "editor.cpp"
 #include "game.cpp"
 

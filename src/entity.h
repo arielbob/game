@@ -36,14 +36,6 @@ struct Normal_Entity {
     bool32 is_walkable;
 };
 
-struct Point_Light_Entity {
-    ENTITY_HEADER
-
-    Vec3 light_color;
-    real32 falloff_start;
-    real32 falloff_end;
-};
-
 Normal_Entity make_normal_entity() {
     Normal_Entity result = {};
     result.transform = make_transform();
@@ -63,6 +55,18 @@ Normal_Entity make_normal_entity(Transform transform, int32 mesh_id, int32 mater
     return result;
 }
 
+Normal_Entity copy(Allocator *allocator, Normal_Entity entity) {
+    return entity;
+}
+
+struct Point_Light_Entity {
+    ENTITY_HEADER
+
+    Vec3 light_color;
+    real32 falloff_start;
+    real32 falloff_end;
+};
+
 Point_Light_Entity make_point_light_entity() {
     Point_Light_Entity result = {};
     result.type = ENTITY_POINT_LIGHT;
@@ -80,6 +84,10 @@ Point_Light_Entity make_point_light_entity(Vec3 light_color, real32 falloff_star
     result.falloff_end = falloff_end;
 
     return result;
+}
+
+Point_Light_Entity copy(Allocator *allocator, Point_Light_Entity entity) {
+    return entity;
 }
 
 #endif
