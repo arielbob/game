@@ -18,6 +18,11 @@ void history_deallocate(Editor_State *editor_state, Editor_Action *editor_action
             deallocate(allocator, action->old_entity);
             deallocate(allocator, action->new_entity);
         } break;
+        case ACTION_MODIFY_MESH_NAME: {
+            Modify_Mesh_Name_Action *action = (Modify_Mesh_Name_Action *) editor_action;
+            deallocate(action->old_name);
+            deallocate(action->new_name);
+        } break;
         default: {
             assert(!"Unhandled deallocation for action type.");
         }
@@ -265,6 +270,32 @@ void end_entity_change(Editor_State *editor_state, Entity *entity) {
     editor_state->old_entity = NULL;
 }
 
+void do_modify_mesh_name(Editor_State *editor_state, int32 mesh_id, String new_name,
+                         bool32 is_redoing = false) {
+    Asset_Manager *asset_manager = &editor_state->asset_manager;
+
+    Mesh *mesh = get_mesh_pointer(asset_manager, mesh_id);
+    if (!is_redoing) {
+        Allocator *history_allocator = (Allocator *) &editor_state->history_heap;
+        String old_name = copy(history_allocator, mesh->name);
+        new_name = copy(history_allocator, new_name);
+
+        Modify_Mesh_Name_Action action = { ACTION_MODIFY_MESH_NAME };
+        action.mesh_id = mesh_id;
+        action.old_name = old_name;
+        action.new_name = new_name;
+        history_add_action(editor_state, Modify_Mesh_Name_Action, action);
+    }
+
+    replace_with_copy(asset_manager->allocator_pointer, &mesh->name, new_name);
+}
+
+void undo_modify_mesh_name(Editor_State *editor_state, Modify_Mesh_Name_Action action) {
+    Asset_Manager *asset_manager = &editor_state->asset_manager;
+    Mesh *mesh = get_mesh_pointer(asset_manager, action.mesh_id);
+    replace_with_copy(asset_manager->allocator_pointer, &mesh->name, action.old_name);
+}
+
 int32 history_get_num_entries(Editor_History *history) {
     if (history->start_index == -1 && history->end_index == -1) return 0;
 
@@ -321,6 +352,10 @@ void history_undo(Editor_State *editor_state) {
             Modify_Entity_Action *action = (Modify_Entity_Action *) current_action;
             undo_modify_entity(editor_state, *action);
         } break;
+        case ACTION_MODIFY_MESH_NAME: {
+            Modify_Mesh_Name_Action *action = (Modify_Mesh_Name_Action *) current_action;
+            undo_modify_mesh_name(editor_state, *action);
+        } break;
         default: {
             assert(!"Unhandled editor action type.");
             return;
@@ -371,6 +406,10 @@ void history_redo(Editor_State *editor_state) {
         case ACTION_MODIFY_ENTITY: {
             Modify_Entity_Action *action = (Modify_Entity_Action *) redo_action;
             do_modify_entity(editor_state, action->entity_id, action->old_entity, action->new_entity, true);
+        } break;
+        case ACTION_MODIFY_MESH_NAME: {
+            Modify_Mesh_Name_Action *action = (Modify_Mesh_Name_Action *) redo_action;
+            do_modify_mesh_name(editor_state, action->mesh_id, action->new_name, true);
         } break;
         default: {
             assert(!"Unhandled editor action type.");

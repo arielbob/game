@@ -459,7 +459,14 @@
 //       - TODO (done): adding point light entities
 //       - TODO (done): deleting entities
 //       - TODO (done): entity changes
-//       - TODO: mesh modifications
+//       - TODO (done): mesh name changes
+//       - TODO: mesh adding
+//       - TODO: mesh deleting
+//       - TODO: material changes
+//       - TODO: material adding
+//       - TODO: material deleting
+//       - TODO: texture changing/adding/deleting
+//       - TODO: point light changes (same as entity changes)
 
 //       - TODO: load default level using new format
 

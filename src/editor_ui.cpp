@@ -749,13 +749,7 @@ void draw_entity_box(Editor_State *editor_state, UI_Manager *ui_manager, Control
                     add_message(Context::message_manager, make_string("Mesh name cannot contain {, }, or double quotes!"));
                 } else if (!string_equals(mesh->name, new_name)) {
                     if (!mesh_name_exists(asset_manager, new_name)) {
-                        // TODO: do this
-#if 0
-                        Modify_Mesh_Action action = make_modify_mesh_action(mesh->type,
-                                                                            normal_entity->mesh_id,
-                                                                            result.buffer);
-                        editor_modify_mesh(game_state, action);
-#endif
+                        do_modify_mesh_name(editor_state, normal_entity->mesh_id, new_name);
                     } else {
                         add_message(Context::message_manager, make_string("Mesh name already exists!"));
                     }
