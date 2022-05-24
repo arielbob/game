@@ -150,7 +150,7 @@ void init_editor(Arena_Allocator *editor_arena, Editor_State *editor_state, Disp
     end_region(m);
 #endif
     // load default level
-    read_and_load_level(editor_state, "src/levels/monkey_twins_empty_mesh_test.level");
+    read_and_load_level(editor_state, "src/levels/startup.level");
 }
 
 Entity *get_selected_entity(Editor_State *editor_state) {

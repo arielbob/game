@@ -449,6 +449,7 @@
 //       - TODO (done): work through errors for entity box stuff
 //       - TODO (done): level exporting using new format
 //       - TODO: editor UI stuff
+//       - TODO: editor history
 //       - TODO: other editor stuff
 //       - TODO: load fonts into game as well
 //       - TODO: unload opengl assets when switching between play and edit mode
@@ -1708,7 +1709,7 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
                    "rounded_quad");
 
     // NOTE: framebuffers
-    int32 num_samples = 4;
+    int32 num_samples = 1;
     gl_state->gizmo_framebuffer = gl_make_msaa_framebuffer(display_output.width, display_output.height, num_samples, true);
     gl_state->msaa_framebuffer = gl_make_msaa_framebuffer(display_output.width, display_output.height, num_samples, true);
 
@@ -2044,6 +2045,7 @@ void gl_draw_quad(GL_State *gl_state,
 
 void gl_draw_rounded_quad(GL_State *gl_state, Render_State *render_state,
                           Rect rect, real32 corner_radius, uint32 corner_flags, Vec4 color) {
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     uint32 shader_id = gl_use_shader(gl_state, "rounded_quad");
     GL_Mesh quad_mesh = gl_use_rendering_mesh(gl_state, gl_state->quad_mesh_id);
     

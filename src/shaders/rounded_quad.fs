@@ -1,9 +1,9 @@
 #version 330 core
 
-#define TOP_LEFT     0x1
-#define TOP_RIGHT    0x2
-#define BOTTOM_LEFT  0x4
-#define BOTTOM_RIGHT 0x8
+#define TOP_LEFT     0x1u
+#define TOP_RIGHT    0x2u
+#define BOTTOM_LEFT  0x4u
+#define BOTTOM_RIGHT 0x8u
 
 uniform vec2 position; // top left of the quad
 uniform float width;
