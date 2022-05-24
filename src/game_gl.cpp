@@ -458,7 +458,8 @@
 //       - TODO (done): adding normal entities
 //       - TODO (done): adding point light entities
 //       - TODO (done): deleting entities
-//       - TODO: entity transforms
+//       - TODO (done): entity changes
+//       - TODO: mesh modifications
 
 //       - TODO: load default level using new format
 

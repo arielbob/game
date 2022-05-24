@@ -13,6 +13,11 @@ void history_deallocate(Editor_State *editor_state, Editor_Action *editor_action
             Delete_Entity_Action *action = (Delete_Entity_Action *) editor_action;
             deallocate(allocator, action->entity);
         } break;
+        case ACTION_MODIFY_ENTITY: {
+            Modify_Entity_Action *action = (Modify_Entity_Action *) editor_action;
+            deallocate(allocator, action->old_entity);
+            deallocate(allocator, action->new_entity);
+        } break;
         default: {
             assert(!"Unhandled deallocation for action type.");
         }
@@ -209,6 +214,57 @@ void undo_delete_entity(Editor_State *editor_state, Delete_Entity_Action action)
     add_entity(&editor_state->level, to_add, to_add->id);
 }
 
+void set_entity(Editor_State *editor_state, Entity *uncast_entity, Entity *new_entity) {
+    assert(uncast_entity->type == new_entity->type);
+
+    Allocator *entity_allocator = (Allocator *) &editor_state->entity_heap;
+    switch (uncast_entity->type) {
+        case ENTITY_NORMAL: {
+            Normal_Entity *entity = (Normal_Entity *) uncast_entity;
+            deallocate(*entity);
+            *entity = copy(entity_allocator, *((Normal_Entity *) new_entity));
+        } break;
+        case ENTITY_POINT_LIGHT: {
+            Point_Light_Entity *entity = (Point_Light_Entity *) uncast_entity;
+            deallocate(*entity);
+            *entity = copy(entity_allocator, *((Point_Light_Entity *) new_entity));
+        } break;
+        default: {
+            assert(!"Unhandled entity type.");
+        } break;
+    }
+}
+
+void do_modify_entity(Editor_State *editor_state, int32 entity_id, Entity *old_entity, Entity *new_entity,
+                      bool32 is_redoing = false) {
+    if (!is_redoing) {
+        Modify_Entity_Action action = { ACTION_MODIFY_ENTITY };
+        action.entity_id = entity_id;
+        action.old_entity = old_entity;
+        action.new_entity = new_entity;
+        history_add_action(editor_state, Modify_Entity_Action, action);
+    }
+
+    Entity *entity = get_entity(editor_state, entity_id);
+    set_entity(editor_state, entity, new_entity);
+}
+
+void undo_modify_entity(Editor_State *editor_state, Modify_Entity_Action action) {
+    Entity *entity = get_entity(editor_state, action.entity_id);
+    set_entity(editor_state, entity, action.old_entity);
+}
+
+void start_entity_change(Editor_State *editor_state, Entity *entity) {
+    editor_state->old_entity = copy_cast_entity((Allocator *) &editor_state->history_heap, entity);
+}
+
+void end_entity_change(Editor_State *editor_state, Entity *entity) {
+    assert(editor_state->old_entity);
+    Entity *new_entity = copy_cast_entity((Allocator *) &editor_state->history_heap, entity);
+    do_modify_entity(editor_state, entity->id, editor_state->old_entity, new_entity);
+    editor_state->old_entity = NULL;
+}
+
 int32 history_get_num_entries(Editor_History *history) {
     if (history->start_index == -1 && history->end_index == -1) return 0;
 
@@ -261,6 +317,10 @@ void history_undo(Editor_State *editor_state) {
             Delete_Entity_Action *action = (Delete_Entity_Action *) current_action;
             undo_delete_entity(editor_state, *action);
         } break;
+        case ACTION_MODIFY_ENTITY: {
+            Modify_Entity_Action *action = (Modify_Entity_Action *) current_action;
+            undo_modify_entity(editor_state, *action);
+        } break;
         default: {
             assert(!"Unhandled editor action type.");
             return;
@@ -307,6 +367,10 @@ void history_redo(Editor_State *editor_state) {
         case ACTION_DELETE_ENTITY: {
             Delete_Entity_Action *action = (Delete_Entity_Action *) redo_action;
             do_delete_entity(editor_state, action->entity->id, true);
+        } break;
+        case ACTION_MODIFY_ENTITY: {
+            Modify_Entity_Action *action = (Modify_Entity_Action *) redo_action;
+            do_modify_entity(editor_state, action->entity_id, action->old_entity, action->new_entity, true);
         } break;
         default: {
             assert(!"Unhandled editor action type.");

@@ -159,6 +159,283 @@ void handle_color_picker(Editor_State *editor_state, UI_Color_Picker_Result resu
     }
 }
 
+void start_or_end_entity_change(Editor_State *editor_state,
+                                UI_Manager *ui_manager, UI_id element_id,
+                                Entity *entity) {
+    if (is_newly_active(ui_manager, element_id)) {
+        start_entity_change(editor_state, entity);
+    } else if (is_newly_inactive(ui_manager, element_id)) {
+        end_entity_change(editor_state, entity);
+    }
+}
+
+void draw_mesh_library(Editor_State *editor_state, UI_Manager *ui_manager, Controller_State *controller_state,
+                       Render_State *render_state,
+                       Entity *entity) {
+    Asset_Manager *asset_manager = &editor_state->asset_manager;
+
+    push_layer(ui_manager);
+
+    real32 padding_x = Editor_Constants::medium_padding_x;
+    real32 padding_y = Editor_Constants::medium_padding_y;
+
+    real32 small_row_height = Editor_Constants::small_row_height;
+
+    real32 x_gap = Editor_Constants::small_padding_x;
+    real32 y_gap = Editor_Constants::small_padding_y;
+
+    int32 num_items_per_row = 5;
+    real32 item_width = 100.0f;
+    real32 item_height = 120.0f;
+
+    real32 window_width = padding_x * 2 + x_gap * (num_items_per_row - 1) + num_items_per_row*item_width;
+
+    real32 title_row_height = 50.0f;
+    Vec4 title_row_color = make_vec4(0.05f, 0.2f, 0.5f, 1.0f);
+    Vec4 row_color = Editor_Constants::row_color;
+
+    int32 font_id;
+    Font font = get_font(asset_manager, Editor_Constants::editor_font_name, &font_id);
+    real32 button_padding_x = 15.0f;
+
+    char *row_id = "mesh_library_row";
+    int32 row_index = 0;
+
+    real32 initial_x = render_state->display_output.width / 2.0f - window_width / 2.0f;
+    real32 x = initial_x;
+    real32 y = 80.0f;
+
+    UI_Text_Style text_style = default_text_style;
+
+    draw_row(x, y, window_width, title_row_height, title_row_color,
+             SIDE_LEFT | SIDE_RIGHT | SIDE_TOP | SIDE_BOTTOM, row_id, row_index++);
+    draw_centered_text(x, y, window_width, title_row_height,
+                       "Mesh Library", font_id, text_style);
+    y += title_row_height;
+
+    real32 content_height = 500.0f;
+    draw_row(x, y, window_width, content_height, row_color,
+             SIDE_LEFT | SIDE_RIGHT | SIDE_BOTTOM, row_id, row_index++);    
+
+    real32 cancel_button_width = 100.0f;
+    bool32 cancel_pressed = do_text_button(x + padding_x,
+                                           y + content_height - small_row_height - padding_y - 1,
+                                           cancel_button_width, small_row_height,
+                                           default_text_button_cancel_style, default_text_style,
+                                           "Cancel",
+                                           font_id,
+                                           "choose_mesh_cancel");
+    if (cancel_pressed) {
+        editor_state->open_window_flags = 0;
+    }
+
+    Allocator *allocator = (Allocator *) &memory.frame_arena;
+
+    x += padding_x;
+    y += padding_y;
+
+    UI_Text_Button_Style filter_button_style = default_text_button_style;
+    UI_Text_Button_Style level_item_style, primitive_item_style;
+
+    real32 filter_button_width = get_width(font, "All") + button_padding_x*2;
+    real32 filter_button_height = small_row_height;
+
+    real32 button_gap = 5.0f;
+    bool32 all_filter_pressed = do_text_button(x, y,
+                                               filter_button_width, filter_button_height,
+                                               filter_button_style, default_text_style,
+                                               "All",
+                                               font_id,
+                                               editor_state->mesh_library_filter == Mesh_Type::NONE,
+                                               "mesh_filter_all");
+    if (all_filter_pressed) editor_state->mesh_library_filter = Mesh_Type::NONE;
+    x += filter_button_width + button_gap;
+
+    filter_button_width = get_width(font, "Level") + button_padding_x*2;
+    filter_button_style.normal_color = rgb_to_vec4(35, 148, 39);
+    filter_button_style.hot_color = rgb_to_vec4(42, 184, 78);
+    filter_button_style.active_color = rgb_to_vec4(14, 87, 33);
+    level_item_style = filter_button_style;
+
+    bool32 level_filter_pressed = do_text_button(x, y,
+                                                 filter_button_width, filter_button_height,
+                                                 filter_button_style, default_text_style,
+                                                 "Level",
+                                                 font_id,
+                                                 editor_state->mesh_library_filter == Mesh_Type::LEVEL,
+                                                 "mesh_filter_level");
+    if (level_filter_pressed) editor_state->mesh_library_filter = Mesh_Type::LEVEL;
+    x += filter_button_width + button_gap;
+
+    char *primitives_filter_text = "Primitives";
+    filter_button_width = get_width(font, primitives_filter_text) + button_padding_x*2;
+    filter_button_style.normal_color = rgb_to_vec4(150, 41, 125);
+    filter_button_style.hot_color = rgb_to_vec4(212, 57, 155);
+    filter_button_style.active_color = rgb_to_vec4(71, 14, 50);
+    primitive_item_style = filter_button_style;
+
+    bool32 primitives_pressed = do_text_button(x, y,
+                                               filter_button_width, filter_button_height,
+                                               filter_button_style, default_text_style,
+                                               primitives_filter_text,
+                                               font_id,
+                                               editor_state->mesh_library_filter == Mesh_Type::PRIMITIVE,
+                                               "mesh_filter_primitives");
+    if (primitives_pressed) editor_state->mesh_library_filter = Mesh_Type::PRIMITIVE;
+    x += filter_button_width;
+
+    y += filter_button_height + x_gap;
+                   
+    x = initial_x + padding_x;
+    UI_Image_Button_Style image_button_style = default_image_button_style;
+    image_button_style.image_constraint_flags = CONSTRAINT_FILL_BUTTON_WIDTH | CONSTRAINT_KEEP_IMAGE_PROPORTIONS;
+
+    //Hash_Table<int32, Mesh> *mesh_table = &game_state->current_level.mesh_table;
+    //Mesh_Type picked_mesh_type = Mesh_Type::NONE;
+    int32 picked_mesh_id = -1;
+
+    FOR_ENTRY_POINTERS(int, Mesh, asset_manager->mesh_table) {
+        Mesh *mesh = &entry->value;
+        if (editor_state->mesh_library_filter != Mesh_Type::NONE &&
+            mesh->type != editor_state->mesh_library_filter) continue;
+
+        char *mesh_name = to_char_array(allocator, mesh->name);
+        UI_Text_Button_Style text_button_style = default_text_button_style;
+
+        if (mesh->type == Mesh_Type::PRIMITIVE) {
+            text_button_style = primitive_item_style;
+        } else if (mesh->type == Mesh_Type::LEVEL) {
+            text_button_style = level_item_style;
+        } else {
+            continue;
+        }
+
+        bool32 pressed = do_text_button(x, y,
+                                        item_width, item_height,
+                                        text_button_style, default_text_style,
+                                        mesh_name,
+                                        font_id,
+                                        "mesh_library_level_item", entry->key);
+
+        if (pressed) {
+            picked_mesh_id = entry->key;
+        }
+
+        x += item_width + x_gap;
+        if (x + item_width > initial_x + window_width) {
+            x = initial_x + padding_x;
+            y += item_height + y_gap;
+        }
+    }
+
+    if (picked_mesh_id >= 0) {
+        start_entity_change(editor_state, entity);
+        set_entity_mesh(entity, picked_mesh_id);
+        end_entity_change(editor_state, entity);
+
+        editor_state->open_window_flags = 0;
+    }
+
+    pop_layer(ui_manager);
+}
+
+void draw_material_library(Editor_State *editor_state, UI_Manager *ui_manager, Controller_State *controller_state,
+                           Render_State *render_state,
+                           Entity *entity) {
+    push_layer(ui_manager);
+
+    Asset_Manager *asset_manager = &editor_state->asset_manager;
+    
+    real32 padding_x = Editor_Constants::small_padding_x;
+    real32 padding_y = Editor_Constants::small_padding_y;
+
+    real32 small_row_height = Editor_Constants::small_row_height;
+
+    real32 x_gap = padding_x;
+    real32 y_gap = padding_y;
+
+    int32 num_items_per_row = 1;
+    real32 item_width = 500.0f;
+    real32 item_height = 20.0f;
+
+    real32 window_width = padding_x * 2 + x_gap * (num_items_per_row - 1) + num_items_per_row*item_width;
+
+    real32 title_row_height = 50.0f;
+    Vec4 title_row_color = make_vec4(0.05f, 0.2f, 0.5f, 1.0f);
+    Vec4 row_color = Editor_Constants::row_color;
+
+    char *row_id = "material_library_row";
+    int32 row_index = 0;
+
+    real32 initial_x = render_state->display_output.width / 2.0f - window_width / 2.0f;
+    real32 x = initial_x;
+    real32 y = 80.0f;
+
+    UI_Text_Style text_style = default_text_style;
+
+    int32 font_id;
+    Font editor_font = get_font(asset_manager, Editor_Constants::editor_font_name, &font_id);
+
+    draw_row(x, y, window_width, title_row_height, title_row_color,
+             SIDE_LEFT | SIDE_RIGHT | SIDE_TOP | SIDE_BOTTOM, row_id, row_index++);
+    draw_centered_text(x, y, window_width, title_row_height,
+                       "Material Library", font_id, text_style);
+    y += title_row_height;
+
+    real32 content_height = 500.0f;
+    draw_row(x, y, window_width, content_height, row_color,
+             SIDE_LEFT | SIDE_RIGHT | SIDE_BOTTOM, row_id, row_index++);    
+
+    real32 cancel_button_width = 100.0f;
+    bool32 cancel_pressed = do_text_button(x + padding_x,
+                                           y + content_height - small_row_height - padding_y - 1,
+                                           cancel_button_width, small_row_height,
+                                           default_text_button_cancel_style, default_text_style,
+                                           "Cancel",
+                                           font_id,
+                                           "choose_material_cancel");
+    if (cancel_pressed) {
+        editor_state->open_window_flags = 0;
+    }
+    
+    Allocator *allocator = (Allocator *) &memory.frame_arena;
+
+    x += padding_x;
+    y += padding_y;
+
+    Hash_Table<int32, Material> *material_table = &asset_manager->material_table;
+    char *button_id_string = "material_library_item";
+    int32 picked_material_id = -1;
+    for (int32 i = 0; i < material_table->max_entries; i++) {
+        Hash_Table_Entry<int32, Material> *entry = &material_table->entries[i];
+        if (!entry->is_occupied) continue;
+
+        Material *material = &entry->value;
+        bool32 pressed = do_text_button(x, y,
+                                        item_width, item_height,
+                                        default_text_button_style, default_text_style,
+                                        to_char_array(allocator, material->name),
+                                        font_id,
+                                        button_id_string, i);
+
+        if (pressed) picked_material_id = entry->key;
+        x += item_width + x_gap;
+        if (x + item_width > initial_x + window_width) {
+            x = initial_x + padding_x;
+            y += item_height + y_gap;
+        }
+    }
+    
+    if (picked_material_id >= 0) {
+        start_entity_change(editor_state, entity);
+        set_entity_material(entity, picked_material_id);
+        end_entity_change(editor_state, entity);
+        editor_state->open_window_flags = 0;
+    }
+
+    pop_layer(ui_manager);
+};
+
 void draw_entity_box(Editor_State *editor_state, UI_Manager *ui_manager, Controller_State *controller_state,
                      Entity *entity) {
     int32 row_index = 0;
@@ -265,9 +542,9 @@ void draw_entity_box(Editor_State *editor_state, UI_Manager *ui_manager, Control
     x += transform_button_width + 5.0f;
 
     update_entity_position(asset_manager, entity, make_vec3(new_x, new_y, new_z));
-    //start_or_finalize_entity_change(game_state, x_slider, entity);
-    //start_or_finalize_entity_change(game_state, y_slider, entity);
-    //start_or_finalize_entity_change(game_state, z_slider, entity);
+    start_or_end_entity_change(editor_state, ui_manager, x_slider, entity);
+    start_or_end_entity_change(editor_state, ui_manager, y_slider, entity);
+    start_or_end_entity_change(editor_state, ui_manager, z_slider, entity);
 
     y += small_row_height;
     x = initial_x;
@@ -337,9 +614,9 @@ void draw_entity_box(Editor_State *editor_state, UI_Manager *ui_manager, Control
     x += transform_button_width + 5.0f;
 
     update_entity_scale(asset_manager, entity, make_vec3(new_scale_x, new_scale_y, new_scale_z));
-    //start_or_finalize_entity_change(game_state, scale_x_slider, entity);
-    //start_or_finalize_entity_change(game_state, scale_y_slider, entity);
-    //start_or_finalize_entity_change(game_state, scale_z_slider, entity);
+    start_or_end_entity_change(editor_state, ui_manager, scale_x_slider, entity);
+    start_or_end_entity_change(editor_state, ui_manager, scale_y_slider, entity);
+    start_or_end_entity_change(editor_state, ui_manager, scale_z_slider, entity);
 
     y += small_row_height;
     x = initial_x;
@@ -536,12 +813,9 @@ void draw_entity_box(Editor_State *editor_state, UI_Manager *ui_manager, Control
                          row_id, row_index++);
         
         if (toggle_is_walkable_pressed) {
-            // TODO: do this
-#if 0
             start_entity_change(editor_state, (Entity *) normal_entity);
             normal_entity->is_walkable = !normal_entity->is_walkable;
-            finalize_entity_change(editor_state, level, (Entity *) normal_entity);
-#endif
+            end_entity_change(editor_state, (Entity *) normal_entity);
         }
 
             

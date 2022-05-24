@@ -8,9 +8,8 @@ enum Action_Type {
     ACTION_ADD_NORMAL_ENTITY,
     ACTION_ADD_POINT_LIGHT_ENTITY,
     ACTION_DELETE_ENTITY,
-#if 0
-    ACTION_TRANSFORM_ENTITY, 
     ACTION_MODIFY_ENTITY,
+#if 0
     ACTION_MODIFY_MESH,
     ACTION_ADD_MESH,
     ACTION_DELETE_MESH,
@@ -76,6 +75,14 @@ struct Delete_Entity_Action {
     ACTION_HEADER
 
     Entity *entity;
+};
+
+struct Modify_Entity_Action {
+    ACTION_HEADER
+
+    int32 entity_id;
+    Entity *old_entity;
+    Entity *new_entity;
 };
 
 #endif

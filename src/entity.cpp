@@ -74,3 +74,31 @@ void update_entity_scale(Asset_Manager *asset_manager, Entity *entity, Vec3 new_
     }
 #endif
 }
+
+void set_entity_material(Entity *entity, int32 material_id) {
+    assert(has_material_field(entity));
+
+    switch (entity->type) {
+        case ENTITY_NORMAL: {
+            Normal_Entity *e = (Normal_Entity *) entity;
+            e->material_id = material_id;
+        } break;
+        default: {
+            assert(!"Unhandled entity with material field.");
+        }
+    }
+}
+
+void set_entity_mesh(Entity *entity, int32 mesh_id) {
+    assert(has_mesh_field(entity));
+
+    switch (entity->type) {
+        case ENTITY_NORMAL: {
+            Normal_Entity *e = (Normal_Entity *) entity;
+            e->mesh_id = mesh_id;
+        } break;
+        default: {
+            assert(!"Unhandled entity with mesh field.");
+        }
+    }
+}

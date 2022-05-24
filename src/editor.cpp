@@ -46,6 +46,32 @@ Entity *get_entity(Editor_State *editor_state, int32 id) {
     return NULL;
 }
 
+Entity *copy_cast_entity(Allocator *allocator, Entity *uncast_entity) {
+    Entity *copied_entity = NULL;
+
+    switch (uncast_entity->type) {
+        case ENTITY_NORMAL: {
+            Normal_Entity *entity = (Normal_Entity *) uncast_entity;
+            Normal_Entity *allocated = (Normal_Entity *) allocate(allocator, sizeof(Normal_Entity));
+
+            *allocated = copy(allocator, *entity);
+            copied_entity = (Entity *) allocated;
+        } break;
+        case ENTITY_POINT_LIGHT: {
+            Point_Light_Entity *entity = (Point_Light_Entity *) uncast_entity;
+            Point_Light_Entity *allocated = (Point_Light_Entity *) allocate(allocator, sizeof(Point_Light_Entity));
+            *allocated = copy(allocator, *entity);
+            copied_entity = (Entity *) allocated;
+        } break;
+        default: {
+            assert(!"Unhandled entity type.");
+        }
+    }
+
+    assert(copied_entity);
+    return copied_entity;
+}
+
 void init_editor_level(Editor_State *editor_state, Editor_Level *editor_level) {
     *editor_level = {};
     make_and_init_linked_list(Entity *, &editor_level->entities, (Allocator *) &editor_state->entity_heap);
@@ -555,6 +581,7 @@ Quaternion do_gizmo_rotation(Editor_State *editor_state, Ray cursor_ray) {
 
 void reset_editor(Editor_State *editor_state) {
     reset_entity_editors(editor_state);
+    history_reset(editor_state);
     editor_state->selected_entity_id = -1;
     editor_state->last_selected_entity_id = -1;
 }
@@ -663,6 +690,8 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
                                                                       picked_handle, pick_gizmo_t,
                                                                       cursor_ray, global_transform_axis);
                 gizmo_state->original_entity_transform = selected_entity->transform;
+
+                start_entity_change(editor_state, selected_entity);
             }
 
             gizmo_state->selected_gizmo_handle = picked_handle;
@@ -703,6 +732,7 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
             gizmo_state->transform.rotation = entity->transform.rotation;
         } else {
             gizmo_state->selected_gizmo_handle = GIZMO_HANDLE_NONE;
+            end_entity_change(editor_state, entity);
             //finalize_entity_change(editor_state, &game_state->current_level, entity);
         }
     }
@@ -720,8 +750,7 @@ void draw_editor(Game_State *game_state, Controller_State *controller_state) {
         draw_entity_box(editor_state, ui_manager, controller_state, selected_entity);
 
         if (editor_state->open_window_flags & MATERIAL_LIBRARY_WINDOW) {
-            // TODO: do this
-            //draw_material_library(game_state, controller_state, selected_entity);
+            draw_material_library(editor_state, ui_manager, controller_state, render_state, selected_entity);
         } else if (editor_state->open_window_flags & TEXTURE_LIBRARY_WINDOW) {
             // TODO: do this
 #if 0
@@ -731,12 +760,13 @@ void draw_editor(Game_State *game_state, Controller_State *controller_state) {
             draw_texture_library(material_id, selected_material);
 #endif
         } else if (editor_state->open_window_flags & MESH_LIBRARY_WINDOW) {
-            // TODO: do this
-            //draw_mesh_library(game_state, controller_state, selected_entity);
+            draw_mesh_library(editor_state, ui_manager, controller_state, render_state, selected_entity);
         }
     } else {
         reset_entity_editors(editor_state);
     }
+
+
 
     real32 y = 0.0f;
     real32 button_gap = 1.0f;

@@ -22,6 +22,14 @@ struct Entity {
     ENTITY_HEADER
 };
 
+bool32 has_mesh_field(Entity *entity) {
+    return (entity->type == ENTITY_NORMAL);
+}
+
+bool32 has_material_field(Entity *entity) {
+    return (entity->type == ENTITY_NORMAL);
+}
+
 void deallocate(Entity *) {
     // nothing to deallocate. usually entity structs are deallocated another way and not through this procedure.
 }
@@ -55,6 +63,10 @@ Normal_Entity make_normal_entity(Transform transform, int32 mesh_id, int32 mater
     return result;
 }
 
+void deallocate(Normal_Entity entity) {
+    // nothing to deallocate
+}
+
 Normal_Entity copy(Allocator *allocator, Normal_Entity entity) {
     return entity;
 }
@@ -84,6 +96,10 @@ Point_Light_Entity make_point_light_entity(Vec3 light_color, real32 falloff_star
     result.falloff_end = falloff_end;
 
     return result;
+}
+
+void deallocate(Point_Light_Entity entity) {
+    // nothing to deallocate
 }
 
 Point_Light_Entity copy(Allocator *allocator, Point_Light_Entity entity) {

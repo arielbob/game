@@ -49,6 +49,9 @@ struct Editor_State {
     bool32 editing_selected_entity_mesh;
     bool32 editing_selected_entity_material;
     bool32 editing_selected_entity_texture;
+
+    Entity *old_entity;
+    Mesh_Type mesh_library_filter;
 };
 
 namespace Editor_Constants {
@@ -65,6 +68,8 @@ namespace Editor_Constants {
     real32 hsv_picker_width = 200.0f;
     real32 hsv_picker_height = 200.0f;
     real32 hue_slider_width = 20.0f;
+    real32 medium_padding_x = 10.0f;
+    real32 medium_padding_y = 10.0f;
     real32 small_padding_x = 6.0f;
     real32 small_padding_y = 6.0f;
     real32 x_nested_offset = 10.0f;
@@ -85,6 +90,7 @@ namespace Editor_Constants {
 int32 add_entity(Editor_Level *level, Entity *entity, int32 existing_id = -1);
 void delete_entity(Editor_State *editor_state, int32 id);
 Entity *get_entity(Editor_State *editor_state, int32 id);
+Entity *copy_cast_entity(Allocator *allocator, Entity *uncast_entity);
 void unload_level(Editor_State *editor_state);
 void load_level(Editor_State *editor_state, Level_Info *level_info);
 bool32 read_and_load_level(Editor_State *editor_state, char *filename);
