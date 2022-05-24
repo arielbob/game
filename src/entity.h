@@ -46,14 +46,26 @@ struct Point_Light_Entity {
 
 Normal_Entity make_normal_entity() {
     Normal_Entity result = {};
+    result.transform = make_transform();
     result.type = ENTITY_NORMAL;
     result.mesh_id = -1;
     result.material_id = -1;
     return result;
 }
 
+Normal_Entity make_normal_entity(Transform transform, int32 mesh_id, int32 material_id, AABB transformed_aabb) {
+    Normal_Entity result = {};
+    result.type = ENTITY_NORMAL;
+    result.transform = transform;
+    result.mesh_id = mesh_id;
+    result.material_id = material_id;
+    result.transformed_aabb = transformed_aabb;
+    return result;
+}
+
 Point_Light_Entity make_point_light_entity() {
     Point_Light_Entity result = {};
+    result.transform = make_transform();
     result.type = ENTITY_POINT_LIGHT;
     return result;
 }

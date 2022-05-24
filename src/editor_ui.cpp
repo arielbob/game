@@ -566,12 +566,13 @@ void draw_entity_box(Editor_State *editor_state, UI_Manager *ui_manager, Control
         }
 
         real32 choose_material_button_width = edit_box_width - small_button_width;
+        UI_Text_Button_Style choose_material_button_style = button_style;
+        
         if (!has_material) {
             choose_material_button_width += small_button_width;
+        } else {
+            choose_material_button_style.corner_flags = CORNER_TOP_LEFT | CORNER_BOTTOM_LEFT;
         }
-
-        UI_Text_Button_Style choose_material_button_style = button_style;
-        choose_material_button_style.corner_flags = CORNER_TOP_LEFT | CORNER_BOTTOM_LEFT;
         bool32 choose_material_pressed = do_text_button(x, y, choose_material_button_width, row_height,
                                                         choose_material_button_style, default_text_style,
                                                         material_name,

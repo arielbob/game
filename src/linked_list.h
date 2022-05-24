@@ -18,6 +18,7 @@ struct Linked_List {
     Allocator *allocator;
     Node<T> cap;
     int32 num_entries;
+    int32 total_added_ever;
 };
 
 #define make_and_init_linked_list(type, linked_list_pointer, allocator_pointer) \
@@ -49,6 +50,7 @@ void add(Linked_List<T> *list, T value) {
     new_node->prev = cap->prev;
     cap->prev = new_node;
     list->num_entries++;
+    list->total_added_ever++;
 }
 
 template <class T>

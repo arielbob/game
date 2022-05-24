@@ -454,6 +454,10 @@
 //       - TODO: load fonts into game as well
 //       - TODO: unload opengl assets when switching between play and edit mode
 
+// TODO: editor actions
+//       - TODO (done): adding normal entities
+//       - TODO: adding point light entities
+
 //       - TODO: load default level using new format
 
 //       - TODO: error handling in level loading

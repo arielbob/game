@@ -1,17 +1,34 @@
 #include "linked_list.h"
 #include "editor.h"
 
-int32 add_entity(Editor_State *editor_state, Entity *entity, int32 existing_id = -1) {
+int32 add_entity(Editor_Level *level, Entity *entity, int32 existing_id) {
     int32 id;
     if (existing_id >= 0) {
         id = existing_id;
     } else {
-        id = editor_state->level.entities.num_entries;
+        id = level->entities.total_added_ever;
     }
 
     entity->id = id;
-    add(&editor_state->level.entities, entity);
+    add(&level->entities, entity);
+
     return id;
+}
+
+void delete_entity(Editor_State *editor_state, int32 id) {
+    Editor_Level *level = &editor_state->level;
+
+    Node <Entity *> *node_to_remove = NULL;
+    FOR_LIST_NODES(Entity *, level->entities) {
+        if (current_node->value->id == id) {
+            node_to_remove = current_node;
+            break;
+        }
+    }
+
+    assert(node_to_remove);
+    deallocate((Allocator *) &editor_state->entity_heap, node_to_remove->value);
+    remove(&level->entities, node_to_remove);
 }
 
 void init_editor_level(Editor_State *editor_state, Editor_Level *editor_level) {
@@ -53,14 +70,14 @@ void load_level(Editor_State *editor_state, Level_Info *level_info) {
 
         Normal_Entity *e = (Normal_Entity *) allocate(entity_allocator, sizeof(Normal_Entity));
         *e = entity;
-        add_entity(editor_state, (Entity *) e);
+        add_entity(level, (Entity *) e);
     }
 
     FOR_LIST_NODES(Point_Light_Entity_Info, level_info->point_light_entities) {
         Point_Light_Entity entity = current_node->value.entity;
         Point_Light_Entity *e = (Point_Light_Entity *) allocate(entity_allocator, sizeof(Point_Light_Entity));
         *e = entity;
-        add_entity(editor_state, (Entity *) e);
+        add_entity(level, (Entity *) e);
     }
 }
 
@@ -760,11 +777,7 @@ void draw_editor(Game_State *game_state, Controller_State *controller_state) {
                                                       font_id, "add_entity");
     y += button_height + button_gap;
     if (add_normal_entity_clicked) {
-        // TODO: do this
-#if 0
-        Add_Normal_Entity_Action action = make_add_normal_entity_action();
-        editor_add_normal_entity(editor_state, game_state, action);
-#endif
+        add_normal_entity(editor_state);
     }
 
     bool32 add_point_light_entity_clicked = do_text_button(render_state->display_output.width - sidebar_button_width, y,
@@ -801,7 +814,6 @@ void draw_editor(Game_State *game_state, Controller_State *controller_state) {
                 buf, font_id, default_text_style, "editor_current_level_filename");
     }
 
-#if 0
     y += button_height + button_height;
 
     int32 num_history_entries = history_get_num_entries(&editor_state->history);
@@ -813,7 +825,7 @@ void draw_editor(Game_State *game_state, Controller_State *controller_state) {
                                          editor_state->history.num_undone == num_history_entries,
                                          "editor_undo");
     if (undo_clicked) {
-        history_undo(game_state, &editor_state->history);
+        history_undo(editor_state);
     }
 
     bool32 redo_clicked = do_text_button(render_state->display_output.width - 0.5f * sidebar_button_width, y,
@@ -824,11 +836,24 @@ void draw_editor(Game_State *game_state, Controller_State *controller_state) {
                                          num_history_entries == 0 || editor_state->history.num_undone == 0,
                                          "editor_redo");
     if (redo_clicked) {
-        history_redo(game_state, &editor_state->history);
+        history_redo(editor_state);
     }
 
-    
-    char *buf = string_format((Allocator *) &memory.frame_arena, 64, "heap size: %d", ui_manager->heap_pointer->size);
+    Allocator *frame_allocator = (Allocator *) &memory.frame_arena;
+    char *buf = string_format(frame_allocator, 64, "editor history heap used: %d",
+                              editor_state->history_heap.used);
+    do_text(ui_manager,
+            5.0f, render_state->display_output.height - 90.0f,
+            buf, font_id, default_text_style, "editor history heap used");
+
+    buf = string_format(frame_allocator, 64, "editor entity heap used: %d",
+                        editor_state->entity_heap.used);
+    do_text(ui_manager,
+            5.0f, render_state->display_output.height - 72.0f,
+            buf, font_id, default_text_style, "editor entity heap used");
+
+#if 0
+    char *buf = string_format(frame_allocator, 64, "heap size: %d", ui_manager->heap_pointer->size);
     do_text(ui_manager,
             5.0f, render_state->display_output.height - 62.0f,
             buf, editor_font_name, default_text_style, "heap size");
@@ -837,14 +862,11 @@ void draw_editor(Game_State *game_state, Controller_State *controller_state) {
     do_text(ui_manager,
             5.0f, render_state->display_output.height - 48.0f,
             buf, editor_font_name, default_text_style, "heap used");
+#endif
 
-    buf = string_format((Allocator *) &memory.frame_arena, 64, "editor history heap used: %d",
-                        memory.editor_history_heap.used);
-    do_text(ui_manager,
-            5.0f, render_state->display_output.height - 90.0f,
-            buf, editor_font_name, default_text_style, "editor history heap size");
-
-    buf = string_format((Allocator *) &memory.frame_arena, 64, "num_undone: %d", editor_state->history.num_undone);
+    
+#if 0
+    buf = string_format(frame_allocator, 64, "num_undone: %d", editor_state->history.num_undone);
     do_text(ui_manager,
             5.0f, render_state->display_output.height - 129.0f,
             buf, editor_font_name, default_text_style, "num undone");

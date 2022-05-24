@@ -52,6 +52,7 @@ global_variable Allocator *temp_region;
 #include "entity.cpp"
 #include "editor_ui.cpp"
 #include "gizmo.cpp"
+#include "editor_actions.cpp"
 #include "editor.cpp"
 #include "game.cpp"
 

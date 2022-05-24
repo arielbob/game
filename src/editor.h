@@ -1,6 +1,8 @@
 #ifndef EDITOR_H
 #define EDITOR_H
 
+#include "editor_actions.h"
+
 // for some reason putting these defines after the includes breaks emacs indenting
 #define LEVEL_FILE_FILTER_TITLE "Levels (*.level)"
 #define LEVEL_FILE_FILTER_TYPE  "level"
@@ -21,6 +23,8 @@ struct Editor_State {
     Heap_Allocator general_heap;
 
     Asset_Manager asset_manager;
+
+    Editor_History history;
 
     Editor_Level level;
     String level_filename;
@@ -78,6 +82,8 @@ namespace Editor_Constants {
     //real32 row_height =  30.0f;
 };
 
+int32 add_entity(Editor_Level *level, Entity *entity, int32 existing_id = -1);
+void delete_entity(Editor_State *editor_state, int32 id);
 void unload_level(Editor_State *editor_state);
 void load_level(Editor_State *editor_state, Level_Info *level_info);
 bool32 read_and_load_level(Editor_State *editor_state, char *filename);
