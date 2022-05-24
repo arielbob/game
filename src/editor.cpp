@@ -787,11 +787,7 @@ void draw_editor(Game_State *game_state, Controller_State *controller_state) {
                                                            font_id, "add_point_light_entity");
     y += button_height + button_gap;
     if (add_point_light_entity_clicked) {
-        // TODO: do this
-#if 0
-        Add_Point_Light_Entity_Action action = make_add_point_light_entity_action();
-        editor_add_point_light_entity(editor_state, game_state, action);
-#endif
+        add_point_light_entity(editor_state);
     }
 
     bool32 toggle_colliders_clicked = do_text_button(render_state->display_output.width - sidebar_button_width, y,

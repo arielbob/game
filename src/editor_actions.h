@@ -6,8 +6,8 @@
 enum Action_Type {
     ACTION_NONE,
     ACTION_ADD_NORMAL_ENTITY,
-#if 0
     ACTION_ADD_POINT_LIGHT_ENTITY,
+#if 0
     ACTION_DELETE_NORMAL_ENTITY,
     ACTION_DELETE_POINT_LIGHT_ENTITY,
     ACTION_TRANSFORM_ENTITY, 
@@ -62,6 +62,12 @@ struct Editor_History {
 };
 
 struct Add_Normal_Entity_Action {
+    ACTION_HEADER
+
+    int32 entity_id;
+};
+
+struct Add_Point_Light_Entity_Action {
     ACTION_HEADER
 
     int32 entity_id;

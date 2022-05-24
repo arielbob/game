@@ -65,8 +65,20 @@ Normal_Entity make_normal_entity(Transform transform, int32 mesh_id, int32 mater
 
 Point_Light_Entity make_point_light_entity() {
     Point_Light_Entity result = {};
-    result.transform = make_transform();
     result.type = ENTITY_POINT_LIGHT;
+    result.transform = make_transform();
+    return result;
+}
+
+Point_Light_Entity make_point_light_entity(Vec3 light_color, real32 falloff_start, real32 falloff_end) {
+    Point_Light_Entity result = {};
+    result.type = ENTITY_POINT_LIGHT;
+    result.transform = make_transform();
+
+    result.light_color = light_color;
+    result.falloff_start = falloff_start;
+    result.falloff_end = falloff_end;
+
     return result;
 }
 

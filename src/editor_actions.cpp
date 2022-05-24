@@ -120,6 +120,29 @@ void undo_add_normal_entity(Editor_State *editor_state, Add_Normal_Entity_Action
     editor_state->selected_entity_id = -1;
 }
 
+// TODO: the entity already has an id field, so maybe we just use that instead of having it as an argument?
+void add_point_light_entity(Editor_State *editor_state, int32 entity_id = -1, bool32 is_redoing = false) {
+    Point_Light_Entity new_entity = make_point_light_entity(make_vec3(0.5f, 0.5f, 0.5f), 0.0f, 5.0f);
+    Point_Light_Entity *entity = (Point_Light_Entity *) allocate((Allocator *) &editor_state->entity_heap,
+                                                                 sizeof(Point_Light_Entity));
+    *entity = new_entity;
+
+    int32 id = add_entity(&editor_state->level, (Entity *) entity, entity_id);
+
+    editor_state->selected_entity_id = id;
+
+    if (!is_redoing) {
+        Editor_History *history = &editor_state->history;
+        Add_Point_Light_Entity_Action action = { ACTION_ADD_POINT_LIGHT_ENTITY, id };
+        history_add_action(editor_state, Add_Point_Light_Entity_Action, action);
+    }
+}
+
+void undo_add_point_light_entity(Editor_State *editor_state, Add_Point_Light_Entity_Action action) {
+    delete_entity(editor_state, action.entity_id);
+    editor_state->selected_entity_id = -1;
+}
+
 int32 history_get_num_entries(Editor_History *history) {
     if (history->start_index == -1 && history->end_index == -1) return 0;
 
@@ -164,6 +187,10 @@ void history_undo(Editor_State *editor_state) {
             Add_Normal_Entity_Action *action = (Add_Normal_Entity_Action *) current_action;
             undo_add_normal_entity(editor_state, *action);
         } break;
+        case ACTION_ADD_POINT_LIGHT_ENTITY: {
+            Add_Point_Light_Entity_Action *action = (Add_Point_Light_Entity_Action *) current_action;
+            undo_add_point_light_entity(editor_state, *action);
+        } break;
         default: {
             assert(!"Unhandled editor action type.");
             return;
@@ -202,6 +229,10 @@ void history_redo(Editor_State *editor_state) {
         case ACTION_ADD_NORMAL_ENTITY: {
             Add_Normal_Entity_Action *action = (Add_Normal_Entity_Action *) redo_action;
             add_normal_entity(editor_state, action->entity_id, true);
+        } break;
+        case ACTION_ADD_POINT_LIGHT_ENTITY: {
+            Add_Point_Light_Entity_Action *action = (Add_Point_Light_Entity_Action *) redo_action;
+            add_point_light_entity(editor_state, action->entity_id, true);
         } break;
         default: {
             assert(!"Unhandled editor action type.");
