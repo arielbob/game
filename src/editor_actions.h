@@ -17,12 +17,9 @@ enum Action_Type {
     ACTION_MODIFY_MATERIAL,
     ACTION_ADD_MATERIAL,
     ACTION_DELETE_MATERIAL,
-
-#if 0
     ACTION_MODIFY_TEXTURE,
     ACTION_ADD_TEXTURE,
     ACTION_DELETE_TEXTURE
-#endif
 };
 
 #define ACTION_HEADER                           \
@@ -138,6 +135,32 @@ struct Delete_Material_Action {
     int32 material_id;
     Material material;
     Linked_List<int32> entity_ids;
+};
+
+struct Modify_Texture_Action {
+    ACTION_HEADER
+
+    int32 texture_id;
+    Texture old_texture;
+    Texture new_texture;
+};
+
+struct Add_Texture_Action {
+    ACTION_HEADER
+
+    int32 texture_id;
+    int32 material_id;
+    int32 original_texture_id;
+    String filename;
+    String name;
+};
+
+struct Delete_Texture_Action {
+    ACTION_HEADER
+
+    int32 texture_id;
+    Texture texture;
+    Linked_List<int32> material_ids;
 };
 
 #endif

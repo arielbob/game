@@ -465,7 +465,9 @@
 //       - TODO (done): material changes
 //       - TODO (done): material adding
 //       - TODO (done): material deleting
-//       - TODO: texture changing/adding/deleting
+//       - TODO (done): texture changing
+//       - TODO (done): texture adding
+//       - TODO (done): texture deleting
 //       - TODO: point light changes (same as entity changes)
 
 //       - TODO: load default level using new format
@@ -1117,8 +1119,7 @@ void gl_draw_mesh(GL_State *gl_state, Render_State *render_state,
 
     GL_Mesh gl_mesh = gl_use_mesh(gl_state, mesh_id);
 
-    if (!material.use_color_override && (material.texture_id < 0)) assert(!"No texture name provided.");
-    if (!material.use_color_override) gl_use_texture(gl_state, material.texture_id);
+    if (material.texture_id >= 0 && !material.use_color_override) gl_use_texture(gl_state, material.texture_id);
 
     Mat4 model_matrix = get_model_matrix(transform);
     gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
@@ -1131,7 +1132,12 @@ void gl_draw_mesh(GL_State *gl_state, Render_State *render_state,
     gl_set_uniform_float(shader_id, "gloss", material.gloss);
     
     gl_set_uniform_vec3(shader_id, "camera_pos", &render_state->camera.position);
-    gl_set_uniform_int(shader_id, "use_color_override", material.use_color_override);
+
+    // if there is no texture, then just use color override, no matter what material.use_color_override is.
+    // we do it this way since we don't save whether or not a material is using a color override when we delete
+    // textures. it's kind of confusing. basically this is just so we don't have to also save use_color_overrides
+    // when we delete textures/undo delete textures.
+    gl_set_uniform_int(shader_id, "use_color_override", (material.texture_id < 0) || material.use_color_override);
 
     glDrawElements(GL_TRIANGLES, gl_mesh.num_triangles * 3, GL_UNSIGNED_INT, 0);
 

@@ -21,6 +21,13 @@ Texture make_texture(String name, String filename) {
     return result;
 }
 
+Texture copy(Allocator *allocator, Texture texture) {
+    Texture result = texture;
+    result.name = copy(allocator, texture.name);
+    result.filename = copy(allocator, texture.filename);
+    return result;
+}
+
 void deallocate(Texture texture) {
     deallocate(texture.name);
     deallocate(texture.filename);

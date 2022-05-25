@@ -220,6 +220,31 @@ void editor_add_material_press(Editor_State *editor_state, int32 entity_id) {
     end_region(m);
 }
 
+bool32 editor_add_texture_press(Editor_State *editor_state, int32 material_id) {
+    Asset_Manager *asset_manager = &editor_state->asset_manager;
+
+    Marker m = begin_region();
+    char *absolute_filename = (char *) region_push(PLATFORM_MAX_PATH);
+    
+    if (platform_open_file_dialog(absolute_filename, PLATFORM_MAX_PATH)) {
+        char *texture_name_buffer = (char *) region_push(TEXTURE_NAME_MAX_SIZE);
+        bool32 result = generate_texture_name(asset_manager, texture_name_buffer, TEXTURE_NAME_MAX_SIZE);
+        assert(result);
+        String texture_name = make_string(texture_name_buffer);
+
+        char *relative_filename = (char *) region_push(PLATFORM_MAX_PATH);
+        platform_get_relative_path(absolute_filename, relative_filename, PLATFORM_MAX_PATH);
+        String filename = make_string(relative_filename);
+
+        do_add_texture(editor_state, filename, texture_name, material_id);
+
+        end_region(m);
+        return true;
+    }
+
+    return false;
+}
+
 void draw_texture_library(Editor_State *editor_state, UI_Manager *ui_manager, Controller_State *controller_state,
                            Render_State *render_state, int32 material_id) {
     Asset_Manager *asset_manager = &editor_state->asset_manager;
@@ -1135,16 +1160,7 @@ void draw_entity_box(Editor_State *editor_state, UI_Manager *ui_manager, Control
                                                                default_text_button_cancel_style, default_text_style,
                                                                "-", font_id, "delete_texture");
                 if (delete_texture_pressed) {
-                    // TODO: do this
-#if 0
-                    Delete_Texture_Action action = make_delete_texture_action(material->texture_id,
-                                                                              make_string(texture->filename),
-                                                                              make_string(texture->name));
-                    editor_delete_texture(editor_state, level, action);
-
-                    has_texture = false;
-                    editor_state->editing_selected_entity_texture = false;
-#endif
+                    do_delete_texture(editor_state, material->texture_id);
                 }
 
                 x += small_button_width;
@@ -1158,14 +1174,7 @@ void draw_entity_box(Editor_State *editor_state, UI_Manager *ui_manager, Control
                                                         button_style, default_text_style,
                                                         "+", font_id, "add_texture");
             if (add_texture_pressed) {
-                // TODO: do this
-#if 0
-                bool32 texture_added = editor_add_texture_press(editor_state, &game_state->current_level,
-                                                                normal_entity->material_id, material->texture_id);
-                if (texture_added) {
-                    editor_state->editing_selected_entity_texture = true;
-                }
-#endif
+                editor_add_texture_press(editor_state, normal_entity->material_id);
             }
 
             x += small_button_width + padding_x;
@@ -1211,13 +1220,9 @@ void draw_entity_box(Editor_State *editor_state, UI_Manager *ui_manager, Control
                         add_message(Context::message_manager, make_string("Texture name cannot contain {, }, or double quotes!"));
                     } else if (!string_equals(texture->name, new_name)) {
                         if (!texture_name_exists(asset_manager, new_name)) {
-                            // TODO: do this
-#if 0
-                            Modify_Texture_Action action = make_modify_texture_action(material->texture_id,
-                                                                                      result.buffer);
-                            editor_modify_texture(editor_state, level, action);
-                            //copy_string(&texture->name, new_name);
-#endif
+                            start_texture_change(editor_state, material->texture_id);
+                            replace_with_copy(asset_manager->allocator_pointer, &texture->name, new_name);
+                            end_texture_change(editor_state, material->texture_id);
                         } else {
                             add_message(Context::message_manager, make_string("Texture name already exists!"));
                         }
@@ -1297,7 +1302,7 @@ void draw_entity_box(Editor_State *editor_state, UI_Manager *ui_manager, Control
             bool32 toggle_color_override_pressed = do_text_button(x + right_column_offset, y,
                                                                   100.0f, row_height,
                                                                   button_style, default_text_style,
-                                                                  material->use_color_override ? "true" : "false",
+                                                                  ((material->texture_id < 0) || material->use_color_override) ? "true" : "false",
                                                                   font_id,
                                                                   material->texture_id < 0,
                                                                   "material_toggle_use_color_override");

@@ -53,6 +53,7 @@ struct Editor_State {
     // for modification history
     Entity *old_entity;
     Material *old_material;
+    Texture old_texture;
 
     Mesh_Type mesh_library_filter;
 };

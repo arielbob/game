@@ -203,10 +203,20 @@ void delete_mesh(Asset_Manager *asset_manager, int32 mesh_id) {
     hash_table_remove(&asset_manager->mesh_table, mesh_id);
 }
 
-int32 add_texture(Asset_Manager *asset_manager, Texture texture) {
-    int32 texture_id = asset_manager->texture_table.total_added_ever;
-    hash_table_add(&asset_manager->texture_table, texture_id, texture);
-    return texture_id;
+int32 add_texture(Asset_Manager *asset_manager, Texture texture, int32 existing_id = -1) {
+    int32 id;
+    if (existing_id >= 0) {
+        id = existing_id;
+    } else {
+        id = asset_manager->texture_table.total_added_ever;
+    }
+
+    hash_table_add(&asset_manager->texture_table, id, texture);
+    return id;
+}
+
+void delete_texture(Asset_Manager *asset_manager, int32 texture_id) {
+    hash_table_remove(&asset_manager->texture_table, texture_id);
 }
 
 Texture get_texture(Asset_Manager *asset_manager, int32 texture_id) {
@@ -325,6 +335,29 @@ bool32 generate_material_name(Asset_Manager *asset_manager, char *buffer, int32 
 
     assert(!"Could not generate material name.");
     return false;
+}
+
+bool32 generate_texture_name(Asset_Manager *asset_manager, char *buffer, int32 buffer_size) {
+    int32 num_attempts = 0;
+    while (num_attempts < MAX_TEXTURES + 1) {
+        char *format = (num_attempts == 0) ? "New Texture" : "New Texture %d";
+        string_format(buffer, buffer_size, format, num_attempts + 1);
+        if (!texture_name_exists(asset_manager, make_string(buffer))) {
+            return true;
+        }
+
+        num_attempts++;
+    }
+
+    assert(!"Could not generate texture name.");
+    return false;
+}
+
+void set_texture(Material *material, int32 texture_id, int32 *original_texture_id = NULL) {
+    if (original_texture_id) {
+        *original_texture_id = material->texture_id;
+    }
+    material->texture_id = texture_id;
 }
 
 Mesh read_and_load_mesh(Allocator *allocator, String filename, String name, Mesh_Type type) {
