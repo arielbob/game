@@ -169,6 +169,16 @@ void start_or_end_entity_change(Editor_State *editor_state,
     }
 }
 
+void start_or_end_material_change(Editor_State *editor_state,
+                                  UI_Manager *ui_manager, UI_id element_id,
+                                  int32 material_id) {
+    if (is_newly_active(ui_manager, element_id)) {
+        start_material_change(editor_state, material_id);
+    } else if (is_newly_inactive(ui_manager, element_id)) {
+        end_material_change(editor_state, material_id);
+    }
+}
+
 bool32 editor_add_mesh_press(Editor_State *editor_state, int32 entity_id) {
     Asset_Manager *asset_manager = &editor_state->asset_manager;
 
@@ -192,6 +202,114 @@ bool32 editor_add_mesh_press(Editor_State *editor_state, int32 entity_id) {
     }
 
     return false;
+}
+
+void draw_texture_library(Editor_State *editor_state, UI_Manager *ui_manager, Controller_State *controller_state,
+                           Render_State *render_state, int32 material_id) {
+    Asset_Manager *asset_manager = &editor_state->asset_manager;
+
+    Material *material = get_material_pointer(asset_manager, material_id);
+
+    push_layer(ui_manager);
+
+    real32 padding_x = Editor_Constants::medium_padding_x;
+    real32 padding_y = Editor_Constants::medium_padding_y;
+
+    real32 x_gap = Editor_Constants::small_padding_x;
+    real32 y_gap = Editor_Constants::small_padding_y;
+
+    real32 small_row_height = Editor_Constants::small_row_height;
+
+    int32 num_items_per_row = 5;
+    real32 item_width = 100.0f;
+    real32 item_height = 100.0f;
+
+    real32 window_width = padding_x * 2 + x_gap * (num_items_per_row - 1) + num_items_per_row*item_width;
+
+    real32 title_row_height = 50.0f;
+    Vec4 title_row_color = make_vec4(0.05f, 0.2f, 0.5f, 1.0f);
+    Vec4 row_color = Editor_Constants::row_color;
+    
+    char *row_id = "texture_library_row";
+    int32 row_index = 0;
+
+    int32 font_id;
+    Font editor_font = get_font(asset_manager, Editor_Constants::editor_font_name, &font_id);
+
+    real32 initial_x = render_state->display_output.width / 2.0f - window_width / 2.0f;
+    real32 x = initial_x;
+    real32 y = 80.0f;
+
+    UI_Text_Style text_style = default_text_style;
+
+    draw_row(x, y, window_width, title_row_height, title_row_color,
+             SIDE_LEFT | SIDE_RIGHT | SIDE_TOP | SIDE_BOTTOM, row_id, row_index++);
+    draw_centered_text(x, y, window_width, title_row_height,
+                       "Texture Library", font_id, text_style);
+    y += title_row_height;
+
+    real32 content_height = 500.0f;
+    draw_row(x, y, window_width, content_height, row_color,
+             SIDE_LEFT | SIDE_RIGHT | SIDE_BOTTOM, row_id, row_index++);    
+
+    real32 cancel_button_width = 100.0f;
+    bool32 cancel_pressed = do_text_button(x + padding_x,
+                                           y + content_height - small_row_height - padding_y - 1,
+                                           cancel_button_width, small_row_height,
+                                           default_text_button_cancel_style, default_text_style,
+                                           "Cancel",
+                                           font_id,
+                                           "choose_texture_cancel");
+    if (cancel_pressed) {
+        editor_state->open_window_flags = 0;
+    }
+
+    Allocator *allocator = (Allocator *) &memory.frame_arena;
+
+    x += padding_x;
+    y += padding_y;
+
+    UI_Image_Button_Style image_button_style = default_image_button_style;
+    image_button_style.image_constraint_flags = (CONSTRAINT_FILL_BUTTON_WIDTH |
+                                                 CONSTRAINT_FILL_BUTTON_HEIGHT |
+                                                 CONSTRAINT_KEEP_IMAGE_PROPORTIONS);
+                                                 
+
+    Hash_Table<int32, Texture> *texture_table = &asset_manager->texture_table;
+    char *button_id_string = "texture_library_item";
+    int32 picked_texture_id = -1;
+    for (int32 i = 0; i < texture_table->max_entries; i++) {
+        Hash_Table_Entry<int32, Texture> *entry = &texture_table->entries[i];
+        if (!entry->is_occupied) continue;
+
+        Texture *texture = &entry->value;
+        char *texture_name = to_char_array(allocator, texture->name);
+        bool32 pressed = do_image_button(x, y,
+                                         item_width, item_height,
+                                         image_button_style, default_text_style,
+                                         entry->key, texture_name, font_id,
+                                         button_id_string, i);
+
+        if (pressed) picked_texture_id = entry->key;
+        x += item_width + x_gap;
+        if (x + item_width > initial_x + window_width) {
+            x = initial_x + padding_x;
+            y += item_height + y_gap;
+        }
+    }
+    
+    if (picked_texture_id >= 0) {
+        if (material->texture_id < 0 ||
+            picked_texture_id != material->texture_id) {
+            start_material_change(editor_state, material_id);
+            material->texture_id = picked_texture_id;
+            end_material_change(editor_state, material_id);
+        }
+
+        editor_state->open_window_flags = 0;
+    }
+
+    pop_layer(ui_manager);
 }
 
 void draw_mesh_library(Editor_State *editor_state, UI_Manager *ui_manager, Controller_State *controller_state,
@@ -961,12 +1079,10 @@ void draw_entity_box(Editor_State *editor_state, UI_Manager *ui_manager, Control
                     add_message(Context::message_manager, make_string("Material name cannot contain {, }, or double quotes!"));
                 } else if (!string_equals(material->name, new_name)) {
                     if (!material_name_exists(asset_manager, new_name)) {
-                        // TODO: do this
-#if 0
-                        start_material_change(editor_state, *material);
-                        copy_string(&material->name, new_name);
-                        finalize_material_change(editor_state, level, normal_entity->material_id, *material);
-#endif
+                        int32 material_id = normal_entity->material_id;
+                        start_material_change(editor_state, material_id);
+                        replace_with_copy(asset_manager->allocator_pointer, &material->name, new_name);
+                        end_material_change(editor_state, material_id);
                     } else {
                         add_message(Context::message_manager, make_string("Material name already exists!"));
                     }
@@ -1064,7 +1180,7 @@ void draw_entity_box(Editor_State *editor_state, UI_Manager *ui_manager, Control
             y += row_height;
 
             if (edit_texture_pressed) {
-                //editor_state->editing_selected_entity_texture = !editor_state->editing_selected_entity_texture;
+                editor_state->editing_selected_entity_texture = !editor_state->editing_selected_entity_texture;
             }
 
             if (has_texture && editor_state->editing_selected_entity_texture) {
@@ -1127,6 +1243,8 @@ void draw_entity_box(Editor_State *editor_state, UI_Manager *ui_manager, Control
                                         default_slider_style, default_text_style,
                                         "edit_material_gloss_slider", normal_entity->material_id,
                                         &gloss_slider);
+            start_or_end_material_change(editor_state, ui_manager, gloss_slider, normal_entity->material_id);
+
             y += row_height;
             draw_row_padding(x, &y, row_width, padding_y, row_color,
                              side_flags, row_id, row_index++);
@@ -1153,17 +1271,15 @@ void draw_entity_box(Editor_State *editor_state, UI_Manager *ui_manager, Control
                 pop_layer(ui_manager);
                 handle_color_picker(editor_state, result);
 
-                // TODO: do this
-#if 0
+                int32 material_id = normal_entity->material_id;
                 if (result.started) {
-                    start_material_change(editor_state, *material);
+                    start_material_change(editor_state, material_id);
                 } else if (result.submitted) {
                     material->color_override = result.color;
-                    finalize_material_change(editor_state, level, normal_entity->material_id, *material);
+                    end_material_change(editor_state, material_id);
                 } else {
                     material->color_override = result.color;
                 }
-#endif
             } else if (color_override_pressed) {
                 editor_state->color_picker_parent = color_override_button_id;
             }
@@ -1187,10 +1303,12 @@ void draw_entity_box(Editor_State *editor_state, UI_Manager *ui_manager, Control
             y += row_height;
         
             if (toggle_color_override_pressed) {
+                start_material_change(editor_state, normal_entity->material_id);
                 material->use_color_override = !material->use_color_override;
                 if (material->texture_id < 0 && !material->use_color_override) {
                     material->use_color_override = true;
                 }
+                end_material_change(editor_state, normal_entity->material_id);
             }
         }
         draw_row_padding(x, &y, row_width, padding_y, row_color,

@@ -132,3 +132,19 @@ int32 get_mesh_id(Entity *entity) {
 
     return -1;
 }
+
+int32 get_material_id(Entity *entity) {
+    assert(has_material_field(entity));
+
+    switch (entity->type) {
+        case ENTITY_NORMAL: {
+            Normal_Entity *e = (Normal_Entity *) entity;
+            return e->material_id;
+        } break;
+        default: {
+            assert(!"Unhandled entity with mesh field.");
+        }
+    }
+
+    return -1;
+}

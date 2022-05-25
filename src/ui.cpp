@@ -41,7 +41,9 @@ UI_Image_Button_Style default_image_button_style = { 5.0f, 5.0f, 15.0f,
                                                      CONSTRAINT_FILL_BUTTON_WIDTH | CONSTRAINT_FILL_BUTTON_HEIGHT,
                                                      rgb_to_vec4(33, 62, 69),
                                                      rgb_to_vec4(47, 84, 102),
-                                                     rgb_to_vec4(19, 37, 46) };
+                                                     rgb_to_vec4(19, 37, 46),
+                                                     5.0f,
+                                                     CORNER_TOP_LEFT | CORNER_TOP_RIGHT | CORNER_BOTTOM_LEFT | CORNER_BOTTOM_RIGHT };
 
 UI_Color_Button_Style default_color_button_style = { 5.0f, 5.0f,
                                                      rgb_to_vec4(33, 62, 69),

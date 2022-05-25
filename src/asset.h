@@ -40,6 +40,12 @@ Material make_material() {
     return result;
 }
 
+Material copy(Allocator *allocator, Material material) {
+    Material result = material;
+    result.name = copy(allocator, material.name);
+    return result;
+}
+
 void deallocate(Material material) {
     deallocate(material.name);
 }

@@ -49,8 +49,11 @@ struct Editor_State {
     bool32 editing_selected_entity_mesh;
     bool32 editing_selected_entity_material;
     bool32 editing_selected_entity_texture;
-
+    
+    // for modification history
     Entity *old_entity;
+    Material *old_material;
+
     Mesh_Type mesh_library_filter;
 };
 

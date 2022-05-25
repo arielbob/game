@@ -13,11 +13,9 @@ enum Action_Type {
     ACTION_MODIFY_ENTITY,
     ACTION_MODIFY_MESH_NAME,
     ACTION_ADD_MESH,
-
-    // TODO: do this
     ACTION_DELETE_MESH,
-#if 0
     ACTION_MODIFY_MATERIAL,
+#if 0
     ACTION_ADD_MATERIAL,
     ACTION_DELETE_MATERIAL,
     ACTION_MODIFY_TEXTURE,
@@ -114,6 +112,14 @@ struct Delete_Mesh_Action {
     String filename;
     String mesh_name;
     Linked_List<int32> entity_ids;
+};
+
+struct Modify_Material_Action {
+    ACTION_HEADER
+
+    int32 material_id;
+    Material *old_material;
+    Material *new_material;
 };
 
 #endif

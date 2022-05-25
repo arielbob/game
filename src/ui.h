@@ -176,6 +176,9 @@ struct UI_Image_Button_Style {
     Vec4 normal_color;
     Vec4 hot_color;
     Vec4 active_color;
+
+    real32 corner_radius;
+    uint32 corner_flags;
 };
 
 struct UI_Image_Button {

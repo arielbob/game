@@ -34,6 +34,13 @@ void history_deallocate(Editor_State *editor_state, Editor_Action *editor_action
             deallocate(action->mesh_name);
             deallocate(&action->entity_ids);
         } break;
+        case ACTION_MODIFY_MATERIAL: {
+            Modify_Material_Action *action = (Modify_Material_Action *) editor_action;
+            deallocate(*action->old_material);
+            deallocate(*action->new_material);
+            deallocate(allocator, action->old_material);
+            deallocate(allocator, action->new_material);
+        } break;
         default: {
             assert(!"Unhandled deallocation for action type.");
         }
@@ -270,15 +277,27 @@ void undo_modify_entity(Editor_State *editor_state, Modify_Entity_Action action)
     set_entity(editor_state, entity, action.old_entity);
 }
 
-void start_entity_change(Editor_State *editor_state, Entity *entity) {
-    editor_state->old_entity = copy_cast_entity((Allocator *) &editor_state->history_heap, entity);
-}
-
 void end_entity_change(Editor_State *editor_state, Entity *entity) {
-    assert(editor_state->old_entity);
+    if (!editor_state->old_entity) {
+        return;
+    }
     Entity *new_entity = copy_cast_entity((Allocator *) &editor_state->history_heap, entity);
     do_modify_entity(editor_state, entity->id, editor_state->old_entity, new_entity);
     editor_state->old_entity = NULL;
+}
+
+void start_entity_change(Editor_State *editor_state, Entity *entity) {
+    if (editor_state->old_entity) {
+        // if UI element A comes before B in the code, if B is active, then A becomes active, A will reset
+        // old_entity before B gets to finish their change. so, to prevent this, we check for old_entity and
+        // if it's there, we finalize the change. then later, when B calls end_entity_change since it just
+        // became inactive, we just check if old_entity is NULL, meaning their change has already been
+        // finalized.
+        // NOTE: we assume that we're still on the same entity
+        end_entity_change(editor_state, entity);
+    }
+
+    editor_state->old_entity = copy_cast_entity((Allocator *) &editor_state->history_heap, entity);
 }
 
 void do_modify_mesh_name(Editor_State *editor_state, int32 mesh_id, String new_name,
@@ -403,6 +422,55 @@ void undo_delete_mesh(Editor_State *editor_state, Delete_Mesh_Action action) {
     }
 }
 
+void do_modify_material(Editor_State *editor_state, int32 material_id, Material *old_material, Material *new_material,
+                        bool32 is_redoing = false) {
+    if (!is_redoing) {
+        Modify_Material_Action action = { ACTION_MODIFY_MATERIAL };
+        action.material_id = material_id;
+        action.old_material = old_material;
+        action.new_material = new_material;
+        history_add_action(editor_state, Modify_Material_Action, action);
+    }
+
+    Asset_Manager *asset_manager = &editor_state->asset_manager;
+    Material *material = get_material_pointer(asset_manager, material_id);
+
+    deallocate(*material);
+    *material = copy(asset_manager->allocator_pointer, *new_material);
+}
+
+void undo_modify_material(Editor_State *editor_state, Modify_Material_Action action) {
+    Asset_Manager *asset_manager = &editor_state->asset_manager;
+    Material *material = get_material_pointer(asset_manager, action.material_id);
+
+    deallocate(*material);
+    *material = copy(asset_manager->allocator_pointer, *action.old_material);
+}
+
+void start_material_change(Editor_State *editor_state, int32 material_id) {
+    Asset_Manager *asset_manager = &editor_state->asset_manager;
+    Material *material = get_material_pointer(asset_manager, material_id);
+
+    Allocator *history_allocator = (Allocator *) &editor_state->history_heap;
+    Material *old_material = (Material *) allocate(history_allocator, sizeof(Material));
+    *old_material = copy((Allocator *) &editor_state->history_heap, *material);
+    editor_state->old_material = old_material;
+}
+
+void end_material_change(Editor_State *editor_state, int32 material_id) {
+    assert(editor_state->old_material);
+
+    Asset_Manager *asset_manager = &editor_state->asset_manager;
+    Material *material = get_material_pointer(asset_manager, material_id);
+
+    Allocator *history_allocator = (Allocator *) &editor_state->history_heap;
+    Material *new_material = (Material *) allocate(history_allocator, sizeof(Material));
+    *new_material = copy((Allocator *) &editor_state->history_heap, *material);
+
+    do_modify_material(editor_state, material_id, editor_state->old_material, new_material);
+    editor_state->old_material = NULL;
+}
+
 int32 history_get_num_entries(Editor_History *history) {
     if (history->start_index == -1 && history->end_index == -1) return 0;
 
@@ -471,6 +539,10 @@ void history_undo(Editor_State *editor_state) {
             Delete_Mesh_Action *action = (Delete_Mesh_Action *) current_action;
             undo_delete_mesh(editor_state, *action);
         } break;
+        case ACTION_MODIFY_MATERIAL: {
+            Modify_Material_Action *action = (Modify_Material_Action *) current_action;
+            undo_modify_material(editor_state, *action);
+        } break;
         default: {
             assert(!"Unhandled editor action type.");
             return;
@@ -533,6 +605,10 @@ void history_redo(Editor_State *editor_state) {
         case ACTION_DELETE_MESH: {
             Delete_Mesh_Action *action = (Delete_Mesh_Action *) redo_action;
             do_delete_mesh(editor_state, action->mesh_id, true);
+        } break;
+        case ACTION_MODIFY_MATERIAL: {
+            Modify_Material_Action *action = (Modify_Material_Action *) redo_action;
+            do_modify_material(editor_state, action->material_id, action->old_material, action->new_material, true);
         } break;
         default: {
             assert(!"Unhandled editor action type.");

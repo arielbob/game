@@ -462,7 +462,7 @@
 //       - TODO (done): mesh name changes
 //       - TODO (done): mesh adding
 //       - TODO (done): mesh deleting
-//       - TODO: material changes
+//       - TODO (done): material changes
 //       - TODO: material adding
 //       - TODO: material deleting
 //       - TODO: texture changing/adding/deleting
@@ -2344,8 +2344,8 @@ void gl_draw_ui_image_button(GL_State *gl_state,
         color = style.normal_color;
     }
 
-    gl_draw_quad(gl_state, render_state, button.x, button.y,
-                 button.width, button.height + style.footer_height, color);
+    Rect rect = { button.x, button.y, button.width, button.height + style.footer_height };
+    gl_draw_rounded_quad(gl_state, render_state, rect, style.corner_radius, style.corner_flags, color);
 
     GL_Texture texture;
     uint32 texture_exists = hash_table_find(gl_state->texture_table, button.texture_id, &texture);

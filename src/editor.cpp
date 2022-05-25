@@ -752,13 +752,10 @@ void draw_editor(Game_State *game_state, Controller_State *controller_state) {
         if (editor_state->open_window_flags & MATERIAL_LIBRARY_WINDOW) {
             draw_material_library(editor_state, ui_manager, controller_state, render_state, selected_entity);
         } else if (editor_state->open_window_flags & TEXTURE_LIBRARY_WINDOW) {
-            // TODO: do this
-#if 0
-            int32 material_id;
-            Material *selected_material = get_entity_material(&game_state->current_level,
-                                                              selected_entity, &material_id);
-            draw_texture_library(material_id, selected_material);
-#endif
+            if (has_material_field(selected_entity)) {
+                draw_texture_library(editor_state, ui_manager, controller_state, render_state,
+                                     get_material_id(selected_entity));
+            }
         } else if (editor_state->open_window_flags & MESH_LIBRARY_WINDOW) {
             draw_mesh_library(editor_state, ui_manager, controller_state, render_state, selected_entity);
         }
