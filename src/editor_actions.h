@@ -1,6 +1,8 @@
 #ifndef EDITOR_ACTIONS_H
 #define EDITOR_ACTIONS_H
 
+#include "linked_list.h"
+
 #define MAX_EDITOR_HISTORY_ENTRIES 1024
 
 enum Action_Type {
@@ -11,8 +13,10 @@ enum Action_Type {
     ACTION_MODIFY_ENTITY,
     ACTION_MODIFY_MESH_NAME,
     ACTION_ADD_MESH,
-#if 0
+
+    // TODO: do this
     ACTION_DELETE_MESH,
+#if 0
     ACTION_MODIFY_MATERIAL,
     ACTION_ADD_MATERIAL,
     ACTION_DELETE_MATERIAL,
@@ -101,6 +105,15 @@ struct Add_Mesh_Action {
     int32 entity_id;
     String filename;
     String name;
+};
+
+struct Delete_Mesh_Action {
+    ACTION_HEADER
+
+    int32 mesh_id;
+    String filename;
+    String mesh_name;
+    Linked_List<int32> entity_ids;
 };
 
 #endif

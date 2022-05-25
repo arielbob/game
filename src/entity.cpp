@@ -1,5 +1,13 @@
 #include "entity.h"
 
+bool32 has_mesh_field(Entity *entity) {
+    return (entity->type == ENTITY_NORMAL);
+}
+
+bool32 has_material_field(Entity *entity) {
+    return (entity->type == ENTITY_NORMAL);
+}
+
 void update_entity_aabb(Asset_Manager *asset_manager, Entity *entity) {
     switch (entity->type) {
         case ENTITY_NORMAL: {
@@ -75,7 +83,7 @@ void update_entity_scale(Asset_Manager *asset_manager, Entity *entity, Vec3 new_
 #endif
 }
 
-void set_entity_material(Entity *entity, int32 material_id) {
+void set_material(Entity *entity, int32 material_id) {
     assert(has_material_field(entity));
 
     switch (entity->type) {
@@ -89,8 +97,10 @@ void set_entity_material(Entity *entity, int32 material_id) {
     }
 }
 
-void set_entity_mesh(Entity *entity, int32 mesh_id, int32 *original_mesh_id = NULL) {
+void set_mesh(Asset_Manager *asset_manager, Entity *entity, int32 mesh_id, int32 *original_mesh_id = NULL) {
     assert(has_mesh_field(entity));
+
+    Mesh *mesh = get_mesh_pointer(asset_manager, mesh_id);
 
     switch (entity->type) {
         case ENTITY_NORMAL: {
@@ -99,9 +109,26 @@ void set_entity_mesh(Entity *entity, int32 mesh_id, int32 *original_mesh_id = NU
                 *original_mesh_id = e->mesh_id;
             }
             e->mesh_id = mesh_id;
+            e->transformed_aabb = transform_aabb(mesh->aabb, e->transform);
         } break;
         default: {
             assert(!"Unhandled entity with mesh field.");
         }
     }
+}
+
+int32 get_mesh_id(Entity *entity) {
+    assert(has_mesh_field(entity));
+
+    switch (entity->type) {
+        case ENTITY_NORMAL: {
+            Normal_Entity *e = (Normal_Entity *) entity;
+            return e->mesh_id;
+        } break;
+        default: {
+            assert(!"Unhandled entity with mesh field.");
+        }
+    }
+
+    return -1;
 }

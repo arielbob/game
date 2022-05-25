@@ -355,7 +355,7 @@ void draw_mesh_library(Editor_State *editor_state, UI_Manager *ui_manager, Contr
 
     if (picked_mesh_id >= 0) {
         start_entity_change(editor_state, entity);
-        set_entity_mesh(entity, picked_mesh_id);
+        set_mesh(asset_manager, entity, picked_mesh_id);
         end_entity_change(editor_state, entity);
 
         editor_state->open_window_flags = 0;
@@ -453,7 +453,7 @@ void draw_material_library(Editor_State *editor_state, UI_Manager *ui_manager, C
     
     if (picked_material_id >= 0) {
         start_entity_change(editor_state, entity);
-        set_entity_material(entity, picked_material_id);
+        set_material(entity, picked_material_id);
         end_entity_change(editor_state, entity);
         editor_state->open_window_flags = 0;
     }
@@ -695,17 +695,7 @@ void draw_entity_box(Editor_State *editor_state, UI_Manager *ui_manager, Control
 
         if (delete_mesh_pressed) {
             assert(mesh->type == Mesh_Type::LEVEL);
-            // TODO: do this
-#if 0
-            Delete_Mesh_Action action = make_delete_mesh_action(normal_entity->mesh_id,
-                                                                make_string(mesh->filename),
-                                                                make_string(mesh->name));
-            //editor_delete_mesh(editor_state, asset_manager, level, action);
-#if 0
-            level_delete_mesh(asset_manager, level, normal_entity->mesh_id);
-#endif
-            editor_state->editing_selected_entity_mesh = false;
-#endif
+            do_delete_mesh(editor_state, normal_entity->mesh_id);
         }
 
         x += small_button_width + padding_x;

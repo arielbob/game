@@ -241,7 +241,6 @@ inline bool32 was_clicked(Controller_Button_State button_state);
 inline bool32 being_held(Controller_Button_State button_state);
 inline bool32 just_pressed(Controller_Button_State button_state);
 inline bool32 just_lifted(Controller_Button_State button_state);
-void set_entity_mesh(Asset_Manager *asset_manager, Entity *entity, int32 mesh_id);
 void update_render_state(Render_State *render_state);
 Vec3 cursor_pos_to_world_space(Vec2 cursor_pos, Render_State *render_state);
 int32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, bool32 include_backside,
@@ -253,6 +252,6 @@ bool32 get_walkable_triangle_on_mesh(Vec3 center, real32 radius,
                                      Get_Walkable_Triangle_On_Mesh_Result *result);
 void add_debug_line(Debug_State *debug_state, Vec3 start, Vec3 end, Vec4 color);
 void add_message(Message_Manager *manager, String text);
-void set_entity_transform(Asset_Manager *asset_manager, Entity *entity, Transform transform);
+//void set_entity_transform(Asset_Manager *asset_manager, Entity *entity, Transform transform);
 
 #endif

@@ -37,5 +37,9 @@ typedef double real64;
 
 typedef uint32 bool32;
 
+void deallocate(int32) {
+    // no-op
+}
+
 #define COMMON_H
 #endif

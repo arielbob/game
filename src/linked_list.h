@@ -2,8 +2,8 @@
 #define LINKED_LIST_H
 
 #define FOR_LIST_NODES(type, linked_list) \
-    for (Node<type> *current_node = linked_list.cap.next; \
-         current_node != &linked_list.cap; \
+    for (Node<type> *current_node = linked_list.cap->next; \
+         current_node != linked_list.cap; \
          current_node = current_node->next) 
 
 template <class T>
@@ -16,7 +16,7 @@ struct Node {
 template <class T>
 struct Linked_List {
     Allocator *allocator;
-    Node<T> cap;
+    Node<T> *cap;
     int32 num_entries;
     int32 total_added_ever;
 };
@@ -35,8 +35,9 @@ Linked_List<T> make_linked_list(Allocator *allocator) {
 template <class T>
 void init_linked_list(Linked_List<T> *list) {
     // an empty linked list just has a single node whose prev and next pointers point to itself
-    list->cap.prev = &list->cap;
-    list->cap.next = &list->cap;
+    list->cap = (Node<T> *) allocate(list->allocator, sizeof(Node<T>), true);
+    list->cap->prev = list->cap;
+    list->cap->next = list->cap;
 }
 
 template <class T>
@@ -44,7 +45,7 @@ void add(Linked_List<T> *list, T value) {
     Node<T> *new_node = (Node<T> *) allocate(list->allocator, sizeof(Node<T>));
     new_node->value = value;
 
-    Node<T> *cap = &list->cap;
+    Node<T> *cap = list->cap;
     cap->prev->next = new_node;
     new_node->next = cap;
     new_node->prev = cap->prev;
@@ -71,8 +72,8 @@ void remove(Linked_List<T> *list, Node<T> *node) {
 
 template <class T>
 void deallocate(Linked_List<T> *list) {
-    Node<T> *current_node = list->cap.next;
-    while (current_node != &list->cap) {
+    Node<T> *current_node = list->cap->next;
+    while (current_node != list->cap) {
         Node<T> *next = current_node->next;
         remove(list, current_node);
         current_node = next;
@@ -81,7 +82,7 @@ void deallocate(Linked_List<T> *list) {
 
 template <class T>
 bool32 is_last(Linked_List<T> *list, Node<T> *node) {
-    return (node->next == &list->cap);
+    return (node->next == list->cap);
 }
 
 #endif

@@ -22,14 +22,6 @@ struct Entity {
     ENTITY_HEADER
 };
 
-bool32 has_mesh_field(Entity *entity) {
-    return (entity->type == ENTITY_NORMAL);
-}
-
-bool32 has_material_field(Entity *entity) {
-    return (entity->type == ENTITY_NORMAL);
-}
-
 void deallocate(Entity *) {
     // nothing to deallocate. usually entity structs are deallocated another way and not through this procedure.
 }

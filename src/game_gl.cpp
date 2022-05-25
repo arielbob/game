@@ -461,7 +461,7 @@
 //       - TODO (done): entity changes
 //       - TODO (done): mesh name changes
 //       - TODO (done): mesh adding
-//       - TODO: mesh deleting (remember to save entities that use the mesh)
+//       - TODO (done): mesh deleting
 //       - TODO: material changes
 //       - TODO: material adding
 //       - TODO: material deleting
