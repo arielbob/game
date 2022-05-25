@@ -40,6 +40,13 @@ Material make_material() {
     return result;
 }
 
+Material make_material(String name, int32 texture_id, real32 gloss, Vec4 color_override, bool32 use_color_override) {
+    Material result = {
+        name, texture_id, gloss, color_override, use_color_override
+    };
+    return result;
+}
+
 Material copy(Allocator *allocator, Material material) {
     Material result = material;
     result.name = copy(allocator, material.name);

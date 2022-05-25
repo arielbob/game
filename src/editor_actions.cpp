@@ -41,6 +41,10 @@ void history_deallocate(Editor_State *editor_state, Editor_Action *editor_action
             deallocate(allocator, action->old_material);
             deallocate(allocator, action->new_material);
         } break;
+        case ACTION_ADD_MATERIAL: {
+            Add_Material_Action *action = (Add_Material_Action *) editor_action;
+            deallocate(action->name);
+        } break;
         default: {
             assert(!"Unhandled deallocation for action type.");
         }
@@ -471,6 +475,40 @@ void end_material_change(Editor_State *editor_state, int32 material_id) {
     editor_state->old_material = NULL;
 }
 
+void do_add_material(Editor_State *editor_state, String material_name, int32 entity_id, int32 material_id = -1,
+                     bool32 is_redoing = false) {
+    Asset_Manager *asset_manager = &editor_state->asset_manager;
+    
+    Allocator *allocator = asset_manager->allocator_pointer;
+    String name = copy(allocator, material_name);
+
+    Material new_material = make_material(name, -1, 50.0f, make_vec4(0.0f, 0.0f, 0.0f, 1.0f), true);
+    int32 id = add_material(asset_manager, new_material, material_id);
+
+    Entity *entity = get_entity(editor_state, entity_id);
+    int32 original_material_id;
+    set_material(entity, id, &original_material_id);
+
+    if (!is_redoing) {
+        Allocator *history_allocator = (Allocator *) &editor_state->history_heap;
+        material_name = copy(history_allocator, material_name);
+
+        Add_Material_Action action = { ACTION_ADD_MATERIAL };
+        action.entity_id = entity_id;
+        action.material_id = id;
+        action.name = material_name;
+        action.original_material_id = original_material_id;
+        history_add_action(editor_state, Add_Material_Action, action);
+    }
+}
+
+void undo_add_material(Editor_State *editor_state, Add_Material_Action action) {
+    Asset_Manager *asset_manager = &editor_state->asset_manager;
+    delete_material(asset_manager, action.material_id);
+    Entity *entity = get_entity(editor_state, action.entity_id);
+    set_material(entity, action.original_material_id);
+}
+
 int32 history_get_num_entries(Editor_History *history) {
     if (history->start_index == -1 && history->end_index == -1) return 0;
 
@@ -543,6 +581,10 @@ void history_undo(Editor_State *editor_state) {
             Modify_Material_Action *action = (Modify_Material_Action *) current_action;
             undo_modify_material(editor_state, *action);
         } break;
+        case ACTION_ADD_MATERIAL: {
+            Add_Material_Action *action = (Add_Material_Action *) current_action;
+            undo_add_material(editor_state, *action);
+        } break;
         default: {
             assert(!"Unhandled editor action type.");
             return;
@@ -609,6 +651,10 @@ void history_redo(Editor_State *editor_state) {
         case ACTION_MODIFY_MATERIAL: {
             Modify_Material_Action *action = (Modify_Material_Action *) redo_action;
             do_modify_material(editor_state, action->material_id, action->old_material, action->new_material, true);
+        } break;
+        case ACTION_ADD_MATERIAL: {
+            Add_Material_Action *action = (Add_Material_Action *) redo_action;
+            do_add_material(editor_state, action->name, action->material_id, action->entity_id, true);
         } break;
         default: {
             assert(!"Unhandled editor action type.");

@@ -252,10 +252,20 @@ int32 texture_name_exists(Asset_Manager *asset_manager, String texture_name) {
     return false;
 }
 
-int32 add_material(Asset_Manager *asset_manager, Material material) {
-    int32 material_id = asset_manager->material_table.total_added_ever;
-    hash_table_add(&asset_manager->material_table, material_id, material);
-    return material_id;
+int32 add_material(Asset_Manager *asset_manager, Material material, int32 existing_id = -1) {
+    int32 id;
+    if (existing_id >= 0) {
+        id = existing_id;
+    } else {
+        id = asset_manager->material_table.total_added_ever;
+    }
+
+    hash_table_add(&asset_manager->material_table, id, material);
+    return id;
+}
+
+void delete_material(Asset_Manager *asset_manager, int32 material_id) {
+    hash_table_remove(&asset_manager->material_table, material_id);
 }
 
 Material get_material(Asset_Manager *asset_manager, int32 material_id) {
@@ -298,6 +308,22 @@ int32 material_name_exists(Asset_Manager *asset_manager, String material_name) {
         }
     }
 
+    return false;
+}
+
+bool32 generate_material_name(Asset_Manager *asset_manager, char *buffer, int32 buffer_size) {
+    int32 num_attempts = 0;
+    while (num_attempts < MAX_MATERIALS + 1) {
+        char *format = (num_attempts == 0) ? "New Material" : "New Material %d";
+        string_format(buffer, buffer_size, format, num_attempts + 1);
+        if (!material_name_exists(asset_manager, make_string(buffer))) {
+            return true;
+        }
+
+        num_attempts++;
+    }
+
+    assert(!"Could not generate material name.");
     return false;
 }
 

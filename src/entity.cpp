@@ -83,12 +83,15 @@ void update_entity_scale(Asset_Manager *asset_manager, Entity *entity, Vec3 new_
 #endif
 }
 
-void set_material(Entity *entity, int32 material_id) {
+void set_material(Entity *entity, int32 material_id, int32 *original_material_id = NULL) {
     assert(has_material_field(entity));
 
     switch (entity->type) {
         case ENTITY_NORMAL: {
             Normal_Entity *e = (Normal_Entity *) entity;
+            if (original_material_id) {
+                *original_material_id = e->material_id;
+            }
             e->material_id = material_id;
         } break;
         default: {

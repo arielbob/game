@@ -204,6 +204,22 @@ bool32 editor_add_mesh_press(Editor_State *editor_state, int32 entity_id) {
     return false;
 }
 
+void editor_add_material_press(Editor_State *editor_state, int32 entity_id) {
+    Asset_Manager *asset_manager = &editor_state->asset_manager;
+
+    Marker m = begin_region();
+    
+    char *material_name_buffer = (char *) region_push(MATERIAL_NAME_MAX_SIZE);
+    bool32 result = generate_material_name(asset_manager, material_name_buffer, MATERIAL_NAME_MAX_SIZE);
+    assert(result);
+
+    String material_name = make_string(material_name_buffer);
+
+    do_add_material(editor_state, material_name, entity_id);
+
+    end_region(m);
+}
+
 void draw_texture_library(Editor_State *editor_state, UI_Manager *ui_manager, Controller_State *controller_state,
                            Render_State *render_state, int32 material_id) {
     Asset_Manager *asset_manager = &editor_state->asset_manager;
@@ -1014,14 +1030,7 @@ void draw_entity_box(Editor_State *editor_state, UI_Manager *ui_manager, Control
         x += add_material_button_width + padding_x;
 
         if (add_material_pressed) {
-            // update the material variable with the new material
-            // TODO: do this
-#if 0
-            Add_Material_Action action = make_add_material_action(normal_entity->type, entity_id);
-            int32 result_id = editor_add_material(editor_state, level, action);
-            material = get_material_pointer(level, result_id);
-            editor_state->editing_selected_entity_material = true;
-#endif
+            editor_add_material_press(editor_state, entity_id);
         }
 
         real32 edit_material_button_width = row_width - (x - initial_x) - padding_x;
