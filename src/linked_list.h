@@ -70,6 +70,9 @@ void remove(Linked_List<T> *list, Node<T> *node) {
     list->num_entries--;
 }
 
+// TODO: ideally this doesn't accept a pointer, and instead just takes a regular object. we don't really need to
+// use remove(), since deallocate assumes that the linked list won't be used anymore, i.e. we won't need an
+// up-to-date num_entries value.
 template <class T>
 void deallocate(Linked_List<T> *list) {
     Node<T> *current_node = list->cap->next;

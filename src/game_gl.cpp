@@ -464,7 +464,7 @@
 //       - TODO (done): mesh deleting
 //       - TODO (done): material changes
 //       - TODO (done): material adding
-//       - TODO: material deleting
+//       - TODO (done): material deleting
 //       - TODO: texture changing/adding/deleting
 //       - TODO: point light changes (same as entity changes)
 

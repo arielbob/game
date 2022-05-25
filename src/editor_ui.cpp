@@ -1006,15 +1006,7 @@ void draw_entity_box(Editor_State *editor_state, UI_Manager *ui_manager, Control
                                                             "delete_material");
 
             if (delete_material_pressed) {
-                // TODO: do this
-#if 0
-                Delete_Material_Action action = make_delete_material_action(normal_entity->material_id, *material);
-                editor_delete_material(editor_state, level, action);
-
-                //level_delete_material(level, normal_entity->material_id);
-                editor_state->editing_selected_entity_material = false;
-#endif
-
+                do_delete_material(editor_state, normal_entity->material_id);
             }
 
             x += small_button_width;
