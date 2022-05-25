@@ -1348,9 +1348,15 @@ void draw_entity_box(Editor_State *editor_state, UI_Manager *ui_manager, Control
                                                             make_vec4(point_light->light_color, 1.0f),
                                                             "editor_color_picker", entity_id);
             pop_layer(ui_manager);
-            point_light->light_color = truncate_v4_to_v3(result.color);
-            if (result.should_hide) {
-                editor_state->color_picker_parent = {};
+            handle_color_picker(editor_state, result);
+
+            if (result.started) {
+                start_entity_change(editor_state, entity);
+            } else if (result.submitted) {
+                point_light->light_color = truncate_v4_to_v3(result.color);
+                end_entity_change(editor_state, entity);
+            } else {
+                point_light->light_color = truncate_v4_to_v3(result.color);
             }
         } else if (point_light_color_pressed) {
             editor_state->color_picker_parent = point_light_color_button_id;
@@ -1393,6 +1399,9 @@ void draw_entity_box(Editor_State *editor_state, UI_Manager *ui_manager, Control
         y += row_height;
         draw_row_padding(x, &y, row_width, padding_y, row_color,
                          side_flags | SIDE_BOTTOM, row_id, row_index++);
+
+        start_or_end_entity_change(editor_state, ui_manager, falloff_start_slider, entity);
+        start_or_end_entity_change(editor_state, ui_manager, falloff_end_slider, entity);
     }
 
     // DELETE ENTITY

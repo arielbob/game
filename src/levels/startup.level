@@ -101,10 +101,10 @@ falloff_start 0.000000
 falloff_end 4.418494
 
 type point_light
-position 3.908722 0.000000 1.973905
+position 3.908722 1.626052 1.444157
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
 light_color 0.160000 0.160000 0.160000
 falloff_start 0.000000
-falloff_end 47.032669
+falloff_end 5.000000
 }
