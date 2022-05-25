@@ -468,16 +468,9 @@
 //       - TODO (done): texture changing
 //       - TODO (done): texture adding
 //       - TODO (done): texture deleting
-//       - TODO: point light changes (same as entity changes)
+//       - TODO (done): point light changes
+//       - TODO (done): load default level using new format
 
-//       - TODO: load default level using new format
-
-//       - TODO: error handling in level loading
-
-//       - TODO: all editor stuff will be stored using a heap
-//       - TODO: entities will still be stored in a table
-//       - TODO: all strings will be stored in a heap
-//       - TODO: levels will now be loaded into an intermediate temporary structure
 //       - TODO: when we need to play the game, we take the editor state and load it into the intermediate level
 //               struct
 //       - TODO: the game data will store the level data in its own way that makes it more efficient. it can do this
@@ -489,7 +482,10 @@
 //               handled for you and to get the header you can just subtract sizeof(header) from a pointer to some
 //               allocation.
 
+// TODO: switch to play mode
+
 // TODO: collision with OBBs
+// TODO: error handling in level loading
 
 // TODO: make_string() with formatting built in with arguments
 

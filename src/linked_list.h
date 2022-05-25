@@ -84,6 +84,16 @@ void deallocate(Linked_List<T> *list) {
 }
 
 template <class T>
+void clear(Linked_List<T> *list) {
+    Node<T> *current_node = list->cap->next;
+    while (current_node != list->cap) {
+        Node<T> *next = current_node->next;
+        remove(list, current_node);
+        current_node = next;
+    }
+}
+
+template <class T>
 bool32 is_last(Linked_List<T> *list, Node<T> *node) {
     return (node->next == list->cap);
 }

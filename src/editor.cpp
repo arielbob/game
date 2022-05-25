@@ -81,6 +81,14 @@ void unload_level(Editor_State *editor_state) {
     unload_level_assets(&editor_state->asset_manager);
 
     Editor_Level *level = &editor_state->level;
+
+    // deallocate the entity structs. this is different from what happens when we deallocate the linked list.
+    // the linked list holds Entity pointers. it does not follow the pointers and delete those. so we have to
+    // delete the entity data ourselves.
+    FOR_LIST_NODES(Entity *, level->entities) {
+        deallocate((Allocator *) &editor_state->entity_heap, current_node->value);
+    }
+
     deallocate(level);
     editor_state->should_unload_level_gpu_data = true;
 }
