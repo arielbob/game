@@ -48,6 +48,22 @@ bool32 mesh_name_exists(Asset_Manager *asset_manager, String name) {
     return false;
 }
 
+bool32 generate_mesh_name(Asset_Manager *asset_manager, char *buffer, int32 buffer_size) {
+    int32 num_attempts = 0;
+    while (num_attempts < MAX_MESHES + 1) {
+        char *format = (num_attempts == 0) ? "New Mesh" : "New Mesh %d";
+        string_format(buffer, buffer_size, format, num_attempts + 1);
+        if (!mesh_name_exists(asset_manager, make_string(buffer))) {
+            return true;
+        }
+
+        num_attempts++;
+    }
+
+    assert(!"Could not generate mesh name.");
+    return false;
+}
+
 Mesh get_mesh_by_name(Asset_Manager *asset_manager, String mesh_name, int32 *mesh_id) {
     Hash_Table<int32, Mesh> mesh_table = asset_manager->mesh_table;
 
@@ -171,10 +187,20 @@ Font get_font(Asset_Manager *asset_manager, char *font_name, int32 *id = NULL) {
     return {};
 }
 
-int32 add_mesh(Asset_Manager *asset_manager, Mesh mesh) {
-    int32 mesh_id = asset_manager->mesh_table.total_added_ever;
-    hash_table_add(&asset_manager->mesh_table, mesh_id, mesh);
-    return mesh_id;
+int32 add_mesh(Asset_Manager *asset_manager, Mesh mesh, int32 existing_id = -1) {
+    int32 id;
+    if (existing_id >= 0) {
+        id = existing_id;
+    } else {
+        id = asset_manager->mesh_table.total_added_ever;
+    }
+    
+    hash_table_add(&asset_manager->mesh_table, id, mesh);
+    return id;
+}
+
+void delete_mesh(Asset_Manager *asset_manager, int32 mesh_id) {
+    hash_table_remove(&asset_manager->mesh_table, mesh_id);
 }
 
 int32 add_texture(Asset_Manager *asset_manager, Texture texture) {

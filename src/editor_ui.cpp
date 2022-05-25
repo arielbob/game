@@ -169,6 +169,31 @@ void start_or_end_entity_change(Editor_State *editor_state,
     }
 }
 
+bool32 editor_add_mesh_press(Editor_State *editor_state, int32 entity_id) {
+    Asset_Manager *asset_manager = &editor_state->asset_manager;
+
+    Marker m = begin_region();
+    char *absolute_filename = (char *) region_push(PLATFORM_MAX_PATH);
+    
+    if (platform_open_file_dialog(absolute_filename, PLATFORM_MAX_PATH)) {
+        char *mesh_name_buffer = (char *) region_push(MESH_NAME_MAX_SIZE);
+        bool32 result = generate_mesh_name(asset_manager, mesh_name_buffer, MESH_NAME_MAX_SIZE);
+        assert(result);
+        String mesh_name = make_string(mesh_name_buffer);
+
+        char *relative_filename = (char *) region_push(PLATFORM_MAX_PATH);
+        platform_get_relative_path(absolute_filename, relative_filename, PLATFORM_MAX_PATH);
+        String filename = make_string(relative_filename);
+
+        do_add_mesh(editor_state, filename, mesh_name, entity_id);
+
+        end_region(m);
+        return true;
+    }
+
+    return false;
+}
+
 void draw_mesh_library(Editor_State *editor_state, UI_Manager *ui_manager, Controller_State *controller_state,
                        Render_State *render_state,
                        Entity *entity) {
@@ -694,14 +719,11 @@ void draw_entity_box(Editor_State *editor_state, UI_Manager *ui_manager, Control
 
         bool32 mesh_added = false;
         if (add_mesh_pressed) {
-            // TODO: do this
-#if 0
-            mesh_added = editor_add_mesh_press(editor_state, asset_manager, &game_state->current_level);
+            mesh_added = editor_add_mesh_press(editor_state, normal_entity->id);
             if (mesh_added) {
                 editor_state->editing_selected_entity_mesh = true;
                 mesh = get_mesh_pointer(asset_manager, normal_entity->mesh_id);
             }
-#endif
         }
 
         real32 edit_mesh_button_width = row_width - (x - initial_x) - padding_x;

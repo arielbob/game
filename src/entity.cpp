@@ -89,12 +89,15 @@ void set_entity_material(Entity *entity, int32 material_id) {
     }
 }
 
-void set_entity_mesh(Entity *entity, int32 mesh_id) {
+void set_entity_mesh(Entity *entity, int32 mesh_id, int32 *original_mesh_id = NULL) {
     assert(has_mesh_field(entity));
 
     switch (entity->type) {
         case ENTITY_NORMAL: {
             Normal_Entity *e = (Normal_Entity *) entity;
+            if (original_mesh_id) {
+                *original_mesh_id = e->mesh_id;
+            }
             e->mesh_id = mesh_id;
         } break;
         default: {

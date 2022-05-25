@@ -10,8 +10,8 @@ enum Action_Type {
     ACTION_DELETE_ENTITY,
     ACTION_MODIFY_ENTITY,
     ACTION_MODIFY_MESH_NAME,
-#if 0
     ACTION_ADD_MESH,
+#if 0
     ACTION_DELETE_MESH,
     ACTION_MODIFY_MATERIAL,
     ACTION_ADD_MATERIAL,
@@ -91,6 +91,16 @@ struct Modify_Mesh_Name_Action {
     int32 mesh_id;
     String old_name;
     String new_name;
+};
+
+struct Add_Mesh_Action {
+    ACTION_HEADER
+
+    int32 mesh_id;
+    int32 original_mesh_id;
+    int32 entity_id;
+    String filename;
+    String name;
 };
 
 #endif

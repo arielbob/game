@@ -23,6 +23,11 @@ void history_deallocate(Editor_State *editor_state, Editor_Action *editor_action
             deallocate(action->old_name);
             deallocate(action->new_name);
         } break;
+        case ACTION_ADD_MESH: {
+            Add_Mesh_Action *action = (Add_Mesh_Action *) editor_action;
+            deallocate(action->filename);
+            deallocate(action->name);
+        } break;
         default: {
             assert(!"Unhandled deallocation for action type.");
         }
@@ -296,6 +301,43 @@ void undo_modify_mesh_name(Editor_State *editor_state, Modify_Mesh_Name_Action a
     replace_with_copy(asset_manager->allocator_pointer, &mesh->name, action.old_name);
 }
 
+void do_add_mesh(Editor_State *editor_state, String mesh_filename, String mesh_name, int32 entity_id,
+                 int32 mesh_id = -1, bool32 is_redoing = false) {
+    Asset_Manager *asset_manager = &editor_state->asset_manager;
+    
+    Allocator *allocator = asset_manager->allocator_pointer;
+    String filename = copy(allocator, mesh_filename);
+    String name = copy(allocator, mesh_name);
+
+    Mesh mesh = read_and_load_mesh(allocator, filename, name, Mesh_Type::LEVEL);
+    int32 id = add_mesh(asset_manager, mesh, mesh_id);
+
+    Entity *entity = get_entity(editor_state, entity_id);
+    int32 original_mesh_id;
+    set_entity_mesh(entity, id, &original_mesh_id);
+
+    if (!is_redoing) {
+        Allocator *history_allocator = (Allocator *) &editor_state->history_heap;
+        mesh_filename = copy(history_allocator, mesh_filename);
+        mesh_name = copy(history_allocator, mesh_name);
+
+        Add_Mesh_Action action = { ACTION_ADD_MESH };
+        action.entity_id = entity_id;
+        action.mesh_id = id;
+        action.filename = mesh_filename;
+        action.name = mesh_name;
+        action.original_mesh_id = original_mesh_id;
+        history_add_action(editor_state, Add_Mesh_Action, action);
+    }
+}
+
+void undo_add_mesh(Editor_State *editor_state, Add_Mesh_Action action) {
+    Asset_Manager *asset_manager = &editor_state->asset_manager;
+    delete_mesh(asset_manager, action.mesh_id);
+    Entity *entity = get_entity(editor_state, action.entity_id);
+    set_entity_mesh(entity, action.original_mesh_id);
+}
+
 int32 history_get_num_entries(Editor_History *history) {
     if (history->start_index == -1 && history->end_index == -1) return 0;
 
@@ -356,6 +398,10 @@ void history_undo(Editor_State *editor_state) {
             Modify_Mesh_Name_Action *action = (Modify_Mesh_Name_Action *) current_action;
             undo_modify_mesh_name(editor_state, *action);
         } break;
+        case ACTION_ADD_MESH: {
+            Add_Mesh_Action *action = (Add_Mesh_Action *) current_action;
+            undo_add_mesh(editor_state, *action);
+        } break;
         default: {
             assert(!"Unhandled editor action type.");
             return;
@@ -410,6 +456,10 @@ void history_redo(Editor_State *editor_state) {
         case ACTION_MODIFY_MESH_NAME: {
             Modify_Mesh_Name_Action *action = (Modify_Mesh_Name_Action *) redo_action;
             do_modify_mesh_name(editor_state, action->mesh_id, action->new_name, true);
+        } break;
+        case ACTION_ADD_MESH: {
+            Add_Mesh_Action *action = (Add_Mesh_Action *) redo_action;
+            do_add_mesh(editor_state, action->filename, action->name, action->entity_id, action->mesh_id, true);
         } break;
         default: {
             assert(!"Unhandled editor action type.");
