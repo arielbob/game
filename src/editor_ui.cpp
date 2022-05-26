@@ -686,8 +686,6 @@ void draw_entity_box(Editor_State *editor_state, UI_Manager *ui_manager, Control
     char *buf;
     int32 buffer_size = 16;
     
-    Allocator *persistent_string_allocator = (Allocator *) &memory.string64_pool;
-
     // POSITION
     draw_row(x, y, row_width, small_row_height, row_color, side_flags, row_id, row_index++);
     draw_v_centered_text(x+padding_x, y, small_row_height,

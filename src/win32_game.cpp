@@ -54,6 +54,7 @@ global_variable Allocator *temp_region;
 #include "editor_actions.cpp"
 #include "editor_ui.cpp"
 #include "editor.cpp"
+#include "walk.cpp"
 #include "game.cpp"
 
 global_variable int64 perf_counter_frequency;
@@ -718,35 +719,18 @@ bool32 win32_init_memory() {
     uint32 hash_table_stack_size = MEGABYTES(8);
     uint32 game_data_arena_size = GIGABYTES(1);
     uint32 font_arena_size = MEGABYTES(64);
-    uint32 common_mesh_arena_size = MEGABYTES(8);
-    uint32 string_arena_size = MEGABYTES(64);
     uint32 frame_arena_size = MEGABYTES(64);
-    uint32 string64_pool_size = MEGABYTES(64);
-    uint32 filename_pool_size = MEGABYTES(8);
+
     uint32 ui_state_heap_size = MEGABYTES(64);
     uint32 editor_arena_size = MEGABYTES(256);
-
-    // level memory
-    uint32 level_mesh_heap_size = MEGABYTES(64);
-    uint32 level_arena_size = MEGABYTES(64);
-    uint32 level_string64_pool_size = MEGABYTES(64);
-    uint32 level_filename_pool_size = MEGABYTES(64);
 
     uint32 total_memory_size = (global_stack_size +
                                 hash_table_stack_size +
                                 game_data_arena_size +
                                 font_arena_size +
-                                common_mesh_arena_size +
-                                string_arena_size +
                                 frame_arena_size +
-                                string64_pool_size +
-                                filename_pool_size +
                                 ui_state_heap_size +
-                                editor_arena_size +
-                                level_arena_size +
-                                level_string64_pool_size +
-                                level_filename_pool_size +
-                                level_mesh_heap_size);
+                                editor_arena_size);
     void *memory_base = VirtualAlloc(0, total_memory_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
     if (memory_base) {
@@ -767,25 +751,9 @@ bool32 win32_init_memory() {
         memory.font_arena = font_arena;
         base = (uint8 *) base + font_arena_size;
 
-        Arena_Allocator common_mesh_arena = make_arena_allocator(base, common_mesh_arena_size);
-        memory.common_mesh_arena = common_mesh_arena;
-        base = (uint8 *) base + common_mesh_arena_size;
-
-        Arena_Allocator string_arena = make_arena_allocator(base, string_arena_size);
-        memory.string_arena = string_arena;
-        base = (uint8 *) base + string_arena_size;
-
         Arena_Allocator frame_arena = make_arena_allocator(base, frame_arena_size);
         memory.frame_arena = frame_arena;
         base = (uint8 *) base + frame_arena_size;
-
-        Pool_Allocator string64_pool = make_pool_allocator(base, 64, string64_pool_size);
-        memory.string64_pool = string64_pool;
-        base = (uint8 *) base + string64_pool_size;
-
-        Pool_Allocator filename_pool = make_pool_allocator(base, MAX_PATH, filename_pool_size);
-        memory.filename_pool = filename_pool;
-        base = (uint8 *) base + filename_pool_size;
 
         Heap_Allocator ui_state_heap = make_heap_allocator(base, ui_state_heap_size);
         memory.ui_state_heap = ui_state_heap;
@@ -794,19 +762,6 @@ bool32 win32_init_memory() {
         Arena_Allocator editor_arena = make_arena_allocator(base, editor_arena_size);
         memory.editor_arena = editor_arena;
         base = (uint8 *) base + editor_arena_size;
-
-        // level memory
-        memory.level_arena = make_arena_allocator(base, level_arena_size);
-        base = (uint8 *) base + level_arena_size;
-
-        memory.level_string64_pool = make_pool_allocator(base, 64, level_string64_pool_size);
-        base = (uint8 *) base + level_string64_pool_size;
-
-        memory.level_filename_pool = make_pool_allocator(base, MAX_PATH, level_filename_pool_size);
-        base = (uint8 *) base + level_filename_pool_size;
-
-        memory.level_mesh_heap = make_heap_allocator(base, level_mesh_heap_size);
-        base = (uint8 *) base + level_mesh_heap_size;
 
         memory.is_initted = true;
         temp_region = (Allocator *) &memory.global_stack;

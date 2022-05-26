@@ -455,13 +455,17 @@ void init_game(Game_State *game_state,
     game_state->asset_manager = asset_manager;
     //Context::asset_manager = &game_state->asset_manager;
 
+    // init memory
+    uint32 level_arena_size = MEGABYTES(256);
+    void *level_arena_base = arena_push(&memory.game_data, level_arena_size, false);
+    game_state->level_arena = make_arena_allocator(level_arena_base, level_arena_size);
+
     // string pool allocators
-    Allocator *string64_allocator = (Allocator *) &memory.string64_pool;
-    Allocator *filename_allocator = (Allocator *) &memory.filename_pool;
+    //Allocator *string64_allocator = (Allocator *) &memory.string64_pool;
+    //Allocator *filename_allocator = (Allocator *) &memory.filename_pool;
     
     // init camera
-    // TODO: have separate camera for game and init it
-    //init_camera(camera, display_output);
+    init_camera(&game_state->camera, display_output);
 
 #if 0
     // init fonts
@@ -501,6 +505,219 @@ void init_game(Game_State *game_state,
     game_state->is_initted = true;
 }
 
+Entity *get_entity(Game_State *game_state, int32 id) {
+    Game_Level *level = &game_state->level;
+
+    FOR_LIST_NODES(Entity *, level->entities) {
+        Entity *entity = current_node->value;
+        if (entity->id == id) {
+            return entity;
+        }
+    }
+
+    assert(!"Entity not found.");
+    return NULL;
+}
+
+Entity *allocate_and_copy_entity(Allocator *allocator, Entity *entity) {
+    switch (entity->type) {
+        case ENTITY_NORMAL: {
+            Normal_Entity *e = (Normal_Entity *) allocate(allocator, sizeof(Normal_Entity));
+            *e = copy(allocator, *((Normal_Entity *) entity));
+            return (Entity *) e;
+        } break;
+        case ENTITY_POINT_LIGHT: {
+            Point_Light_Entity *e = (Point_Light_Entity *) allocate(allocator, sizeof(Point_Light_Entity));
+            *e = copy(allocator, *((Point_Light_Entity *) entity));
+            return (Entity *) e;
+        } break;
+        default: {
+            assert(!"Unhandled entity type.");
+        }
+    }
+
+    return NULL;
+}
+
+void load_game_from_editor(Game_State *game_state) {
+    Editor_State *editor_state = &game_state->editor_state;
+    Editor_Level *editor_level = &editor_state->level;
+
+    if (!editor_state->use_freecam) platform_set_cursor_visible(false);
+
+    game_state->asset_manager = editor_state->asset_manager;
+    
+    Arena_Allocator *level_arena = &game_state->level_arena;
+    Game_Level *game_level = &game_state->level;
+
+    clear_arena(level_arena);
+    make_and_init_linked_list(Entity *, &game_level->entities, (Allocator *) level_arena);
+
+    FOR_LIST_NODES(Entity *, editor_level->entities) {
+        Entity *copied_entity = allocate_and_copy_entity((Allocator *) level_arena, current_node->value);
+        add(&game_level->entities, copied_entity);
+    }
+
+    Player *player = &game_state->player;
+    Camera camera = editor_state->camera;
+    player->position = camera.position - make_vec3(0.0f, player->height, 0.0f);
+    player->heading = camera.heading;
+    player->pitch = camera.pitch;
+    player->roll = camera.roll;
+    player->velocity = make_vec3();
+    player->is_grounded = false;
+}
+
+void update_player(Game_State *game_state, Controller_State *controller_state,
+                   real32 dt) {
+    Debug_State *debug_state = &game_state->debug_state;
+    Asset_Manager *asset_manager = &game_state->asset_manager;
+    Player *player = &game_state->player;
+
+    if (platform_window_has_focus()) {
+        real32 delta_x = controller_state->current_mouse.x - controller_state->last_mouse.x;
+        real32 delta_y = controller_state->current_mouse.y - controller_state->last_mouse.y;
+
+        real32 heading_delta = 0.2f * delta_x;
+        real32 pitch_delta = 0.2f * delta_y;
+
+        int32 heading_rotations = (int32) floorf((player->heading + heading_delta) / 360.0f);
+        int32 pitch_rotations = (int32) floorf((player->pitch + pitch_delta) / 360.0f);
+        player->heading = (player->heading + heading_delta) - heading_rotations*360.0f;
+        player->pitch = clamp(player->pitch + pitch_delta, -90.0f, 90.0f);
+
+        Display_Output display_output = game_state->render_state.display_output;
+        Vec2 center = make_vec2(display_output.width / 2.0f, display_output.height / 2.0f);
+        platform_set_cursor_pos(center);
+        controller_state->current_mouse = center;
+    }
+
+    Vec3 player_forward = normalize(truncate_v4_to_v3(make_rotate_matrix(y_axis, player->heading) *
+                                                      make_vec4(Player_Constants::forward, 1.0f)));
+    Vec3 player_right = normalize(truncate_v4_to_v3(make_rotate_matrix(y_axis, player->heading) *
+                                                    make_vec4(Player_Constants::right, 1.0f)));
+    if (player->is_grounded) {
+        // make basis
+        Walk_State *walk_state = &player->walk_state;
+
+        Vec3 forward_point = player->position + player_forward;
+        forward_point = get_point_on_plane_from_xz(forward_point.x, forward_point.z,
+                                                   walk_state->triangle_normal, player->position);
+        player_forward = normalize(forward_point - player->position);
+
+        Vec3 right_point = player->position + player_right;
+        right_point = get_point_on_plane_from_xz(right_point.x, right_point.z,
+                                                 walk_state->triangle_normal, player->position);
+        player_right = normalize(right_point - player->position);
+
+#if 0
+        add_debug_line(debug_state,
+                       player->position, player->position + player_right, make_vec4(x_axis, 1.0f));
+        add_debug_line(debug_state,
+                       player->position, player->position + walk_state->triangle_normal, make_vec4(y_axis, 1.0f));
+        add_debug_line(debug_state,
+                       player->position, player->position + player_forward, make_vec4(z_axis, 1.0f));
+#endif
+    }
+
+    Vec3 move_vector = make_vec3();
+    if (controller_state->key_w.is_down) {
+        //move_vector = dot(heading_direction, player_direction) * heading_direction;
+        move_vector += player_forward;
+    }
+    if (controller_state->key_s.is_down) {
+        move_vector += -player_forward;
+    }
+    if (controller_state->key_d.is_down) {
+        move_vector += player_right;
+    }
+    if (controller_state->key_a.is_down) {
+        move_vector += -player_right;
+    }
+    move_vector = normalize(move_vector) * player->speed;
+
+    if (player->is_grounded) {
+        player->velocity = move_vector;
+    } else {
+        player->acceleration = make_vec3(0.0f, -9.81f, 0.0f);
+    }
+
+    Vec3 displacement_vector = player->velocity*dt + 0.5f*player->acceleration*dt*dt;
+    player->velocity += player->acceleration * dt;
+
+    Vec3 next_position = player->position + displacement_vector;
+
+    Walk_State new_walk_state;
+    Vec3 grounded_position;
+    bool32 found_new_ground = get_new_walk_state(&game_state->level, asset_manager,
+                                                 player->walk_state, next_position,
+                                                 &new_walk_state, &grounded_position);
+    if (found_new_ground) {
+        player->walk_state = new_walk_state;
+        displacement_vector = grounded_position - player->position;
+        player->is_grounded = true;
+        
+        Entity *entity = get_entity(game_state, new_walk_state.ground_entity_id);
+        Mesh *mesh = get_mesh_pointer(asset_manager, get_mesh_id(entity));
+        assert(mesh);
+
+        Vec3 triangle[3];
+        get_triangle(mesh, new_walk_state.triangle_index, triangle);
+        
+        Mat4 model = get_model_matrix(entity->transform);
+        transform_triangle(triangle, &model);
+
+        Vec4 triangle_color = make_vec4(0.0f, 1.0f, 1.0f, 1.0f);
+        add_debug_line(debug_state, triangle[0], triangle[1], triangle_color);
+        add_debug_line(debug_state, triangle[1], triangle[2], triangle_color);
+        add_debug_line(debug_state, triangle[2], triangle[0], triangle_color);
+    } else {
+        if (player->is_grounded) {
+            player->is_grounded = false;
+            //player->velocity = make_vec3();
+        }
+    }
+
+    player->position += displacement_vector;
+
+    //check_player_collisions(game_state);
+}
+
+void update_camera(Camera *camera, Vec3 position, real32 heading, real32 pitch, real32 roll) {
+    Basis initial_basis = camera->initial_basis;
+
+    camera->heading = heading;
+    camera->pitch = pitch;
+    camera->roll = roll;
+
+    Mat4 model_matrix = make_rotate_matrix(camera->roll, camera->pitch, camera->heading);
+    Vec3 transformed_forward = truncate_v4_to_v3(model_matrix * make_vec4(initial_basis.forward, 1.0f));
+    Vec3 transformed_right = truncate_v4_to_v3(model_matrix * make_vec4(initial_basis.right, 1.0f));
+    Vec3 transformed_up = cross(transformed_forward, transformed_right);
+
+    Vec3 corrected_right = cross(transformed_up, transformed_forward);
+    Vec3 forward = normalize(transformed_forward);
+    Vec3 right = normalize(corrected_right);
+    Vec3 up = normalize(transformed_up);
+
+    camera->position = position;
+
+    Basis current_basis = { forward, right, up };
+    camera->current_basis = current_basis;
+}
+
+void update_game(Game_State *game_state, Controller_State *controller_state, Sound_Output *sound_output,
+                 real32 dt) {
+    // NOTE: we assume that game_state has already been initted
+    update_player(game_state, controller_state, dt);
+
+    Player *player = &game_state->player;
+    update_camera(&game_state->camera, &game_state->render_state.display_output,
+                  player->position + make_vec3(0.0f, player->height, 0.0f),
+                  player->heading, player->pitch, player->roll);
+    update_render_state(&game_state->render_state, game_state->camera);
+}
+
 void update(Game_State *game_state,
             Controller_State *controller_state,
             Sound_Output *sound_output, uint32 num_samples) {
@@ -523,6 +740,18 @@ void update(Game_State *game_state,
         game_state->fps_sum = 0.0f;
     }
 
+    if (was_clicked(controller_state->key_f5)) {
+        if (game_state->mode == Game_Mode::EDITING) {
+            load_game_from_editor(game_state);
+            game_state->mode = Game_Mode::PLAYING;
+        } else {
+            game_state->mode = Game_Mode::EDITING;
+            if (!game_state->editor_state.use_freecam) {
+                platform_set_cursor_visible(true);
+            }
+        }
+    }
+
     UI_Manager *ui_manager = &game_state->ui_manager;
     Render_State *render_state = &game_state->render_state;
 
@@ -530,12 +759,16 @@ void update(Game_State *game_state,
 
     //update_render_state(render_state);
     
-    Asset_Manager *asset_manager = &game_state->asset_manager;
+    Asset_Manager *asset_manager;
+
     if (game_state->mode == Game_Mode::EDITING) {
         asset_manager = &game_state->editor_state.asset_manager;
         update_editor(game_state, controller_state, dt);
         draw_editor(game_state, controller_state);
         game_state->editor_state.is_startup = false;
+    } else {
+        asset_manager = &game_state->asset_manager;
+        update_game(game_state, controller_state, sound_output, dt);
     }
 
     char *buf = (char *) arena_push(&memory.frame_arena, 128);

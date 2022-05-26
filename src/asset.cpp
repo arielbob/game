@@ -400,6 +400,18 @@ void load_default_assets(Asset_Manager *asset_manager) {
 
     mesh = read_and_load_mesh(allocator, "blender/cube.mesh", "cube", Mesh_Type::PRIMITIVE);
     add_mesh(asset_manager, mesh);
+
+    // default fonts
+    load_font(asset_manager, "c:/windows/fonts/times.ttf", "times32", 32.0f, 512, 512);
+    load_font(asset_manager, "c:/windows/fonts/times.ttf", "times24", 24.0f, 512, 512);
+
+    load_font(asset_manager, "c:/windows/fonts/courbd.ttf", "courier24b", 24.0f, 512, 512);
+
+    load_font(asset_manager, "c:/windows/fonts/calibri.ttf", "calibri14", 14.0f, 512, 512);
+    load_font(asset_manager, "c:/windows/fonts/calibrib.ttf", "calibri14b", 14.0f, 512, 512);
+    load_font(asset_manager, "c:/windows/fonts/calibrib.ttf", "calibri24b", 24.0f, 512, 512);
+
+    load_font(asset_manager, "c:/windows/fonts/lucon.ttf", "lucidaconsole18", 18.0f, 512, 512);
 }
 
 void unload_level_assets(Asset_Manager *asset_manager) {

@@ -13,6 +13,10 @@ struct Editor_Level {
     Linked_List<Entity *> entities;
 };
 
+struct Game_Level {
+    Linked_List<Entity *> entities;
+};
+
 void deallocate(Editor_Level *level) {
     deallocate(level->name);
     deallocate(&level->entities);

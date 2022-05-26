@@ -471,7 +471,7 @@
 //       - TODO (done): point light changes
 //       - TODO (done): load default level using new format
 
-// TODO: switch to play mode
+// TODO (done): switch to play mode
 //       - for assets, we could just use the same asset_manager as the editor. for entities, well.. idk.
 //       - maybe just have an editor_level to game_level procedure that just like copies all the assets and all the
 //         entities to some struct in game_state.
@@ -479,18 +479,26 @@
 //         think. (this would actually just be a conversion from level info struct to game level struct)
 //       - we could export to a level info struct, but then that makes it more complicated when trying to share
 //         data easily.
-//       - TODO: when we need to play the game, we take the editor state and load it into the intermediate level
-//               struct
-//       - TODO: the game data will store the level data in its own way that makes it more efficient. it can do this
-//               since we don't need to do things like make it so entities can be deleted. we may just be able to
-//               put it all into an arena.
-//       - TODO: redo heap allocator, and just always align on 8 byte boundaries. having the boundary be 8 bytes
-//               makes things a lot easier. you still can't easily just add a struct header.. but you can if you
-//               have a member that's 8 bytes, i.e. if you have a pointer in your header, then alignment will be
-//               handled for you and to get the header you can just subtract sizeof(header) from a pointer to some
-//               allocation.
+
+//       - TODO (done): write update_game() procedure
+//       - TODO (done): write render_game() procedure in gl code
+//       - TODO (done): step through code, make sure arena is being cleared when going from edit mode to game mode
 
 // TODO: collision with OBBs
+//       - TODO: implement OBBs
+//       - TODO: implement capsule vs OBB test
+//       - TODO: should maybe do sweeped capsule vs OBB test? or maybe just do more iterations if we pass some
+//               maximum?
+
+// TODO: the game data will store the level data in its own way that makes it more efficient. it can do this
+//       since we don't need to do things like make it so entities can be deleted. we may just be able to
+//       put it all into an arena.
+// TODO: redo heap allocator, and just always align on 8 byte boundaries. having the boundary be 8 bytes
+//       makes things a lot easier. you still can't easily just add a struct header.. but you can if you
+//       have a member that's 8 bytes, i.e. if you have a pointer in your header, then alignment will be
+//       handled for you and to get the header you can just subtract sizeof(header) from a pointer to some
+//       allocation.
+
 // TODO: error handling in level loading
 
 // TODO: make_string() with formatting built in with arguments
@@ -3149,6 +3157,151 @@ void gl_render_editor(GL_State *gl_state, Render_State *render_state, GL_Framebu
     end_region(m);
 }
 
+void gl_render_game(GL_State *gl_state, Render_State *render_state, GL_Framebuffer framebuffer,
+                    Game_State *game_state) {
+    Asset_Manager *asset_manager = &game_state->asset_manager;
+    Display_Output display_output = render_state->display_output;
+    
+    Marker m = begin_region();
+
+    // TODO: if we ever change levels in the game, we should clear its GPU data, but since everything in the game
+    //       is static right now, we only handle loading and not unloading.
+
+    // NOTE: we currently share the same asset_manager when switching from edit mode to game mode.
+
+    // load level meshes
+    {
+        FOR_ENTRY_POINTERS(int32, Mesh, asset_manager->mesh_table) {
+            int32 mesh_key = entry->key;
+            Mesh *mesh = &entry->value;
+            
+            if (!mesh->is_loaded) {
+                if (!hash_table_exists(gl_state->mesh_table, mesh_key)) {
+                    GL_Mesh gl_mesh = gl_load_mesh(gl_state, *mesh);
+                    hash_table_add(&gl_state->mesh_table, mesh_key, gl_mesh);
+                } else {
+                    debug_print("Mesh \"%s\" already loaded.\n", mesh->name);
+                }
+
+                mesh->is_loaded = true;
+            }
+        }
+    }
+
+    // load textures
+    {
+        FOR_ENTRY_POINTERS(int32, Texture, asset_manager->texture_table) {
+            int32 texture_key = entry->key;
+            Texture *texture = &entry->value;
+            
+            if (!texture->is_loaded) {
+                if (!hash_table_exists(gl_state->texture_table, texture_key)) {
+                    GL_Texture gl_texture = gl_load_texture(gl_state, *texture);
+                    hash_table_add(&gl_state->texture_table, texture_key, gl_texture);
+                } else {
+                    debug_print("Texture \"%s\" already loaded.\n", texture->name);
+                }
+
+                texture->is_loaded = true;
+            }
+        }
+    }
+
+    // delete GL mesh data for meshes that no longer exist in level
+    {
+        FOR_ENTRY_POINTERS(int32, GL_Mesh, gl_state->mesh_table) {
+            int32 mesh_key = entry->key;
+            if (!hash_table_exists(asset_manager->mesh_table, mesh_key)) {
+                hash_table_remove(&gl_state->mesh_table, mesh_key);
+                gl_delete_mesh(entry->value);
+            }
+        }
+    }
+
+    // delete GL texture data for textures that no longer exist in level
+    {
+        FOR_ENTRY_POINTERS(int32, GL_Texture, gl_state->texture_table) {
+            int32 texture_key = entry->key;
+            if (!hash_table_exists(asset_manager->texture_table, texture_key)) {
+                hash_table_remove(&gl_state->texture_table, texture_key);
+                gl_delete_texture(entry->value);
+            }
+        }
+    }
+
+    // gather entities by type
+    Linked_List<Point_Light_Entity *> point_light_entities;
+    make_and_init_linked_list(Point_Light_Entity *, &point_light_entities, temp_region);
+    Linked_List<Normal_Entity *> normal_entities;
+    make_and_init_linked_list(Normal_Entity *, &normal_entities, temp_region);
+
+    Game_Level *level = &game_state->level;
+    FOR_LIST_NODES(Entity *, level->entities) {
+        Entity *entity = current_node->value;
+        switch (entity->type) {
+            case ENTITY_NORMAL: {
+                add(&normal_entities, (Normal_Entity *) entity);
+            } break;
+            case ENTITY_POINT_LIGHT: {
+                add(&point_light_entities, (Point_Light_Entity *) entity);
+            } break;
+            default: {
+                assert(!"Unhandled entity type.");
+            }
+        }
+    }
+
+    glBindBuffer(GL_UNIFORM_BUFFER, gl_state->global_ubo);
+    int64 ubo_offset = 0;
+    glBufferSubData(GL_UNIFORM_BUFFER, (int32 *) ubo_offset, sizeof(int32),
+                    &point_light_entities.num_entries);
+    // NOTE: not sure why we use 16 here, instead of 32, which is the size of the GL_Point_Light struct.
+    //       i think we just use the aligned offset of the first member of the struct, which is a vec4, so we offset
+    //       by 16 since it's the closest multiple.
+    ubo_offset += 16;
+    FOR_LIST_NODES(Point_Light_Entity *, point_light_entities) {
+        Point_Light_Entity *entity = current_node->value;
+        if (entity->type == ENTITY_POINT_LIGHT) {
+            // TODO: we may just want to replace position and light_color with vec4s in Point_Light_Entity.
+            //       although this would be kind of annoying since we would have to modify the Transform struct.
+            GL_Point_Light gl_point_light = {
+                make_vec4(entity->transform.position, 1.0f),
+                make_vec4(entity->light_color, 1.0f),
+                entity->falloff_start,
+                entity->falloff_end
+            };
+
+            glBufferSubData(GL_UNIFORM_BUFFER, (int32 *) ubo_offset,
+                            sizeof(GL_Point_Light), &gl_point_light);
+            ubo_offset += sizeof(GL_Point_Light) + 8; // add 8 bytes of padding so that it aligns to size of vec4
+        }
+    }
+
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+    // entities
+    {
+        FOR_LIST_NODES(Normal_Entity *, normal_entities) {
+            Normal_Entity *entity = current_node->value;
+
+            int32 mesh_id = entity->mesh_id;
+
+            Material material;
+            if (entity->material_id >= 0) {
+                material = get_material(asset_manager, entity->material_id);
+            } else {
+                material = default_material;
+            }
+
+            gl_draw_mesh(gl_state, render_state,
+                         mesh_id, material,
+                         entity->transform);
+        }
+    }
+    
+    end_region(m);    
+}
+
 void gl_render(GL_State *gl_state, Game_State *game_state,
                Controller_State *controller_state,
                Win32_Sound_Output *win32_sound_output) {
@@ -3186,7 +3339,22 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
     glLineWidth(1.0f);
 
     if (game_state->mode == Game_Mode::PLAYING) {
-        // TODO: render game
+        gl_render_game(gl_state, render_state, gl_state->msaa_framebuffer, game_state);
+
+        glDisable(GL_DEPTH_TEST);
+        // TODO: for some reason, if we comment out this line, nothing renders at all, other than the gizmos
+        //       if we happen to click in an area where there is an entity
+        //       - pretty sure it has to do with gl_draw_text(), since if we never call that, then nothing
+        //         renders
+        gl_draw_ui(gl_state, asset_manager, render_state, &game_state->ui_manager);
+        glEnable(GL_DEPTH_TEST);
+        
+        // draw msaa framebuffer
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, gl_state->msaa_framebuffer.fbo);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+        glBlitFramebuffer(0, 0, display_output.width, display_output.height, 0, 0,
+                          display_output.width, display_output.height,
+                          GL_COLOR_BUFFER_BIT, GL_NEAREST);
     } else {
         gl_render_editor(gl_state, render_state, gl_state->msaa_framebuffer,
                          &game_state->editor_state);

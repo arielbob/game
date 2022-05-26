@@ -161,7 +161,6 @@ namespace Player_Constants {
 struct Walk_State {
     Vec3 triangle_normal;
     int32 triangle_index;
-    Entity_Type ground_entity_type;
     int32 ground_entity_id;
 };
 
@@ -185,7 +184,10 @@ struct Game_State {
     bool32 is_initted;
     Game_Mode mode;
 
+    Arena_Allocator level_arena;
+    Game_Level level;
     Player player;
+    Camera camera;
 
     real64 last_update_time;
     real64 last_fps_update_time;

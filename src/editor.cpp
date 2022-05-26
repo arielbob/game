@@ -34,7 +34,6 @@ void delete_entity(Editor_State *editor_state, int32 id) {
 Entity *get_entity(Editor_State *editor_state, int32 id) {
     Editor_Level *level = &editor_state->level;
 
-    Node <Entity *> *node_to_remove = NULL;
     FOR_LIST_NODES(Entity *, level->entities) {
         Entity *entity = current_node->value;
         if (entity->id == id) {
@@ -190,18 +189,6 @@ void init_editor(Arena_Allocator *editor_arena, Editor_State *editor_state, Disp
     gizmo_state->ring_mesh_id   = get_mesh_id_by_name(asset_manager, "gizmo_ring");
     gizmo_state->sphere_mesh_id = get_mesh_id_by_name(asset_manager, "gizmo_sphere");
     gizmo_state->cube_mesh_id   = get_mesh_id_by_name(asset_manager, "gizmo_cube");;
-
-    // load fonts
-    load_font(asset_manager, "c:/windows/fonts/times.ttf", "times32", 32.0f, 512, 512);
-    load_font(asset_manager, "c:/windows/fonts/times.ttf", "times24", 24.0f, 512, 512);
-
-    load_font(asset_manager, "c:/windows/fonts/courbd.ttf", "courier24b", 24.0f, 512, 512);
-
-    load_font(asset_manager, "c:/windows/fonts/calibri.ttf", "calibri14", 14.0f, 512, 512);
-    load_font(asset_manager, "c:/windows/fonts/calibrib.ttf", "calibri14b", 14.0f, 512, 512);
-    load_font(asset_manager, "c:/windows/fonts/calibrib.ttf", "calibri24b", 24.0f, 512, 512);
-
-    load_font(asset_manager, "c:/windows/fonts/lucon.ttf", "lucidaconsole18", 18.0f, 512, 512);
 
 #if 0
     // load default level

@@ -10,9 +10,11 @@ void init_camera(Camera *camera, Display_Output *display_output) {
     camera->initial_basis = { z_axis, x_axis, y_axis };
 }
 
-void update_camera(Camera *camera, Vec3 position, real32 heading, real32 pitch, real32 roll) {
+void update_camera(Camera *camera, Display_Output *display_output,
+                   Vec3 position, real32 heading, real32 pitch, real32 roll) {
     Basis initial_basis = camera->initial_basis;
 
+    camera->aspect_ratio = (real32) display_output->width / display_output->height;
     camera->heading = heading;
     camera->pitch = pitch;
     camera->roll = roll;

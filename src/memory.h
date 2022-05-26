@@ -68,25 +68,17 @@ struct Heap_Allocator {
 
 struct Memory {
     bool32 is_initted;
-    Arena_Allocator game_data;
-    Arena_Allocator font_arena;
-    Arena_Allocator common_mesh_arena;
-    Arena_Allocator frame_arena;
 
-    Arena_Allocator level_arena;
-    Pool_Allocator level_string64_pool;
-    Pool_Allocator level_filename_pool;
-    Heap_Allocator level_mesh_heap;
-
-    Arena_Allocator string_arena; 
     Stack_Allocator global_stack;
     // i'm not exactly sure why hash_table_stack is a stack; this can be an arena, but either way, it'll
     // probably be replaced
     Stack_Allocator hash_table_stack;
-    Pool_Allocator string64_pool;
-    Pool_Allocator filename_pool;
+
+    Arena_Allocator game_data;
+    Arena_Allocator font_arena;
+    Arena_Allocator frame_arena;
+
     Heap_Allocator ui_state_heap;
-    //Heap_Allocator editor_history_heap;
 
     Arena_Allocator editor_arena;
 };
