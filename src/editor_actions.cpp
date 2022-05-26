@@ -9,6 +9,7 @@ void history_deallocate(Editor_State *editor_state, Editor_Action *editor_action
             assert(!"Action has no type.");
         } break;
         case ACTION_ADD_NORMAL_ENTITY: {} break;
+        case ACTION_ADD_POINT_LIGHT_ENTITY: {} break;
         case ACTION_DELETE_ENTITY: {
             Delete_Entity_Action *action = (Delete_Entity_Action *) editor_action;
             deallocate(allocator, action->entity);

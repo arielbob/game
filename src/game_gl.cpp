@@ -454,7 +454,7 @@
 //       - TODO: load fonts into game as well
 //       - TODO: unload opengl assets when switching between play and edit mode
 
-// TODO: editor actions
+// TODO (done): editor actions
 //       - TODO (done): adding normal entities
 //       - TODO (done): adding point light entities
 //       - TODO (done): deleting entities
@@ -471,6 +471,14 @@
 //       - TODO (done): point light changes
 //       - TODO (done): load default level using new format
 
+// TODO: switch to play mode
+//       - for assets, we could just use the same asset_manager as the editor. for entities, well.. idk.
+//       - maybe just have an editor_level to game_level procedure that just like copies all the assets and all the
+//         entities to some struct in game_state.
+//       - we also need a load_level procedure for loading a game level from a level file, but that can wait, i
+//         think. (this would actually just be a conversion from level info struct to game level struct)
+//       - we could export to a level info struct, but then that makes it more complicated when trying to share
+//         data easily.
 //       - TODO: when we need to play the game, we take the editor state and load it into the intermediate level
 //               struct
 //       - TODO: the game data will store the level data in its own way that makes it more efficient. it can do this
@@ -481,8 +489,6 @@
 //               have a member that's 8 bytes, i.e. if you have a pointer in your header, then alignment will be
 //               handled for you and to get the header you can just subtract sizeof(header) from a pointer to some
 //               allocation.
-
-// TODO: switch to play mode
 
 // TODO: collision with OBBs
 // TODO: error handling in level loading
