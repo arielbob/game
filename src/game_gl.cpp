@@ -485,11 +485,16 @@
 
 // TODO: capsule vs triangle collision
 //       - TODO (done): add debug entity with capsule collider and draw useful things from capsule_intersects_triangle
-//       - TODO: add draw debug sphere? or just draw a sphere with wireframe?
+//       - TODO (done): fix penetration depth being larger than expected. it seems like it's the center of the
+//               sphere to the penetration point instead of the point on the triangle to the penetration point.
+//               - it was just a misunderstanding: penetration depth is from the closest point on the triangle to
+//                 the center of the sphere you're testing against. so to get the vector to push it out, you need
+//                 to push along that vector by an amount of radius - penetration_depth.
+//       - TODO: fix sliding through triangles. i think this just has to do with us not comparing intersections and
+//               just taking the first one. we may have to make sure we're pushing out by the largest penetration
+//               vector? or maybe the closest triangle? not sure.
 //       - TODO: collision response
-//       - TODO: fix penetration depth being larger than expected. it seems like it's the center of the sphere to
-//               the penetration point instead of the point on the triangle to the penetration point, but
-//               all the calculations seem correct..
+
 
 // TODO: capsule vs AABB for optimization
 

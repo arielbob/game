@@ -1315,8 +1315,9 @@ bool32 sphere_intersects_triangle(Vec3 center, real32 radius, Vec3 triangle[3],
     *penetration_normal = normalize(penetration_vector);
     *penetration_depth = distance(penetration_vector);
 
+    Vec3 capsule_edge = closest_point_on_triangle - (*penetration_normal)*(radius - *penetration_depth);
     add_debug_line(&Context::game_state->debug_state,
-                   closest_point_on_triangle, center, make_vec4(1.0f, 1.0f, 0.0f, 1.0f));
+                   closest_point_on_triangle, capsule_edge, make_vec4(1.0f, 1.0f, 0.0f, 1.0f));
     return true;
 }
 
@@ -1343,7 +1344,8 @@ bool32 capsule_intersects_triangle(Capsule capsule, Vec3 triangle[3],
     }
     
     // the penetration normal is the direction vector of the shortest line from the triangle to the reference
-    // point.
+    // point. the penetration vector is NOT the distance we need to move the capsule by to get it out. the
+    // direction is the same, but the distance is the radius of the capsule - the length of the penetration vector.
     Vec3 sphere_center = closest_point_on_line_segment(a, b, reference_point);
     if (!sphere_intersects_triangle(sphere_center, capsule.radius, triangle,
                                     penetration_normal, penetration_depth)) {

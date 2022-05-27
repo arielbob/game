@@ -594,7 +594,7 @@ void do_collisions(Game_State *game_state) {
     }
 
     if (intersected) {
-        //player->position += (penetration_normal * penetration_depth);
+        player->position += (penetration_normal * (player_capsule.radius - penetration_depth));
     }
 }
 
