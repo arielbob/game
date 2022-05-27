@@ -63,7 +63,7 @@ is_walkable 0
 type normal
 position 0.000000 0.000000 0.000000
 rotation 1.000000 0.000000 0.000000 0.000000
-scale 5.000000 0.100000 5.000000
+scale 10.000000 0.100000 10.000000
 mesh_primitive "cube"
 material "diffuse_plane"
 is_walkable 1

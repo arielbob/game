@@ -493,12 +493,13 @@
 //       - TODO (done): fix clipping through cube that's in the ground
 //       - TODO (done): debug the case where the penetration depth is larger for the other triangle, but that
 //               triangle is not being set to the triangle we use to push it out.
-//       - TODO: fix sliding through corner created by two meshes; i think we just need to compare the player
+//       - TODO (done): fix sliding through corner created by two meshes; i think we just need to compare the player
 //               against all the meshes. yeah, right now we just break on the first intersection.
-//       - TODO: collision response
-
+//       - TODO (done): collision response
+//       - TODO: fix walking between meshes not working anymore
 
 // TODO: capsule vs AABB for optimization
+//       - TODO: do this check first in capsule_intersects_mesh before checking triangles
 
 // TODO: collision with OBBs
 //       - TODO: implement OBBs

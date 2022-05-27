@@ -618,6 +618,7 @@ void do_collisions(Game_State *game_state) {
     Vec3 penetration_normal = {};
     real32 penetration_depth = 0.0f;
     bool32 intersected = false;
+
     FOR_LIST_NODES(Entity *, level->entities) {
         Entity *uncast_entity = current_node->value;
         if ((uncast_entity->type != ENTITY_NORMAL) || (uncast_entity->id == ground_entity_id)) continue;
@@ -626,13 +627,8 @@ void do_collisions(Game_State *game_state) {
 
         if (capsule_intersects_mesh(player_capsule, mesh, entity->transform,
                                     &penetration_normal, &penetration_depth)) {
-            intersected = true;
-            break;
+            player->position += (penetration_normal * (player_capsule.radius - penetration_depth));
         }
-    }
-
-    if (intersected) {
-        player->position += (penetration_normal * (player_capsule.radius - penetration_depth));
     }
 }
 
