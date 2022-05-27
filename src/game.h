@@ -151,6 +151,9 @@ namespace Player_Constants {
     real32 walk_radius = 0.01f;
     //real32 walk_radius = 1.0f;
 
+    real32 capsule_radius = 0.5f;
+    real32 player_height = 1.6f;
+
     Vec3 forward = make_vec3(0.0f, 0.0f, 1.0f);
     Vec3 right = make_vec3(1.0f, 0.0f, 0.0f);
     Vec3 up = make_vec3(0.0f, 1.0f, 0.0f);
@@ -247,6 +250,8 @@ void update_render_state(Render_State *render_state);
 Vec3 cursor_pos_to_world_space(Vec2 cursor_pos, Render_State *render_state);
 int32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, bool32 include_backside,
                           Ray_Intersects_Mesh_Result *result);
+bool32 capsule_intersects_mesh(Capsule capsule, Mesh mesh, Transform transform,
+                               Vec3 *penetration_normal, real32 *penetration_depth);
 bool32 closest_point_below_on_mesh(Vec3 point, Mesh mesh, Transform transform, Vec3 *result);
 bool32 get_walkable_triangle_on_mesh(Vec3 center, real32 radius,
                                      Mesh *mesh, Transform transform,

@@ -127,6 +127,21 @@ void load_level(Editor_State *editor_state, Level_Info *level_info) {
         *e = entity;
         add_entity(level, (Entity *) e);
     }
+
+    // debug
+    Vec3 capsule_position = make_vec3(0.0f, 1.0f, 0.0f);
+    Vec3 entity_scale = make_vec3(0.1f, 0.1f, 0.1f);
+    Normal_Entity *capsule_entity = (Normal_Entity *) allocate(entity_allocator, sizeof(Normal_Entity));
+    int32 mesh_id;
+    Mesh basic_cube = get_mesh_by_name(asset_manager, make_string("cube"), &mesh_id);
+    Transform transform = make_transform(capsule_position, make_quaternion(), entity_scale);
+    *capsule_entity = make_normal_entity(transform,
+                                         mesh_id,
+                                         -1, transform_aabb(basic_cube.aabb, transform));
+    capsule_entity->collider.type = Collider_Type::CAPSULE;
+    capsule_entity->collider.capsule = make_capsule_collider(capsule_position, make_vec3(0.0f, Player_Constants::player_height, 0.0f), Player_Constants::capsule_radius);
+    
+    add_entity(level, (Entity *) capsule_entity);
 }
 
 bool32 read_and_load_level(Editor_State *editor_state, char *filename) {
@@ -158,6 +173,7 @@ void init_editor(Arena_Allocator *editor_arena, Editor_State *editor_state, Disp
     editor_state->selected_entity_id = -1;
     editor_state->last_selected_entity_id = -1;
     editor_state->show_wireframe = true;
+    editor_state->show_colliders = true;
     editor_state->is_startup = true;
     editor_state->level_filename = make_string("");
 
@@ -581,6 +597,23 @@ void reset_editor(Editor_State *editor_state) {
     editor_state->last_selected_entity_id = -1;
 }
 
+bool32 debug_check_collisions(Asset_Manager *asset_manager, Editor_Level *level, Normal_Entity *entity) {
+    FOR_LIST_NODES(Entity *, level->entities) {
+        if (current_node->value->type != ENTITY_NORMAL || current_node->value->id == entity->id) continue;
+
+        Normal_Entity *entity_to_check = (Normal_Entity *) current_node->value;
+        Mesh mesh = get_mesh(asset_manager, entity_to_check->mesh_id);
+        Vec3 penetration_normal;
+        real32 penetration_depth;
+        bool32 intersected = capsule_intersects_mesh(entity->collider.capsule.capsule, mesh,
+                                                     entity_to_check->transform,
+                                                     &penetration_normal, &penetration_depth);
+        if (intersected) return true;
+    }
+
+    return false;
+}
+
 void update_editor(Game_State *game_state, Controller_State *controller_state, real32 dt) {
     UI_Manager *ui_manager = &game_state->ui_manager;
     Editor_State *editor_state = &game_state->editor_state;
@@ -733,6 +766,19 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
     }
 
     update_gizmo(editor_state);
+
+    Editor_Level *level = &editor_state->level;
+    // debug
+    FOR_LIST_NODES(Entity *, level->entities) {
+        Entity *uncast_entity = current_node->value;
+        if (uncast_entity->type != ENTITY_NORMAL) continue;
+        Normal_Entity *entity = (Normal_Entity *) current_node->value;
+        if (entity->collider.type == Collider_Type::CAPSULE) {
+            bool32 result = debug_check_collisions(asset_manager, level, entity);
+            // we only have one entity that has a capsule collider, so break
+            break;
+        }
+    }
 }
 
 void draw_editor(Game_State *game_state, Controller_State *controller_state) {

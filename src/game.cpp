@@ -224,7 +224,8 @@ bool32 closest_point_below_on_mesh(Vec3 point, Mesh mesh, Transform transform,
 }
 
 // TODO: this is VERY slow
-bool32 capsule_intersects_mesh(Capsule capsule, Mesh mesh, Transform transform) {
+bool32 capsule_intersects_mesh(Capsule capsule, Mesh mesh, Transform transform,
+                               Vec3 *penetration_normal, real32 *penetration_depth) {
     Mat4 object_to_world = get_model_matrix(transform);
 
     uint32 *indices = mesh.indices;
@@ -234,9 +235,8 @@ bool32 capsule_intersects_mesh(Capsule capsule, Mesh mesh, Transform transform) 
         get_triangle(&mesh, i, triangle);
         transform_triangle(triangle, &object_to_world);
 
-        Vec3 penetration_normal;
-        real32 penetration_depth;
-        if (capsule_intersects_triangle(capsule, triangle, &penetration_normal, &penetration_depth)) {
+        // TODO: do we want to return the smallest or largest penetration depth?
+        if (capsule_intersects_triangle(capsule, triangle, penetration_normal, penetration_depth)) {
             return true;
         }
     }
@@ -430,7 +430,7 @@ void init_game(Game_State *game_state,
     init_editor(&memory.editor_arena, &game_state->editor_state, *display_output);
     Context::editor_state = &game_state->editor_state;
 
-    game_state->player.height = 1.6f;
+    game_state->player.height = Player_Constants::player_height;
 
     real64 current_time = platform_get_wall_clock_time();
     game_state->last_update_time = current_time;
@@ -568,6 +568,36 @@ void load_game_from_editor(Game_State *game_state) {
     player->is_grounded = false;
 }
 
+void do_collisions(Game_State *game_state) {
+    Game_Level *level = &game_state->level;
+    Asset_Manager *asset_manager = &game_state->asset_manager;
+
+    Player *player = &game_state->player;
+    int32 ground_entity_id = player->walk_state.ground_entity_id;
+    Capsule player_capsule = make_capsule(player->position, player->position + make_vec3(0.0f, player->height, 0.0f),
+                                          Player_Constants::capsule_radius);
+
+    Vec3 penetration_normal = {};
+    real32 penetration_depth = 0.0f;
+    bool32 intersected = false;
+    FOR_LIST_NODES(Entity *, level->entities) {
+        Entity *uncast_entity = current_node->value;
+        if ((uncast_entity->type != ENTITY_NORMAL) || (uncast_entity->id == ground_entity_id)) continue;
+        Normal_Entity *entity = (Normal_Entity *) current_node->value;
+        Mesh mesh = get_mesh(asset_manager, entity->mesh_id);
+
+        if (capsule_intersects_mesh(player_capsule, mesh, entity->transform,
+                                    &penetration_normal, &penetration_depth)) {
+            intersected = true;
+            break;
+        }
+    }
+
+    if (intersected) {
+        //player->position += (penetration_normal * penetration_depth);
+    }
+}
+
 void update_player(Game_State *game_state, Controller_State *controller_state,
                    real32 dt) {
     Debug_State *debug_state = &game_state->debug_state;
@@ -680,6 +710,7 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
 
     player->position += displacement_vector;
 
+    do_collisions(game_state);
     //check_player_collisions(game_state);
 }
 

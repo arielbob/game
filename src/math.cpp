@@ -14,6 +14,10 @@ Line make_line(Vec3 origin, Vec3 line) {
     return result;
 }
 
+Capsule make_capsule(Vec3 base, Vec3 tip, real32 radius) {
+    return { base, tip, radius };
+}
+
 inline Vec2 make_vec2(real32 x, real32 y) {
     Vec2 vec2;
     vec2.x = x;
@@ -1295,9 +1299,9 @@ bool32 sphere_intersects_triangle(Vec3 center, real32 radius, Vec3 triangle[3],
     Vec3 p2 = triangle[2];
     
     Vec3 triangle_normal = get_triangle_normal(triangle);
-    
-    real32 center_distance_from_plane = dot(center - p0, triangle_normal);
 
+    // check if the sphere intersects the plane containing the triangle
+    real32 center_distance_from_plane = dot(center - p0, triangle_normal);
     if (fabsf(center_distance_from_plane) > radius) return false;
 
     Vec3 coplanar_point = center - triangle_normal*center_distance_from_plane;
@@ -1310,6 +1314,9 @@ bool32 sphere_intersects_triangle(Vec3 center, real32 radius, Vec3 triangle[3],
     Vec3 penetration_vector = center - closest_point_on_triangle;
     *penetration_normal = normalize(penetration_vector);
     *penetration_depth = distance(penetration_vector);
+
+    add_debug_line(&Context::game_state->debug_state,
+                   closest_point_on_triangle, center, make_vec4(1.0f, 1.0f, 0.0f, 1.0f));
     return true;
 }
 
@@ -1327,7 +1334,7 @@ bool32 capsule_intersects_triangle(Capsule capsule, Vec3 triangle[3],
     real32 plane_intersect_t;
 
     Vec3 reference_point;
-    if (!ray_intersects_plane(capsule_ray, triangle_normal, plane_d, &plane_intersect_t)) {
+    if (ray_intersects_plane(capsule_ray, triangle_normal, plane_d, &plane_intersect_t)) {
         Vec3 intersection_point = capsule.base + capsule_normal * plane_intersect_t;
         reference_point = get_closest_point_on_triangle_to_coplanar_point(intersection_point,
                                                                           triangle, triangle_normal);
@@ -1335,11 +1342,20 @@ bool32 capsule_intersects_triangle(Capsule capsule, Vec3 triangle[3],
         reference_point = triangle[0];
     }
     
+    // the penetration normal is the direction vector of the shortest line from the triangle to the reference
+    // point.
     Vec3 sphere_center = closest_point_on_line_segment(a, b, reference_point);
     if (!sphere_intersects_triangle(sphere_center, capsule.radius, triangle,
                                     penetration_normal, penetration_depth)) {
         return false;
     }
+
+    add_debug_line(&Context::game_state->debug_state,
+                   triangle[0], triangle[1], make_vec4(1.0f, 0.0f, 0.0f, 1.0f));
+    add_debug_line(&Context::game_state->debug_state,
+                   triangle[1], triangle[2], make_vec4(1.0f, 0.0f, 0.0f, 1.0f));
+    add_debug_line(&Context::game_state->debug_state,
+                   triangle[2], triangle[0], make_vec4(1.0f, 0.0f, 0.0f, 1.0f));
 
     return true;
 }

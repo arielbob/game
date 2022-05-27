@@ -199,12 +199,16 @@ struct GL_State {
     // TODO: maybe figure out a better way of doing this.
     //       we switched to using IDs instead of strings, but the downside is that we can't just search
     //       tables with a string anymore.
+    // TODO: maybe just use strings to find meshes in rendering mesh table by name
     int32 triangle_mesh_id;
     int32 quad_mesh_id;
     int32 framebuffer_quad_mesh_id;
     int32 glyph_quad_mesh_id;
     int32 line_mesh_id;
     int32 circle_mesh_id;
+    int32 sphere_mesh_id;
+    int32 capsule_cylinder_mesh_id;
+    int32 capsule_cap_mesh_id;
 
     int32 light_icon_texture_id;
 };

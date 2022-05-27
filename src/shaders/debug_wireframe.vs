@@ -6,6 +6,7 @@ layout (location = 2) in vec2 vertex_uv;
 
 uniform mat4 model_matrix;
 uniform mat4 cpv_matrix;
+uniform vec4 color;
 
 out vec3 frag_pos;
 out vec4 frag_color;
@@ -21,5 +22,5 @@ void main() {
 
     frag_pos = vec3(model_matrix * vec4(pos, 1.0));
     gl_Position = cpv_matrix * offset_position;
-    frag_color = vec4(1.0f, 1.0f, 0.0f, 1.0f);
+    frag_color = color;
 }

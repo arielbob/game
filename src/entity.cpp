@@ -47,6 +47,12 @@ void update_entity_position(Asset_Manager *asset_manager, Entity *entity, Vec3 n
             case Collider_Type::CIRCLE: {
                 collider->circle.center = new_position;
             } break;
+            case Collider_Type::CAPSULE: {
+                Vec3 original_base = collider->capsule.capsule.base;
+                collider->capsule.capsule.base = new_position;
+                Vec3 diff = collider->capsule.capsule.base - original_base;
+                collider->capsule.capsule.tip += diff;
+            } break;
             default: {
                 assert(!"Unhandled collider type.");
             } break;

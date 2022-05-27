@@ -170,6 +170,8 @@ Quaternion make_quaternion();
 Transform make_transform();
 Transform make_transform(Vec3 position, Quaternion rotation, Vec3 scale);
 inline Vec3 truncate_v4_to_v3(Vec4 vec4);
+inline Vec3 operator+(Vec3 v1, Vec3 v2);
+Capsule make_capsule(Vec3 base, Vec3 tip, real32 radius);
 
 #define GAME_MATH_H
 #endif

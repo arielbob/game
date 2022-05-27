@@ -479,14 +479,24 @@
 //         think. (this would actually just be a conversion from level info struct to game level struct)
 //       - we could export to a level info struct, but then that makes it more complicated when trying to share
 //         data easily.
-
 //       - TODO (done): write update_game() procedure
 //       - TODO (done): write render_game() procedure in gl code
 //       - TODO (done): step through code, make sure arena is being cleared when going from edit mode to game mode
 
+// TODO: capsule vs triangle collision
+//       - TODO (done): add debug entity with capsule collider and draw useful things from capsule_intersects_triangle
+//       - TODO: add draw debug sphere? or just draw a sphere with wireframe?
+//       - TODO: collision response
+//       - TODO: fix penetration depth being larger than expected. it seems like it's the center of the sphere to
+//               the penetration point instead of the point on the triangle to the penetration point, but
+//               all the calculations seem correct..
+
+// TODO: capsule vs AABB for optimization
+
 // TODO: collision with OBBs
 //       - TODO: implement OBBs
 //       - TODO: implement capsule vs OBB test
+//               - get the shortest distance between a line and an OBB, compare it to radius
 //       - TODO: should maybe do sweeped capsule vs OBB test? or maybe just do more iterations if we pass some
 //               maximum?
 
@@ -1184,7 +1194,7 @@ void gl_draw_aabb(GL_State *gl_state, Render_State *render_state,
 #endif
 
 void gl_draw_wireframe(GL_State *gl_state, Render_State *render_state,
-                       int32 mesh_id, Transform transform) {
+                       int32 mesh_id, Transform transform, Vec4 color) {
     uint32 shader_id;
     uint32 shader_exists = hash_table_find(gl_state->shader_ids_table, make_string("debug_wireframe"), &shader_id);
     assert(shader_exists);
@@ -1195,6 +1205,7 @@ void gl_draw_wireframe(GL_State *gl_state, Render_State *render_state,
     Mat4 model_matrix = get_model_matrix(transform);
     gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
     gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->cpv_matrix);
+    gl_set_uniform_vec4(shader_id, "color", &color);
 
     glDepthFunc(GL_LEQUAL);
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -1205,6 +1216,12 @@ void gl_draw_wireframe(GL_State *gl_state, Render_State *render_state,
     glUseProgram(0);
     glBindVertexArray(0);
 }
+
+    inline void gl_draw_wireframe(GL_State *gl_state, Render_State *render_state,
+                           int32 mesh_id, Transform transform) {
+        gl_draw_wireframe(gl_state, render_state,
+                          mesh_id, transform, make_vec4(1.0f, 1.0f, 0.0f, 1.0f));
+    }
 
 void gl_draw_circle(GL_State *gl_state, Render_State *render_state, Transform transform, Vec4 color) {
     uint32 shader_id;
@@ -1227,6 +1244,56 @@ void gl_draw_circle(GL_State *gl_state, Render_State *render_state, Transform tr
     glBindVertexArray(0);
 }
 
+// TODO: this doesn't non vertical capsules
+void gl_draw_capsule(GL_State *gl_state, Render_State *render_state,
+                     Vec3 base, Vec3 tip, real32 radius,
+                     Vec4 color) {
+    uint32 shader_id = gl_use_shader(gl_state, "debug_wireframe");
+
+    Vec3 normal = normalize(tip - base);
+    Vec3 a = base + normal*radius; // bottom sphere center
+    Vec3 b = tip - normal*radius;  // top sphere center
+    real32 length = distance(b - a);
+
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+    GL_Mesh gl_mesh;
+    Transform transform;
+    Mat4 model_matrix;
+
+    // capsule cylinder body
+    gl_mesh = gl_use_rendering_mesh(gl_state, gl_state->capsule_cylinder_mesh_id);
+    transform = make_transform(a, make_quaternion(), make_vec3(radius, length, radius));
+    model_matrix = get_model_matrix(transform);
+    gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
+    gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->cpv_matrix);
+    gl_set_uniform_vec4(shader_id, "color", &color);
+    glDrawElements(GL_TRIANGLES, gl_mesh.num_triangles * 3, GL_UNSIGNED_INT, 0);
+
+    // capsule cylinder bottom cap
+    gl_mesh = gl_use_rendering_mesh(gl_state, gl_state->capsule_cap_mesh_id);
+    transform = make_transform(a, make_quaternion(180.0f, x_axis), make_vec3(radius, radius, radius));
+    model_matrix = get_model_matrix(transform);
+    gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
+    gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->cpv_matrix);
+    gl_set_uniform_vec4(shader_id, "color", &color);
+    glDrawElements(GL_TRIANGLES, gl_mesh.num_triangles * 3, GL_UNSIGNED_INT, 0);
+
+    // capsule cylinder top cap
+    gl_mesh = gl_use_rendering_mesh(gl_state, gl_state->capsule_cap_mesh_id);
+    transform = make_transform(b, make_quaternion(), make_vec3(radius, radius, radius));
+    model_matrix = get_model_matrix(transform);
+    gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
+    gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->cpv_matrix);
+    gl_set_uniform_vec4(shader_id, "color", &color);
+    glDrawElements(GL_TRIANGLES, gl_mesh.num_triangles * 3, GL_UNSIGNED_INT, 0);
+
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+    glUseProgram(0);
+    glBindVertexArray(0);
+}
+
 void gl_draw_collider(GL_State *gl_state, Render_State *render_state, Collider_Variant collider) {
     Vec4 collider_color = make_vec4(1.0f, 0.0f, 1.0f, 1.0f);
 
@@ -1241,6 +1308,11 @@ void gl_draw_collider(GL_State *gl_state, Render_State *render_state, Collider_V
             transform.scale = make_vec3(circle.radius, circle.radius, 1.0f);
             transform.rotation = make_quaternion(90.0f, x_axis);
             gl_draw_circle(gl_state, render_state, transform, collider_color);
+        } break;
+        case Collider_Type::CAPSULE: {
+            Capsule capsule = collider.capsule.capsule;
+            gl_draw_capsule(gl_state, render_state, capsule.base, capsule.tip, capsule.radius,
+                            collider_color);
         } break;
         default: {
             assert(!"Unhandled collider type");
@@ -1694,6 +1766,30 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
     
     glBindVertexArray(0);
     gl_state->circle_mesh_id = gl_add_rendering_mesh(gl_state, make_gl_mesh(Mesh_Type::RENDERING, vao, vbo, 0));
+
+    // sphere mesh
+    Marker m = begin_region();
+    Mesh sphere_mesh = read_and_load_mesh(temp_region, "blender/sphere.mesh", "sphere", Mesh_Type::RENDERING);
+    gl_state->sphere_mesh_id = gl_add_rendering_mesh(gl_state, gl_load_mesh(gl_state, sphere_mesh));
+    end_region(m);
+
+    // capsule cylinder mesh
+    m = begin_region();
+    Mesh capsule_cylinder_mesh = read_and_load_mesh(temp_region,
+                                                   "blender/capsule_cylinder.mesh", "capsule_cylinder",
+                                                   Mesh_Type::RENDERING);
+    gl_state->capsule_cylinder_mesh_id = gl_add_rendering_mesh(gl_state,
+                                                               gl_load_mesh(gl_state, capsule_cylinder_mesh));
+    end_region(m);
+
+    // capsule cap mesh
+    m = begin_region();
+    Mesh capsule_cap_mesh = read_and_load_mesh(temp_region,
+                                                    "blender/capsule_cap.mesh", "capsule_cap",
+                                                    Mesh_Type::RENDERING);
+    gl_state->capsule_cap_mesh_id = gl_add_rendering_mesh(gl_state,
+                                                          gl_load_mesh(gl_state, capsule_cap_mesh));
+    end_region(m);
 
     // NOTE: shaders
     gl_load_shader(gl_state,
@@ -3102,12 +3198,9 @@ void gl_render_editor(GL_State *gl_state, Render_State *render_state, GL_Framebu
                 gl_draw_wireframe(gl_state, render_state, mesh_id, entity->transform);
             }
 
-            // TODO: do this
-#if 0
             if (editor_state->show_colliders) {
                 gl_draw_collider(gl_state, render_state, entity->collider);
             }
-#endif
         }
     }
 
@@ -3298,7 +3391,16 @@ void gl_render_game(GL_State *gl_state, Render_State *render_state, GL_Framebuff
                          entity->transform);
         }
     }
-    
+
+    Player *player = &game_state->player;
+    Transform player_circle_transform = make_transform(player->position, make_quaternion(-90.0f, x_axis),
+                                                       make_vec3(Player_Constants::capsule_radius,
+                                                                 Player_Constants::capsule_radius,
+                                                                 1.0f));
+    glDisable(GL_DEPTH_TEST);
+    gl_draw_circle(gl_state, render_state, player_circle_transform, make_vec4(0.0f, 1.0f, 1.0f, 1.0f));
+    glEnable(GL_DEPTH_TEST);    
+
     end_region(m);    
 }
 
@@ -3348,13 +3450,6 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
         //         renders
         gl_draw_ui(gl_state, asset_manager, render_state, &game_state->ui_manager);
         glEnable(GL_DEPTH_TEST);
-        
-        // draw msaa framebuffer
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, gl_state->msaa_framebuffer.fbo);
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-        glBlitFramebuffer(0, 0, display_output.width, display_output.height, 0, 0,
-                          display_output.width, display_output.height,
-                          GL_COLOR_BUFFER_BIT, GL_NEAREST);
     } else {
         gl_render_editor(gl_state, render_state, gl_state->msaa_framebuffer,
                          &game_state->editor_state);
@@ -3366,12 +3461,24 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
         //         renders
         gl_draw_ui(gl_state, asset_manager, render_state, &game_state->ui_manager);
         glEnable(GL_DEPTH_TEST);
-        
-        // draw msaa framebuffer
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, gl_state->msaa_framebuffer.fbo);
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-        glBlitFramebuffer(0, 0, display_output.width, display_output.height, 0, 0,
-                          display_output.width, display_output.height,
-                          GL_COLOR_BUFFER_BIT, GL_NEAREST);
     }
+
+    // debug lines
+    glDisable(GL_DEPTH_TEST);
+    glLineWidth(6.0f);
+    Debug_State *debug_state = &game_state->debug_state;
+    for (int32 i = 0; i < debug_state->num_debug_lines; i++) {
+        Debug_Line *line = &debug_state->debug_lines[i];
+        gl_draw_line(gl_state, render_state,
+                     line->start, line->end, line->color);
+    }
+    glLineWidth(1.0f);
+    glEnable(GL_DEPTH_TEST);
+
+    // draw msaa framebuffer
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, gl_state->msaa_framebuffer.fbo);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    glBlitFramebuffer(0, 0, display_output.width, display_output.height, 0, 0,
+                      display_output.width, display_output.height,
+                      GL_COLOR_BUFFER_BIT, GL_NEAREST);
 }
