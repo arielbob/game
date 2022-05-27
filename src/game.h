@@ -6,7 +6,7 @@
 #define MAX_ENTITIES 64
 #define MAX_POINT_LIGHTS 16
 #define MAX_FONTS 64
-#define MAX_DEBUG_LINES 64
+#define MAX_DEBUG_LINES 256
 
 #include "platform.h"
 #include "hash_table.h"

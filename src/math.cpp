@@ -1318,6 +1318,14 @@ bool32 sphere_intersects_triangle(Vec3 center, real32 radius, Vec3 triangle[3],
     Vec3 capsule_edge = closest_point_on_triangle - (*penetration_normal)*(radius - *penetration_depth);
     add_debug_line(&Context::game_state->debug_state,
                    closest_point_on_triangle, capsule_edge, make_vec4(1.0f, 1.0f, 0.0f, 1.0f));
+
+#if 0
+    if (dot(penetration_vector, triangle_normal) > 0.0f) {
+        return true;
+    }
+
+    return false;
+#endif
     return true;
 }
 

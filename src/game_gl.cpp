@@ -490,9 +490,11 @@
 //               - it was just a misunderstanding: penetration depth is from the closest point on the triangle to
 //                 the center of the sphere you're testing against. so to get the vector to push it out, you need
 //                 to push along that vector by an amount of radius - penetration_depth.
-//       - TODO: fix sliding through triangles. i think this just has to do with us not comparing intersections and
-//               just taking the first one. we may have to make sure we're pushing out by the largest penetration
-//               vector? or maybe the closest triangle? not sure.
+//       - TODO (done): fix clipping through cube that's in the ground
+//       - TODO (done): debug the case where the penetration depth is larger for the other triangle, but that
+//               triangle is not being set to the triangle we use to push it out.
+//       - TODO: fix sliding through corner created by two meshes; i think we just need to compare the player
+//               against all the meshes. yeah, right now we just break on the first intersection.
 //       - TODO: collision response
 
 

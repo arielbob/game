@@ -230,18 +230,56 @@ bool32 capsule_intersects_mesh(Capsule capsule, Mesh mesh, Transform transform,
 
     uint32 *indices = mesh.indices;
 
+    bool32 intersected = false;
+    real32 smallest_penetration_depth = FLT_MIN;
+    Vec3 smallest_penetration_normal = {};
+    real32 largest_dot = FLT_MIN;
+
+    Vec3 smallest_penetration_triangle[3] = {};
+
     for (int32 i = 0; i < (int32) mesh.num_triangles; i++) {
         Vec3 triangle[3];
+        // TODO: don't keep calculating the normal; just calculate it once and pass it down
         get_triangle(&mesh, i, triangle);
         transform_triangle(triangle, &object_to_world);
+        Vec3 triangle_normal = get_triangle_normal(triangle);
 
         // TODO: do we want to return the smallest or largest penetration depth?
-        if (capsule_intersects_triangle(capsule, triangle, penetration_normal, penetration_depth)) {
-            return true;
+        Vec3 normal_result;
+        real32 depth_result;
+        if (capsule_intersects_triangle(capsule, triangle, &normal_result, &depth_result)) {
+            real32 dot_result = dot(normal_result, triangle_normal);
+            // TODO: penetration depth is super confusing, we might just want to return the opposite one, i.e.
+            //       the one we use for pushing the capsule out
+            // we check for smallest penetration depth since that's what will lead to the largest push out
+            // vector (since the penetration vector is from the point on the triangle to the center of the sphere).
+            if (!intersected || (dot_result > 0.0f && depth_result < smallest_penetration_depth)) {
+            //if (!intersected || depth_result > largest_penetration_depth) {
+                intersected = true;
+                smallest_penetration_normal = normal_result;
+                smallest_penetration_depth = depth_result;
+                smallest_penetration_triangle[0] = triangle[0];
+                smallest_penetration_triangle[1] = triangle[1];
+                smallest_penetration_triangle[2] = triangle[2];
+                largest_dot = dot_result;
+            }
         }
     }
 
-    return false;
+    if (intersected) {
+        Vec4 triangle_color = make_vec4(1.0f, 1.0f, 1.0f, 1.0f);
+        *penetration_normal = smallest_penetration_normal;
+        *penetration_depth = smallest_penetration_depth;
+
+        add_debug_line(&Context::game_state->debug_state,
+                       smallest_penetration_triangle[0], smallest_penetration_triangle[1], triangle_color);
+        add_debug_line(&Context::game_state->debug_state,
+                       smallest_penetration_triangle[1], smallest_penetration_triangle[2], triangle_color);
+        add_debug_line(&Context::game_state->debug_state,
+                       smallest_penetration_triangle[2], smallest_penetration_triangle[0], triangle_color);
+    }
+
+    return intersected;
 }
 
 // gets the highest point within the cylinder of some radius around some center from min_y to max_y
@@ -777,8 +815,20 @@ void update(Game_State *game_state,
             game_state->mode = Game_Mode::PLAYING;
         } else {
             game_state->mode = Game_Mode::EDITING;
+
             if (!game_state->editor_state.use_freecam) {
                 platform_set_cursor_visible(true);
+            }
+
+            // debug
+            FOR_LIST_NODES(Entity *, game_state->editor_state.level.entities) {
+                Entity *entity = current_node->value;
+                if (entity->type == ENTITY_NORMAL) {
+                    Normal_Entity *e = (Normal_Entity *) entity;
+                    if (e->collider.type == Collider_Type::CAPSULE) {
+                        update_entity_position(&game_state->editor_state.asset_manager, entity, game_state->player.position);
+                    }
+                }
             }
         }
     }

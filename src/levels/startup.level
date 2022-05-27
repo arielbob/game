@@ -53,7 +53,7 @@ use_color_override 1
 
 entities {
 type normal
-position 1.735877 0.527540 1.162980
+position 1.755084 -0.002930 1.162980
 rotation 0.879551 0.282745 0.364321 -0.117117
 scale 1.000000 1.000000 1.000000
 mesh_primitive "cube"
@@ -74,6 +74,20 @@ rotation 1.000000 0.000000 0.000000 0.000000
 scale 0.500000 0.500000 0.500000
 mesh_primitive "cube"
 material "diffuse_sphere"
+is_walkable 0
+
+type normal
+position 1.538190 1.000000 -0.741480
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 2.000000 0.050000
+mesh_primitive "cube"
+is_walkable 0
+
+type normal
+position 1.032065 1.000000 -1.211891
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 0.050000 2.000000 1.000000
+mesh_primitive "cube"
 is_walkable 0
 
 type point_light
