@@ -58,7 +58,7 @@ rotation 0.879551 0.282745 0.364321 -0.117117
 scale 1.000000 1.000000 1.000000
 mesh_primitive "cube"
 material "shiny_monkey"
-is_walkable 0
+is_walkable 1
 
 type normal
 position 0.000000 0.000000 0.000000
@@ -69,9 +69,9 @@ material "diffuse_plane"
 is_walkable 1
 
 type normal
-position -1.500000 1.500000 -1.000000
-rotation 1.000000 0.000000 0.000000 0.000000
-scale 0.500000 0.500000 0.500000
+position -1.500000 1.500000 -0.279660
+rotation 0.818524 -0.324278 0.457405 0.125074
+scale 1.149342 0.142868 7.272684
 mesh_primitive "cube"
 material "diffuse_sphere"
 is_walkable 0
