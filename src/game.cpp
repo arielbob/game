@@ -717,6 +717,10 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
                                                  player->walk_state, next_position,
                                                  &new_walk_state, &grounded_position);
     if (found_new_ground) {
+        if (new_walk_state.ground_entity_id != player->walk_state.ground_entity_id) {
+            //DebugBreak();
+        }
+
         player->walk_state = new_walk_state;
         displacement_vector = grounded_position - player->position;
         player->is_grounded = true;
@@ -745,7 +749,6 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
     player->position += displacement_vector;
 
     do_collisions(game_state);
-    //check_player_collisions(game_state);
 }
 
 void update_camera(Camera *camera, Vec3 position, real32 heading, real32 pitch, real32 roll) {

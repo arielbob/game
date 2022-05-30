@@ -496,7 +496,17 @@
 //       - TODO (done): fix sliding through corner created by two meshes; i think we just need to compare the player
 //               against all the meshes. yeah, right now we just break on the first intersection.
 //       - TODO (done): collision response
+//       - TODO (done): fix weird collision case in startup level
+//              - TODO (done): add new ray_intersects_plane procedure that passes when t is < 0
 //       - TODO: fix walking between meshes not working anymore
+//               - i'm being pushed out before ever being able to be above a new mesh, so we never get to walk on
+//                 it.
+//               - TODO: implement this:
+//               - what if we just use the capsule collision against the mesh? if the normal of the triangle is
+//                 walkable (it's pointing relatively straight up) and the intersection point is within some
+//                 threshold between the bottom of the capsule and some max height (i.e. the max step-up distance),
+//                 then we move to that triangle.
+//               - we can still keep the moving on triangle code, i'm pretty sure; i mean, yeah, i think it's fine.
 
 // TODO: capsule vs AABB for optimization
 //       - TODO: do this check first in capsule_intersects_mesh before checking triangles

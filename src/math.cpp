@@ -1175,6 +1175,17 @@ bool32 ray_intersects_plane(Ray ray, Vec3 plane_normal, real32 plane_d, real32 *
     return false;
 }
 
+bool32 bidirectional_ray_intersects_plane(Ray ray, Vec3 plane_normal, real32 plane_d, real32 *t_result) {
+    real32 denom = dot(ray.direction, plane_normal);
+    if (fabsf(denom) < EPSILON) {
+        return false;
+    }
+    
+    real32 t = (plane_d - dot(ray.origin, plane_normal)) / denom;
+    *t_result = (plane_d - dot(ray.origin, plane_normal)) / denom;
+    return true;
+}
+
 bool32 ray_intersects_plane(Ray ray, Plane plane, real32 *t_result) {
     return ray_intersects_plane(ray, plane.normal, plane.d, t_result);
 }
@@ -1343,7 +1354,7 @@ bool32 capsule_intersects_triangle(Capsule capsule, Vec3 triangle[3],
     real32 plane_intersect_t;
 
     Vec3 reference_point;
-    if (ray_intersects_plane(capsule_ray, triangle_normal, plane_d, &plane_intersect_t)) {
+    if (bidirectional_ray_intersects_plane(capsule_ray, triangle_normal, plane_d, &plane_intersect_t)) {
         Vec3 intersection_point = capsule.base + capsule_normal * plane_intersect_t;
         reference_point = get_closest_point_on_triangle_to_coplanar_point(intersection_point,
                                                                           triangle, triangle_normal);
