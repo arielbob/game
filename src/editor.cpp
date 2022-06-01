@@ -597,21 +597,102 @@ void reset_editor(Editor_State *editor_state) {
     editor_state->last_selected_entity_id = -1;
 }
 
-bool32 debug_check_collisions(Asset_Manager *asset_manager, Editor_Level *level, Normal_Entity *entity) {
+void debug_check_collisions(Asset_Manager *asset_manager, Editor_Level *level, Normal_Entity *entity) {
     FOR_LIST_NODES(Entity *, level->entities) {
+#if 0
         if (current_node->value->type != ENTITY_NORMAL || current_node->value->id == entity->id) continue;
 
         Normal_Entity *entity_to_check = (Normal_Entity *) current_node->value;
         Mesh mesh = get_mesh(asset_manager, entity_to_check->mesh_id);
         Vec3 penetration_normal;
         real32 penetration_depth;
+        Vec3 penetration_point;
+        int32 triangle_index;
+        Vec3 triangle_normal;
         bool32 intersected = capsule_intersects_mesh(entity->collider.capsule.capsule, mesh,
                                                      entity_to_check->transform,
-                                                     &penetration_normal, &penetration_depth);
-        if (intersected) return true;
+                                                     &penetration_normal, &penetration_depth, &penetration_point,
+                                                     &triangle_index, &triangle_normal);
+#endif
+
+        Entity *uncast_entity = current_node->value;
+        if (uncast_entity->type != ENTITY_NORMAL) continue;
+
+        Normal_Entity *entity_to_check = (Normal_Entity *) current_node->value;
+        Mat4 object_to_world = get_model_matrix(entity_to_check->transform);
+        Mesh *mesh = get_mesh_pointer(asset_manager, entity_to_check->mesh_id);
+
+        Capsule player_capsule = entity->collider.capsule.capsule;
+        for (int32 i = 0; i < (int32) mesh->num_triangles; i++) {
+            Vec3 triangle[3];
+            get_triangle(mesh, i, triangle);
+            transform_triangle(triangle, &object_to_world);
+            Vec3 triangle_normal = get_triangle_normal(triangle);
+
+            Vec3 penetration_normal, penetration_point;
+            real32 penetration_depth;
+
+            bool32 intersected = capsule_intersects_triangle(player_capsule, triangle,
+                                                             &penetration_normal,
+                                                             &penetration_depth,
+                                                             &penetration_point);
+            real32 penetration_height = penetration_point.y - entity->transform.position.y;
+            if (intersected && !is_walkable(entity->transform.position, triangle, triangle_normal, penetration_height) &&
+                dot(penetration_normal, triangle_normal) > 0.0f) {
+                //player->position += (penetration_normal * (player_capsule.radius - penetration_depth));
+
+                Vec4 triangle_color = make_vec4(1.0f, 1.0f, 1.0f, 1.0f);
+                add_debug_line(&Context::game_state->debug_state,
+                               triangle[0], triangle[1], triangle_color);
+                add_debug_line(&Context::game_state->debug_state,
+                               triangle[1], triangle[2], triangle_color);
+                add_debug_line(&Context::game_state->debug_state,
+                               triangle[2], triangle[0], triangle_color);
+
+                add_debug_line(&Context::game_state->debug_state,
+                               entity->transform.position, penetration_point, triangle_color);
+            }
+        }
+
+        //if (intersected) return true;
     }
 
-    return false;
+#if 0
+    Marker m = begin_region();
+    Allocator *frame_allocator = (Allocator *) &memory.frame_arena;
+    String_Buffer buffer = make_string_buffer(frame_allocator, 1024);
+    FOR_LIST_NODES(Entity *, level->entities) {
+        if (current_node->value->type != ENTITY_NORMAL || current_node->value->id == entity->id) continue;
+        Normal_Entity *entity_to_check = (Normal_Entity *) current_node->value;
+
+        Mat4 object_to_world = get_model_matrix(entity_to_check->transform);
+
+        Mesh *mesh = get_mesh_pointer(asset_manager, entity_to_check->mesh_id);
+
+        for (int32 i = 0; i < (int32) mesh->num_triangles; i++) {
+            Vec3 triangle[3];
+            get_triangle(mesh, i, triangle);
+            transform_triangle(triangle, &object_to_world);
+            Vec3 triangle_normal = get_triangle_normal(triangle);
+
+            if (triangle_normal.y < 0.2f) continue;
+            Vec3 point_on_triangle_plane = get_point_on_plane_from_xz(entity->transform.position.x,
+                                                                      entity->transform.position.z,
+                                                                      triangle_normal, triangle[0]);
+            char *str = string_format(temp_region, 128,
+                                      "entity %d; triangle %d; point on plane: %f\n", entity_to_check->id, i, point_on_triangle_plane.y);
+            append_string(&buffer, str);
+        }
+    }
+
+    int32 font_id;
+    Font font = get_font(asset_manager, "calibri14", &font_id);
+    do_text(Context::ui_manager, 900.0f, 350.0f, to_char_array(frame_allocator, buffer), font_id,
+            "triangle plane points");
+    end_region(m);
+#endif
+
+    //return false;
 }
 
 void update_editor(Game_State *game_state, Controller_State *controller_state, real32 dt) {
@@ -774,7 +855,7 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
         if (uncast_entity->type != ENTITY_NORMAL) continue;
         Normal_Entity *entity = (Normal_Entity *) current_node->value;
         if (entity->collider.type == Collider_Type::CAPSULE) {
-            bool32 result = debug_check_collisions(asset_manager, level, entity);
+            debug_check_collisions(asset_manager, level, entity);
             // we only have one entity that has a capsule collider, so break
             break;
         }

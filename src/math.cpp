@@ -1327,8 +1327,11 @@ bool32 sphere_intersects_triangle(Vec3 center, real32 radius, Vec3 triangle[3],
     *penetration_depth = distance(penetration_vector);
 
     Vec3 capsule_edge = closest_point_on_triangle - (*penetration_normal)*(radius - *penetration_depth);
+
+#if SHOW_COLLISION_DEBUG_LINES
     add_debug_line(&Context::game_state->debug_state,
                    closest_point_on_triangle, capsule_edge, make_vec4(1.0f, 1.0f, 0.0f, 1.0f));
+#endif
 
 #if 0
     if (dot(penetration_vector, triangle_normal) > 0.0f) {
@@ -1342,7 +1345,8 @@ bool32 sphere_intersects_triangle(Vec3 center, real32 radius, Vec3 triangle[3],
 
 // https://wickedengine.net/2020/04/26/capsule-collision-detection/
 bool32 capsule_intersects_triangle(Capsule capsule, Vec3 triangle[3],
-                                   Vec3 *penetration_normal, real32 *penetration_depth) {
+                                   Vec3 *penetration_normal, real32 *penetration_depth,
+                                   Vec3 *intersection_point) {
     Vec3 capsule_normal = normalize(capsule.tip - capsule.base);
     Vec3 line_end_offset = capsule_normal * capsule.radius;
     Vec3 a = capsule.base + line_end_offset;
@@ -1355,8 +1359,8 @@ bool32 capsule_intersects_triangle(Capsule capsule, Vec3 triangle[3],
 
     Vec3 reference_point;
     if (bidirectional_ray_intersects_plane(capsule_ray, triangle_normal, plane_d, &plane_intersect_t)) {
-        Vec3 intersection_point = capsule.base + capsule_normal * plane_intersect_t;
-        reference_point = get_closest_point_on_triangle_to_coplanar_point(intersection_point,
+        Vec3 plane_intersection_point = capsule.base + capsule_normal * plane_intersect_t;
+        reference_point = get_closest_point_on_triangle_to_coplanar_point(plane_intersection_point,
                                                                           triangle, triangle_normal);
     } else {
         reference_point = triangle[0];
@@ -1371,12 +1375,16 @@ bool32 capsule_intersects_triangle(Capsule capsule, Vec3 triangle[3],
         return false;
     }
 
+#if SHOW_COLLISION_DEBUG_LINES
     add_debug_line(&Context::game_state->debug_state,
                    triangle[0], triangle[1], make_vec4(1.0f, 0.0f, 0.0f, 1.0f));
     add_debug_line(&Context::game_state->debug_state,
                    triangle[1], triangle[2], make_vec4(1.0f, 0.0f, 0.0f, 1.0f));
     add_debug_line(&Context::game_state->debug_state,
                    triangle[2], triangle[0], make_vec4(1.0f, 0.0f, 0.0f, 1.0f));
+#endif
+
+    *intersection_point = sphere_center - (*penetration_normal)*capsule.radius;
 
     return true;
 }

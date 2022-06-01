@@ -8,6 +8,8 @@
 #define MAX_FONTS 64
 #define MAX_DEBUG_LINES 256
 
+#define SHOW_COLLISION_DEBUG_LINES 0
+
 #include "platform.h"
 #include "hash_table.h"
 #include "asset.h"
@@ -145,11 +147,13 @@ struct Message_Manager {
 namespace Player_Constants {
     // maximum distance below the player position where the player will instantly walk; if the
     // ground is a larger distance away than this, then the player will fall instead.
-    real32 max_lower_ground_offset = 0.2f; 
+    real32 max_lower_ground_offset = 0.1f; 
     // maximum distance above the player position that the player will instantly walk to
-    real32 max_upper_ground_offset = 0.5f;
-    real32 walk_radius = 0.01f;
-    //real32 walk_radius = 1.0f;
+    real32 max_upper_ground_offset = 0.1f;
+    real32 walk_radius = 0.00001f;
+    real32 small_walk_radius = 0.00001f;
+    //real32 walk_radius = 0.5f;
+    real32 max_steppable_height = 0.2f;
 
     real32 capsule_radius = 0.5f;
     real32 player_height = 1.6f;
@@ -158,7 +162,7 @@ namespace Player_Constants {
     Vec3 right = make_vec3(1.0f, 0.0f, 0.0f);
     Vec3 up = make_vec3(0.0f, 1.0f, 0.0f);
 
-    real32 initial_speed = 1.5f;
+    real32 initial_speed = 2.5f;
 };
 
 struct Walk_State {
@@ -251,7 +255,8 @@ Vec3 cursor_pos_to_world_space(Vec2 cursor_pos, Render_State *render_state);
 int32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, bool32 include_backside,
                           Ray_Intersects_Mesh_Result *result);
 bool32 capsule_intersects_mesh(Capsule capsule, Mesh mesh, Transform transform,
-                               Vec3 *penetration_normal, real32 *penetration_depth);
+                               Vec3 *penetration_normal, real32 *penetration_depth, Vec3 *intersection_point,
+                               int32 *triangle_index, Vec3 *triangle_normal);
 bool32 closest_point_below_on_mesh(Vec3 point, Mesh mesh, Transform transform, Vec3 *result);
 bool32 get_walkable_triangle_on_mesh(Vec3 center, real32 radius,
                                      Mesh *mesh, Transform transform,
@@ -259,6 +264,8 @@ bool32 get_walkable_triangle_on_mesh(Vec3 center, real32 radius,
                                      Get_Walkable_Triangle_On_Mesh_Result *result);
 void add_debug_line(Debug_State *debug_state, Vec3 start, Vec3 end, Vec4 color);
 void add_message(Message_Manager *manager, String text);
+//bool32 is_walkable(Vec3 *triangle, Vec3 triangle_normal, real32 penetration_height);
+bool32 is_walkable(Vec3 position, Vec3 *triangle, Vec3 triangle_normal, real32 penetration_height);
 //void set_entity_transform(Asset_Manager *asset_manager, Entity *entity, Transform transform);
 
 #endif

@@ -507,6 +507,21 @@
 //                 threshold between the bottom of the capsule and some max height (i.e. the max step-up distance),
 //                 then we move to that triangle.
 //               - we can still keep the moving on triangle code, i'm pretty sure; i mean, yeah, i think it's fine.
+//       - TODO (done): calculate the intersection point
+//       - TODO: figure out walking on meshes
+//               - if we're on a mesh, is_grounded = true and we use the regular walking on mesh code.
+//               - just use regular walking on mesh code. when you do collisions, use capsule vs. mesh code.
+//               - can we maybe just separate between walkable and collidable?
+//               - or just use the angle of the normal? if it's greater than the maximum walkable slope angle,
+//                 then use capsule vs. mesh. otherwise, use regular walking algorithm.
+//       - TODO: fix colliding with side of ramp while on the ramp
+//       - can ensuring that all walk meshes are convex help? yes: it means that you will never collide with
+//         the walk mesh if you're walking on it.
+//       - if an entity's collider mesh is convex, then if you collide with it, if you take the one with the largest
+//         push-out vector, then that is guaranteed to push you out of the entity.
+//       - TODO: could we do a walk-mesh solution instead? basically no collision at all; just stay on the walk
+//               mesh? kind of like the "killing the walk monster" way?
+//       - we could always still do it the walk mesh / collider mesh way, where we separate the meshes.
 
 // TODO: capsule vs AABB for optimization
 //       - TODO: do this check first in capsule_intersects_mesh before checking triangles

@@ -311,7 +311,6 @@ void append_string(String_Buffer *buffer, String to_append) {
     buffer->current_length += to_append.length;
 }
 
-// TODO: append_string() above copies, but this one doesn't - i think both should copy
 inline void append_string(String_Buffer *buffer, char *to_append_c_str) {
     String to_append = make_string(to_append_c_str);
     append_string(buffer, to_append);
