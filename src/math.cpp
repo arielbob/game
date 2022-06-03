@@ -1375,7 +1375,8 @@ bool32 capsule_intersects_triangle(Capsule capsule, Vec3 triangle[3],
         return false;
     }
 
-#if SHOW_COLLISION_DEBUG_LINES
+#if 0
+    //SHOW_COLLISION_DEBUG_LINES
     add_debug_line(&Context::game_state->debug_state,
                    triangle[0], triangle[1], make_vec4(1.0f, 0.0f, 0.0f, 1.0f));
     add_debug_line(&Context::game_state->debug_state,

@@ -522,6 +522,14 @@
 //       - TODO: could we do a walk-mesh solution instead? basically no collision at all; just stay on the walk
 //               mesh? kind of like the "killing the walk monster" way?
 //       - we could always still do it the walk mesh / collider mesh way, where we separate the meshes.
+//       - TODO: figure out better, cleaner solution for all of this
+//               - maybe use a cylinder instead of a capsule for the player collider?
+//       - TODO: just use capsule with regular collision response, i.e. use the bottom cap to push up slopes
+//               - TODO (done): remove the walk code
+//               - TODO (done): do penetration collision response using displacement vector
+//               - TODO (done): set walk state from do_colisions() code
+//               - TODO (done): fix do_collisions making player's transform into NaNs
+//               - TODO: fix being pushed through ground when colliding underneath ramp
 
 // TODO: capsule vs AABB for optimization
 //       - TODO: do this check first in capsule_intersects_mesh before checking triangles

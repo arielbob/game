@@ -8,7 +8,7 @@
 #define MAX_FONTS 64
 #define MAX_DEBUG_LINES 256
 
-#define SHOW_COLLISION_DEBUG_LINES 0
+#define SHOW_COLLISION_DEBUG_LINES 1
 
 #include "platform.h"
 #include "hash_table.h"
@@ -150,7 +150,7 @@ namespace Player_Constants {
     real32 max_lower_ground_offset = 0.1f; 
     // maximum distance above the player position that the player will instantly walk to
     real32 max_upper_ground_offset = 0.1f;
-    real32 walk_radius = 0.00001f;
+    real32 walk_radius = 0.5f;
     real32 small_walk_radius = 0.00001f;
     //real32 walk_radius = 0.5f;
     real32 max_steppable_height = 0.2f;
