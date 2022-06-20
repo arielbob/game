@@ -598,6 +598,99 @@ bool32 is_walkable(Vec3 position, Vec3 *triangle, Vec3 triangle_normal, real32 p
     //return (triangle_normal.y > 0.5f && penetration_height <= Player_Constants::max_steppable_height);
 }
 
+#define MAX_FRAME_COLLISIONS 10
+
+inline void get_transformed_triangle(Mesh *mesh, int32 triangle_index, Mat4 *object_to_world,
+                                     Vec3 transformed_triangle[3]) {
+    get_triangle(mesh, triangle_index, transformed_triangle);
+    transform_triangle(transformed_triangle, object_to_world);
+}
+
+void do_collisions(Game_State *game_state, Vec3 initial_move) {
+    Game_Level *level = &game_state->level;
+    Asset_Manager *asset_manager = &game_state->asset_manager;
+
+    Player *player = &game_state->player;
+    int32 ground_entity_id = player->walk_state.ground_entity_id;
+    int32 ground_triangle_index = player->walk_state.triangle_index;
+
+    Vec3 last_position = player->position;
+    player->position += initial_move;
+
+    bool32 found_ground = false;
+    bool32 intersected = false;
+
+    for (int32 num_collisions = 0; num_collisions < MAX_FRAME_COLLISIONS; num_collisions++) {
+        Capsule player_capsule = make_capsule(player->position,
+                                              player->position + make_vec3(0.0f, player->height, 0.0f),
+                                              Player_Constants::capsule_radius);
+
+        FOR_LIST_NODES(Entity *, level->entities) {
+            Entity *uncast_entity = current_node->value;
+            if (uncast_entity->type != ENTITY_NORMAL) continue;
+
+            Normal_Entity *entity = (Normal_Entity *) current_node->value;
+            Mat4 object_to_world = get_model_matrix(entity->transform);
+            Mesh *mesh = get_mesh_pointer(asset_manager, entity->mesh_id);
+
+            for (int32 triangle_index = 0; triangle_index < (int32) mesh->num_triangles; triangle_index++) {
+                Vec3 triangle[3];
+                get_transformed_triangle(mesh, triangle_index, &object_to_world, triangle);
+
+                Vec3 triangle_normal = get_triangle_normal(triangle);
+
+                Vec3 penetration_normal, penetration_point;
+                real32 penetration_depth;
+
+                intersected = capsule_intersects_triangle(player_capsule, triangle,
+                                                          &penetration_normal,
+                                                          &penetration_depth,
+                                                          &penetration_point);
+
+                if (intersected) {
+                    Vec3 displacement = player->position - last_position;
+                    real32 displacement_length = distance(displacement);
+                    if (displacement_length > EPSILON) {
+                        Vec3 normalized_displacement = displacement / displacement_length;
+
+                        Vec3 normalized_correction = -penetration_normal * dot(normalized_displacement, penetration_normal);
+                        last_position = player->position;
+                        player->position += displacement_length*normalized_correction;
+                        player->position += penetration_normal * (penetration_depth + 0.00001f);
+
+#if 1
+                        if (triangle_normal.y > 0.3f) {
+                            player->walk_state.triangle_normal = triangle_normal;
+                            player->walk_state.triangle_index = triangle_index;
+                            player->walk_state.ground_entity_id = entity->id;
+                            found_ground = true;
+                        }
+#endif
+                        //break;
+                    }
+
+#if 1
+                    Vec4 triangle_color = make_vec4(1.0f, 1.0f, 1.0f, 1.0f);
+                    add_debug_line(&game_state->debug_state,
+                                   triangle[0], triangle[1], triangle_color);
+                    add_debug_line(&game_state->debug_state,
+                                   triangle[1], triangle[2], triangle_color);
+                    add_debug_line(&game_state->debug_state,
+                                   triangle[2], triangle[0], triangle_color);
+#endif
+                }
+            }
+
+                        //if (intersected) break;
+        }
+
+        if (!intersected) break;
+    }
+
+    player->is_grounded = found_ground;
+}
+
+#if 0
 void do_collisions(Game_State *game_state, Vec3 last_position) {
     Game_Level *level = &game_state->level;
     Asset_Manager *asset_manager = &game_state->asset_manager;
@@ -649,6 +742,7 @@ void do_collisions(Game_State *game_state, Vec3 last_position) {
                     Vec3 normalized_correction = -penetration_normal * dot(normalized_displacement, penetration_normal);
                     //player->position += displacement_length*normalized_correction;
                     player->position += (player_capsule.radius - penetration_depth)*normalized_correction;
+                    //player->position += 0.0001f*penetration_normal;
 
 #if 1
                     if (triangle_normal.y > 0.3f) {
@@ -676,6 +770,7 @@ void do_collisions(Game_State *game_state, Vec3 last_position) {
 
     player->is_grounded = found_ground;
 }
+#endif
 
 #if 0
 void do_collisions(Game_State *game_state, Vec3 last_position) {
@@ -847,6 +942,7 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
 
     if (player->is_grounded) {
         player->velocity = move_vector;
+        player->acceleration = {};
     } else {
         player->acceleration = make_vec3(0.0f, -9.81f, 0.0f);
     }
@@ -877,9 +973,13 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
 #endif
     
     Vec3 last_position = player->position;
-    player->position += displacement_vector;
+    //player->position += displacement_vector;
 
-    do_collisions(game_state, last_position);
+    if (distance(displacement_vector) > EPSILON) {
+        do_collisions(game_state, displacement_vector);
+    }
+
+    //do_collisions(game_state, last_position);
 
 #if 0
     bool32 found_ground = false;
@@ -1049,12 +1149,13 @@ void update(Game_State *game_state,
     //char *buf = (char *) arena_push(&memory.frame_arena, 128);
     Allocator *frame_allocator = (Allocator *) &memory.frame_arena;
     char *str = string_format(frame_allocator, 256,
-                              "walk_state ground_entity_id: %d\nwalk_state triangle_index: %d\nwalk_state triangle_normal: { %f, %f, %f }\nis_grounded: %d",
+                              "walk_state ground_entity_id: %d\nwalk_state triangle_index: %d\nwalk_state triangle_normal: { %f, %f, %f }\nis_grounded: %d\nacceleration.y: %f",
                               player->walk_state.ground_entity_id, player->walk_state.triangle_index,
                               player->walk_state.triangle_normal.x,
                               player->walk_state.triangle_normal.y,
                               player->walk_state.triangle_normal.z,
-        player->is_grounded);
+                              player->is_grounded,
+                              player->acceleration.y);
     do_text(ui_manager, 5.0f, 32.0f, str, font_id, "triangle_index");
 #if 0
     buf = (char *) arena_push(&memory.frame_arena, 128);

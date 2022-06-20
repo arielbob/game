@@ -1,5 +1,5 @@
 level_info {
-level_name "startup"
+level_name "platform_with_ramp"
 }
 
 meshes {
@@ -53,8 +53,8 @@ use_color_override 1
 
 entities {
 type normal
-position 1.755084 -0.002930 1.162980
-rotation 0.879551 0.282745 0.364321 -0.117117
+position 1.755084 -0.274429 1.162980
+rotation 0.908249 0.169228 0.376208 -0.070097
 scale 1.000000 1.000000 1.000000
 mesh_primitive "cube"
 material "shiny_monkey"
@@ -87,6 +87,13 @@ type normal
 position 1.032065 1.000000 -1.211891
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 0.050000 2.000000 1.000000
+mesh_primitive "cube"
+is_walkable 0
+
+type normal
+position 0.908709 -0.168871 0.901668
+rotation 0.927823 0.000000 0.373020 0.000000
+scale 2.429790 1.087247 1.000000
 mesh_primitive "cube"
 is_walkable 0
 

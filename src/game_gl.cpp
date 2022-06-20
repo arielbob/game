@@ -529,7 +529,14 @@
 //               - TODO (done): do penetration collision response using displacement vector
 //               - TODO (done): set walk state from do_colisions() code
 //               - TODO (done): fix do_collisions making player's transform into NaNs
-//               - TODO: fix being pushed through ground when colliding underneath ramp
+//               - TODO (done): do collisions with displacement vector, then with gravity vector
+//                       OR just do collisions recursively?
+//                       i think just do it recursively for now. well, we don't actually need to recurse; just
+//                       loop, but also have a max loops assert in case we end up in a weird case. i think then
+//                       we need to push the capsule out a bit more so we aren't always penetrating.
+//               - TODO: figure out how to fix the jittering when holding down W into wall
+//                       - something to do with moving before checking the collision? or maybe because we push
+//                         out a bit?
 
 // TODO: capsule vs AABB for optimization
 //       - TODO: do this check first in capsule_intersects_mesh before checking triangles

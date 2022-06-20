@@ -1324,9 +1324,9 @@ bool32 sphere_intersects_triangle(Vec3 center, real32 radius, Vec3 triangle[3],
 
     Vec3 penetration_vector = center - closest_point_on_triangle;
     *penetration_normal = normalize(penetration_vector);
-    *penetration_depth = distance(penetration_vector);
+    *penetration_depth = radius - distance(penetration_vector);
 
-    Vec3 capsule_edge = closest_point_on_triangle - (*penetration_normal)*(radius - *penetration_depth);
+    Vec3 capsule_edge = closest_point_on_triangle - (*penetration_normal)*(*penetration_depth);
 
 #if SHOW_COLLISION_DEBUG_LINES
     add_debug_line(&Context::game_state->debug_state,
@@ -2057,3 +2057,4 @@ inline void transform_triangle(Vec3 triangle[3], Mat4 *model_matrix) {
         triangle[i] = transform_point(model_matrix, &triangle[i]);
     }
 }
+
