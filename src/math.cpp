@@ -989,6 +989,14 @@ void make_basis(Vec3 v, Vec3 *right, Vec3 *up) {
     *up = normalize(cross(v, *right));
 }
 
+// NOTE: this keeps forward the same. we're assuming that forward and right are already pretty close
+//       to perpendicular, or we're just using this to ensure that they're orthogonal.
+void orthonormalize(Vec3 forward, Vec3 right, Vec3 *new_forward, Vec3 *new_right) {
+    Vec3 up = normalize(cross(forward, right));
+    *new_right = normalize(cross(up, forward));
+    *new_forward = normalize(forward);
+}
+
 // parallel_to_this is a vector we want the plane's normal to be closest to
 Plane get_plane_containing_ray(Ray ray, Vec3 parallel_to_this) {
     Vec3 right, up;

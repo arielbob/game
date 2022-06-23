@@ -537,6 +537,13 @@
 //               - TODO: figure out how to fix the jittering when holding down W into wall
 //                       - something to do with moving before checking the collision? or maybe because we push
 //                         out a bit?
+//               - TODO: we might want to see if we can early-out
+//               - TODO (done): just use regular basis based on camera rotation and not on triangle normal.
+//               - TODO (done): update player capsule every time it gets moved due to an intersection
+//               - TODO (done): set is_grounded based on the intersection point being on the bottom sphere of the
+//                              player capsule
+//               - TODO: smooth out walking down slopes by shooting ray down to see if there is a triangle close
+//                       enough and just setting the player position to the intersection point if it exists
 
 // TODO: capsule vs AABB for optimization
 //       - TODO: do this check first in capsule_intersects_mesh before checking triangles

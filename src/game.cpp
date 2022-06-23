@@ -606,6 +606,12 @@ inline void get_transformed_triangle(Mesh *mesh, int32 triangle_index, Mat4 *obj
     transform_triangle(transformed_triangle, object_to_world);
 }
 
+inline bool32 hit_bottom_player_capsule_sphere(Capsule *capsule, Vec3 *point_on_capsule) {
+    Vec3 bottom_sphere_center = capsule->base + make_vec3(0.0f, capsule->radius, 0.0f);
+    return fabsf(distance(*point_on_capsule - bottom_sphere_center) - capsule->radius) < EPSILON;
+}
+
+
 void do_collisions(Game_State *game_state, Vec3 initial_move) {
     Game_Level *level = &game_state->level;
     Asset_Manager *asset_manager = &game_state->asset_manager;
@@ -647,27 +653,55 @@ void do_collisions(Game_State *game_state, Vec3 initial_move) {
                                                           &penetration_depth,
                                                           &penetration_point);
 
+                // TODO: there is a bug in this code when sliding under and along two adjacent triangles above you.
+                //       since the adjacent triangles are not being treated as a single plane, you can slide along
+                //       one, but then get caught on the other when you hit it. if the second triangle were the only
+                //       one there, this would be correct behaviour.
                 if (intersected) {
-                    Vec3 displacement = player->position - last_position;
-                    real32 displacement_length = distance(displacement);
-                    if (displacement_length > EPSILON) {
+#if 1
+                    // we use the initial_move vector here, since using the correction displacement from a previous
+                    // intersection can result in behaviour such as pushing the player through meshes
+                    Vec3 displacement = initial_move;
+                    real32 displacement_length = distance(initial_move);
+                    if (displacement_length > EPSILON &&
+                        (dot(initial_move, triangle_normal) < 0.0f)) {
                         Vec3 normalized_displacement = displacement / displacement_length;
-
-                        Vec3 normalized_correction = -penetration_normal * dot(normalized_displacement, penetration_normal);
+                        Vec3 normalized_correction = (-penetration_normal *
+                                                      dot(normalized_displacement, penetration_normal));
                         last_position = player->position;
                         player->position += displacement_length*normalized_correction;
                         player->position += penetration_normal * (penetration_depth + 0.00001f);
 
-#if 1
-                        if (triangle_normal.y > 0.3f) {
-                            player->walk_state.triangle_normal = triangle_normal;
-                            player->walk_state.triangle_index = triangle_index;
-                            player->walk_state.ground_entity_id = entity->id;
+                        // we check this so that we can nicely climb up triangles that are low enough without
+                        // being pushed brought down by gravity. this is also necessary since if we didn't have this,
+                        // if a wall triangle comes before a floor triangle, then we would get pushed out before
+                        // we'd even be able to intersect with the floor and walk on the floor.
+                        if (hit_bottom_player_capsule_sphere(&player_capsule, &penetration_point)) {
                             found_ground = true;
                         }
-#endif
+
+                        player_capsule = make_capsule(player->position,
+                                                      player->position + make_vec3(0.0f, player->height, 0.0f),
+                                                      Player_Constants::capsule_radius);
+
+                        // we don't early-out here since we might encounter a walkable surface later, on this same
+                        // mesh.
                         //break;
                     }
+#endif
+
+#if 0
+                    // TODO: we don't actually do any correction based on displacement since 
+                    player->position += penetration_normal * (penetration_depth + 0.00001f);
+
+                    // TODO: this can lead to unexpected results
+                    if (triangle_normal.y > 0.3f) {
+                        player->walk_state.triangle_normal = triangle_normal;
+                        player->walk_state.triangle_index = triangle_index;
+                        player->walk_state.ground_entity_id = entity->id;
+                        found_ground = true;
+                    }
+#endif
 
 #if 1
                     Vec4 triangle_color = make_vec4(1.0f, 1.0f, 1.0f, 1.0f);
@@ -681,7 +715,8 @@ void do_collisions(Game_State *game_state, Vec3 initial_move) {
                 }
             }
 
-                        //if (intersected) break;
+            // TODO: not sure if we should keep this early-out
+            if (intersected) break;
         }
 
         if (!intersected) break;
@@ -896,12 +931,16 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
         controller_state->current_mouse = center;
     }
 
-    Vec3 player_forward = normalize(truncate_v4_to_v3(make_rotate_matrix(y_axis, player->heading) *
-                                                      make_vec4(Player_Constants::forward, 1.0f)));
-    Vec3 player_right = normalize(truncate_v4_to_v3(make_rotate_matrix(y_axis, player->heading) *
-                                                    make_vec4(Player_Constants::right, 1.0f)));
+    Vec3 rotated_player_forward = normalize(truncate_v4_to_v3(make_rotate_matrix(y_axis, player->heading) *
+                                                              make_vec4(Player_Constants::forward, 1.0f)));
+    Vec3 rotated_player_right = normalize(truncate_v4_to_v3(make_rotate_matrix(y_axis, player->heading) *
+                                                            make_vec4(Player_Constants::right, 1.0f)));
+    Vec3 player_forward, player_right;
+    orthonormalize(rotated_player_forward, rotated_player_right, &player_forward, &player_right);
+
     if (player->is_grounded) {
         // make basis
+#if 0
         Walk_State *walk_state = &player->walk_state;
 
         Vec3 forward_point = player->position + player_forward;
@@ -913,6 +952,7 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
         right_point = get_point_on_plane_from_xz(right_point.x, right_point.z,
                                                  walk_state->triangle_normal, player->position);
         player_right = normalize(right_point - player->position);
+#endif
 
 #if 0
         add_debug_line(debug_state,

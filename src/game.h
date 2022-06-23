@@ -227,6 +227,14 @@ namespace Context {
     Message_Manager *message_manager;
 };
 
+#if 0
+struct Contact {
+    int32 triangle_index;
+    int32 entity_id;
+    
+};
+#endif
+
 struct Ray_Intersects_Mesh_Result {
     real32 t;
     int32 triangle_index;
