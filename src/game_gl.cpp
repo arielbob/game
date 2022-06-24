@@ -544,6 +544,27 @@
 //                              player capsule
 //               - TODO: smooth out walking down slopes by shooting ray down to see if there is a triangle close
 //                       enough and just setting the player position to the intersection point if it exists
+//                       - we can't just do was_grounded since when we walk on a single triangle, we are constantly
+//                         alternating between is_grounded=false and is_grounded=true. so was_grounded is basically
+//                         always true while we're walking, and thus we always end up calling the move to closest
+//                         ground procedure, which is incorrect, since this makes us phase through walls and
+//                         prevents us from walking up slopes.
+//                       - ideally we would not keep alternating is_grounded and instead just keep is_grounded=true
+//                         as long as we're on a surface. i think then we should actually call do_collisions() twice.
+//                       - TODO: just use the current triangle's normal to calculate the walk basis only if it's a
+//                               downward slope. otherwise, just use the regular basis. this way, we don't break
+//                               stepping up small walls. also, with the getting the closest ground with a ray
+//                               method, we actually end up going faster, just because of pythogorean's theorem. we
+//                               could try correcting it? we would have to check if it's a slope though, since we don't
+//                               want to end up in the air. we ideally want to verify that the faces are connected too,
+//                               but i think it's fine if we assume that the displacements will be small and the ground
+//                               mesh isn't filled with tiny triangles that we step over in a single frame. we can use
+//                               both methods. the ray method for getting onto the slope, so we smoothly walk onto a
+//                               downwards slope instead of moving then falling down, and the slope walk basis method
+//                               for moving on the slope once we're on it.
+//               - TODO: remove walk_state from player state
+
+// TODO: fix crash with undoing/redoing add material
 
 // TODO: capsule vs AABB for optimization
 //       - TODO: do this check first in capsule_intersects_mesh before checking triangles

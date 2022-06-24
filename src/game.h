@@ -9,6 +9,8 @@
 #define MAX_DEBUG_LINES 256
 
 #define SHOW_COLLISION_DEBUG_LINES 1
+#define MAX_FRAME_COLLISIONS 10
+#define MAX_DROP_DISTANCE 0.5f
 
 #include "platform.h"
 #include "hash_table.h"
@@ -260,8 +262,8 @@ inline bool32 just_pressed(Controller_Button_State button_state);
 inline bool32 just_lifted(Controller_Button_State button_state);
 void update_render_state(Render_State *render_state);
 Vec3 cursor_pos_to_world_space(Vec2 cursor_pos, Render_State *render_state);
-int32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, bool32 include_backside,
-                          Ray_Intersects_Mesh_Result *result);
+bool32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, bool32 include_backside,
+                           Ray_Intersects_Mesh_Result *result);
 bool32 capsule_intersects_mesh(Capsule capsule, Mesh mesh, Transform transform,
                                Vec3 *penetration_normal, real32 *penetration_depth, Vec3 *intersection_point,
                                int32 *triangle_index, Vec3 *triangle_normal);
