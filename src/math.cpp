@@ -1336,7 +1336,7 @@ bool32 sphere_intersects_triangle(Vec3 center, real32 radius, Vec3 triangle[3],
 
     Vec3 capsule_edge = closest_point_on_triangle - (*penetration_normal)*(*penetration_depth);
 
-#if SHOW_COLLISION_DEBUG_LINES
+#if DEBUG_SHOW_COLLISION_LINES
     add_debug_line(&Context::game_state->debug_state,
                    closest_point_on_triangle, capsule_edge, make_vec4(1.0f, 1.0f, 0.0f, 1.0f));
 #endif
@@ -1384,7 +1384,7 @@ bool32 capsule_intersects_triangle(Capsule capsule, Vec3 triangle[3],
     }
 
 #if 0
-    //SHOW_COLLISION_DEBUG_LINES
+    //DEBUG_SHOW_COLLISION_LINES
     add_debug_line(&Context::game_state->debug_state,
                    triangle[0], triangle[1], make_vec4(1.0f, 0.0f, 0.0f, 1.0f));
     add_debug_line(&Context::game_state->debug_state,

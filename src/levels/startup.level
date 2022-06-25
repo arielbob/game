@@ -1,5 +1,5 @@
 level_info {
-level_name "platform_with_ramp"
+level_name "startup"
 }
 
 meshes {
@@ -46,8 +46,8 @@ use_color_override 1
 
 material "diffuse_sphere"
 texture "debug"
-gloss 100.000000
-color_override 0.315000 0.486250 1.000000
+gloss 0.917662
+color_override 0.398750 0.480313 0.725000
 use_color_override 1
 }
 
@@ -94,6 +94,29 @@ type normal
 position 0.908709 -0.168871 0.901668
 rotation 0.927823 0.000000 0.373020 0.000000
 scale 2.429790 1.087247 1.000000
+mesh_primitive "cube"
+is_walkable 0
+
+type normal
+position 2.454039 3.853199 2.037032
+rotation 0.954422 -0.046584 -0.294369 -0.015953
+scale 3.719608 0.086319 1.600676
+mesh_primitive "cube"
+material "diffuse_sphere"
+is_walkable 0
+
+type normal
+position 3.445202 4.943358 -0.459247
+rotation 0.951707 0.245908 -0.118490 0.140512
+scale 1.000000 0.096159 3.963288
+mesh_primitive "cube"
+material "diffuse_sphere"
+is_walkable 0
+
+type normal
+position 0.000000 4.595627 -3.661278
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 10.000000 10.000000 0.201898
 mesh_primitive "cube"
 is_walkable 0
 

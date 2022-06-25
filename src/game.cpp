@@ -282,7 +282,7 @@ bool32 capsule_intersects_mesh(Capsule capsule, Mesh mesh, Transform transform,
         *triangle_index_out = triangle_index_result;
         *triangle_normal_out = triangle_normal_result;
 
-#if SHOW_COLLISION_DEBUG_LINES
+#if DEBUG_SHOW_COLLISION_LINES
         Vec4 triangle_color = make_vec4(1.0f, 1.0f, 1.0f, 1.0f);
         add_debug_line(&Context::game_state->debug_state,
                        smallest_penetration_triangle[0], smallest_penetration_triangle[1], triangle_color);
@@ -604,7 +604,7 @@ inline void get_transformed_triangle(Mesh *mesh, int32 triangle_index, Mat4 *obj
     transform_triangle(transformed_triangle, object_to_world);
 }
 
-void move_player_to_closest_ground(Game_State *game_state, real32 max_drop_distance) {
+bool32 move_player_to_closest_ground(Game_State *game_state, real32 max_drop_distance) {
     Game_Level *level = &game_state->level;
     Asset_Manager *asset_manager = &game_state->asset_manager;
 
@@ -640,11 +640,15 @@ void move_player_to_closest_ground(Game_State *game_state, real32 max_drop_dista
         player->position = ray.origin + ray.direction*t_min;
         player->is_grounded = true;
     }
+
+    return found_ground;
 }
 
 inline bool32 hit_bottom_player_capsule_sphere(Capsule *capsule, Vec3 *point_on_capsule) {
-    Vec3 bottom_sphere_center = capsule->base + make_vec3(0.0f, capsule->radius, 0.0f);
-    return fabsf(distance(*point_on_capsule - bottom_sphere_center) - capsule->radius) < EPSILON;
+    real32 relative_height_from_base = fabsf(point_on_capsule->y - capsule->base.y);
+    // we subtract a bit from the capsule radius so that we don't end up walking on walls (i.e. when the
+    // intersection point is right at the transition point from the bottom cap and the cylinder)
+    return relative_height_from_base < (capsule->radius - 0.1f);
 }
 
 void do_collisions(Game_State *game_state, Vec3 initial_move) {
@@ -705,7 +709,7 @@ void do_collisions(Game_State *game_state, Vec3 initial_move) {
                         Vec3 normalized_displacement = displacement / displacement_length;
                         Vec3 normalized_correction = (-penetration_normal *
                                                       dot(normalized_displacement, penetration_normal));
-                        
+
                         // TODO: this causes jittering when pushing into things, but we want to do it this way since
                         //       just pushing out by the penetration depth won't give you the correct speed when
                         //       sliding along slopes or walls. also, this causes us to move out too much when
@@ -724,6 +728,7 @@ void do_collisions(Game_State *game_state, Vec3 initial_move) {
                         // we'd even be able to intersect with the floor and walk on the floor.
                         if (hit_bottom_player_capsule_sphere(&player_capsule, &penetration_point)) {
                             found_ground = true;
+                            player->walk_state.triangle_normal = triangle_normal;
                         }
 
                         player_capsule = make_capsule(player->position,
@@ -749,7 +754,7 @@ void do_collisions(Game_State *game_state, Vec3 initial_move) {
                     }
 #endif
 
-#if SHOW_COLLISION_DEBUG_LINES
+#if DEBUG_SHOW_COLLISION_LINES
                     Vec4 triangle_color = make_vec4(1.0f, 1.0f, 1.0f, 1.0f);
                     add_debug_line(&game_state->debug_state,
                                    triangle[0], triangle[1], triangle_color);
@@ -806,27 +811,30 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
     Vec3 player_forward, player_right;
     orthonormalize(rotated_player_forward, rotated_player_right, &player_forward, &player_right);
 
-    if (player->is_grounded) {
+    real32 normal_proj_y_axis = dot(player->walk_state.triangle_normal, y_axis);
+    // between 0 and 45 degrees from the y axis
+    real32 one_over_root_two = 0.7071067f;
+    bool32 slope_is_shallow = normal_proj_y_axis >= one_over_root_two && normal_proj_y_axis <= 1.0f;
+    
+    if (player->is_grounded && slope_is_shallow) {
         // make basis
-#if 0
-        Walk_State *walk_state = &player->walk_state;
+        Walk_State walk_state = player->walk_state;
 
         Vec3 forward_point = player->position + player_forward;
         forward_point = get_point_on_plane_from_xz(forward_point.x, forward_point.z,
-                                                   walk_state->triangle_normal, player->position);
+                                                   walk_state.triangle_normal, player->position);
         player_forward = normalize(forward_point - player->position);
 
         Vec3 right_point = player->position + player_right;
         right_point = get_point_on_plane_from_xz(right_point.x, right_point.z,
-                                                 walk_state->triangle_normal, player->position);
+                                                 walk_state.triangle_normal, player->position);
         player_right = normalize(right_point - player->position);
-#endif
 
-#if 0
+#if DEBUG_SHOW_WALK_BASIS
         add_debug_line(debug_state,
                        player->position, player->position + player_right, make_vec4(x_axis, 1.0f));
         add_debug_line(debug_state,
-                       player->position, player->position + walk_state->triangle_normal, make_vec4(y_axis, 1.0f));
+                       player->position, player->position + walk_state.triangle_normal, make_vec4(y_axis, 1.0f));
         add_debug_line(debug_state,
                        player->position, player->position + player_forward, make_vec4(z_axis, 1.0f));
 #endif
@@ -860,23 +868,37 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
         if (distance(displacement_vector) > EPSILON) {
             // TODO: rename do_collisions - do_collisions actually does the move given by displacement_vector
             do_collisions(game_state, displacement_vector);
-            #if 0
             if (!player->is_grounded) {
-                //player->acceleration = gravity_acceleration;
-                // don't use player velocity, since we already moved by that in the previous do_collisions() call
+                // since collisions push out the player capsule so that they aren't colliding anymore, if we base
+                // is_grounded simply on whether we're colliding with an eligible ground triangle (i.e. a triangle
+                // that intersects with the capsule's bottom cap), we will constantly be cycling between is_grounded
+                // being true and it being false. this is undesirable since it prevents us from easily determining
+                // whether the player actually is no longer walking on a triangle - we use this fact to drop the
+                // player down to a close enough triangle when they walk off a triangle so that we can walk onto
+                // downward slopes smoothly. without this, they would move off a triangle, then have gravity move
+                // them downwards until they hit the triangle, which feels weird. so therefore, after we do the
+                // first do_collisions, we then call do_collisions again with some small negative y displacement
+                // so that we can become grounded again after being pushed out.
+                // TODO: there may be a more efficient way of doing this, but this works for now.
+                
+                // don't use player velocity in displacement here, since we already moved by that in the previous
+                // do_collisions() call
                 displacement_vector = make_vec3(0.0f, -0.001f, 0.0f);
                 do_collisions(game_state, displacement_vector);
             }
-            #endif
         }
 
-        #if 0
         bool32 was_grounded = initial_is_grounded && !player->is_grounded;
 
         if (was_grounded) {
-            move_player_to_closest_ground(game_state, MAX_DROP_DISTANCE);
+            Vec3 before_drop_move_position = player->position;
+            bool32 moved = move_player_to_closest_ground(game_state, MAX_DROP_DISTANCE);
+            if (moved) {
+                Vec3 drop_move_delta = player->position - before_drop_move_position;
+                Vec3 drop_move_direction = normalize(drop_move_delta);
+                player->position = before_drop_move_position + drop_move_direction*player->speed*dt;
+            }
         }
-        #endif
     } else {
         player->acceleration = gravity_acceleration;
         Vec3 displacement_vector = player->velocity*dt + 0.5f*player->acceleration*dt*dt;

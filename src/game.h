@@ -8,7 +8,8 @@
 #define MAX_FONTS 64
 #define MAX_DEBUG_LINES 256
 
-#define SHOW_COLLISION_DEBUG_LINES 1
+#define DEBUG_SHOW_COLLISION_LINES 0
+#define DEBUG_SHOW_WALK_BASIS 0
 #define MAX_FRAME_COLLISIONS 10
 #define MAX_DROP_DISTANCE 0.5f
 
@@ -169,8 +170,8 @@ namespace Player_Constants {
 
 struct Walk_State {
     Vec3 triangle_normal;
-    int32 triangle_index;
-    int32 ground_entity_id;
+    int32 triangle_index;   // can be removed
+    int32 ground_entity_id; // can be removed
 };
 
 struct Player {

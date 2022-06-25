@@ -641,6 +641,7 @@ void debug_check_collisions(Asset_Manager *asset_manager, Editor_Level *level, N
                 dot(penetration_normal, triangle_normal) > 0.0f) {
                 //player->position += (penetration_normal * (player_capsule.radius - penetration_depth));
 
+#if DEBUG_SHOW_COLLISION_LINES
                 Vec4 triangle_color = make_vec4(1.0f, 1.0f, 1.0f, 1.0f);
                 add_debug_line(&Context::game_state->debug_state,
                                triangle[0], triangle[1], triangle_color);
@@ -650,7 +651,9 @@ void debug_check_collisions(Asset_Manager *asset_manager, Editor_Level *level, N
                                triangle[2], triangle[0], triangle_color);
 
                 add_debug_line(&Context::game_state->debug_state,
-                               entity->transform.position, penetration_point, triangle_color);
+                               entity->transform.position, penetration_point,
+                               make_vec4(1.0f, 0.0f, 0.0f, 1.0f));
+#endif
             }
         }
 

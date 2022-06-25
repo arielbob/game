@@ -6,7 +6,7 @@
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #define max(a, b) ((a) > (b) ? (a) : (b))
 
-#define EPSILON 1e-9
+#define EPSILON 1e-9f
 
 #define RGB_MIN 0.0f
 #define RGB_MAX 255.0f
