@@ -870,7 +870,7 @@ void history_redo(Editor_State *editor_state) {
         } break;
         case ACTION_ADD_MATERIAL: {
             Add_Material_Action *action = (Add_Material_Action *) redo_action;
-            do_add_material(editor_state, action->name, action->material_id, action->entity_id, true);
+            do_add_material(editor_state, action->name, action->entity_id, action->material_id, true);
         } break;
         case ACTION_DELETE_MATERIAL: {
             Delete_Material_Action *action = (Delete_Material_Action *) redo_action;

@@ -562,7 +562,7 @@
 //               - TODO: remove walk_state from player state and old walk procedures
 
 // TODO (done): use face data in blender mesh export script
-// TODO: fix crash with undoing/redoing add material
+// TODO (done): fix crash with undoing/redoing add material
 
 // TODO: capsule vs AABB for optimization
 //       - TODO: do this check first in capsule_intersects_mesh before checking triangles

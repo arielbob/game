@@ -50,6 +50,11 @@ texture "debug"
 gloss 0.917662
 color_override 0.398750 0.480313 0.725000
 use_color_override 1
+
+material "New Material"
+gloss 50.000000
+color_override 0.230000 1.000000 0.000000
+use_color_override 1
 }
 
 entities {
@@ -126,13 +131,7 @@ position 0.000000 0.000000 6.615977
 rotation 0.891684 0.000000 0.452658 0.000000
 scale 1.000000 1.000000 1.000000
 mesh "house"
-is_walkable 0
-
-type normal
-position 0.000000 1.000000 0.000000
-rotation 1.000000 0.000000 0.000000 0.000000
-scale 0.100000 0.100000 0.100000
-mesh_primitive "cube"
+material "New Material"
 is_walkable 0
 
 type point_light
