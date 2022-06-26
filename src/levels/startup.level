@@ -6,6 +6,7 @@ meshes {
 mesh "cube" "blender/cube.mesh"
 mesh "suzanne" "blender/suzanne2.mesh"
 mesh "sphere" "blender/sphere.mesh"
+mesh "house" ".\blender\house.mesh"
 }
 
 textures {
@@ -63,7 +64,7 @@ is_walkable 1
 type normal
 position 0.000000 0.000000 0.000000
 rotation 1.000000 0.000000 0.000000 0.000000
-scale 10.000000 0.100000 10.000000
+scale 100.000000 0.205492 100.000000
 mesh_primitive "cube"
 material "diffuse_plane"
 is_walkable 1
@@ -120,35 +121,25 @@ scale 10.000000 10.000000 0.201898
 mesh_primitive "cube"
 is_walkable 0
 
-type point_light
-position 0.800000 1.800000 -2.300000
-rotation 1.000000 0.000000 0.000000 0.000000
-scale 0.100000 0.100000 0.100000
-light_color 0.955000 0.042975 0.042975
-falloff_start 0.000000
-falloff_end 3.815192
-
-type point_light
-position -1.000000 1.500000 0.000000
-rotation 1.000000 0.000000 0.000000 0.000000
-scale 0.100000 0.100000 0.100000
-light_color 0.000000 0.595000 0.291550
-falloff_start 0.000000
-falloff_end 5.000000
-
-type point_light
-position -3.420681 2.426768 -2.258444
-rotation 1.000000 0.000000 0.000000 0.000000
+type normal
+position 0.000000 0.000000 6.615977
+rotation 0.891684 0.000000 0.452658 0.000000
 scale 1.000000 1.000000 1.000000
-light_color 0.370000 0.370000 0.370000
-falloff_start 0.000000
-falloff_end 4.418494
+mesh "house"
+is_walkable 0
+
+type normal
+position 0.000000 1.000000 0.000000
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 0.100000 0.100000 0.100000
+mesh_primitive "cube"
+is_walkable 0
 
 type point_light
-position 3.908722 1.626052 1.444157
-rotation 1.000000 0.000000 0.000000 0.000000
+position 1.820840 2.542467 2.585602
+rotation 0.952714 0.000000 -0.303868 0.000000
 scale 1.000000 1.000000 1.000000
 light_color 0.160000 0.160000 0.160000
 falloff_start 0.000000
-falloff_end 5.000000
+falloff_end 16.245100
 }

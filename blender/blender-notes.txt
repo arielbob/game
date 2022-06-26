@@ -1,0 +1,51 @@
+vertices are not duplicated in blender's internal data.
+and all vertex normals in the data are averages of the face normals.
+
+so, for a cube, there will always be 8 vertices
+
+object.data.polygons is a list of MeshPolygon objects which represent the faces of the mesh.
+MeshPolygon type: https://docs.blender.org/api/current/bpy.types.MeshPolygon.html
+
+object.data.polygons[i].vertices gives you the vertex indices of face i.
+the indices are indices of the object.data.vertices list.
+
+object.data.uv_layers.active.data is a list of vertex indices corresponding to faces.
+once again, the indices are indices of the object.data.vertices list.
+
+
+so object.data.uv_layers.active.data is basically object.data.polygons but flattened.
+so if you have a triangulated mesh, the length of object.data.polygons would be the number of faces and the length of
+object.data.uv_layers.active.data would be the number of faces * 3.
+
+
+
+
+
+
+initialize a set of vertices
+
+loop through all the faces {
+    if a face is smooth, don't do anything
+
+    if it's flat, duplicate the 3 vertices, change their normals to be the face normals, append them to vertices_list, and set the face's vertex indices to be the indices of the new vertices
+}
+
+
+
+
+
+
+loop through all the faces {
+     copy vertex positions from face indices
+     if the face is flat shaded, then replace the vertices' normals with the face normal
+     
+     get the UVs just by using (face_index * 3 + (0, 1, 2)) to index into UV array
+
+     add the created face vertices to a set and include an ID, that does not get hashed and is based on how many elements currently exist in the set
+
+     set the face indices to be the IDs
+}
+
+convert the set to a list
+sort the list in ascending order by ID
+

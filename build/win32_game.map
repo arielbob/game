@@ -1,6 +1,6 @@
  win32_game
 
- Timestamp is 62b65bbb (Fri Jun 24 20:50:03 2022)
+ Timestamp is 62b88606 (Sun Jun 26 12:15:02 2022)
 
  Preferred load address is 0000000140000000
 
@@ -2062,8 +2062,8 @@
  0001:000c8d90       ?return_illegal_sequence@__crt_mbstring@@YA_KPEAU_Mbstatet@@@Z 00000001400c9d90 f i libucrtd:c32rtomb.obj
  0001:000c8dd0       c32rtomb                   00000001400c9dd0 f   libucrtd:c32rtomb.obj
  0001:000c8f90       __acrt_fp_strflt_to_string 00000001400c9f90 f   libucrtd:_fptostr.obj
- 0001:000c9a90       ??0big_integer@__crt_strtox@@QEAA@AEBU01@@Z 00000001400caa90 f i libucrtd:cfout.obj
  0001:000c9a90       ??4big_integer@__crt_strtox@@QEAAAEAU01@AEBU01@@Z 00000001400caa90 f i libucrtd:cfout.obj
+ 0001:000c9a90       ??0big_integer@__crt_strtox@@QEAA@AEBU01@@Z 00000001400caa90 f i libucrtd:cfout.obj
  0001:000c9af0       ??0big_integer@__crt_strtox@@QEAA@XZ 00000001400caaf0 f i libucrtd:cfout.obj
  0001:000c9bb0       ??8__crt_strtox@@YA_NAEBUbig_integer@0@0@Z 00000001400cabb0 f i libucrtd:cfout.obj
  0001:000c9c20       ??9__crt_strtox@@YA_NAEBUbig_integer@0@0@Z 00000001400cac20 f i libucrtd:cfout.obj
@@ -2089,20 +2089,20 @@
  0001:000cc180       _set_fpsr                  00000001400cd180 f   libucrtd:fpsr.obj
  0001:000cc18a       _fclrf                     00000001400cd18a f   libucrtd:fpsr.obj
  0001:000cc19e       _frnd                      00000001400cd19e f   libucrtd:fpsr.obj
- 0001:000cc1c0       ??I@YA?AW4__acrt_fenv_abstract_control@@W40@0@Z 00000001400cd1c0 f i libucrtd:_fenvutils.obj
  0001:000cc1c0       ??I@YA?AW4__acrt_fenv_abstract_status@@W40@0@Z 00000001400cd1c0 f i libucrtd:fesetexceptflag.obj
  0001:000cc1c0       ??I@YA?AW4__acrt_fenv_machine_sse_status@@W40@0@Z 00000001400cd1c0 f i libucrtd:_fenvutils.obj
- 0001:000cc1e0       ??_5@YAAEAW4__acrt_fenv_abstract_control@@AEAW40@W40@@Z 00000001400cd1e0 f i libucrtd:_fenvutils.obj
+ 0001:000cc1c0       ??I@YA?AW4__acrt_fenv_abstract_control@@W40@0@Z 00000001400cd1c0 f i libucrtd:_fenvutils.obj
  0001:000cc1e0       ??_5@YAAEAW4__acrt_fenv_abstract_status@@AEAW40@W40@@Z 00000001400cd1e0 f i libucrtd:fesetexceptflag.obj
  0001:000cc1e0       ??_5@YAAEAW4__acrt_fenv_machine_sse_status@@AEAW40@W40@@Z 00000001400cd1e0 f i libucrtd:_fenvutils.obj
+ 0001:000cc1e0       ??_5@YAAEAW4__acrt_fenv_abstract_control@@AEAW40@W40@@Z 00000001400cd1e0 f i libucrtd:_fenvutils.obj
  0001:000cc210       ??$__acrt_fenv_shift_bits@W4__acrt_fenv_abstract_status@@@@YA?AW4__acrt_fenv_abstract_status@@W40@0I@Z 00000001400cd210 f i libucrtd:_fenvutils.obj
  0001:000cc210       ??$__acrt_fenv_shift_bits@W4__acrt_fenv_abstract_control@@@@YA?AW4__acrt_fenv_abstract_control@@W40@0I@Z 00000001400cd210 f i libucrtd:_fenvutils.obj
  0001:000cc240       ??$__acrt_fenv_translate_bit@W4__acrt_fenv_abstract_control@@W4__acrt_fenv_machine_sse_control@@@@YA?AW4__acrt_fenv_abstract_control@@W4__acrt_fenv_machine_sse_control@@0W40@1@Z 00000001400cd240 f i libucrtd:_fenvutils.obj
  0001:000cc2a0       ??$__acrt_fenv_translate_bit@W4__acrt_fenv_abstract_status@@W4__acrt_fenv_machine_sse_status@@@@YA?AW4__acrt_fenv_abstract_status@@W4__acrt_fenv_machine_sse_status@@0W40@1@Z 00000001400cd2a0 f i libucrtd:_fenvutils.obj
  0001:000cc2a0       ??$__acrt_fenv_translate_bit@W4__acrt_fenv_machine_sse_status@@W4__acrt_fenv_abstract_status@@@@YA?AW4__acrt_fenv_machine_sse_status@@W4__acrt_fenv_abstract_status@@0W40@1@Z 00000001400cd2a0 f i libucrtd:_fenvutils.obj
  0001:000cc2f0       ??$__acrt_fenv_translate_bit@W4__acrt_fenv_machine_sse_control@@W4__acrt_fenv_abstract_control@@@@YA?AW4__acrt_fenv_machine_sse_control@@W4__acrt_fenv_abstract_control@@0W40@1@Z 00000001400cd2f0 f i libucrtd:_fenvutils.obj
- 0001:000cc350       ??$__acrt_fenv_unshift_bits@W4__acrt_fenv_abstract_control@@@@YA?AW4__acrt_fenv_abstract_control@@W40@0I@Z 00000001400cd350 f i libucrtd:_fenvutils.obj
  0001:000cc350       ??$__acrt_fenv_unshift_bits@W4__acrt_fenv_abstract_status@@@@YA?AW4__acrt_fenv_abstract_status@@W40@0I@Z 00000001400cd350 f i libucrtd:_fenvutils.obj
+ 0001:000cc350       ??$__acrt_fenv_unshift_bits@W4__acrt_fenv_abstract_control@@@@YA?AW4__acrt_fenv_abstract_control@@W40@0I@Z 00000001400cd350 f i libucrtd:_fenvutils.obj
  0001:000cc840       ??I@YA?AW4__acrt_fenv_machine_sse_control@@W40@0@Z 00000001400cd840 f i libucrtd:_fenvutils.obj
  0001:000cc860       ??U@YA?AW4__acrt_fenv_abstract_control@@W40@0@Z 00000001400cd860 f i libucrtd:_fenvutils.obj
  0001:000cc860       ??U@YA?AW4__acrt_fenv_abstract_status@@W40@0@Z 00000001400cd860 f i libucrtd:_fenvutils.obj
@@ -2153,8 +2153,8 @@
  0001:000d27b0       _IsNonwritableInCurrentImage 00000001400d37b0 f   LIBCMTD:pesect.obj
  0001:000d2840       _ValidateImageBase         00000001400d3840 f   LIBCMTD:pesect.obj
  0001:000d28c0       ??1type_info@@UEAA@XZ      00000001400d38c0 f   LIBCMTD:std_type_info_static.obj
- 0001:000d28e0       ??_Gtype_info@@UEAAPEAXI@Z 00000001400d38e0 f i LIBCMTD:std_type_info_static.obj
  0001:000d28e0       ??_Etype_info@@UEAAPEAXI@Z 00000001400d38e0 f i LIBCMTD:std_type_info_static.obj
+ 0001:000d28e0       ??_Gtype_info@@UEAAPEAXI@Z 00000001400d38e0 f i LIBCMTD:std_type_info_static.obj
  0001:000d2920       ??3@YAXPEAX_K@Z            00000001400d3920 f   LIBCMTD:delete_scalar_size.obj
  0001:000d2940       __GSHandlerCheck_SEH       00000001400d3940 f   LIBCMTD:gshandlerseh.obj
  0001:000d2a00       __GSHandlerCheck_EH        00000001400d3a00 f   LIBCMTD:gshandlereh.obj
@@ -2214,7 +2214,7 @@
  0002:00000178       __imp_EncodePointer        00000001400d5178     kernel32:KERNEL32.dll
  0002:00000180       __imp_GetConsoleOutputCP   00000001400d5180     kernel32:KERNEL32.dll
  0002:00000188       __imp_SetEndOfFile         00000001400d5188     kernel32:KERNEL32.dll
- 0002:00000190       __imp_RtlVirtualUnwind     00000001400d5190     kernel32:KERNEL32.dll
+ 0002:00000190       __imp_RtlLookupFunctionEntry 00000001400d5190     kernel32:KERNEL32.dll
  0002:00000198       __imp_LoadLibraryExW       00000001400d5198     kernel32:KERNEL32.dll
  0002:000001a0       __imp_FreeLibrary          00000001400d51a0     kernel32:KERNEL32.dll
  0002:000001a8       __imp_GetCurrentDirectoryA 00000001400d51a8     kernel32:KERNEL32.dll
@@ -2227,30 +2227,30 @@
  0002:000001e0       __imp_GetTempFileNameA     00000001400d51e0     kernel32:KERNEL32.dll
  0002:000001e8       __imp_OutputDebugStringA   00000001400d51e8     kernel32:KERNEL32.dll
  0002:000001f0       __imp_CloseHandle          00000001400d51f0     kernel32:KERNEL32.dll
- 0002:000001f8       __imp_QueryPerformanceCounter 00000001400d51f8     kernel32:KERNEL32.dll
- 0002:00000200       __imp_QueryPerformanceFrequency 00000001400d5200     kernel32:KERNEL32.dll
- 0002:00000208       __imp_VirtualAlloc         00000001400d5208     kernel32:KERNEL32.dll
- 0002:00000210       __imp_GetProcAddress       00000001400d5210     kernel32:KERNEL32.dll
- 0002:00000218       __imp_LoadLibraryA         00000001400d5218     kernel32:KERNEL32.dll
- 0002:00000220       __imp_MoveFileExA          00000001400d5220     kernel32:KERNEL32.dll
- 0002:00000228       __imp_RtlCaptureContext    00000001400d5228     kernel32:KERNEL32.dll
- 0002:00000230       __imp_RtlLookupFunctionEntry 00000001400d5230     kernel32:KERNEL32.dll
+ 0002:000001f8       __imp_GetLastError         00000001400d51f8     kernel32:KERNEL32.dll
+ 0002:00000200       __imp_QueryPerformanceCounter 00000001400d5200     kernel32:KERNEL32.dll
+ 0002:00000208       __imp_QueryPerformanceFrequency 00000001400d5208     kernel32:KERNEL32.dll
+ 0002:00000210       __imp_VirtualAlloc         00000001400d5210     kernel32:KERNEL32.dll
+ 0002:00000218       __imp_GetProcAddress       00000001400d5218     kernel32:KERNEL32.dll
+ 0002:00000220       __imp_LoadLibraryA         00000001400d5220     kernel32:KERNEL32.dll
+ 0002:00000228       __imp_MoveFileExA          00000001400d5228     kernel32:KERNEL32.dll
+ 0002:00000230       __imp_RtlCaptureContext    00000001400d5230     kernel32:KERNEL32.dll
  0002:00000238       __imp_RtlUnwind            00000001400d5238     kernel32:KERNEL32.dll
- 0002:00000240       __imp_UnhandledExceptionFilter 00000001400d5240     kernel32:KERNEL32.dll
- 0002:00000248       __imp_SetUnhandledExceptionFilter 00000001400d5248     kernel32:KERNEL32.dll
- 0002:00000250       __imp_GetCurrentProcess    00000001400d5250     kernel32:KERNEL32.dll
- 0002:00000258       __imp_TerminateProcess     00000001400d5258     kernel32:KERNEL32.dll
- 0002:00000260       __imp_IsProcessorFeaturePresent 00000001400d5260     kernel32:KERNEL32.dll
- 0002:00000268       __imp_GetCurrentProcessId  00000001400d5268     kernel32:KERNEL32.dll
- 0002:00000270       __imp_GetCurrentThreadId   00000001400d5270     kernel32:KERNEL32.dll
- 0002:00000278       __imp_GetSystemTimeAsFileTime 00000001400d5278     kernel32:KERNEL32.dll
- 0002:00000280       __imp_InitializeSListHead  00000001400d5280     kernel32:KERNEL32.dll
- 0002:00000288       __imp_IsDebuggerPresent    00000001400d5288     kernel32:KERNEL32.dll
- 0002:00000290       __imp_GetStartupInfoW      00000001400d5290     kernel32:KERNEL32.dll
- 0002:00000298       __imp_GetModuleHandleW     00000001400d5298     kernel32:KERNEL32.dll
- 0002:000002a0       __imp_TlsFree              00000001400d52a0     kernel32:KERNEL32.dll
- 0002:000002a8       __imp_RtlUnwindEx          00000001400d52a8     kernel32:KERNEL32.dll
- 0002:000002b0       __imp_GetLastError         00000001400d52b0     kernel32:KERNEL32.dll
+ 0002:00000240       __imp_RtlVirtualUnwind     00000001400d5240     kernel32:KERNEL32.dll
+ 0002:00000248       __imp_UnhandledExceptionFilter 00000001400d5248     kernel32:KERNEL32.dll
+ 0002:00000250       __imp_SetUnhandledExceptionFilter 00000001400d5250     kernel32:KERNEL32.dll
+ 0002:00000258       __imp_GetCurrentProcess    00000001400d5258     kernel32:KERNEL32.dll
+ 0002:00000260       __imp_TerminateProcess     00000001400d5260     kernel32:KERNEL32.dll
+ 0002:00000268       __imp_IsProcessorFeaturePresent 00000001400d5268     kernel32:KERNEL32.dll
+ 0002:00000270       __imp_GetCurrentProcessId  00000001400d5270     kernel32:KERNEL32.dll
+ 0002:00000278       __imp_GetCurrentThreadId   00000001400d5278     kernel32:KERNEL32.dll
+ 0002:00000280       __imp_GetSystemTimeAsFileTime 00000001400d5280     kernel32:KERNEL32.dll
+ 0002:00000288       __imp_InitializeSListHead  00000001400d5288     kernel32:KERNEL32.dll
+ 0002:00000290       __imp_IsDebuggerPresent    00000001400d5290     kernel32:KERNEL32.dll
+ 0002:00000298       __imp_GetStartupInfoW      00000001400d5298     kernel32:KERNEL32.dll
+ 0002:000002a0       __imp_GetModuleHandleW     00000001400d52a0     kernel32:KERNEL32.dll
+ 0002:000002a8       __imp_TlsFree              00000001400d52a8     kernel32:KERNEL32.dll
+ 0002:000002b0       __imp_RtlUnwindEx          00000001400d52b0     kernel32:KERNEL32.dll
  0002:000002b8       __imp_SetLastError         00000001400d52b8     kernel32:KERNEL32.dll
  0002:000002c0       __imp_EnterCriticalSection 00000001400d52c0     kernel32:KERNEL32.dll
  0002:000002c8       __imp_LeaveCriticalSection 00000001400d52c8     kernel32:KERNEL32.dll
@@ -5251,24 +5251,24 @@
  0002:00002aa4       $SG142104                  00000001400d7aa4     win32_game.obj
  0002:00002aac       $SG142385                  00000001400d7aac     win32_game.obj
  0002:00002ab0       $SG148146                  00000001400d7ab0     win32_game.obj
- 0002:00002aec       $SG150655                  00000001400d7aec     win32_game.obj
+ 0002:00002aec       $SG150656                  00000001400d7aec     win32_game.obj
  0002:00002af0       $SG131772                  00000001400d7af0     win32_game.obj
- 0002:00002afc       $SG150656                  00000001400d7afc     win32_game.obj
+ 0002:00002afc       $SG150657                  00000001400d7afc     win32_game.obj
  0002:00002b00       $SG131775                  00000001400d7b00     win32_game.obj
- 0002:00002b0c       $SG150657                  00000001400d7b0c     win32_game.obj
+ 0002:00002b0c       $SG150658                  00000001400d7b0c     win32_game.obj
  0002:00002b10       $SG131782                  00000001400d7b10     win32_game.obj
  0002:00002b20       $SG148167                  00000001400d7b20     win32_game.obj
- 0002:00002b2c       $SG150686                  00000001400d7b2c     win32_game.obj
+ 0002:00002b2c       $SG150687                  00000001400d7b2c     win32_game.obj
  0002:00002b30       $SG131794                  00000001400d7b30     win32_game.obj
  0002:00002b40       $SG131798                  00000001400d7b40     win32_game.obj
  0002:00002b50       $SG148183                  00000001400d7b50     win32_game.obj
  0002:00002b60       $SG148184                  00000001400d7b60     win32_game.obj
- 0002:00002b6c       $SG150687                  00000001400d7b6c     win32_game.obj
+ 0002:00002b6c       $SG150688                  00000001400d7b6c     win32_game.obj
  0002:00002b70       $SG131811                  00000001400d7b70     win32_game.obj
  0002:00002b7c       $SG148250                  00000001400d7b7c     win32_game.obj
- 0002:00002b84       $SG150688                  00000001400d7b84     win32_game.obj
+ 0002:00002b84       $SG150689                  00000001400d7b84     win32_game.obj
  0002:00002b88       $SG131813                  00000001400d7b88     win32_game.obj
- 0002:00002b94       $SG150717                  00000001400d7b94     win32_game.obj
+ 0002:00002b94       $SG150718                  00000001400d7b94     win32_game.obj
  0002:00002b98       $SG131816                  00000001400d7b98     win32_game.obj
  0002:00002ba8       $SG148203                  00000001400d7ba8     win32_game.obj
  0002:00002bb4       $SG148282                  00000001400d7bb4     win32_game.obj
@@ -5783,92 +5783,92 @@
  0002:00006560       $SG150083                  00000001400db560     win32_game.obj
  0002:00006574       $SG134690                  00000001400db574     win32_game.obj
  0002:00006580       $SG150136                  00000001400db580     win32_game.obj
- 0002:000065e8       $SG150269                  00000001400db5e8     win32_game.obj
+ 0002:000065e8       $SG150270                  00000001400db5e8     win32_game.obj
  0002:00006620       $SG150137                  00000001400db620     win32_game.obj
  0002:000066a0       $SG141976                  00000001400db6a0     win32_game.obj
  0002:000066f8       $SG141977                  00000001400db6f8     win32_game.obj
  0002:00006738       $SG150181                  00000001400db738     win32_game.obj
- 0002:00006758       $SG150271                  00000001400db758     win32_game.obj
+ 0002:00006758       $SG150272                  00000001400db758     win32_game.obj
  0002:00006780       $SG150180                  00000001400db780     win32_game.obj
- 0002:000067e8       $SG150276                  00000001400db7e8     win32_game.obj
+ 0002:000067e8       $SG150277                  00000001400db7e8     win32_game.obj
  0002:00006800       $SG150182                  00000001400db800     win32_game.obj
- 0002:00006868       $SG150283                  00000001400db868     win32_game.obj
+ 0002:00006868       $SG150284                  00000001400db868     win32_game.obj
  0002:000068a0       $SG150183                  00000001400db8a0     win32_game.obj
  0002:00006920       $SG150196                  00000001400db920     win32_game.obj
- 0002:00006988       $SG150300                  00000001400db988     win32_game.obj
+ 0002:00006988       $SG150301                  00000001400db988     win32_game.obj
  0002:000069a0       $SG150197                  00000001400db9a0     win32_game.obj
- 0002:00006a08       $SG150369                  00000001400dba08     win32_game.obj
+ 0002:00006a08       $SG150370                  00000001400dba08     win32_game.obj
  0002:00006a20       $SG150212                  00000001400dba20     win32_game.obj
- 0002:00006a88       $SG150371                  00000001400dba88     win32_game.obj
+ 0002:00006a88       $SG150372                  00000001400dba88     win32_game.obj
  0002:00006aa0       $SG150213                  00000001400dbaa0     win32_game.obj
- 0002:00006b08       $SG150372                  00000001400dbb08     win32_game.obj
+ 0002:00006b08       $SG150373                  00000001400dbb08     win32_game.obj
  0002:00006b20       $SG150228                  00000001400dbb20     win32_game.obj
- 0002:00006b88       $SG150376                  00000001400dbb88     win32_game.obj
+ 0002:00006b88       $SG150377                  00000001400dbb88     win32_game.obj
  0002:00006ba0       $SG150229                  00000001400dbba0     win32_game.obj
  0002:00006bf0       $SG150230                  00000001400dbbf0     win32_game.obj
- 0002:00006c58       $SG150378                  00000001400dbc58     win32_game.obj
+ 0002:00006c58       $SG150379                  00000001400dbc58     win32_game.obj
  0002:00006c70       $SG150231                  00000001400dbc70     win32_game.obj
- 0002:00006d08       $SG150387                  00000001400dbd08     win32_game.obj
+ 0002:00006d08       $SG150388                  00000001400dbd08     win32_game.obj
  0002:00006d20       $SG150232                  00000001400dbd20     win32_game.obj
  0002:00006d88       $SG150233                  00000001400dbd88     win32_game.obj
  0002:00006dc8       $SG142105                  00000001400dbdc8     win32_game.obj
- 0002:00006dd8       $SG150375                  00000001400dbdd8     win32_game.obj
- 0002:00006de8       $SG150388                  00000001400dbde8     win32_game.obj
- 0002:00006e00       $SG150249                  00000001400dbe00     win32_game.obj
- 0002:00006e68       $SG150390                  00000001400dbe68     win32_game.obj
- 0002:00006e80       $SG150250                  00000001400dbe80     win32_game.obj
- 0002:00006f08       $SG150392                  00000001400dbf08     win32_game.obj
- 0002:00006f20       $SG150253                  00000001400dbf20     win32_game.obj
- 0002:00006f88       $SG150399                  00000001400dbf88     win32_game.obj
- 0002:00006fa0       $SG150254                  00000001400dbfa0     win32_game.obj
+ 0002:00006dd8       $SG150376                  00000001400dbdd8     win32_game.obj
+ 0002:00006de8       $SG150389                  00000001400dbde8     win32_game.obj
+ 0002:00006e00       $SG150250                  00000001400dbe00     win32_game.obj
+ 0002:00006e68       $SG150391                  00000001400dbe68     win32_game.obj
+ 0002:00006e80       $SG150251                  00000001400dbe80     win32_game.obj
+ 0002:00006f08       $SG150393                  00000001400dbf08     win32_game.obj
+ 0002:00006f20       $SG150254                  00000001400dbf20     win32_game.obj
+ 0002:00006f88       $SG150400                  00000001400dbf88     win32_game.obj
+ 0002:00006fa0       $SG150255                  00000001400dbfa0     win32_game.obj
  0002:00006fe8       $SG142106                  00000001400dbfe8     win32_game.obj
- 0002:00006ff8       $SG150379                  00000001400dbff8     win32_game.obj
- 0002:00007008       $SG150381                  00000001400dc008     win32_game.obj
- 0002:00007018       $SG150400                  00000001400dc018     win32_game.obj
- 0002:00007030       $SG150268                  00000001400dc030     win32_game.obj
- 0002:00007098       $SG150401                  00000001400dc098     win32_game.obj
- 0002:000070b0       $SG150270                  00000001400dc0b0     win32_game.obj
- 0002:00007118       $SG150402                  00000001400dc118     win32_game.obj
- 0002:00007130       $SG150274                  00000001400dc130     win32_game.obj
- 0002:00007198       $SG150405                  00000001400dc198     win32_game.obj
- 0002:000071b0       $SG150275                  00000001400dc1b0     win32_game.obj
- 0002:00007200       $SG150282                  00000001400dc200     win32_game.obj
- 0002:00007268       $SG150406                  00000001400dc268     win32_game.obj
- 0002:00007280       $SG150299                  00000001400dc280     win32_game.obj
- 0002:000072e8       $SG150407                  00000001400dc2e8     win32_game.obj
- 0002:00007300       $SG150301                  00000001400dc300     win32_game.obj
- 0002:00007368       $SG150302                  00000001400dc368     win32_game.obj
- 0002:00007378       $SG150370                  00000001400dc378     win32_game.obj
- 0002:00007388       $SG150373                  00000001400dc388     win32_game.obj
- 0002:00007398       $SG150374                  00000001400dc398     win32_game.obj
- 0002:000073a8       $SG150377                  00000001400dc3a8     win32_game.obj
- 0002:000073c8       $SG150380                  00000001400dc3c8     win32_game.obj
- 0002:000073d8       $SG150382                  00000001400dc3d8     win32_game.obj
- 0002:000073e8       $SG150383                  00000001400dc3e8     win32_game.obj
- 0002:000073f8       $SG150384                  00000001400dc3f8     win32_game.obj
- 0002:00007408       $SG150385                  00000001400dc408     win32_game.obj
- 0002:00007418       $SG150386                  00000001400dc418     win32_game.obj
- 0002:00007428       $SG150389                  00000001400dc428     win32_game.obj
- 0002:00007438       $SG150391                  00000001400dc438     win32_game.obj
- 0002:00007448       $SG150408                  00000001400dc448     win32_game.obj
+ 0002:00006ff8       $SG150380                  00000001400dbff8     win32_game.obj
+ 0002:00007008       $SG150382                  00000001400dc008     win32_game.obj
+ 0002:00007018       $SG150401                  00000001400dc018     win32_game.obj
+ 0002:00007030       $SG150269                  00000001400dc030     win32_game.obj
+ 0002:00007098       $SG150402                  00000001400dc098     win32_game.obj
+ 0002:000070b0       $SG150271                  00000001400dc0b0     win32_game.obj
+ 0002:00007118       $SG150403                  00000001400dc118     win32_game.obj
+ 0002:00007130       $SG150275                  00000001400dc130     win32_game.obj
+ 0002:00007198       $SG150406                  00000001400dc198     win32_game.obj
+ 0002:000071b0       $SG150276                  00000001400dc1b0     win32_game.obj
+ 0002:00007200       $SG150283                  00000001400dc200     win32_game.obj
+ 0002:00007268       $SG150407                  00000001400dc268     win32_game.obj
+ 0002:00007280       $SG150300                  00000001400dc280     win32_game.obj
+ 0002:000072e8       $SG150408                  00000001400dc2e8     win32_game.obj
+ 0002:00007300       $SG150302                  00000001400dc300     win32_game.obj
+ 0002:00007368       $SG150303                  00000001400dc368     win32_game.obj
+ 0002:00007378       $SG150371                  00000001400dc378     win32_game.obj
+ 0002:00007388       $SG150374                  00000001400dc388     win32_game.obj
+ 0002:00007398       $SG150375                  00000001400dc398     win32_game.obj
+ 0002:000073a8       $SG150378                  00000001400dc3a8     win32_game.obj
+ 0002:000073c8       $SG150381                  00000001400dc3c8     win32_game.obj
+ 0002:000073d8       $SG150383                  00000001400dc3d8     win32_game.obj
+ 0002:000073e8       $SG150384                  00000001400dc3e8     win32_game.obj
+ 0002:000073f8       $SG150385                  00000001400dc3f8     win32_game.obj
+ 0002:00007408       $SG150386                  00000001400dc408     win32_game.obj
+ 0002:00007418       $SG150387                  00000001400dc418     win32_game.obj
+ 0002:00007428       $SG150390                  00000001400dc428     win32_game.obj
+ 0002:00007438       $SG150392                  00000001400dc438     win32_game.obj
+ 0002:00007448       $SG150409                  00000001400dc448     win32_game.obj
  0002:00007460       $SG101239                  00000001400dc460     win32_game.obj
  0002:000074d0       $SG101240                  00000001400dc4d0     win32_game.obj
- 0002:000074e0       $SG150393                  00000001400dc4e0     win32_game.obj
- 0002:000074f0       $SG150394                  00000001400dc4f0     win32_game.obj
- 0002:00007500       $SG150395                  00000001400dc500     win32_game.obj
- 0002:00007510       $SG150396                  00000001400dc510     win32_game.obj
- 0002:00007520       $SG150397                  00000001400dc520     win32_game.obj
- 0002:00007530       $SG150398                  00000001400dc530     win32_game.obj
- 0002:00007540       $SG150403                  00000001400dc540     win32_game.obj
- 0002:00007560       $SG150404                  00000001400dc560     win32_game.obj
- 0002:00007580       $SG150409                  00000001400dc580     win32_game.obj
- 0002:00007598       $SG150410                  00000001400dc598     win32_game.obj
- 0002:000075b0       $SG150411                  00000001400dc5b0     win32_game.obj
- 0002:000075c0       $SG150412                  00000001400dc5c0     win32_game.obj
- 0002:000075d8       $SG150413                  00000001400dc5d8     win32_game.obj
- 0002:000075f0       $SG150414                  00000001400dc5f0     win32_game.obj
- 0002:00007608       $SG150415                  00000001400dc608     win32_game.obj
- 0002:00007630       $SG150416                  00000001400dc630     win32_game.obj
+ 0002:000074e0       $SG150394                  00000001400dc4e0     win32_game.obj
+ 0002:000074f0       $SG150395                  00000001400dc4f0     win32_game.obj
+ 0002:00007500       $SG150396                  00000001400dc500     win32_game.obj
+ 0002:00007510       $SG150397                  00000001400dc510     win32_game.obj
+ 0002:00007520       $SG150398                  00000001400dc520     win32_game.obj
+ 0002:00007530       $SG150399                  00000001400dc530     win32_game.obj
+ 0002:00007540       $SG150404                  00000001400dc540     win32_game.obj
+ 0002:00007560       $SG150405                  00000001400dc560     win32_game.obj
+ 0002:00007580       $SG150410                  00000001400dc580     win32_game.obj
+ 0002:00007598       $SG150411                  00000001400dc598     win32_game.obj
+ 0002:000075b0       $SG150412                  00000001400dc5b0     win32_game.obj
+ 0002:000075c0       $SG150413                  00000001400dc5c0     win32_game.obj
+ 0002:000075d8       $SG150414                  00000001400dc5d8     win32_game.obj
+ 0002:000075f0       $SG150415                  00000001400dc5f0     win32_game.obj
+ 0002:00007608       $SG150416                  00000001400dc608     win32_game.obj
+ 0002:00007630       $SG150417                  00000001400dc630     win32_game.obj
  0002:00007648       $SG101269                  00000001400dc648     win32_game.obj
  0002:00007658       $SG101279                  00000001400dc658     win32_game.obj
  0002:00007670       $SG101268                  00000001400dc670     win32_game.obj
@@ -5879,53 +5879,53 @@
  0002:00007850       $SG101283                  00000001400dc850     win32_game.obj
  0002:00007860       $SG101286                  00000001400dc860     win32_game.obj
  0002:000078d0       $SG101287                  00000001400dc8d0     win32_game.obj
- 0002:000078e0       $SG150440                  00000001400dc8e0     win32_game.obj
+ 0002:000078e0       $SG150441                  00000001400dc8e0     win32_game.obj
  0002:000078f0       $SG101290                  00000001400dc8f0     win32_game.obj
- 0002:00007960       $SG150443                  00000001400dc960     win32_game.obj
- 0002:00007978       $SG101291                  00000001400dc978     win32_game.obj
+ 0002:00007960       $SG101291                  00000001400dc960     win32_game.obj
+ 0002:00007978       $SG150444                  00000001400dc978     win32_game.obj
  0002:00007990       $SG101292                  00000001400dc990     win32_game.obj
  0002:00007a00       $SG101293                  00000001400dca00     win32_game.obj
  0002:00007a30       $SG101298                  00000001400dca30     win32_game.obj
  0002:00007aa0       $SG101299                  00000001400dcaa0     win32_game.obj
- 0002:00007b00       $SG150452                  00000001400dcb00     win32_game.obj
- 0002:00007b20       $SG150453                  00000001400dcb20     win32_game.obj
- 0002:00007b48       $SG150454                  00000001400dcb48     win32_game.obj
- 0002:00007b70       $SG142262                  00000001400dcb70     win32_game.obj
- 0002:00007b88       $SG150455                  00000001400dcb88     win32_game.obj
- 0002:00007bb8       $SG142264                  00000001400dcbb8     win32_game.obj
- 0002:00007bf0       $SG142263                  00000001400dcbf0     win32_game.obj
- 0002:00007c50       $SG150456                  00000001400dcc50     win32_game.obj
- 0002:00007c80       $SG150457                  00000001400dcc80     win32_game.obj
+ 0002:00007b00       $SG150453                  00000001400dcb00     win32_game.obj
+ 0002:00007b20       $SG150454                  00000001400dcb20     win32_game.obj
+ 0002:00007b48       $SG142262                  00000001400dcb48     win32_game.obj
+ 0002:00007b60       $SG150455                  00000001400dcb60     win32_game.obj
+ 0002:00007b88       $SG142264                  00000001400dcb88     win32_game.obj
+ 0002:00007bc0       $SG142263                  00000001400dcbc0     win32_game.obj
+ 0002:00007c20       $SG150456                  00000001400dcc20     win32_game.obj
+ 0002:00007c50       $SG150457                  00000001400dcc50     win32_game.obj
+ 0002:00007c80       $SG150458                  00000001400dcc80     win32_game.obj
  0002:00007ca8       $SG101310                  00000001400dcca8     win32_game.obj
  0002:00007cc8       $SG101312                  00000001400dccc8     win32_game.obj
  0002:00007cf0       $SG101309                  00000001400dccf0     win32_game.obj
  0002:00007d60       $SG101311                  00000001400dcd60     win32_game.obj
- 0002:00007dd0       $SG150509                  00000001400dcdd0     win32_game.obj
+ 0002:00007dd0       $SG150510                  00000001400dcdd0     win32_game.obj
  0002:00007df8       $SG101393                  00000001400dcdf8     win32_game.obj
  0002:00007e18       $SG142370                  00000001400dce18     win32_game.obj
- 0002:00007e50       $SG150510                  00000001400dce50     win32_game.obj
+ 0002:00007e50       $SG150511                  00000001400dce50     win32_game.obj
  0002:00007eb8       $SG101410                  00000001400dceb8     win32_game.obj
- 0002:00007ee0       $SG150511                  00000001400dcee0     win32_game.obj
+ 0002:00007ee0       $SG150512                  00000001400dcee0     win32_game.obj
  0002:00007f30       $SG101392                  00000001400dcf30     win32_game.obj
  0002:00007fa0       $SG101399                  00000001400dcfa0     win32_game.obj
  0002:00008010       $SG101400                  00000001400dd010     win32_game.obj
- 0002:00008058       $SG150559                  00000001400dd058     win32_game.obj
- 0002:00008088       $SG101413                  00000001400dd088     win32_game.obj
- 0002:00008098       $SG150566                  00000001400dd098     win32_game.obj
- 0002:000080c0       $SG150560                  00000001400dd0c0     win32_game.obj
- 0002:00008128       $SG142368                  00000001400dd128     win32_game.obj
- 0002:00008148       $SG150561                  00000001400dd148     win32_game.obj
- 0002:00008154       $SG142901                  00000001400dd154     win32_game.obj
- 0002:00008160       $SG142369                  00000001400dd160     win32_game.obj
- 0002:000081c0       $SG101409                  00000001400dd1c0     win32_game.obj
- 0002:00008230       $SG150564                  00000001400dd230     win32_game.obj
- 0002:00008298       $SG101419                  00000001400dd298     win32_game.obj
- 0002:000082c0       $SG101412                  00000001400dd2c0     win32_game.obj
- 0002:00008330       $SG150565                  00000001400dd330     win32_game.obj
- 0002:00008340       $SG142374                  00000001400dd340     win32_game.obj
- 0002:00008360       $SG101414                  00000001400dd360     win32_game.obj
- 0002:000083d0       $SG142375                  00000001400dd3d0     win32_game.obj
- 0002:00008430       $SG101415                  00000001400dd430     win32_game.obj
+ 0002:00008058       $SG150560                  00000001400dd058     win32_game.obj
+ 0002:00008088       $SG142368                  00000001400dd088     win32_game.obj
+ 0002:000080a8       $SG150562                  00000001400dd0a8     win32_game.obj
+ 0002:000080b4       $SG142901                  00000001400dd0b4     win32_game.obj
+ 0002:000080c0       $SG150561                  00000001400dd0c0     win32_game.obj
+ 0002:00008128       $SG150567                  00000001400dd128     win32_game.obj
+ 0002:00008150       $SG142369                  00000001400dd150     win32_game.obj
+ 0002:000081b0       $SG101409                  00000001400dd1b0     win32_game.obj
+ 0002:00008220       $SG101412                  00000001400dd220     win32_game.obj
+ 0002:00008290       $SG150565                  00000001400dd290     win32_game.obj
+ 0002:000082f8       $SG101413                  00000001400dd2f8     win32_game.obj
+ 0002:00008308       $SG150566                  00000001400dd308     win32_game.obj
+ 0002:00008318       $SG142374                  00000001400dd318     win32_game.obj
+ 0002:00008338       $SG101415                  00000001400dd338     win32_game.obj
+ 0002:00008348       $SG101419                  00000001400dd348     win32_game.obj
+ 0002:00008370       $SG101414                  00000001400dd370     win32_game.obj
+ 0002:000083e0       $SG142375                  00000001400dd3e0     win32_game.obj
  0002:00008440       $SG142376                  00000001400dd440     win32_game.obj
  0002:00008488       $SG142378                  00000001400dd488     win32_game.obj
  0002:000084b8       $SG101421                  00000001400dd4b8     win32_game.obj
@@ -5944,33 +5944,33 @@
  0002:00008860       $SG142398                  00000001400dd860     win32_game.obj
  0002:000088a0       $SG142403                  00000001400dd8a0     win32_game.obj
  0002:000088c0       $SG142404                  00000001400dd8c0     win32_game.obj
- 0002:00008920       $SG150634                  00000001400dd920     win32_game.obj
+ 0002:00008920       $SG150635                  00000001400dd920     win32_game.obj
  0002:00008930       $SG101488                  00000001400dd930     win32_game.obj
  0002:000089a0       $SG101489                  00000001400dd9a0     win32_game.obj
  0002:000089c0       $SG101494                  00000001400dd9c0     win32_game.obj
  0002:00008a30       $SG101495                  00000001400dda30     win32_game.obj
- 0002:00008a58       $SG150714                  00000001400dda58     win32_game.obj
- 0002:00008a80       $SG150682                  00000001400dda80     win32_game.obj
- 0002:00008ae8       $SG150683                  00000001400ddae8     win32_game.obj
+ 0002:00008a58       $SG150715                  00000001400dda58     win32_game.obj
+ 0002:00008a80       $SG150683                  00000001400dda80     win32_game.obj
+ 0002:00008ae8       $SG150684                  00000001400ddae8     win32_game.obj
  0002:00008b04       $SG143234                  00000001400ddb04     win32_game.obj
- 0002:00008b10       $SG150684                  00000001400ddb10     win32_game.obj
- 0002:00008b78       $SG150685                  00000001400ddb78     win32_game.obj
+ 0002:00008b10       $SG150685                  00000001400ddb10     win32_game.obj
+ 0002:00008b78       $SG150686                  00000001400ddb78     win32_game.obj
  0002:00008ba4       $SG143632                  00000001400ddba4     win32_game.obj
- 0002:00008bb0       $SG150711                  00000001400ddbb0     win32_game.obj
- 0002:00008c18       $SG150719                  00000001400ddc18     win32_game.obj
- 0002:00008c40       $SG150712                  00000001400ddc40     win32_game.obj
- 0002:00008cc8       $SG150716                  00000001400ddcc8     win32_game.obj
- 0002:00008ce8       $SG150721                  00000001400ddce8     win32_game.obj
- 0002:00008d18       $SG150723                  00000001400ddd18     win32_game.obj
- 0002:00008d40       $SG150726                  00000001400ddd40     win32_game.obj
+ 0002:00008bb0       $SG150712                  00000001400ddbb0     win32_game.obj
+ 0002:00008c18       $SG150720                  00000001400ddc18     win32_game.obj
+ 0002:00008c40       $SG150713                  00000001400ddc40     win32_game.obj
+ 0002:00008cc8       $SG150717                  00000001400ddcc8     win32_game.obj
+ 0002:00008ce8       $SG150722                  00000001400ddce8     win32_game.obj
+ 0002:00008d18       $SG150724                  00000001400ddd18     win32_game.obj
+ 0002:00008d40       $SG150727                  00000001400ddd40     win32_game.obj
  0002:00008d68       $SG134386                  00000001400ddd68     win32_game.obj
  0002:00008d98       $SG134395                  00000001400ddd98     win32_game.obj
  0002:00008dd0       $SG134372                  00000001400dddd0     win32_game.obj
  0002:00008e30       $SG134373                  00000001400dde30     win32_game.obj
  0002:00008e70       $SG134385                  00000001400dde70     win32_game.obj
  0002:00008ed0       $SG134394                  00000001400dded0     win32_game.obj
- 0002:00008f30       $SG150805                  00000001400ddf30     win32_game.obj
- 0002:00008f40       $SG150808                  00000001400ddf40     win32_game.obj
+ 0002:00008f30       $SG150806                  00000001400ddf30     win32_game.obj
+ 0002:00008f40       $SG150809                  00000001400ddf40     win32_game.obj
  0002:00008f50       $SG134428                  00000001400ddf50     win32_game.obj
  0002:00008fb0       $SG134429                  00000001400ddfb0     win32_game.obj
  0002:00008fd0       $SG134442                  00000001400ddfd0     win32_game.obj
@@ -6033,356 +6033,356 @@
  0002:00009ee0       $SG142742                  00000001400deee0     win32_game.obj
  0002:00009f00       $SG142743                  00000001400def00     win32_game.obj
  0002:00009f60       $SG142744                  00000001400def60     win32_game.obj
- 0002:00009fa8       $SG150949                  00000001400defa8     win32_game.obj
+ 0002:00009fa8       $SG150950                  00000001400defa8     win32_game.obj
  0002:00009fc8       $SG142759                  00000001400defc8     win32_game.obj
  0002:00009fe0       $SG142747                  00000001400defe0     win32_game.obj
  0002:0000a040       $SG142748                  00000001400df040     win32_game.obj
- 0002:0000a098       $SG150952                  00000001400df098     win32_game.obj
- 0002:0000a0b0       $SG150944                  00000001400df0b0     win32_game.obj
- 0002:0000a118       $SG142752                  00000001400df118     win32_game.obj
- 0002:0000a128       $SG142761                  00000001400df128     win32_game.obj
- 0002:0000a160       $SG150945                  00000001400df160     win32_game.obj
- 0002:0000a1c8       $SG142753                  00000001400df1c8     win32_game.obj
- 0002:0000a1f8       $SG150954                  00000001400df1f8     win32_game.obj
- 0002:0000a230       $SG142754                  00000001400df230     win32_game.obj
- 0002:0000a290       $SG142755                  00000001400df290     win32_game.obj
- 0002:0000a2f0       $SG150950                  00000001400df2f0     win32_game.obj
- 0002:0000a354       $SG143935                  00000001400df354     win32_game.obj
- 0002:0000a360       $SG150951                  00000001400df360     win32_game.obj
- 0002:0000a3a8       $SG134571                  00000001400df3a8     win32_game.obj
- 0002:0000a3e0       $SG142760                  00000001400df3e0     win32_game.obj
- 0002:0000a440       $SG150953                  00000001400df440     win32_game.obj
- 0002:0000a4a4       $SG144819                  00000001400df4a4     win32_game.obj
- 0002:0000a4b0       $SG134570                  00000001400df4b0     win32_game.obj
- 0002:0000a510       $SG142765                  00000001400df510     win32_game.obj
- 0002:0000a520       $SG142768                  00000001400df520     win32_game.obj
- 0002:0000a550       $SG142769                  00000001400df550     win32_game.obj
- 0002:0000a5b0       $SG142770                  00000001400df5b0     win32_game.obj
- 0002:0000a618       $SG142778                  00000001400df618     win32_game.obj
- 0002:0000a638       $SG150976                  00000001400df638     win32_game.obj
- 0002:0000a650       $SG134579                  00000001400df650     win32_game.obj
- 0002:0000a6b0       $SG134580                  00000001400df6b0     win32_game.obj
- 0002:0000a724       $SG144821                  00000001400df724     win32_game.obj
- 0002:0000a730       $SG142774                  00000001400df730     win32_game.obj
- 0002:0000a790       $SG142775                  00000001400df790     win32_game.obj
- 0002:0000a7f0       $SG150968                  00000001400df7f0     win32_game.obj
- 0002:0000a854       $SG145238                  00000001400df854     win32_game.obj
- 0002:0000a860       $SG142776                  00000001400df860     win32_game.obj
- 0002:0000a8c0       $SG150969                  00000001400df8c0     win32_game.obj
- 0002:0000a924       $SG145244                  00000001400df924     win32_game.obj
- 0002:0000a930       $SG142777                  00000001400df930     win32_game.obj
- 0002:0000a990       $SG142779                  00000001400df990     win32_game.obj
- 0002:0000a9f0       $SG142780                  00000001400df9f0     win32_game.obj
- 0002:0000aa38       $SG150973                  00000001400dfa38     win32_game.obj
- 0002:0000aa58       $SG150978                  00000001400dfa58     win32_game.obj
- 0002:0000aa90       $SG150974                  00000001400dfa90     win32_game.obj
- 0002:0000aaf4       $SG145259                  00000001400dfaf4     win32_game.obj
- 0002:0000ab00       $SG150975                  00000001400dfb00     win32_game.obj
- 0002:0000ab48       $SG142790                  00000001400dfb48     win32_game.obj
- 0002:0000ab50       $SG150977                  00000001400dfb50     win32_game.obj
- 0002:0000abb8       $SG142786                  00000001400dfbb8     win32_game.obj
- 0002:0000abc8       $SG142796                  00000001400dfbc8     win32_game.obj
- 0002:0000abd8       $SG142799                  00000001400dfbd8     win32_game.obj
- 0002:0000abf0       $SG142800                  00000001400dfbf0     win32_game.obj
- 0002:0000ac10       $SG142801                  00000001400dfc10     win32_game.obj
- 0002:0000ac70       $SG134609                  00000001400dfc70     win32_game.obj
- 0002:0000acd0       $SG142802                  00000001400dfcd0     win32_game.obj
- 0002:0000ad18       $SG142821                  00000001400dfd18     win32_game.obj
- 0002:0000ad48       $SG151017                  00000001400dfd48     win32_game.obj
- 0002:0000ad60       $SG134610                  00000001400dfd60     win32_game.obj
- 0002:0000ada8       $SG142806                  00000001400dfda8     win32_game.obj
- 0002:0000add8       $SG142814                  00000001400dfdd8     win32_game.obj
- 0002:0000ae08       $SG151014                  00000001400dfe08     win32_game.obj
- 0002:0000ae28       $SG151019                  00000001400dfe28     win32_game.obj
- 0002:0000ae60       $SG142807                  00000001400dfe60     win32_game.obj
- 0002:0000aec0       $SG142808                  00000001400dfec0     win32_game.obj
- 0002:0000af20       $SG142812                  00000001400dff20     win32_game.obj
- 0002:0000af80       $SG142813                  00000001400dff80     win32_game.obj
- 0002:0000afe0       $SG142815                  00000001400dffe0     win32_game.obj
- 0002:0000b040       $SG142816                  00000001400e0040     win32_game.obj
- 0002:0000b0a0       $SG151009                  00000001400e00a0     win32_game.obj
- 0002:0000b104       $SG145278                  00000001400e0104     win32_game.obj
- 0002:0000b110       $SG151010                  00000001400e0110     win32_game.obj
- 0002:0000b174       $SG145279                  00000001400e0174     win32_game.obj
- 0002:0000b180       $SG142822                  00000001400e0180     win32_game.obj
- 0002:0000b1e0       $SG151015                  00000001400e01e0     win32_game.obj
- 0002:0000b244       $SG145297                  00000001400e0244     win32_game.obj
- 0002:0000b250       $SG142823                  00000001400e0250     win32_game.obj
- 0002:0000b2b4       $SG145327                  00000001400e02b4     win32_game.obj
- 0002:0000b2c0       $SG151016                  00000001400e02c0     win32_game.obj
- 0002:0000b308       $SG142835                  00000001400e0308     win32_game.obj
- 0002:0000b348       $SG151030                  00000001400e0348     win32_game.obj
- 0002:0000b370       $SG151018                  00000001400e0370     win32_game.obj
- 0002:0000b3d8       $SG142829                  00000001400e03d8     win32_game.obj
- 0002:0000b418       $SG142842                  00000001400e0418     win32_game.obj
- 0002:0000b448       $SG151054                  00000001400e0448     win32_game.obj
- 0002:0000b460       $SG142830                  00000001400e0460     win32_game.obj
- 0002:0000b4c0       $SG142831                  00000001400e04c0     win32_game.obj
- 0002:0000b538       $SG151056                  00000001400e0538     win32_game.obj
- 0002:0000b570       $SG142836                  00000001400e0570     win32_game.obj
- 0002:0000b5d0       $SG142837                  00000001400e05d0     win32_game.obj
- 0002:0000b658       $SG142857                  00000001400e0658     win32_game.obj
- 0002:0000b698       $SG151051                  00000001400e0698     win32_game.obj
- 0002:0000b6b8       $SG142872                  00000001400e06b8     win32_game.obj
- 0002:0000b6e0       $SG151031                  00000001400e06e0     win32_game.obj
- 0002:0000b744       $SG145343                  00000001400e0744     win32_game.obj
- 0002:0000b750       $SG151032                  00000001400e0750     win32_game.obj
- 0002:0000b7a0       $SG142841                  00000001400e07a0     win32_game.obj
- 0002:0000b7b0       $SG142843                  00000001400e07b0     win32_game.obj
- 0002:0000b810       $SG142844                  00000001400e0810     win32_game.obj
- 0002:0000b878       $SG142848                  00000001400e0878     win32_game.obj
- 0002:0000b8a8       $SG142868                  00000001400e08a8     win32_game.obj
- 0002:0000b8b4       $SG145358                  00000001400e08b4     win32_game.obj
- 0002:0000b8c0       $SG142849                  00000001400e08c0     win32_game.obj
- 0002:0000b920       $SG142850                  00000001400e0920     win32_game.obj
- 0002:0000b980       $SG151046                  00000001400e0980     win32_game.obj
- 0002:0000b9e4       $SG145359                  00000001400e09e4     win32_game.obj
- 0002:0000b9f0       $SG151047                  00000001400e09f0     win32_game.obj
- 0002:0000ba54       $SG145489                  00000001400e0a54     win32_game.obj
- 0002:0000ba60       $SG142858                  00000001400e0a60     win32_game.obj
- 0002:0000bac0       $SG142859                  00000001400e0ac0     win32_game.obj
- 0002:0000bb40       $SG151052                  00000001400e0b40     win32_game.obj
- 0002:0000bba4       $SG145492                  00000001400e0ba4     win32_game.obj
- 0002:0000bbb0       $SG151053                  00000001400e0bb0     win32_game.obj
- 0002:0000bbf8       $SG151067                  00000001400e0bf8     win32_game.obj
- 0002:0000bc20       $SG151055                  00000001400e0c20     win32_game.obj
- 0002:0000bc88       $SG142869                  00000001400e0c88     win32_game.obj
- 0002:0000bca8       $SG101917                  00000001400e0ca8     win32_game.obj
- 0002:0000bcc0       $SG142870                  00000001400e0cc0     win32_game.obj
- 0002:0000bd20       $SG142871                  00000001400e0d20     win32_game.obj
- 0002:0000bd60       $SG142873                  00000001400e0d60     win32_game.obj
- 0002:0000bdc0       $SG142874                  00000001400e0dc0     win32_game.obj
- 0002:0000be10       $SG151068                  00000001400e0e10     win32_game.obj
- 0002:0000be74       $SG145510                  00000001400e0e74     win32_game.obj
- 0002:0000be80       $SG101916                  00000001400e0e80     win32_game.obj
- 0002:0000bef0       $SG151069                  00000001400e0ef0     win32_game.obj
- 0002:0000bf40       $SG101918                  00000001400e0f40     win32_game.obj
- 0002:0000bfb0       $SG101919                  00000001400e0fb0     win32_game.obj
- 0002:0000bfc8       $SG142886                  00000001400e0fc8     win32_game.obj
- 0002:0000bfe0       $SG134694                  00000001400e0fe0     win32_game.obj
- 0002:0000bfe8       $SG142888                  00000001400e0fe8     win32_game.obj
- 0002:0000c020       $SG142887                  00000001400e1020     win32_game.obj
- 0002:0000c080       $SG134696                  00000001400e1080     win32_game.obj
- 0002:0000c0a0       $SG134697                  00000001400e10a0     win32_game.obj
- 0002:0000c100       $SG134698                  00000001400e1100     win32_game.obj
- 0002:0000c138       $SG142895                  00000001400e1138     win32_game.obj
- 0002:0000c148       $SG142898                  00000001400e1148     win32_game.obj
- 0002:0000c158       $SG142909                  00000001400e1158     win32_game.obj
- 0002:0000c168       $SG142912                  00000001400e1168     win32_game.obj
- 0002:0000c178       $SG142915                  00000001400e1178     win32_game.obj
- 0002:0000c184       $SG145516                  00000001400e1184     win32_game.obj
- 0002:0000c190       $SG151107                  00000001400e1190     win32_game.obj
- 0002:0000c1f4       $SG145527                  00000001400e11f4     win32_game.obj
- 0002:0000c200       $SG151108                  00000001400e1200     win32_game.obj
- 0002:0000c268       $SG142916                  00000001400e1268     win32_game.obj
- 0002:0000c288       $SG142918                  00000001400e1288     win32_game.obj
- 0002:0000c2c4       $SG145735                  00000001400e12c4     win32_game.obj
- 0002:0000c2d0       $SG142917                  00000001400e12d0     win32_game.obj
- 0002:0000c330       $SG151112                  00000001400e1330     win32_game.obj
- 0002:0000c350       $SG151113                  00000001400e1350     win32_game.obj
- 0002:0000c3b4       $SG146428                  00000001400e13b4     win32_game.obj
- 0002:0000c3c0       $SG151114                  00000001400e13c0     win32_game.obj
- 0002:0000c408       $SG151115                  00000001400e1408     win32_game.obj
- 0002:0000c420       $SG142923                  00000001400e1420     win32_game.obj
- 0002:0000c430       $SG151116                  00000001400e1430     win32_game.obj
- 0002:0000c498       $SG151117                  00000001400e1498     win32_game.obj
- 0002:0000c4d0       $SG142926                  00000001400e14d0     win32_game.obj
- 0002:0000c4e0       $SG142929                  00000001400e14e0     win32_game.obj
- 0002:0000c4f0       $SG142930                  00000001400e14f0     win32_game.obj
- 0002:0000c518       $SG142933                  00000001400e1518     win32_game.obj
- 0002:0000c540       $SG142931                  00000001400e1540     win32_game.obj
- 0002:0000c5a0       $SG142932                  00000001400e15a0     win32_game.obj
- 0002:0000c5f0       $SG142934                  00000001400e15f0     win32_game.obj
- 0002:0000c650       $SG142935                  00000001400e1650     win32_game.obj
- 0002:0000c6a0       $SG151128                  00000001400e16a0     win32_game.obj
- 0002:0000c6c8       $SG142936                  00000001400e16c8     win32_game.obj
- 0002:0000c700       $SG151129                  00000001400e1700     win32_game.obj
- 0002:0000c764       $SG146431                  00000001400e1764     win32_game.obj
- 0002:0000c770       $SG142937                  00000001400e1770     win32_game.obj
- 0002:0000c7d0       $SG151130                  00000001400e17d0     win32_game.obj
- 0002:0000c820       $SG142938                  00000001400e1820     win32_game.obj
- 0002:0000c890       $SG142942                  00000001400e1890     win32_game.obj
- 0002:0000c8f0       $SG142943                  00000001400e18f0     win32_game.obj
- 0002:0000c948       $SG142944                  00000001400e1948     win32_game.obj
- 0002:0000c970       $SG142945                  00000001400e1970     win32_game.obj
- 0002:0000c9d0       $SG142946                  00000001400e19d0     win32_game.obj
- 0002:0000ca28       $SG142960                  00000001400e1a28     win32_game.obj
- 0002:0000ca60       $SG142950                  00000001400e1a60     win32_game.obj
- 0002:0000cac0       $SG142951                  00000001400e1ac0     win32_game.obj
- 0002:0000cb20       $SG142952                  00000001400e1b20     win32_game.obj
- 0002:0000cb50       $SG142953                  00000001400e1b50     win32_game.obj
- 0002:0000cbb0       $SG142954                  00000001400e1bb0     win32_game.obj
- 0002:0000cc10       $SG142961                  00000001400e1c10     win32_game.obj
- 0002:0000cc70       $SG142962                  00000001400e1c70     win32_game.obj
- 0002:0000ccd8       $SG142971                  00000001400e1cd8     win32_game.obj
- 0002:0000cd18       $SG142987                  00000001400e1d18     win32_game.obj
- 0002:0000cd40       $SG142972                  00000001400e1d40     win32_game.obj
- 0002:0000cda0       $SG142973                  00000001400e1da0     win32_game.obj
- 0002:0000ce28       $SG142979                  00000001400e1e28     win32_game.obj
- 0002:0000ce58       $SG102048                  00000001400e1e58     win32_game.obj
- 0002:0000ce80       $SG142980                  00000001400e1e80     win32_game.obj
- 0002:0000cee0       $SG142981                  00000001400e1ee0     win32_game.obj
- 0002:0000cf48       $SG102050                  00000001400e1f48     win32_game.obj
- 0002:0000cf70       $SG142985                  00000001400e1f70     win32_game.obj
- 0002:0000cfd0       $SG142986                  00000001400e1fd0     win32_game.obj
- 0002:0000cff0       $SG142988                  00000001400e1ff0     win32_game.obj
- 0002:0000d050       $SG142989                  00000001400e2050     win32_game.obj
- 0002:0000d0a8       $SG151207                  00000001400e20a8     win32_game.obj
- 0002:0000d0c0       $SG142991                  00000001400e20c0     win32_game.obj
- 0002:0000d120       $SG142992                  00000001400e2120     win32_game.obj
- 0002:0000d170       $SG142997                  00000001400e2170     win32_game.obj
- 0002:0000d1b0       $SG142998                  00000001400e21b0     win32_game.obj
- 0002:0000d210       $SG142999                  00000001400e2210     win32_game.obj
- 0002:0000d298       $SG143015                  00000001400e2298     win32_game.obj
- 0002:0000d2d8       $SG151209                  00000001400e22d8     win32_game.obj
- 0002:0000d310       $SG143001                  00000001400e2310     win32_game.obj
- 0002:0000d370       $SG143002                  00000001400e2370     win32_game.obj
- 0002:0000d3c0       $SG143006                  00000001400e23c0     win32_game.obj
- 0002:0000d408       $SG151204                  00000001400e2408     win32_game.obj
- 0002:0000d428       $SG143022                  00000001400e2428     win32_game.obj
- 0002:0000d460       $SG151199                  00000001400e2460     win32_game.obj
- 0002:0000d4c4       $SG130158                  00000001400e24c4     win32_game.obj
- 0002:0000d4d0       $SG143007                  00000001400e24d0     win32_game.obj
- 0002:0000d530       $SG102047                  00000001400e2530     win32_game.obj
- 0002:0000d5a0       $SG151200                  00000001400e25a0     win32_game.obj
- 0002:0000d604       $SG130161                  00000001400e2604     win32_game.obj
- 0002:0000d610       $SG143008                  00000001400e2610     win32_game.obj
- 0002:0000d698       $SG151222                  00000001400e2698     win32_game.obj
- 0002:0000d6c0       $SG102049                  00000001400e26c0     win32_game.obj
- 0002:0000d730       $SG143010                  00000001400e2730     win32_game.obj
- 0002:0000d790       $SG143011                  00000001400e2790     win32_game.obj
- 0002:0000d7e0       $SG151205                  00000001400e27e0     win32_game.obj
- 0002:0000d844       $SG130163                  00000001400e2844     win32_game.obj
- 0002:0000d850       $SG151206                  00000001400e2850     win32_game.obj
- 0002:0000d898       $SG143059                  00000001400e2898     win32_game.obj
- 0002:0000d8a4       $SG130170                  00000001400e28a4     win32_game.obj
- 0002:0000d8b0       $SG151208                  00000001400e28b0     win32_game.obj
- 0002:0000d914       $SG130172                  00000001400e2914     win32_game.obj
- 0002:0000d920       $SG143016                  00000001400e2920     win32_game.obj
- 0002:0000d980       $SG143017                  00000001400e2980     win32_game.obj
- 0002:0000da08       $SG143020                  00000001400e2a08     win32_game.obj
- 0002:0000da28       $SG143055                  00000001400e2a28     win32_game.obj
- 0002:0000da38       $SG102106                  00000001400e2a38     win32_game.obj
- 0002:0000da58       $SG151390                  00000001400e2a58     win32_game.obj
- 0002:0000da70       $SG143021                  00000001400e2a70     win32_game.obj
- 0002:0000dad0       $SG151223                  00000001400e2ad0     win32_game.obj
- 0002:0000db34       $SG130188                  00000001400e2b34     win32_game.obj
- 0002:0000db40       $SG151224                  00000001400e2b40     win32_game.obj
- 0002:0000db90       $SG143056                  00000001400e2b90     win32_game.obj
- 0002:0000dba0       $SG143058                  00000001400e2ba0     win32_game.obj
- 0002:0000dbb0       $SG143062                  00000001400e2bb0     win32_game.obj
- 0002:0000dbc0       $SG102105                  00000001400e2bc0     win32_game.obj
- 0002:0000dc30       $SG102155                  00000001400e2c30     win32_game.obj
- 0002:0000dca0       $SG102156                  00000001400e2ca0     win32_game.obj
- 0002:0000dce0       $SG151382                  00000001400e2ce0     win32_game.obj
- 0002:0000dd44       $SG130192                  00000001400e2d44     win32_game.obj
- 0002:0000dd50       $SG151383                  00000001400e2d50     win32_game.obj
- 0002:0000ddb8       $SG151387                  00000001400e2db8     win32_game.obj
- 0002:0000ddd8       $SG143195                  00000001400e2dd8     win32_game.obj
- 0002:0000dde8       $SG151392                  00000001400e2de8     win32_game.obj
- 0002:0000de20       $SG151388                  00000001400e2e20     win32_game.obj
- 0002:0000de88       $SG143196                  00000001400e2e88     win32_game.obj
- 0002:0000dea0       $SG151389                  00000001400e2ea0     win32_game.obj
- 0002:0000dee8       $SG143205                  00000001400e2ee8     win32_game.obj
- 0002:0000def8       $SG143210                  00000001400e2ef8     win32_game.obj
- 0002:0000df08       $SG143219                  00000001400e2f08     win32_game.obj
- 0002:0000df18       $SG143222                  00000001400e2f18     win32_game.obj
- 0002:0000df30       $SG151391                  00000001400e2f30     win32_game.obj
- 0002:0000df98       $SG143199                  00000001400e2f98     win32_game.obj
- 0002:0000dfa8       $SG143206                  00000001400e2fa8     win32_game.obj
- 0002:0000dfb8       $SG143211                  00000001400e2fb8     win32_game.obj
- 0002:0000dfc8       $SG143214                  00000001400e2fc8     win32_game.obj
- 0002:0000dfd8       $SG143220                  00000001400e2fd8     win32_game.obj
- 0002:0000dfe8       $SG143229                  00000001400e2fe8     win32_game.obj
- 0002:0000dff8       $SG143230                  00000001400e2ff8     win32_game.obj
- 0002:0000e008       $SG143233                  00000001400e3008     win32_game.obj
- 0002:0000e018       $SG151429                  00000001400e3018     win32_game.obj
- 0002:0000e030       $SG151421                  00000001400e3030     win32_game.obj
- 0002:0000e098       $SG151426                  00000001400e3098     win32_game.obj
- 0002:0000e0b8       $SG151431                  00000001400e30b8     win32_game.obj
- 0002:0000e0f0       $SG151422                  00000001400e30f0     win32_game.obj
- 0002:0000e158       $SG143239                  00000001400e3158     win32_game.obj
- 0002:0000e168       $SG143247                  00000001400e3168     win32_game.obj
- 0002:0000e180       $SG151427                  00000001400e3180     win32_game.obj
- 0002:0000e1e8       $SG143248                  00000001400e31e8     win32_game.obj
- 0002:0000e1f8       $SG143251                  00000001400e31f8     win32_game.obj
- 0002:0000e208       $SG151484                  00000001400e3208     win32_game.obj
+ 0002:0000a098       $SG142752                  00000001400df098     win32_game.obj
+ 0002:0000a0a8       $SG150953                  00000001400df0a8     win32_game.obj
+ 0002:0000a0c0       $SG150945                  00000001400df0c0     win32_game.obj
+ 0002:0000a128       $SG142753                  00000001400df128     win32_game.obj
+ 0002:0000a158       $SG142761                  00000001400df158     win32_game.obj
+ 0002:0000a190       $SG150946                  00000001400df190     win32_game.obj
+ 0002:0000a1f4       $SG143935                  00000001400df1f4     win32_game.obj
+ 0002:0000a200       $SG142754                  00000001400df200     win32_game.obj
+ 0002:0000a260       $SG142755                  00000001400df260     win32_game.obj
+ 0002:0000a2c0       $SG150951                  00000001400df2c0     win32_game.obj
+ 0002:0000a324       $SG144819                  00000001400df324     win32_game.obj
+ 0002:0000a330       $SG150952                  00000001400df330     win32_game.obj
+ 0002:0000a378       $SG150955                  00000001400df378     win32_game.obj
+ 0002:0000a3b0       $SG142760                  00000001400df3b0     win32_game.obj
+ 0002:0000a410       $SG150954                  00000001400df410     win32_game.obj
+ 0002:0000a474       $SG144821                  00000001400df474     win32_game.obj
+ 0002:0000a480       $SG134570                  00000001400df480     win32_game.obj
+ 0002:0000a4e0       $SG134571                  00000001400df4e0     win32_game.obj
+ 0002:0000a518       $SG142765                  00000001400df518     win32_game.obj
+ 0002:0000a528       $SG142768                  00000001400df528     win32_game.obj
+ 0002:0000a558       $SG142778                  00000001400df558     win32_game.obj
+ 0002:0000a578       $SG150977                  00000001400df578     win32_game.obj
+ 0002:0000a590       $SG142769                  00000001400df590     win32_game.obj
+ 0002:0000a5f0       $SG142770                  00000001400df5f0     win32_game.obj
+ 0002:0000a658       $SG150974                  00000001400df658     win32_game.obj
+ 0002:0000a678       $SG150979                  00000001400df678     win32_game.obj
+ 0002:0000a6b0       $SG134579                  00000001400df6b0     win32_game.obj
+ 0002:0000a710       $SG134580                  00000001400df710     win32_game.obj
+ 0002:0000a784       $SG145238                  00000001400df784     win32_game.obj
+ 0002:0000a790       $SG142774                  00000001400df790     win32_game.obj
+ 0002:0000a7f0       $SG142775                  00000001400df7f0     win32_game.obj
+ 0002:0000a850       $SG142776                  00000001400df850     win32_game.obj
+ 0002:0000a8b0       $SG150969                  00000001400df8b0     win32_game.obj
+ 0002:0000a914       $SG145244                  00000001400df914     win32_game.obj
+ 0002:0000a920       $SG142777                  00000001400df920     win32_game.obj
+ 0002:0000a980       $SG150970                  00000001400df980     win32_game.obj
+ 0002:0000a9e4       $SG145259                  00000001400df9e4     win32_game.obj
+ 0002:0000a9f0       $SG142779                  00000001400df9f0     win32_game.obj
+ 0002:0000aa50       $SG142780                  00000001400dfa50     win32_game.obj
+ 0002:0000aa94       $SG145278                  00000001400dfa94     win32_game.obj
+ 0002:0000aaa0       $SG150975                  00000001400dfaa0     win32_game.obj
+ 0002:0000ab04       $SG145279                  00000001400dfb04     win32_game.obj
+ 0002:0000ab10       $SG150976                  00000001400dfb10     win32_game.obj
+ 0002:0000ab58       $SG142790                  00000001400dfb58     win32_game.obj
+ 0002:0000ab60       $SG150978                  00000001400dfb60     win32_game.obj
+ 0002:0000abc8       $SG142786                  00000001400dfbc8     win32_game.obj
+ 0002:0000abd8       $SG142796                  00000001400dfbd8     win32_game.obj
+ 0002:0000abe8       $SG142799                  00000001400dfbe8     win32_game.obj
+ 0002:0000ac00       $SG142800                  00000001400dfc00     win32_game.obj
+ 0002:0000ac20       $SG142801                  00000001400dfc20     win32_game.obj
+ 0002:0000ac80       $SG134609                  00000001400dfc80     win32_game.obj
+ 0002:0000ace0       $SG142802                  00000001400dfce0     win32_game.obj
+ 0002:0000ad28       $SG142821                  00000001400dfd28     win32_game.obj
+ 0002:0000ad58       $SG151018                  00000001400dfd58     win32_game.obj
+ 0002:0000ad70       $SG134610                  00000001400dfd70     win32_game.obj
+ 0002:0000adb8       $SG142806                  00000001400dfdb8     win32_game.obj
+ 0002:0000ade8       $SG142814                  00000001400dfde8     win32_game.obj
+ 0002:0000ae18       $SG151015                  00000001400dfe18     win32_game.obj
+ 0002:0000ae38       $SG151020                  00000001400dfe38     win32_game.obj
+ 0002:0000ae70       $SG142807                  00000001400dfe70     win32_game.obj
+ 0002:0000aed0       $SG142808                  00000001400dfed0     win32_game.obj
+ 0002:0000af30       $SG142812                  00000001400dff30     win32_game.obj
+ 0002:0000af90       $SG142813                  00000001400dff90     win32_game.obj
+ 0002:0000aff0       $SG142815                  00000001400dfff0     win32_game.obj
+ 0002:0000b050       $SG142816                  00000001400e0050     win32_game.obj
+ 0002:0000b0b0       $SG151010                  00000001400e00b0     win32_game.obj
+ 0002:0000b114       $SG145297                  00000001400e0114     win32_game.obj
+ 0002:0000b120       $SG151011                  00000001400e0120     win32_game.obj
+ 0002:0000b184       $SG145327                  00000001400e0184     win32_game.obj
+ 0002:0000b190       $SG142822                  00000001400e0190     win32_game.obj
+ 0002:0000b1f0       $SG142823                  00000001400e01f0     win32_game.obj
+ 0002:0000b254       $SG145343                  00000001400e0254     win32_game.obj
+ 0002:0000b260       $SG151016                  00000001400e0260     win32_game.obj
+ 0002:0000b2c4       $SG145358                  00000001400e02c4     win32_game.obj
+ 0002:0000b2d0       $SG151017                  00000001400e02d0     win32_game.obj
+ 0002:0000b318       $SG142835                  00000001400e0318     win32_game.obj
+ 0002:0000b358       $SG151031                  00000001400e0358     win32_game.obj
+ 0002:0000b380       $SG151019                  00000001400e0380     win32_game.obj
+ 0002:0000b3e8       $SG142829                  00000001400e03e8     win32_game.obj
+ 0002:0000b428       $SG142842                  00000001400e0428     win32_game.obj
+ 0002:0000b458       $SG151055                  00000001400e0458     win32_game.obj
+ 0002:0000b470       $SG142830                  00000001400e0470     win32_game.obj
+ 0002:0000b4d0       $SG142831                  00000001400e04d0     win32_game.obj
+ 0002:0000b548       $SG151057                  00000001400e0548     win32_game.obj
+ 0002:0000b580       $SG142836                  00000001400e0580     win32_game.obj
+ 0002:0000b5e0       $SG142837                  00000001400e05e0     win32_game.obj
+ 0002:0000b668       $SG142857                  00000001400e0668     win32_game.obj
+ 0002:0000b6a8       $SG151052                  00000001400e06a8     win32_game.obj
+ 0002:0000b6c8       $SG142872                  00000001400e06c8     win32_game.obj
+ 0002:0000b6f0       $SG151032                  00000001400e06f0     win32_game.obj
+ 0002:0000b754       $SG145359                  00000001400e0754     win32_game.obj
+ 0002:0000b760       $SG151033                  00000001400e0760     win32_game.obj
+ 0002:0000b7b0       $SG142841                  00000001400e07b0     win32_game.obj
+ 0002:0000b7c0       $SG142843                  00000001400e07c0     win32_game.obj
+ 0002:0000b820       $SG142844                  00000001400e0820     win32_game.obj
+ 0002:0000b888       $SG142848                  00000001400e0888     win32_game.obj
+ 0002:0000b8b8       $SG142868                  00000001400e08b8     win32_game.obj
+ 0002:0000b8c4       $SG145489                  00000001400e08c4     win32_game.obj
+ 0002:0000b8d0       $SG142849                  00000001400e08d0     win32_game.obj
+ 0002:0000b930       $SG142850                  00000001400e0930     win32_game.obj
+ 0002:0000b990       $SG151047                  00000001400e0990     win32_game.obj
+ 0002:0000b9f4       $SG145492                  00000001400e09f4     win32_game.obj
+ 0002:0000ba00       $SG151048                  00000001400e0a00     win32_game.obj
+ 0002:0000ba64       $SG145510                  00000001400e0a64     win32_game.obj
+ 0002:0000ba70       $SG142858                  00000001400e0a70     win32_game.obj
+ 0002:0000bad0       $SG142859                  00000001400e0ad0     win32_game.obj
+ 0002:0000bb50       $SG151053                  00000001400e0b50     win32_game.obj
+ 0002:0000bbb4       $SG145516                  00000001400e0bb4     win32_game.obj
+ 0002:0000bbc0       $SG151054                  00000001400e0bc0     win32_game.obj
+ 0002:0000bc08       $SG151068                  00000001400e0c08     win32_game.obj
+ 0002:0000bc30       $SG151056                  00000001400e0c30     win32_game.obj
+ 0002:0000bc98       $SG142869                  00000001400e0c98     win32_game.obj
+ 0002:0000bcb8       $SG101917                  00000001400e0cb8     win32_game.obj
+ 0002:0000bcd0       $SG142870                  00000001400e0cd0     win32_game.obj
+ 0002:0000bd30       $SG142871                  00000001400e0d30     win32_game.obj
+ 0002:0000bd70       $SG142873                  00000001400e0d70     win32_game.obj
+ 0002:0000bdd0       $SG142874                  00000001400e0dd0     win32_game.obj
+ 0002:0000be20       $SG101916                  00000001400e0e20     win32_game.obj
+ 0002:0000be90       $SG151069                  00000001400e0e90     win32_game.obj
+ 0002:0000bef4       $SG145527                  00000001400e0ef4     win32_game.obj
+ 0002:0000bf00       $SG151070                  00000001400e0f00     win32_game.obj
+ 0002:0000bf50       $SG101918                  00000001400e0f50     win32_game.obj
+ 0002:0000bfc0       $SG101919                  00000001400e0fc0     win32_game.obj
+ 0002:0000bfd8       $SG142886                  00000001400e0fd8     win32_game.obj
+ 0002:0000bff0       $SG134694                  00000001400e0ff0     win32_game.obj
+ 0002:0000bff8       $SG142888                  00000001400e0ff8     win32_game.obj
+ 0002:0000c030       $SG142887                  00000001400e1030     win32_game.obj
+ 0002:0000c090       $SG134696                  00000001400e1090     win32_game.obj
+ 0002:0000c0b0       $SG134697                  00000001400e10b0     win32_game.obj
+ 0002:0000c110       $SG134698                  00000001400e1110     win32_game.obj
+ 0002:0000c148       $SG142895                  00000001400e1148     win32_game.obj
+ 0002:0000c158       $SG142898                  00000001400e1158     win32_game.obj
+ 0002:0000c168       $SG142909                  00000001400e1168     win32_game.obj
+ 0002:0000c178       $SG142912                  00000001400e1178     win32_game.obj
+ 0002:0000c188       $SG142915                  00000001400e1188     win32_game.obj
+ 0002:0000c194       $SG145735                  00000001400e1194     win32_game.obj
+ 0002:0000c1a0       $SG151108                  00000001400e11a0     win32_game.obj
+ 0002:0000c208       $SG142916                  00000001400e1208     win32_game.obj
+ 0002:0000c228       $SG142918                  00000001400e1228     win32_game.obj
+ 0002:0000c264       $SG146428                  00000001400e1264     win32_game.obj
+ 0002:0000c270       $SG151109                  00000001400e1270     win32_game.obj
+ 0002:0000c2d4       $SG146431                  00000001400e12d4     win32_game.obj
+ 0002:0000c2e0       $SG142917                  00000001400e12e0     win32_game.obj
+ 0002:0000c340       $SG151113                  00000001400e1340     win32_game.obj
+ 0002:0000c360       $SG151114                  00000001400e1360     win32_game.obj
+ 0002:0000c3c4       $SG130158                  00000001400e13c4     win32_game.obj
+ 0002:0000c3d0       $SG151115                  00000001400e13d0     win32_game.obj
+ 0002:0000c418       $SG142923                  00000001400e1418     win32_game.obj
+ 0002:0000c428       $SG151116                  00000001400e1428     win32_game.obj
+ 0002:0000c440       $SG151117                  00000001400e1440     win32_game.obj
+ 0002:0000c4a8       $SG151118                  00000001400e14a8     win32_game.obj
+ 0002:0000c4e0       $SG142926                  00000001400e14e0     win32_game.obj
+ 0002:0000c4f0       $SG142929                  00000001400e14f0     win32_game.obj
+ 0002:0000c500       $SG142930                  00000001400e1500     win32_game.obj
+ 0002:0000c528       $SG142933                  00000001400e1528     win32_game.obj
+ 0002:0000c550       $SG142931                  00000001400e1550     win32_game.obj
+ 0002:0000c5b0       $SG142932                  00000001400e15b0     win32_game.obj
+ 0002:0000c600       $SG142934                  00000001400e1600     win32_game.obj
+ 0002:0000c660       $SG142935                  00000001400e1660     win32_game.obj
+ 0002:0000c6b0       $SG142936                  00000001400e16b0     win32_game.obj
+ 0002:0000c6e8       $SG151129                  00000001400e16e8     win32_game.obj
+ 0002:0000c710       $SG142937                  00000001400e1710     win32_game.obj
+ 0002:0000c770       $SG151130                  00000001400e1770     win32_game.obj
+ 0002:0000c7d4       $SG130161                  00000001400e17d4     win32_game.obj
+ 0002:0000c7e0       $SG142938                  00000001400e17e0     win32_game.obj
+ 0002:0000c850       $SG151131                  00000001400e1850     win32_game.obj
+ 0002:0000c8a0       $SG142942                  00000001400e18a0     win32_game.obj
+ 0002:0000c900       $SG142943                  00000001400e1900     win32_game.obj
+ 0002:0000c958       $SG142944                  00000001400e1958     win32_game.obj
+ 0002:0000c980       $SG142945                  00000001400e1980     win32_game.obj
+ 0002:0000c9e0       $SG142946                  00000001400e19e0     win32_game.obj
+ 0002:0000ca38       $SG142960                  00000001400e1a38     win32_game.obj
+ 0002:0000ca70       $SG142950                  00000001400e1a70     win32_game.obj
+ 0002:0000cad0       $SG142951                  00000001400e1ad0     win32_game.obj
+ 0002:0000cb30       $SG142952                  00000001400e1b30     win32_game.obj
+ 0002:0000cb60       $SG142953                  00000001400e1b60     win32_game.obj
+ 0002:0000cbc0       $SG142954                  00000001400e1bc0     win32_game.obj
+ 0002:0000cc20       $SG142961                  00000001400e1c20     win32_game.obj
+ 0002:0000cc80       $SG142962                  00000001400e1c80     win32_game.obj
+ 0002:0000cce8       $SG142971                  00000001400e1ce8     win32_game.obj
+ 0002:0000cd28       $SG142987                  00000001400e1d28     win32_game.obj
+ 0002:0000cd50       $SG142972                  00000001400e1d50     win32_game.obj
+ 0002:0000cdb0       $SG142973                  00000001400e1db0     win32_game.obj
+ 0002:0000ce38       $SG142979                  00000001400e1e38     win32_game.obj
+ 0002:0000ce68       $SG102048                  00000001400e1e68     win32_game.obj
+ 0002:0000ce90       $SG142980                  00000001400e1e90     win32_game.obj
+ 0002:0000cef0       $SG142981                  00000001400e1ef0     win32_game.obj
+ 0002:0000cf58       $SG102050                  00000001400e1f58     win32_game.obj
+ 0002:0000cf80       $SG142985                  00000001400e1f80     win32_game.obj
+ 0002:0000cfe0       $SG142986                  00000001400e1fe0     win32_game.obj
+ 0002:0000d000       $SG142988                  00000001400e2000     win32_game.obj
+ 0002:0000d060       $SG142989                  00000001400e2060     win32_game.obj
+ 0002:0000d0b8       $SG143015                  00000001400e20b8     win32_game.obj
+ 0002:0000d0f8       $SG151208                  00000001400e20f8     win32_game.obj
+ 0002:0000d110       $SG142991                  00000001400e2110     win32_game.obj
+ 0002:0000d170       $SG142992                  00000001400e2170     win32_game.obj
+ 0002:0000d1c0       $SG142997                  00000001400e21c0     win32_game.obj
+ 0002:0000d200       $SG142998                  00000001400e2200     win32_game.obj
+ 0002:0000d260       $SG142999                  00000001400e2260     win32_game.obj
+ 0002:0000d2e8       $SG151210                  00000001400e22e8     win32_game.obj
+ 0002:0000d320       $SG143001                  00000001400e2320     win32_game.obj
+ 0002:0000d380       $SG143002                  00000001400e2380     win32_game.obj
+ 0002:0000d3d0       $SG143006                  00000001400e23d0     win32_game.obj
+ 0002:0000d418       $SG151205                  00000001400e2418     win32_game.obj
+ 0002:0000d438       $SG143022                  00000001400e2438     win32_game.obj
+ 0002:0000d470       $SG143007                  00000001400e2470     win32_game.obj
+ 0002:0000d4d0       $SG102047                  00000001400e24d0     win32_game.obj
+ 0002:0000d540       $SG151200                  00000001400e2540     win32_game.obj
+ 0002:0000d5a4       $SG130163                  00000001400e25a4     win32_game.obj
+ 0002:0000d5b0       $SG143008                  00000001400e25b0     win32_game.obj
+ 0002:0000d638       $SG151223                  00000001400e2638     win32_game.obj
+ 0002:0000d660       $SG151201                  00000001400e2660     win32_game.obj
+ 0002:0000d6c4       $SG130170                  00000001400e26c4     win32_game.obj
+ 0002:0000d6d0       $SG102049                  00000001400e26d0     win32_game.obj
+ 0002:0000d740       $SG143010                  00000001400e2740     win32_game.obj
+ 0002:0000d7a0       $SG143011                  00000001400e27a0     win32_game.obj
+ 0002:0000d7f0       $SG151206                  00000001400e27f0     win32_game.obj
+ 0002:0000d854       $SG130172                  00000001400e2854     win32_game.obj
+ 0002:0000d860       $SG151207                  00000001400e2860     win32_game.obj
+ 0002:0000d8a8       $SG143059                  00000001400e28a8     win32_game.obj
+ 0002:0000d8b4       $SG130188                  00000001400e28b4     win32_game.obj
+ 0002:0000d8c0       $SG143016                  00000001400e28c0     win32_game.obj
+ 0002:0000d920       $SG151209                  00000001400e2920     win32_game.obj
+ 0002:0000d984       $SG130192                  00000001400e2984     win32_game.obj
+ 0002:0000d990       $SG143017                  00000001400e2990     win32_game.obj
+ 0002:0000da18       $SG143020                  00000001400e2a18     win32_game.obj
+ 0002:0000da38       $SG143055                  00000001400e2a38     win32_game.obj
+ 0002:0000da48       $SG102106                  00000001400e2a48     win32_game.obj
+ 0002:0000da68       $SG151391                  00000001400e2a68     win32_game.obj
+ 0002:0000da80       $SG143021                  00000001400e2a80     win32_game.obj
+ 0002:0000dae0       $SG151224                  00000001400e2ae0     win32_game.obj
+ 0002:0000db50       $SG151225                  00000001400e2b50     win32_game.obj
+ 0002:0000dba0       $SG143056                  00000001400e2ba0     win32_game.obj
+ 0002:0000dbb0       $SG143058                  00000001400e2bb0     win32_game.obj
+ 0002:0000dbc0       $SG143062                  00000001400e2bc0     win32_game.obj
+ 0002:0000dbd0       $SG102105                  00000001400e2bd0     win32_game.obj
+ 0002:0000dc40       $SG102155                  00000001400e2c40     win32_game.obj
+ 0002:0000dcb0       $SG102156                  00000001400e2cb0     win32_game.obj
+ 0002:0000dcf0       $SG151383                  00000001400e2cf0     win32_game.obj
+ 0002:0000dd58       $SG143195                  00000001400e2d58     win32_game.obj
+ 0002:0000dd68       $SG151393                  00000001400e2d68     win32_game.obj
+ 0002:0000dda0       $SG151384                  00000001400e2da0     win32_game.obj
+ 0002:0000de08       $SG151388                  00000001400e2e08     win32_game.obj
+ 0002:0000de28       $SG143196                  00000001400e2e28     win32_game.obj
+ 0002:0000de38       $SG143210                  00000001400e2e38     win32_game.obj
+ 0002:0000de48       $SG143219                  00000001400e2e48     win32_game.obj
+ 0002:0000de58       $SG143222                  00000001400e2e58     win32_game.obj
+ 0002:0000de70       $SG151389                  00000001400e2e70     win32_game.obj
+ 0002:0000ded8       $SG143230                  00000001400e2ed8     win32_game.obj
+ 0002:0000dee8       $SG143233                  00000001400e2ee8     win32_game.obj
+ 0002:0000def8       $SG151430                  00000001400e2ef8     win32_game.obj
+ 0002:0000df10       $SG151390                  00000001400e2f10     win32_game.obj
+ 0002:0000df58       $SG143199                  00000001400e2f58     win32_game.obj
+ 0002:0000df68       $SG143205                  00000001400e2f68     win32_game.obj
+ 0002:0000df78       $SG151427                  00000001400e2f78     win32_game.obj
+ 0002:0000df98       $SG151432                  00000001400e2f98     win32_game.obj
+ 0002:0000dfd0       $SG151392                  00000001400e2fd0     win32_game.obj
+ 0002:0000e038       $SG143206                  00000001400e3038     win32_game.obj
+ 0002:0000e048       $SG143211                  00000001400e3048     win32_game.obj
+ 0002:0000e058       $SG143214                  00000001400e3058     win32_game.obj
+ 0002:0000e068       $SG143220                  00000001400e3068     win32_game.obj
+ 0002:0000e078       $SG143229                  00000001400e3078     win32_game.obj
+ 0002:0000e088       $SG143239                  00000001400e3088     win32_game.obj
+ 0002:0000e098       $SG143247                  00000001400e3098     win32_game.obj
+ 0002:0000e0b0       $SG151422                  00000001400e30b0     win32_game.obj
+ 0002:0000e118       $SG143248                  00000001400e3118     win32_game.obj
+ 0002:0000e128       $SG143251                  00000001400e3128     win32_game.obj
+ 0002:0000e138       $SG151485                  00000001400e3138     win32_game.obj
+ 0002:0000e150       $SG151423                  00000001400e3150     win32_game.obj
+ 0002:0000e1b8       $SG143254                  00000001400e31b8     win32_game.obj
+ 0002:0000e1c8       $SG151482                  00000001400e31c8     win32_game.obj
+ 0002:0000e1e8       $SG151487                  00000001400e31e8     win32_game.obj
  0002:0000e220       $SG151428                  00000001400e3220     win32_game.obj
- 0002:0000e268       $SG143237                  00000001400e3268     win32_game.obj
- 0002:0000e278       $SG143254                  00000001400e3278     win32_game.obj
- 0002:0000e288       $SG151481                  00000001400e3288     win32_game.obj
- 0002:0000e2a8       $SG151486                  00000001400e32a8     win32_game.obj
- 0002:0000e2e0       $SG151430                  00000001400e32e0     win32_game.obj
- 0002:0000e348       $SG143249                  00000001400e3348     win32_game.obj
- 0002:0000e358       $SG143261                  00000001400e3358     win32_game.obj
- 0002:0000e378       $SG151505                  00000001400e3378     win32_game.obj
- 0002:0000e398       $SG151508                  00000001400e3398     win32_game.obj
- 0002:0000e3b0       $SG143260                  00000001400e33b0     win32_game.obj
- 0002:0000e410       $SG151476                  00000001400e3410     win32_game.obj
- 0002:0000e478       $SG151510                  00000001400e3478     win32_game.obj
- 0002:0000e4b0       $SG151477                  00000001400e34b0     win32_game.obj
- 0002:0000e518       $SG143287                  00000001400e3518     win32_game.obj
- 0002:0000e548       $SG143320                  00000001400e3548     win32_game.obj
- 0002:0000e580       $SG143288                  00000001400e3580     win32_game.obj
- 0002:0000e5e0       $SG143289                  00000001400e35e0     win32_game.obj
- 0002:0000e638       $SG143345                  00000001400e3638     win32_game.obj
- 0002:0000e670       $SG151482                  00000001400e3670     win32_game.obj
- 0002:0000e6d8       $SG143349                  00000001400e36d8     win32_game.obj
- 0002:0000e700       $SG151483                  00000001400e3700     win32_game.obj
- 0002:0000e748       $SG143371                  00000001400e3748     win32_game.obj
- 0002:0000e778       $SG143375                  00000001400e3778     win32_game.obj
- 0002:0000e7a0       $SG151485                  00000001400e37a0     win32_game.obj
- 0002:0000e808       $SG143390                  00000001400e3808     win32_game.obj
- 0002:0000e838       $SG151585                  00000001400e3838     win32_game.obj
- 0002:0000e860       $SG151500                  00000001400e3860     win32_game.obj
- 0002:0000e8c8       $SG143393                  00000001400e38c8     win32_game.obj
- 0002:0000e8f0       $SG151501                  00000001400e38f0     win32_game.obj
- 0002:0000e958       $SG143408                  00000001400e3958     win32_game.obj
- 0002:0000e990       $SG151506                  00000001400e3990     win32_game.obj
- 0002:0000e9f8       $SG143411                  00000001400e39f8     win32_game.obj
- 0002:0000ea20       $SG151507                  00000001400e3a20     win32_game.obj
- 0002:0000ea68       $SG151613                  00000001400e3a68     win32_game.obj
- 0002:0000ea90       $SG151509                  00000001400e3a90     win32_game.obj
- 0002:0000eaf8       $SG143318                  00000001400e3af8     win32_game.obj
- 0002:0000eb18       $SG143551                  00000001400e3b18     win32_game.obj
- 0002:0000eb30       $SG143319                  00000001400e3b30     win32_game.obj
- 0002:0000eb90       $SG143344                  00000001400e3b90     win32_game.obj
- 0002:0000ebf0       $SG143350                  00000001400e3bf0     win32_game.obj
- 0002:0000ec50       $SG143351                  00000001400e3c50     win32_game.obj
- 0002:0000eca8       $SG143553                  00000001400e3ca8     win32_game.obj
- 0002:0000ecd8       $SG143568                  00000001400e3cd8     win32_game.obj
- 0002:0000ed00       $SG143370                  00000001400e3d00     win32_game.obj
- 0002:0000ed60       $SG143376                  00000001400e3d60     win32_game.obj
- 0002:0000edc0       $SG143377                  00000001400e3dc0     win32_game.obj
- 0002:0000ee10       $SG143389                  00000001400e3e10     win32_game.obj
- 0002:0000ee70       $SG151586                  00000001400e3e70     win32_game.obj
- 0002:0000eed8       $SG102636                  00000001400e3ed8     win32_game.obj
- 0002:0000eee8       $SG143703                  00000001400e3ee8     win32_game.obj
- 0002:0000ef00       $SG143394                  00000001400e3f00     win32_game.obj
- 0002:0000ef60       $SG151587                  00000001400e3f60     win32_game.obj
+ 0002:0000e288       $SG151506                  00000001400e3288     win32_game.obj
+ 0002:0000e2a8       $SG151509                  00000001400e32a8     win32_game.obj
+ 0002:0000e2c0       $SG151429                  00000001400e32c0     win32_game.obj
+ 0002:0000e308       $SG143237                  00000001400e3308     win32_game.obj
+ 0002:0000e318       $SG151511                  00000001400e3318     win32_game.obj
+ 0002:0000e350       $SG151431                  00000001400e3350     win32_game.obj
+ 0002:0000e3b8       $SG143249                  00000001400e33b8     win32_game.obj
+ 0002:0000e3c8       $SG143261                  00000001400e33c8     win32_game.obj
+ 0002:0000e3e8       $SG143320                  00000001400e33e8     win32_game.obj
+ 0002:0000e420       $SG143260                  00000001400e3420     win32_game.obj
+ 0002:0000e480       $SG151477                  00000001400e3480     win32_game.obj
+ 0002:0000e4e8       $SG143345                  00000001400e34e8     win32_game.obj
+ 0002:0000e520       $SG151478                  00000001400e3520     win32_game.obj
+ 0002:0000e588       $SG143287                  00000001400e3588     win32_game.obj
+ 0002:0000e5b8       $SG143349                  00000001400e35b8     win32_game.obj
+ 0002:0000e5e0       $SG143288                  00000001400e35e0     win32_game.obj
+ 0002:0000e640       $SG143289                  00000001400e3640     win32_game.obj
+ 0002:0000e698       $SG143375                  00000001400e3698     win32_game.obj
+ 0002:0000e6c0       $SG151483                  00000001400e36c0     win32_game.obj
+ 0002:0000e728       $SG143371                  00000001400e3728     win32_game.obj
+ 0002:0000e758       $SG143393                  00000001400e3758     win32_game.obj
+ 0002:0000e780       $SG151484                  00000001400e3780     win32_game.obj
+ 0002:0000e7c8       $SG143390                  00000001400e37c8     win32_game.obj
+ 0002:0000e7f8       $SG151586                  00000001400e37f8     win32_game.obj
+ 0002:0000e820       $SG151486                  00000001400e3820     win32_game.obj
+ 0002:0000e888       $SG143408                  00000001400e3888     win32_game.obj
+ 0002:0000e8c0       $SG151501                  00000001400e38c0     win32_game.obj
+ 0002:0000e928       $SG143411                  00000001400e3928     win32_game.obj
+ 0002:0000e950       $SG151502                  00000001400e3950     win32_game.obj
+ 0002:0000e9b8       $SG151614                  00000001400e39b8     win32_game.obj
+ 0002:0000e9e0       $SG151507                  00000001400e39e0     win32_game.obj
+ 0002:0000ea48       $SG143551                  00000001400e3a48     win32_game.obj
+ 0002:0000ea60       $SG151508                  00000001400e3a60     win32_game.obj
+ 0002:0000eaa8       $SG143553                  00000001400e3aa8     win32_game.obj
+ 0002:0000ead8       $SG143568                  00000001400e3ad8     win32_game.obj
+ 0002:0000eb00       $SG151510                  00000001400e3b00     win32_game.obj
+ 0002:0000eb68       $SG143318                  00000001400e3b68     win32_game.obj
+ 0002:0000eb88       $SG102636                  00000001400e3b88     win32_game.obj
+ 0002:0000eb98       $SG143703                  00000001400e3b98     win32_game.obj
+ 0002:0000ebb0       $SG143319                  00000001400e3bb0     win32_game.obj
+ 0002:0000ec10       $SG143344                  00000001400e3c10     win32_game.obj
+ 0002:0000ec70       $SG143350                  00000001400e3c70     win32_game.obj
+ 0002:0000ecd0       $SG143351                  00000001400e3cd0     win32_game.obj
+ 0002:0000ed28       $SG143705                  00000001400e3d28     win32_game.obj
+ 0002:0000ed60       $SG143370                  00000001400e3d60     win32_game.obj
+ 0002:0000edc0       $SG143376                  00000001400e3dc0     win32_game.obj
+ 0002:0000ee20       $SG143377                  00000001400e3e20     win32_game.obj
+ 0002:0000ee70       $SG143389                  00000001400e3e70     win32_game.obj
+ 0002:0000eed0       $SG143394                  00000001400e3ed0     win32_game.obj
+ 0002:0000ef30       $SG151587                  00000001400e3f30     win32_game.obj
+ 0002:0000ef98       $SG143738                  00000001400e3f98     win32_game.obj
  0002:0000efb0       $SG143395                  00000001400e3fb0     win32_game.obj
- 0002:0000f000       $SG143407                  00000001400e4000     win32_game.obj
- 0002:0000f060       $SG143412                  00000001400e4060     win32_game.obj
- 0002:0000f0c0       $SG143413                  00000001400e40c0     win32_game.obj
- 0002:0000f110       $SG151614                  00000001400e4110     win32_game.obj
- 0002:0000f178       $SG143705                  00000001400e4178     win32_game.obj
- 0002:0000f1b0       $SG151615                  00000001400e41b0     win32_game.obj
- 0002:0000f200       $SG143478                  00000001400e4200     win32_game.obj
- 0002:0000f260       $SG143479                  00000001400e4260     win32_game.obj
- 0002:0000f2a8       $SG143738                  00000001400e42a8     win32_game.obj
- 0002:0000f2c0       $SG143552                  00000001400e42c0     win32_game.obj
- 0002:0000f330       $SG143569                  00000001400e4330     win32_game.obj
- 0002:0000f3a0       $SG143570                  00000001400e43a0     win32_game.obj
- 0002:0000f3f8       $SG143740                  00000001400e43f8     win32_game.obj
- 0002:0000f430       $SG102635                  00000001400e4430     win32_game.obj
- 0002:0000f4a0       $SG143704                  00000001400e44a0     win32_game.obj
- 0002:0000f510       $SG143739                  00000001400e4510     win32_game.obj
- 0002:0000f580       $SG143741                  00000001400e4580     win32_game.obj
- 0002:0000f5f0       $SG143742                  00000001400e45f0     win32_game.obj
- 0002:0000f600       $SG143768                  00000001400e4600     win32_game.obj
- 0002:0000f670       $SG143769                  00000001400e4670     win32_game.obj
- 0002:0000f6c0       $SG143773                  00000001400e46c0     win32_game.obj
- 0002:0000f6d8       $SG143775                  00000001400e46d8     win32_game.obj
+ 0002:0000f000       $SG151588                  00000001400e4000     win32_game.obj
+ 0002:0000f050       $SG143407                  00000001400e4050     win32_game.obj
+ 0002:0000f0b0       $SG143412                  00000001400e40b0     win32_game.obj
+ 0002:0000f110       $SG143413                  00000001400e4110     win32_game.obj
+ 0002:0000f160       $SG151615                  00000001400e4160     win32_game.obj
+ 0002:0000f1c8       $SG143740                  00000001400e41c8     win32_game.obj
+ 0002:0000f200       $SG151616                  00000001400e4200     win32_game.obj
+ 0002:0000f250       $SG143478                  00000001400e4250     win32_game.obj
+ 0002:0000f2b0       $SG143479                  00000001400e42b0     win32_game.obj
+ 0002:0000f2f8       $SG143742                  00000001400e42f8     win32_game.obj
+ 0002:0000f308       $SG143773                  00000001400e4308     win32_game.obj
+ 0002:0000f320       $SG143552                  00000001400e4320     win32_game.obj
+ 0002:0000f390       $SG143569                  00000001400e4390     win32_game.obj
+ 0002:0000f400       $SG143570                  00000001400e4400     win32_game.obj
+ 0002:0000f458       $SG143775                  00000001400e4458     win32_game.obj
+ 0002:0000f490       $SG102635                  00000001400e4490     win32_game.obj
+ 0002:0000f500       $SG143704                  00000001400e4500     win32_game.obj
+ 0002:0000f570       $SG143739                  00000001400e4570     win32_game.obj
+ 0002:0000f5e0       $SG143741                  00000001400e45e0     win32_game.obj
+ 0002:0000f650       $SG143768                  00000001400e4650     win32_game.obj
+ 0002:0000f6c0       $SG143769                  00000001400e46c0     win32_game.obj
  0002:0000f710       $SG143774                  00000001400e4710     win32_game.obj
  0002:0000f780       $SG143932                  00000001400e4780     win32_game.obj
  0002:0000f7f0       $SG143933                  00000001400e47f0     win32_game.obj
@@ -9638,7 +9638,7 @@
  0002:00033dbe       .idata$6                   0000000140108dbe     winmm:WINMM.dll
  0002:00033df0       .idata$6                   0000000140108df0     Comdlg32:COMDLG32.dll
  0002:00033e14       .idata$6                   0000000140108e14     Shlwapi:SHLWAPI.dll
- 0002:00034096       .idata$6                   0000000140109096     kernel32:KERNEL32.dll
+ 0002:000340a6       .idata$6                   00000001401090a6     kernel32:KERNEL32.dll
  0003:00000094       ?stbi__l2h_gamma@@3MA      000000014010a094     win32_game.obj
  0003:00000098       ?stbi__stdio_callbacks@@3Ustbi_io_callbacks@@A 000000014010a098     win32_game.obj
  0003:000000b0       ?stbi__l2h_scale@@3MA      000000014010a0b0     win32_game.obj

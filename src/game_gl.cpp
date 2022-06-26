@@ -561,6 +561,7 @@
 //                               for moving on the slope once we're on it.
 //               - TODO: remove walk_state from player state and old walk procedures
 
+// TODO (done): use face data in blender mesh export script
 // TODO: fix crash with undoing/redoing add material
 
 // TODO: capsule vs AABB for optimization

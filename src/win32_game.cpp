@@ -282,7 +282,7 @@ bool32 platform_open_file(char *filename, Platform_File *file_result) {
         }
     }
 
-    // DWORD last_error = GetLastError();
+    DWORD last_error = GetLastError();
 
     return false;
 }

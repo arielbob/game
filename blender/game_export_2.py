@@ -26,11 +26,11 @@ def game_export(context, filename, replace_existing):
 
 
     bpy.ops.object.mode_set(mode='OBJECT')
-    mesh_copy = context.active_object.copy()
+    object_copy = context.active_object.copy()
 
     #bpy.ops.object.make_single_user(object=True, obdata=True, material=True, animation=False)
     
-    mesh_copy_data = mesh_copy.data.copy()
+    mesh_copy_data = object_copy.data.copy()
     
     # Get a BMesh representation
     bm = bmesh.new()
@@ -46,28 +46,48 @@ def game_export(context, filename, replace_existing):
     #       reference will become out of date, which will cause a crash due to invalid memory
     #       access later.
     vertices_list = [Vertex(v.co.copy(), v.normal.copy()) for v in mesh_copy_data.vertices]
-    num_vertices = len(vertices_list)
     
-    faces_list = [face.vertices for face in mesh_copy_data.polygons]
+    faces_list = [face.vertices.copy() for face in mesh_copy_data.polygons]
     num_triangles = len(faces_list)
-    
+
+    # we start with assuming that there is a single UV for each unique vertex (we say unique since
+    # vertices are not duplicated in the mesh data for flat shading or for different UV islands)
     vertex_uvs = [None] * len(vertices_list)
+    
+    # this is a list of lists, where each list stores vertex indices for vertices that have different
+    # UVs than the one stored at the corresponding index in vertex_uvs. we use this so that we can
+    # make faces use the vertex index that has the correct UV.
     indices_for_vert = [None] * len(vertices_list)
     
     for i in range(len(mesh_copy_data.uv_layers.active.data)):
-        index_uv = mesh_copy_data.uv_layers.active.data[i]
-        uv = index_uv.uv
+        uv = mesh_copy_data.uv_layers.active.data[i].uv
         
         # NOTE: we assume that all faces have 3 verts
         face_index = i // 3
         vertex_index = faces_list[face_index][i % 3]
         
         if (vertex_uvs[vertex_index] == None):
+            # we haven't stored a UV for this vertex, so store it
             vertex_uvs[vertex_index] = uv
         elif (vertex_uvs[vertex_index] == uv):
+            # the vertex indices repeat can occur more than once since faces in a
+            # mesh share vertices when they're adjacent. although they might share
+            # them in object space, in UV space, that same vertex may have a different
+            # UV coordinate when the vertex is part of a different face. this happens when
+            # the faces are not connected in UV space.
+            
+            # in this case, the UV for this vertex on this face is the same as the one
+            # already stored, so nothing more needs to be done.
             continue
         elif (vertex_uvs[vertex_index] != uv):
+            # world space vertex is the same, but the UV is not the same for this vertex
+            # on this face.
 
+            # check if there exists a vertex that has the same UV, and if so, change the incorrect
+            # vertex index in the face to be the vertex index that has the same UV.
+            # note that the UV will be different but the vertex in world space is the same vertex.
+            # we duplicate the vertex when it has a different UV since UV coordinates are stored
+            # per vertex in our engine.
             found_shared_index = False
             if (indices_for_vert[vertex_index] != None):
                 for v_index in indices_for_vert[vertex_index]:
@@ -75,10 +95,11 @@ def game_export(context, filename, replace_existing):
                         faces_list[face_index][i % 3] = v_index
                         found_shared_index = True
             
+            # if we didn't find a vertex index that has the same UV, then we create one
             if not found_shared_index:      
                 # add a new vertex
                 vertices_list.append(mesh_copy_data.vertices[vertex_index])
-                new_index = num_vertices
+                new_index = len(vertices_list)
                 vertex_uvs.append(uv)
                 faces_list[face_index][i % 3] = new_index
                 
@@ -86,16 +107,15 @@ def game_export(context, filename, replace_existing):
                     indices_for_vert[vertex_index] = [new_index]
                 else:
                     indices_for_vert[vertex_index].append(new_index)
-                num_vertices += 1
                 
                 
                 
-    temp_output_file.write(str(num_vertices) + '\n')
+    temp_output_file.write(str(len(vertices_list)) + '\n')
     temp_output_file.write(str(num_triangles) + '\n\n')
     
     temp_output_file.write(';; vertices\n\n')
     
-    for i in range(num_vertices):
+    for i in range(len(vertices_list)):
         vert = vertices_list[i]
         
         # TODO: we may want to find a way to not always have to store 16 places after
