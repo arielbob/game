@@ -483,7 +483,7 @@
 //       - TODO (done): write render_game() procedure in gl code
 //       - TODO (done): step through code, make sure arena is being cleared when going from edit mode to game mode
 
-// TODO: capsule vs triangle collision
+// TODO (done): capsule vs triangle collision
 //       - TODO (done): add debug entity with capsule collider and draw useful things from capsule_intersects_triangle
 //       - TODO (done): fix penetration depth being larger than expected. it seems like it's the center of the
 //               sphere to the penetration point instead of the point on the triangle to the penetration point.
@@ -498,33 +498,13 @@
 //       - TODO (done): collision response
 //       - TODO (done): fix weird collision case in startup level
 //              - TODO (done): add new ray_intersects_plane procedure that passes when t is < 0
-//       - TODO: fix walking between meshes not working anymore
-//               - i'm being pushed out before ever being able to be above a new mesh, so we never get to walk on
-//                 it.
-//               - TODO: implement this:
-//               - what if we just use the capsule collision against the mesh? if the normal of the triangle is
-//                 walkable (it's pointing relatively straight up) and the intersection point is within some
-//                 threshold between the bottom of the capsule and some max height (i.e. the max step-up distance),
-//                 then we move to that triangle.
-//               - we can still keep the moving on triangle code, i'm pretty sure; i mean, yeah, i think it's fine.
 //       - TODO (done): calculate the intersection point
-//       - TODO: figure out walking on meshes
-//               - if we're on a mesh, is_grounded = true and we use the regular walking on mesh code.
-//               - just use regular walking on mesh code. when you do collisions, use capsule vs. mesh code.
-//               - can we maybe just separate between walkable and collidable?
-//               - or just use the angle of the normal? if it's greater than the maximum walkable slope angle,
-//                 then use capsule vs. mesh. otherwise, use regular walking algorithm.
-//       - TODO: fix colliding with side of ramp while on the ramp
 //       - can ensuring that all walk meshes are convex help? yes: it means that you will never collide with
 //         the walk mesh if you're walking on it.
 //       - if an entity's collider mesh is convex, then if you collide with it, if you take the one with the largest
 //         push-out vector, then that is guaranteed to push you out of the entity.
-//       - TODO: could we do a walk-mesh solution instead? basically no collision at all; just stay on the walk
-//               mesh? kind of like the "killing the walk monster" way?
 //       - we could always still do it the walk mesh / collider mesh way, where we separate the meshes.
-//       - TODO: figure out better, cleaner solution for all of this
-//               - maybe use a cylinder instead of a capsule for the player collider?
-//       - TODO: just use capsule with regular collision response, i.e. use the bottom cap to push up slopes
+//       - TODO (done): just use capsule with regular collision response, i.e. use the bottom cap to push up slopes
 //               - TODO (done): remove the walk code
 //               - TODO (done): do penetration collision response using displacement vector
 //               - TODO (done): set walk state from do_colisions() code
@@ -534,7 +514,6 @@
 //                       i think just do it recursively for now. well, we don't actually need to recurse; just
 //                       loop, but also have a max loops assert in case we end up in a weird case. i think then
 //                       we need to push the capsule out a bit more so we aren't always penetrating.
-//               - TODO: we might want to see if we can early-out
 //               - TODO (done): just use regular basis based on camera rotation and not on triangle normal.
 //               - TODO (done): update player capsule every time it gets moved due to an intersection
 //               - TODO (done): set is_grounded based on the intersection point being on the bottom sphere of the
@@ -559,10 +538,11 @@
 //                               both methods. the ray method for getting onto the slope, so we smoothly walk onto a
 //                               downwards slope instead of moving then falling down, and the slope walk basis method
 //                               for moving on the slope once we're on it.
-//               - TODO: remove walk_state from player state and old walk procedures
+//               - TODO (done): reomve unnecessary walk_state properties
 
 // TODO (done): use face data in blender mesh export script
 // TODO (done): fix crash with undoing/redoing add material
+// TODO: string_format procedure that uses the frame arena by default and calculates necessary allocation size
 
 // TODO: capsule vs AABB for optimization
 //       - TODO: do this check first in capsule_intersects_mesh before checking triangles

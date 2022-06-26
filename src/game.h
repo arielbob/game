@@ -170,8 +170,6 @@ namespace Player_Constants {
 
 struct Walk_State {
     Vec3 triangle_normal;
-    int32 triangle_index;   // can be removed
-    int32 ground_entity_id; // can be removed
 };
 
 struct Player {

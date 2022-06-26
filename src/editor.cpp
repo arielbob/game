@@ -1002,6 +1002,7 @@ void draw_editor(Game_State *game_state, Controller_State *controller_state) {
         history_redo(editor_state);
     }
 
+    #if 0
     Allocator *frame_allocator = (Allocator *) &memory.frame_arena;
     char *buf = string_format(frame_allocator, 64, "editor history heap used: %d",
                               editor_state->history_heap.used);
@@ -1014,6 +1015,7 @@ void draw_editor(Game_State *game_state, Controller_State *controller_state) {
     do_text(ui_manager,
             5.0f, render_state->display_output.height - 72.0f,
             buf, font_id, default_text_style, "editor entity heap used");
+    #endif
 
 #if 0
     char *buf = string_format(frame_allocator, 64, "heap size: %d", ui_manager->heap_pointer->size);

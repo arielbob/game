@@ -656,8 +656,6 @@ void do_collisions(Game_State *game_state, Vec3 initial_move) {
     Asset_Manager *asset_manager = &game_state->asset_manager;
 
     Player *player = &game_state->player;
-    int32 ground_entity_id = player->walk_state.ground_entity_id;
-    int32 ground_triangle_index = player->walk_state.triangle_index;
 
     player->position += initial_move;
 
@@ -1014,26 +1012,6 @@ void update(Game_State *game_state,
 
     int32 font_id;
     Font font = get_font(asset_manager, "calibri14", &font_id);
-
-    //char *buf = (char *) arena_push(&memory.frame_arena, 128);
-    Allocator *frame_allocator = (Allocator *) &memory.frame_arena;
-    char *str = string_format(frame_allocator, 256,
-                              "walk_state ground_entity_id: %d\nwalk_state triangle_index: %d\nwalk_state triangle_normal: { %f, %f, %f }\nis_grounded: %d\nacceleration.y: %f",
-                              player->walk_state.ground_entity_id, player->walk_state.triangle_index,
-                              player->walk_state.triangle_normal.x,
-                              player->walk_state.triangle_normal.y,
-                              player->walk_state.triangle_normal.z,
-                              player->is_grounded,
-                              player->acceleration.y);
-    do_text(ui_manager, 5.0f, 32.0f, str, font_id, "triangle_index");
-#if 0
-    buf = (char *) arena_push(&memory.frame_arena, 128);
-    string_format(buf, 128, "current_mouse: (%f, %f)",
-                  controller_state->current_mouse.x, controller_state->current_mouse.y);
-    do_text(ui_manager, 0.0f, 24.0f, buf, "times24", "current_mouse_text");
-#endif
-
-    
 
     char *dt_string = string_format((Allocator *) &memory.frame_arena, 128, "FPS %d / dt %.3f", 
                                     (int32) round(game_state->last_second_fps), dt);

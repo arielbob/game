@@ -54,7 +54,6 @@ global_variable Allocator *temp_region;
 #include "editor_actions.cpp"
 #include "editor_ui.cpp"
 #include "editor.cpp"
-#include "walk.cpp"
 #include "game.cpp"
 
 global_variable int64 perf_counter_frequency;
