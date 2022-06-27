@@ -542,7 +542,7 @@
 
 // TODO (done): use face data in blender mesh export script
 // TODO (done): fix crash with undoing/redoing add material
-// TODO: string_format procedure that uses the frame arena by default and calculates necessary allocation size
+// TODO (done): string_format procedure that calculates necessary allocation size
 
 // TODO: capsule vs AABB for optimization
 //       - TODO: do this check first in capsule_intersects_mesh before checking triangles

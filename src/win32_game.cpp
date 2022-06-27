@@ -185,28 +185,21 @@ real64 platform_get_wall_clock_time() {
 }
 
 void debug_print(char *format, ...) {
-    char buf[2048];
     va_list args;
     va_start(args, format);
-    int32 num_chars_outputted = vsnprintf(buf, sizeof(buf), format, args);
-
-    assert(num_chars_outputted > 0 && num_chars_outputted < sizeof(buf));
-
-    OutputDebugStringA(buf);
-    va_end(args);
-}
-
-void debug_printn(char *format, int32 n, ...) {
-    char buf[2048];
-    va_list args;
-    va_start(args, n);
     
-    assert(n < sizeof(buf));
-    int32 num_chars_outputted = vsnprintf(buf, n, format, args);
+    int32 num_chars_no_null = vsnprintf(NULL, 0, format, args);
+    int32 n = num_chars_no_null + 1;
 
-    assert(num_chars_outputted > 0 && num_chars_outputted < sizeof(buf));
+    Marker m = begin_region();
+    char *buf = (char *) allocate(temp_region, n);
+
+    int32 num_chars_outputted = vsnprintf(buf, n, format, args);
+    assert(num_chars_outputted > 0 && num_chars_outputted < n);
 
     OutputDebugStringA(buf);
+    end_region(m);
+    
     va_end(args);
 }
 
@@ -216,6 +209,20 @@ void string_format(char *buf, int32 n, char *format, ...) {
     
     int32 num_chars_outputted = vsnprintf(buf, n, format, args);
     assert(num_chars_outputted > 0 && num_chars_outputted < n);
+}
+
+char *string_format(Allocator *allocator, char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    
+    int32 num_chars_no_null = vsnprintf(NULL, 0, format, args);
+    int32 n = num_chars_no_null + 1;
+    char *buf = (char *) allocate(allocator, n);
+
+    int32 num_chars_outputted = vsnprintf(buf, n, format, args);
+    assert(num_chars_outputted > 0 && num_chars_outputted < n);
+
+    return buf;
 }
 
 char *string_format(Allocator *allocator, int32 n, char *format, ...) {

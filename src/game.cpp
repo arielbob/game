@@ -948,6 +948,7 @@ void update(Game_State *game_state,
             Sound_Output *sound_output, uint32 num_samples) {
     Display_Output *display_output = &game_state->render_state.display_output;
     if (!game_state->is_initted) {
+        debug_print("initting game %d!\n", 123);
         init_game(game_state, sound_output, num_samples);
         //return;
     }
@@ -1013,7 +1014,7 @@ void update(Game_State *game_state,
     int32 font_id;
     Font font = get_font(asset_manager, "calibri14", &font_id);
 
-    char *dt_string = string_format((Allocator *) &memory.frame_arena, 128, "FPS %d / dt %.3f", 
+    char *dt_string = string_format((Allocator *) &memory.frame_arena, "FPS %d / dt %.3f", 
                                     (int32) round(game_state->last_second_fps), dt);
     do_text(ui_manager, 5.0f, 14.0f, dt_string, font_id, "dt_string");
 
