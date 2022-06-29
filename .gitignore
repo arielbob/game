@@ -1,3 +1,7 @@
 build/.vs
 build/*.sln
+build/*.i
+build/*.map
+build/*.obj
+build/*.pdb
 .emacs*

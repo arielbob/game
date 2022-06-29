@@ -7,6 +7,7 @@ mesh "cube" "blender/cube.mesh"
 mesh "suzanne" "blender/suzanne2.mesh"
 mesh "sphere" "blender/sphere.mesh"
 mesh "house" ".\blender\house.mesh"
+mesh "New Mesh" ".\blender\hallway.mesh"
 }
 
 textures {
@@ -123,7 +124,7 @@ material "diffuse_sphere"
 is_walkable 1
 
 type normal
-position 0.000000 4.595627 -3.661278
+position 7.348557 4.595627 -3.661278
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 10.000000 10.000000 0.201898
 mesh_primitive "cube"
@@ -136,6 +137,21 @@ scale 1.000000 1.000000 1.000000
 mesh "house"
 material "beige"
 is_walkable 1
+
+type normal
+position -21.260788 4.093831 -2.037807
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+mesh "New Mesh"
+is_walkable 0
+
+type normal
+position -4.261248 4.050428 1.282585
+rotation 0.999964 0.000000 0.000000 -0.008468
+scale 9.053156 0.153271 1.000000
+mesh_primitive "cube"
+material "diffuse_sphere"
+is_walkable 0
 
 type point_light
 position 1.820840 8.628439 0.440687
