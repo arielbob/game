@@ -504,6 +504,8 @@ void init_game(Game_State *game_state,
                                                                          HASH_TABLE_SIZE, &ui_id_equals);
     Context::ui_manager = ui_manager;
 
+    //game_state->is_playing_music = true;
+    
     game_state->is_initted = true;
 }
 
