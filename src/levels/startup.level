@@ -7,6 +7,9 @@ mesh "cube" "blender/cube.mesh"
 mesh "suzanne" "blender/suzanne2.mesh"
 mesh "sphere" "blender/sphere.mesh"
 mesh "house" ".\blender\house.mesh"
+mesh "ground" ".\blender\ground2.mesh"
+mesh "stairs" ".\blender\staircase.mesh"
+mesh "car" ".\blender\car.mesh"
 }
 
 textures {
@@ -56,6 +59,12 @@ texture "debug"
 gloss 50.000000
 color_override 1.000000 0.905000 0.905000
 use_color_override 1
+
+material "red-car"
+texture "debug"
+gloss 100.000000
+color_override 1.000000 0.000000 0.000000
+use_color_override 1
 }
 
 entities {
@@ -70,8 +79,8 @@ is_walkable 1
 type normal
 position 0.000000 0.000000 0.000000
 rotation 1.000000 0.000000 0.000000 0.000000
-scale 100.000000 0.205492 100.000000
-mesh_primitive "cube"
+scale 1.000000 1.000000 1.000000
+mesh "ground"
 material "diffuse_plane"
 is_walkable 1
 
@@ -137,6 +146,56 @@ mesh "house"
 material "beige"
 is_walkable 1
 
+type normal
+position -10.475661 -0.014113 11.384528
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 0.100000 0.100000 0.100000
+mesh_primitive "cube"
+is_walkable 0
+
+type normal
+position -6.457350 0.521776 9.145036
+rotation 0.889589 0.000000 0.456762 0.000000
+scale 1.000000 1.587848 1.000000
+mesh "stairs"
+is_walkable 0
+
+type normal
+position -6.555485 0.274097 1.496117
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 0.100000 0.100000 0.100000
+mesh_primitive "cube"
+is_walkable 0
+
+type normal
+position -9.389193 0.554485 0.000000
+rotation 0.998284 0.009725 -0.021701 -0.053515
+scale 1.000000 1.000000 1.000000
+mesh "car"
+material "red-car"
+is_walkable 0
+
+type normal
+position 0.000000 1.000000 0.000000
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 0.100000 0.100000 0.100000
+mesh_primitive "cube"
+is_walkable 0
+
+type normal
+position 0.000000 1.000000 0.000000
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 0.100000 0.100000 0.100000
+mesh_primitive "cube"
+is_walkable 0
+
+type normal
+position -10.862434 0.514230 3.870638
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 0.100000 0.100000 0.100000
+mesh_primitive "cube"
+is_walkable 0
+
 type point_light
 position 1.820840 8.628439 0.440687
 rotation 0.951728 0.000000 -0.306943 0.000000
@@ -144,4 +203,12 @@ scale 1.000000 1.000000 1.000000
 light_color 0.160000 0.160000 0.160000
 falloff_start 0.000000
 falloff_end 100.000000
+
+type point_light
+position -10.201349 3.757783 3.353169
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+light_color 0.500000 0.500000 0.500000
+falloff_start 0.000000
+falloff_end 5.000000
 }

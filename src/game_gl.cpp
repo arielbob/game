@@ -543,6 +543,8 @@
 // TODO (done): use face data in blender mesh export script
 // TODO (done): fix crash with undoing/redoing add material
 // TODO (done): string_format procedure that calculates necessary allocation size
+// TODO: add control for specular strength, basically just be able to multiply intensity of spec
+//       - also probably add control for spec color for both light and entity
 
 // TODO: capsule vs AABB for optimization
 //       - TODO: do this check first in capsule_intersects_mesh before checking triangles

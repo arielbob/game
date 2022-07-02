@@ -155,6 +155,7 @@ bool32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, bool32 inclu
                 hit_triangle_index = i;
             }
             hit = true;
+            assert(!isnan(t));
         }
     }
 

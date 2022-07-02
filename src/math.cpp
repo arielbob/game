@@ -1461,6 +1461,8 @@ bool32 ray_intersects_triangle(Ray ray, Vec3 triangle_verts[3], bool32 include_b
         if (!(denom < 0.0f)) return false;
     }
 
+    if (fabsf(denom) < EPSILON) return false;
+    
     real32 d = 1.0f / denom;
     real32 u = d * dot(-q, v2v0);
     real32 v = d * dot( q, v1v0);

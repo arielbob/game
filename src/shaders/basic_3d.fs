@@ -55,6 +55,27 @@ vec3 calc_point_light(Point_Light point_light,
     return (spec_contrib + diffuse_contrib) * attenuation_factor;
 }
 
+vec3 calc_sun(vec3 sun_direction, vec3 sun_color,
+              vec3 material_diffuse, vec3 normal, vec3 h, vec3 l) {
+    vec3 light_color = pow(vec3(sun_color), vec3(1.0 / gamma));
+
+    vec3 mat_spec_color = vec3(1.0f, 1.0f, 1.0f);
+    
+    vec3 mat_diffuse_color = material_diffuse;
+
+    vec3 light_spec_color = vec3(1.0f, 1.0f, 1.0f);
+    vec3 light_diffuse_color = sun_color;
+
+    // specular
+    float spec_strength = 0.01f;
+    vec3 spec_contrib = vec3(spec_strength) * light_spec_color * mat_spec_color * pow(max(dot(normal, h), 0), gloss);
+
+    // diffuse
+    vec3 diffuse_contrib = light_diffuse_color * mat_diffuse_color * max(dot(normal, l), 0);
+
+    return (diffuse_contrib + spec_contrib);
+}
+
 void main() {
     // fragment to camera
     vec3 v = normalize(camera_pos - frag_pos);
@@ -71,6 +92,10 @@ void main() {
 
     vec3 light_contrib = vec3(0.0);
 
+    // fragment to sun (constant, since sun is directional)
+    vec3 sun_direction = normalize(vec3(1.0f, 1.0f, 1.0f));
+    vec3 sun_color = vec3(1.0, 1.0, 0.9) * 0.5;
+    
     // ambient
     vec3 global_ambient = vec3(0.2, 0.2, 0.2);
     global_ambient = pow(global_ambient, vec3(1.0 / 2.2));
@@ -88,6 +113,14 @@ void main() {
         Point_Light point_light = point_lights[i];
         light_contrib += calc_point_light(point_light, used_color, normal, h, l, fragment_to_light_distance);
     }
+
+    #if 0
+    {
+        vec3 l = sun_direction;
+        vec3 h = normalize(v + sun_direction);
+        light_contrib += calc_sun(sun_direction, sun_color, used_color, normal, h, l);
+    }
+    #endif
 
     vec3 gamma_corrected_color = pow(light_contrib, vec3(2.2));
     FragColor = vec4(gamma_corrected_color, 1.0);
