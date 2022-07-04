@@ -110,9 +110,9 @@
 #define GL_READ_FRAMEBUFFER               0x8CA8
 #define GL_DRAW_FRAMEBUFFER               0x8CA9
 
-
 #define TEXT_SHADOW_OFFSET 2.0f
 #define NUM_CIRCLE_VERTICES 64
+#define NUM_MSAA_SAMPLES 1
 
 enum Shader_Type {
     VERTEX,

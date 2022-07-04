@@ -128,7 +128,8 @@ void load_level(Editor_State *editor_state, Level_Info *level_info) {
         add_entity(level, (Entity *) e);
     }
 
-    // debug
+    // debug player capsule
+#if 0
     Vec3 capsule_position = make_vec3(0.0f, 1.0f, 0.0f);
     Vec3 entity_scale = make_vec3(0.1f, 0.1f, 0.1f);
     Normal_Entity *capsule_entity = (Normal_Entity *) allocate(entity_allocator, sizeof(Normal_Entity));
@@ -142,6 +143,7 @@ void load_level(Editor_State *editor_state, Level_Info *level_info) {
     capsule_entity->collider.capsule = make_capsule_collider(capsule_position, make_vec3(0.0f, Player_Constants::player_height, 0.0f), Player_Constants::capsule_radius);
     
     add_entity(level, (Entity *) capsule_entity);
+#endif
 }
 
 bool32 read_and_load_level(Editor_State *editor_state, char *filename) {
@@ -192,7 +194,7 @@ void init_editor(Arena_Allocator *editor_arena, Editor_State *editor_state, Disp
     void *general_heap_base = arena_push(editor_arena, general_heap_size, false);
     editor_state->general_heap = make_heap_allocator(general_heap_base, entity_heap_size);
 
-    init_camera(&editor_state->camera, &display_output);
+    init_camera(&editor_state->camera, &display_output, CAMERA_FOV);
     init_editor_level(editor_state, &editor_state->level);
 
     editor_state->asset_manager = make_asset_manager((Allocator *) &editor_state->general_heap);
@@ -637,8 +639,7 @@ void debug_check_collisions(Asset_Manager *asset_manager, Editor_Level *level, N
                                                              &penetration_depth,
                                                              &penetration_point);
             real32 penetration_height = penetration_point.y - entity->transform.position.y;
-            if (intersected && !is_walkable(entity->transform.position, triangle, triangle_normal, penetration_height) &&
-                dot(penetration_normal, triangle_normal) > 0.0f) {
+            if (intersected) {
                 //player->position += (penetration_normal * (player_capsule.radius - penetration_depth));
 
 #if DEBUG_SHOW_COLLISION_LINES

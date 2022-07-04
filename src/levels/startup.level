@@ -10,6 +10,9 @@ mesh "house" ".\blender\house.mesh"
 mesh "ground" ".\blender\ground2.mesh"
 mesh "stairs" ".\blender\staircase.mesh"
 mesh "car" ".\blender\car.mesh"
+mesh "layout" ".\blender\layout1.mesh"
+mesh "ground2" ".\blender\hill.mesh"
+mesh "tree" ".\blender\tree.mesh"
 }
 
 textures {
@@ -65,6 +68,23 @@ texture "debug"
 gloss 100.000000
 color_override 1.000000 0.000000 0.000000
 use_color_override 1
+
+material "house"
+texture "debug"
+gloss 47.580070
+color_override 0.975000 0.975000 0.975000
+use_color_override 1
+
+material "ground"
+texture "debug"
+gloss 50.000000
+color_override 0.347828 0.520000 0.296400
+use_color_override 1
+
+material "tree-branch"
+gloss 1.764706
+color_override 0.310000 0.234050 0.155000
+use_color_override 1
 }
 
 entities {
@@ -74,14 +94,6 @@ rotation 0.908249 0.169228 0.376208 -0.070097
 scale 1.000000 1.000000 1.000000
 mesh_primitive "cube"
 material "shiny_monkey"
-is_walkable 1
-
-type normal
-position 0.000000 0.000000 0.000000
-rotation 1.000000 0.000000 0.000000 0.000000
-scale 1.000000 1.000000 1.000000
-mesh "ground"
-material "diffuse_plane"
 is_walkable 1
 
 type normal
@@ -147,13 +159,6 @@ material "beige"
 is_walkable 1
 
 type normal
-position -10.475660 -0.014113 11.384527
-rotation 1.000000 0.000000 0.000000 0.000000
-scale 0.100000 0.100000 0.100000
-mesh_primitive "cube"
-is_walkable 0
-
-type normal
 position -6.457350 0.521776 9.145036
 rotation 0.889589 0.000000 0.456762 0.000000
 scale 1.000000 1.587848 1.000000
@@ -161,18 +166,35 @@ mesh "stairs"
 is_walkable 0
 
 type normal
-position -6.555485 0.274097 1.496117
-rotation 1.000000 0.000000 0.000000 0.000000
-scale 0.100000 0.100000 0.100000
-mesh_primitive "cube"
+position 18.534861 0.450549 17.352612
+rotation -0.179656 0.000000 -0.983730 0.000000
+scale 1.000000 1.000000 1.000000
+mesh "layout"
+material "house"
 is_walkable 0
 
 type normal
-position -9.389193 0.554485 0.000000
-rotation 0.998284 0.009725 -0.021701 -0.053515
+position 16.301003 -34.438599 14.636024
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+mesh "ground2"
+material "ground"
+is_walkable 0
+
+type normal
+position -9.378633 -0.518865 0.000000
+rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
 mesh "car"
 material "red-car"
+is_walkable 0
+
+type normal
+position -13.137353 -0.667045 1.406865
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+mesh "tree"
+material "tree-branch"
 is_walkable 0
 
 type point_light

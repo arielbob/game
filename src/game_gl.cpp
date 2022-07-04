@@ -543,8 +543,13 @@
 // TODO (done): use face data in blender mesh export script
 // TODO (done): fix crash with undoing/redoing add material
 // TODO (done): string_format procedure that calculates necessary allocation size
+
+// TODO: add collider controls to entities, like have collider be the mesh, or an OBB, or a sphere, etc.
 // TODO: add control for specular strength, basically just be able to multiply intensity of spec
 //       - also probably add control for spec color for both light and entity
+
+// TODO: fix extreme lag when walking into house and when pushing against one of the walls
+//                   - seems to have to do with when we don't solidify a mesh, or when the mesh's normals are backwards
 
 // TODO: capsule vs AABB for optimization
 //       - TODO: do this check first in capsule_intersects_mesh before checking triangles
@@ -1891,7 +1896,7 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
                    "rounded_quad");
 
     // NOTE: framebuffers
-    int32 num_samples = 1;
+    int32 num_samples = NUM_MSAA_SAMPLES;
     gl_state->gizmo_framebuffer = gl_make_msaa_framebuffer(display_output.width, display_output.height, num_samples, true);
     gl_state->msaa_framebuffer = gl_make_msaa_framebuffer(display_output.width, display_output.height, num_samples, true);
 

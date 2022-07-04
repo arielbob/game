@@ -114,7 +114,7 @@ void main() {
         light_contrib += calc_point_light(point_light, used_color, normal, h, l, fragment_to_light_distance);
     }
 
-    #if 0
+    #if 1
     {
         vec3 l = sun_direction;
         vec3 h = normalize(v + sun_direction);

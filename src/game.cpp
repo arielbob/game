@@ -467,7 +467,7 @@ void init_game(Game_State *game_state,
     //Allocator *filename_allocator = (Allocator *) &memory.filename_pool;
     
     // init camera
-    init_camera(&game_state->camera, display_output);
+    init_camera(&game_state->camera, display_output, CAMERA_FOV);
 
 #if 0
     // init fonts
@@ -504,8 +504,6 @@ void init_game(Game_State *game_state,
                                                                          HASH_TABLE_SIZE, &ui_id_equals);
     Context::ui_manager = ui_manager;
 
-    //game_state->is_playing_music = true;
-    
     game_state->is_initted = true;
 }
 
@@ -570,35 +568,6 @@ void load_game_from_editor(Game_State *game_state) {
     player->roll = camera.roll;
     player->velocity = make_vec3();
     player->is_grounded = false;
-}
-
-// TODO: maybe check for angle of vector from player position to intersection point?
-// TODO: CHECK IF THE PLAYER IS ABOVE THE PLANE CREATED BY THE TRIANGLE. I THINK THIS SHOULD WORK AND ELIMINATES
-//       THE NEED FOR WEIRD PENETRATION HEIGHT CHECKS. basically just project point onto plane and see if the point
-//       is above or below the player. actually, you would use the tolerances of the min/max walk height offsets.
-bool32 is_walkable(Vec3 position, Vec3 *triangle, Vec3 triangle_normal, real32 penetration_height) {
-    //real32 max_lower_offset = Player_Constants::max_lower_ground_offset;
-    //real32 max_upper_offset = Player_Constants::max_upper_ground_offset;
-
-    if (triangle_normal.y < 0.5f) return false;
-
-    Vec3 point_on_triangle_plane = get_point_on_plane_from_xz(position.x, position.z,
-                                                              triangle_normal, triangle[0]);
-
-    real32 point_y = point_on_triangle_plane.y;
-    real32 max_lower_offset = Player_Constants::max_lower_ground_offset;
-    real32 max_upper_offset = Player_Constants::max_upper_ground_offset;
-
-    if (position.y >= point_y - max_lower_offset) return true;
-    if ((point_y - position.y) < max_upper_offset) return true;
-#if 0
-    if ((point_y > position.y - max_lower_offset) && (point_y < position.y + max_upper_offset)) {
-        return true;
-    }
-#endif
-
-    return false;
-    //return (triangle_normal.y > 0.5f && penetration_height <= Player_Constants::max_steppable_height);
 }
 
 inline void get_transformed_triangle(Mesh *mesh, int32 triangle_index, Mat4 *object_to_world,

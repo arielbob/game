@@ -13,6 +13,8 @@
 #define MAX_FRAME_COLLISIONS 10
 #define MAX_DROP_DISTANCE 0.5f
 
+#define CAMERA_FOV 90.0f
+
 #include "platform.h"
 #include "hash_table.h"
 #include "asset.h"
@@ -273,8 +275,6 @@ bool32 get_walkable_triangle_on_mesh(Vec3 center, real32 radius,
                                      Get_Walkable_Triangle_On_Mesh_Result *result);
 void add_debug_line(Debug_State *debug_state, Vec3 start, Vec3 end, Vec4 color);
 void add_message(Message_Manager *manager, String text);
-//bool32 is_walkable(Vec3 *triangle, Vec3 triangle_normal, real32 penetration_height);
-bool32 is_walkable(Vec3 position, Vec3 *triangle, Vec3 triangle_normal, real32 penetration_height);
 //void set_entity_transform(Asset_Manager *asset_manager, Entity *entity, Transform transform);
 
 #endif

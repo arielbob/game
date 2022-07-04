@@ -1,9 +1,9 @@
 #include "render.h"
 
-void init_camera(Camera *camera, Display_Output *display_output) {
+void init_camera(Camera *camera, Display_Output *display_output, real32 fov_x_degrees) {
     camera->position = make_vec3(0.0f, 3.0f, -5.0f);
     camera->pitch = 10.0f;
-    camera->fov_x_degrees = 90.0f;
+    camera->fov_x_degrees = fov_x_degrees;
     camera->aspect_ratio = (real32) display_output->width / display_output->height;
     camera->near = 0.1f;
     camera->far = 1000.0f;
