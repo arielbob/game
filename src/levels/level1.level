@@ -1,0 +1,65 @@
+level_info {
+level_name "level1"
+}
+
+meshes {
+mesh "ground" ".\blender\ground3.mesh"
+mesh "car-blockout" ".\blender\car.mesh"
+mesh "house-layout" ".\blender\layout1.mesh"
+mesh "plane" ".\blender\plane.mesh"
+}
+
+textures {
+}
+
+materials {
+material "car"
+gloss 50.000000
+color_override 1.000000 0.000000 0.000000
+use_color_override 1
+
+material "ground"
+gloss 50.000000
+color_override 0.369364 0.525000 0.322875
+use_color_override 1
+
+material "basic-white"
+gloss 50.000000
+color_override 1.000000 1.000000 1.000000
+use_color_override 1
+}
+
+entities {
+type normal
+position 0.000000 0.000000 0.000000
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+mesh "ground"
+material "ground"
+is_walkable 0
+
+type normal
+position 3.756570 0.644134 -17.569902
+rotation 0.941675 0.000000 0.336523 0.000000
+scale 1.000000 1.000000 1.000000
+mesh "car-blockout"
+material "car"
+is_walkable 0
+
+type normal
+position -11.156768 3.122498 13.288171
+rotation 0.842502 0.000000 0.538694 0.000000
+scale 1.000000 1.000000 1.000000
+mesh "house-layout"
+material "basic-white"
+is_walkable 0
+
+type normal
+position 0.000000 -2.141607 0.000000
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1000.000000 1.000000 1000.000000
+mesh "plane"
+material "ground"
+is_walkable 0
+
+}

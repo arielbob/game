@@ -184,6 +184,8 @@ bool32 editor_add_mesh_press(Editor_State *editor_state, int32 entity_id) {
 
     Marker m = begin_region();
     char *absolute_filename = (char *) region_push(PLATFORM_MAX_PATH);
+
+    bool32 mesh_added = false;
     
     if (platform_open_file_dialog(absolute_filename, PLATFORM_MAX_PATH)) {
         char *mesh_name_buffer = (char *) region_push(MESH_NAME_MAX_SIZE);
@@ -197,11 +199,12 @@ bool32 editor_add_mesh_press(Editor_State *editor_state, int32 entity_id) {
 
         do_add_mesh(editor_state, filename, mesh_name, entity_id);
 
-        end_region(m);
-        return true;
+        mesh_added = true;
+        
     }
 
-    return false;
+    end_region(m);
+    return mesh_added;
 }
 
 void editor_add_material_press(Editor_State *editor_state, int32 entity_id) {
@@ -1448,6 +1451,8 @@ void draw_level_box(UI_Manager *ui_manager, Editor_State *editor_state,
     char *editor_font_name = Editor_Constants::editor_font_name;
     int32 font_id;
     Font font = get_font(asset_manager, editor_font_name, &font_id);
+
+    bool32 just_loaded_level = editor_state->is_startup;
     
     x += padding_x;
     real32 new_level_button_width = 50.0f;
@@ -1457,12 +1462,17 @@ void draw_level_box(UI_Manager *ui_manager, Editor_State *editor_state,
                                               "New",
                                               font_id, "new_level");
     if (new_level_clicked) {
-        // TODO: do this
+        // TODO: prompt to save changes
+        unload_level(editor_state);
+        reset_editor(editor_state);
+        init_editor_level(editor_state, &editor_state->level);
+        replace_with_copy((Allocator *) &editor_state->general_heap,
+                          &editor_state->level_filename, make_string(""));
+        editor_state->is_new_level = true;
+        just_loaded_level = true;
     }
 
     x += new_level_button_width + 1;
-
-    bool32 just_loaded_level = editor_state->is_startup;
 
     real32 open_level_button_width = 60.0f;
     bool32 open_level_clicked = do_text_button(x, y, 

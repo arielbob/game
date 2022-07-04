@@ -99,5 +99,6 @@ void unload_level(Editor_State *editor_state);
 void load_level(Editor_State *editor_state, Level_Info *level_info);
 bool32 read_and_load_level(Editor_State *editor_state, char *filename);
 void reset_editor(Editor_State *editor_state);
+void init_editor_level(Editor_State *editor_state, Editor_Level *editor_level);
 
 #endif

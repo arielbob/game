@@ -73,6 +73,7 @@ Entity *copy_cast_entity(Allocator *allocator, Entity *uncast_entity) {
 
 void init_editor_level(Editor_State *editor_state, Editor_Level *editor_level) {
     *editor_level = {};
+    editor_level->name = make_string("");
     make_and_init_linked_list(Entity *, &editor_level->entities, (Allocator *) &editor_state->entity_heap);
 }
 
@@ -221,7 +222,7 @@ void init_editor(Arena_Allocator *editor_arena, Editor_State *editor_state, Disp
     end_region(m);
 #endif
     // load default level
-    read_and_load_level(editor_state, "src/levels/startup.level");
+    read_and_load_level(editor_state, "src/levels/level1.level");
 }
 
 Entity *get_selected_entity(Editor_State *editor_state) {
