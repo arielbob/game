@@ -1192,6 +1192,7 @@ void gl_draw_solid_color_mesh(GL_State *gl_state, Render_State *render_state,
     glBindVertexArray(0);
 }
 
+#if 0
 void gl_draw_mesh(GL_State *gl_state, Render_State *render_state,
                   int32 mesh_id,
                   Material material,
@@ -1211,6 +1212,43 @@ void gl_draw_mesh(GL_State *gl_state, Render_State *render_state,
     Vec3 material_color = truncate_v4_to_v3(material.color_override);
     gl_set_uniform_vec3(shader_id, "material_color", &material_color);
     gl_set_uniform_float(shader_id, "gloss", material.gloss);
+    
+    gl_set_uniform_vec3(shader_id, "camera_pos", &render_state->camera.position);
+
+    // if there is no texture, then just use color override, no matter what material.use_color_override is.
+    // we do it this way since we don't save whether or not a material is using a color override when we delete
+    // textures. it's kind of confusing. basically this is just so we don't have to also save use_color_overrides
+    // when we delete textures/undo delete textures.
+    gl_set_uniform_int(shader_id, "use_color_override", (material.texture_id < 0) || material.use_color_override);
+
+    glDrawElements(GL_TRIANGLES, gl_mesh.num_triangles * 3, GL_UNSIGNED_INT, 0);
+
+    glUseProgram(0);
+    glBindVertexArray(0);
+}
+#endif
+
+void gl_draw_mesh(GL_State *gl_state, Render_State *render_state,
+                  int32 mesh_id,
+                  Material material,
+                  Transform transform) {
+    uint32 shader_id = gl_use_shader(gl_state, "pbr");
+
+    GL_Mesh gl_mesh = gl_use_mesh(gl_state, mesh_id);
+
+    if (material.texture_id >= 0 && !material.use_color_override) gl_use_texture(gl_state, material.texture_id);
+
+    Mat4 model_matrix = get_model_matrix(transform);
+    gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
+    gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->cpv_matrix);
+    // NOTE: we may need to think about this for transparent materials
+    // TODO: using override color here is temporary.. ideally we will have finer control over things like
+    //       ambient/diffuse/specular color
+    Vec3 material_color = truncate_v4_to_v3(material.color_override);
+    gl_set_uniform_vec3(shader_id, "albedo_color", &material_color);
+    gl_set_uniform_float(shader_id, "metallic", 0.0f);
+    gl_set_uniform_float(shader_id, "roughness", 0.5f);
+    //gl_set_uniform_float(shader_id, "ao", 0.0f);
     
     gl_set_uniform_vec3(shader_id, "camera_pos", &render_state->camera.position);
 
@@ -1894,6 +1932,10 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
     gl_load_shader(gl_state,
                    "src/shaders/rounded_quad.vs", "src/shaders/rounded_quad.fs",
                    "rounded_quad");
+    gl_load_shader(gl_state,
+                   "src/shaders/pbr.vs", "src/shaders/pbr.fs",
+                   "pbr");
+    
 
     // NOTE: framebuffers
     int32 num_samples = NUM_MSAA_SAMPLES;

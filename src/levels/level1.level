@@ -39,15 +39,15 @@ material "ground"
 is_walkable 0
 
 type normal
-position 3.756570 0.644134 -17.569902
-rotation 0.941675 0.000000 0.336523 0.000000
+position -27.268349 -0.187756 -17.569902
+rotation 0.800367 0.000000 0.599510 0.000000
 scale 1.000000 1.000000 1.000000
 mesh "car-blockout"
 material "car"
 is_walkable 0
 
 type normal
-position -11.156768 3.122498 13.288171
+position -11.156768 3.170330 13.288171
 rotation 0.842502 0.000000 0.538694 0.000000
 scale 1.000000 1.000000 1.000000
 mesh "house-layout"

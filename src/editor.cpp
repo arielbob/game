@@ -222,7 +222,7 @@ void init_editor(Arena_Allocator *editor_arena, Editor_State *editor_state, Disp
     end_region(m);
 #endif
     // load default level
-    read_and_load_level(editor_state, "src/levels/level1.level");
+    read_and_load_level(editor_state, "src/levels/pbr_test.level");
 }
 
 Entity *get_selected_entity(Editor_State *editor_state) {
