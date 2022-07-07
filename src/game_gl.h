@@ -109,10 +109,15 @@
 #define GL_TEXTURE_2D_MULTISAMPLE         0x9100
 #define GL_READ_FRAMEBUFFER               0x8CA8
 #define GL_DRAW_FRAMEBUFFER               0x8CA9
+#define GL_RGBA16F                        0x881A
+#define GL_RGB16F                         0x881B
 
 #define TEXT_SHADOW_OFFSET 2.0f
 #define NUM_CIRCLE_VERTICES 64
 #define NUM_MSAA_SAMPLES 1
+
+#define FRAMEBUFFER_IS_HDR   (1 << 0)
+#define FRAMEBUFFER_HAS_ALPHA (1 << 1)
 
 enum Shader_Type {
     VERTEX,

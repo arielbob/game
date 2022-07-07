@@ -1248,7 +1248,7 @@ void gl_draw_mesh(GL_State *gl_state, Render_State *render_state,
     gl_set_uniform_vec3(shader_id, "albedo_color", &material_color);
     gl_set_uniform_float(shader_id, "metallic", 0.0f);
     gl_set_uniform_float(shader_id, "roughness", 0.5f);
-    //gl_set_uniform_float(shader_id, "ao", 0.0f);
+    gl_set_uniform_float(shader_id, "ao", 1.0f);
     
     gl_set_uniform_vec3(shader_id, "camera_pos", &render_state->camera.position);
 
@@ -1559,7 +1559,29 @@ void gl_draw_text(GL_State *gl_state, Render_State *render_state,
                         false, {}, 0);
 }
 
-GL_Framebuffer gl_make_framebuffer(int32 width, int32 height) {
+GLint gl_get_framebuffer_format(uint32 framebuffer_flags) {
+    bool32 has_alpha = framebuffer_flags & FRAMEBUFFER_HAS_ALPHA;
+    bool32 is_hdr = framebuffer_flags & FRAMEBUFFER_IS_HDR;
+
+    GLint format;
+    if (has_alpha) {
+        if (is_hdr) {
+            format = GL_RGBA16F;
+        } else {
+            format = GL_RGBA;
+        }
+    } else {
+        if (is_hdr) {
+            format = GL_RGB16F;
+        } else {
+            format = GL_RGB;
+        }
+    }
+
+    return format;
+}
+
+GL_Framebuffer gl_make_framebuffer(int32 width, int32 height, uint32 flags) {
     GL_Framebuffer framebuffer = {};
 
     glGenFramebuffers(1, &framebuffer.fbo);
@@ -1568,7 +1590,9 @@ GL_Framebuffer gl_make_framebuffer(int32 width, int32 height) {
     // color buffer texture
     glGenTextures(1, &framebuffer.color_buffer_texture);
     glBindTexture(GL_TEXTURE_2D, framebuffer.color_buffer_texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
+    
+    GLint format = gl_get_framebuffer_format(flags);
+    glTexImage2D(GL_TEXTURE_2D, 0, format,
                  width, height,
                  0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -1592,7 +1616,7 @@ GL_Framebuffer gl_make_framebuffer(int32 width, int32 height) {
     return framebuffer;
 }
 
-GL_Framebuffer gl_make_msaa_framebuffer(int32 width, int32 height, int32 num_samples, bool32 has_alpha) {
+GL_Framebuffer gl_make_msaa_framebuffer(int32 width, int32 height, int32 num_samples, uint32 flags) {
     GL_Framebuffer framebuffer;
 
     framebuffer.is_multisampled = true;
@@ -1604,8 +1628,10 @@ GL_Framebuffer gl_make_msaa_framebuffer(int32 width, int32 height, int32 num_sam
     // color buffer texture
     glGenTextures(1, &framebuffer.color_buffer_texture);
     glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, framebuffer.color_buffer_texture);
+    GLint format = gl_get_framebuffer_format(flags);
+    
     glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, num_samples,
-                            has_alpha ? GL_RGBA : GL_RGB, width, height, true);
+                            format, width, height, true);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE,
                            framebuffer.color_buffer_texture, 0);
 
@@ -1939,8 +1965,11 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
 
     // NOTE: framebuffers
     int32 num_samples = NUM_MSAA_SAMPLES;
-    gl_state->gizmo_framebuffer = gl_make_msaa_framebuffer(display_output.width, display_output.height, num_samples, true);
-    gl_state->msaa_framebuffer = gl_make_msaa_framebuffer(display_output.width, display_output.height, num_samples, true);
+    uint32 framebuffer_flags = FRAMEBUFFER_IS_HDR | FRAMEBUFFER_HAS_ALPHA;
+    gl_state->gizmo_framebuffer = gl_make_msaa_framebuffer(display_output.width, display_output.height,
+                                                           num_samples, framebuffer_flags);
+    gl_state->msaa_framebuffer = gl_make_msaa_framebuffer(display_output.width, display_output.height,
+                                                          num_samples, framebuffer_flags);
 
     // NOTE: unified buffer object
     glGenBuffers(1, &gl_state->global_ubo);

@@ -22,7 +22,7 @@ uniform vec3 camera_pos;
 uniform vec3 albedo_color;
 uniform float metallic;
 uniform float roughness;
-//uniform float ao;
+uniform float ao;
 
 uniform sampler2D albedo_texture;
 uniform bool use_color_override;
@@ -35,7 +35,7 @@ out vec4 FragColor;
 
 float gamma = 2.2;
 
-vec3 normal_distribution_ggx(vec3 n, vec3 h, float roughness) {
+float normal_distribution_ggx(vec3 n, vec3 h, float roughness) {
     float a = roughness*roughness;
     float a_squared = a*a;
 
@@ -46,8 +46,27 @@ vec3 normal_distribution_ggx(vec3 n, vec3 h, float roughness) {
     float denom = n_dot_h_squared*(a_squared - 1.0) + 1.0;
     denom = PI * denom*denom;
 
-    float ndf = numerator / denom;
-    return ndf;
+    return numerator / denom;
+}
+
+float geometry_shlick_ggx(float n_dot_v, float roughness) {
+    float r = roughness + 1.0;
+    float k = r*r / 8.0; // k for direct lighting
+
+    float numerator = n_dot_v;
+    float denom = n_dot_v*(1.0 - k) + k;
+
+    return numerator / denom;
+}
+
+float geometry_smith(vec3 n, vec3 v, vec3 l, float roughness) {
+    float n_dot_v = max(dot(n, v), 0.0);
+    float n_dot_l = max(dot(n, l), 0.0);
+
+    float ggx1 = geometry_shlick_ggx(n_dot_v, roughness);
+    float ggx2 = geometry_shlick_ggx(n_dot_l, roughness);
+
+    return ggx1 * ggx1;
 }
 
 // as h_dot_v approaches 0, more spec is shown.
@@ -83,26 +102,40 @@ void main() {
         vec3 l = fragment_to_light / fragment_to_light_distance;
         // halfway vector
         vec3 h = normalize(v + l);
-        float n_dot_l = max(dot(n, l), 0.0);
         
         Point_Light point_light = point_lights[i];
         float attenuation = 1.0 / (fragment_to_light_distance * fragment_to_light_distance);
 
-        vec3 light_color = pow(vec3(point_light.color), vec3(1.0 / gamma));
+        vec3 light_color = pow(vec3(point_light.color), vec3(1.0 / gamma)) * 200.0;
         vec3 radiance = attenuation * light_color;
 
         vec3 f0 = vec3(0.04);
         f0 = mix(f0, albedo, metallic);
         // i'm pretty sure we don't need to do max(dot(h, v), 0.0) here
         vec3 fresnel = fresnel_schlick(dot(h, v), f0);
-        vec3 ndf = normal_distribution_ggx(n, h, roughness);
+        float ndf = normal_distribution_ggx(n, h, roughness);
+        float geometry = geometry_smith(n, v, l, roughness);
+
+        // cook-torrance specular brdf
+        float v_dot_n = max(dot(v, n), 0.0);
+        float n_dot_l = max(dot(n, l), 0.0);
+        // add 0.0001 to prevent divide by 0
+        vec3 specular = (ndf * fresnel * geometry) / ((4.0 * v_dot_n * n_dot_l) + 0.0001);
+
+        vec3 k_specular = fresnel;
+        vec3 k_diffuse = vec3(1.0) - k_specular;
+        k_diffuse *= (1.0 - metallic);
         
-        vec3 brdf = (fresnel * ndf) / (4.0 * dot(v, n) * n_dot_l);
-        
-        //light_out += radiance * fresnel * n_dot_l;
-        light_out += brdf * radiance * n_dot_l;
+        // we don't use k_specular here, since fresnel == k_specular and is already included
+        // in the specular term.
+        light_out += ((k_diffuse * albedo / PI) + specular) * radiance * n_dot_l;
     }
 
-    vec3 gamma_corrected_color = pow(light_out, vec3(2.2));
-    FragColor = vec4(gamma_corrected_color, 1.0);
+    vec3 ambient = vec3(0.03) * albedo * ao;
+    vec3 color = ambient + light_out;
+
+    color = color / (color + vec3(1.0)); // reinhard tone mapping
+    color = pow(color, vec3(2.2));       // gamma correction
+    
+    FragColor = vec4(color, 1.0);
 }
