@@ -4,6 +4,8 @@ level_name "pbr_test"
 
 meshes {
 mesh "sphere" ".\blender\sphere.mesh"
+mesh "suzanne" ".\blender\suzanne.mesh"
+mesh "suzanne2" ".\blender\suzanne2.mesh"
 }
 
 textures {
@@ -12,7 +14,7 @@ textures {
 materials {
 material "red"
 gloss 91.105164
-color_override 1.000000 0.000000 0.000000
+color_override 0.970000 0.485000 0.485000
 use_color_override 1
 
 material "New Material"
@@ -24,17 +26,25 @@ use_color_override 1
 entities {
 type normal
 position 0.481942 0.659598 0.000000
-rotation 1.000000 0.000000 0.000000 0.000000
+rotation 0.921624 0.255085 0.281875 -0.078017
 scale 1.000000 1.000000 1.000000
-mesh "sphere"
+mesh "suzanne2"
 material "red"
 is_walkable 0
 
 type point_light
-position -0.094848 1.742595 -2.856046
+position 0.137951 2.731141 -2.520771
 rotation 0.919117 0.000000 -0.393984 0.000000
 scale 1.000000 1.000000 1.000000
 light_color 1.000000 1.000000 1.000000
 falloff_start 0.000000
 falloff_end 0.000000
+
+type point_light
+position -2.071458 2.134163 2.876131
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+light_color 0.220000 0.220000 0.220000
+falloff_start 0.000000
+falloff_end 5.000000
 }
