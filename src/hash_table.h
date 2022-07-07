@@ -183,6 +183,7 @@ void hash_table_remove(Hash_Table<Key_Type, Value_Type> *hash_table, Key_Type ke
         if (entry->is_occupied && hash_table->key_equals(key, entry->key)) {
             entry->is_occupied = false;
             deallocate(entry->value);
+            deallocate(entry->key);
             hash_table->num_entries--;
             return;
         }

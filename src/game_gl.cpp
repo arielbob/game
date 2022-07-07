@@ -544,6 +544,8 @@
 // TODO (done): fix crash with undoing/redoing add material
 // TODO (done): string_format procedure that calculates necessary allocation size
 
+// TODO: add PBR texture types to level files
+
 // TODO: add collider controls to entities, like have collider be the mesh, or an OBB, or a sphere, etc.
 // TODO: add control for specular strength, basically just be able to multiply intensity of spec
 //       - also probably add control for spec color for both light and entity

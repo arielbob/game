@@ -1,4 +1,5 @@
 #include "linked_list.h"
+#include "hash_table.h"
 #include "level.h"
 
 void init_level_info(Allocator *temp_allocator, Level_Info *level_info) {
@@ -8,7 +9,7 @@ void init_level_info(Allocator *temp_allocator, Level_Info *level_info) {
     make_and_init_linked_list(Point_Light_Entity_Info, &level_info->point_light_entities, temp_allocator);
     make_and_init_linked_list(Mesh_Info,               &level_info->meshes,               temp_allocator);
     make_and_init_linked_list(Texture_Info,            &level_info->textures,             temp_allocator);
-    make_and_init_linked_list(Material_Info,           &level_info->materials,            temp_allocator);
+    level_info->material_table = make_hash_table<String, Material>(temp_allocator, 64, &string_equals);
 }
 
 // gather entities by type
@@ -50,16 +51,6 @@ bool32 texture_name_exists(Level_Info *level_info, String texture_name) {
     FOR_LIST_NODES(Texture_Info, level_info->textures) {
         Texture_Info info = current_node->value;
         if (string_equals(info.name, texture_name)) {
-            return true;
-        }
-    }
-    return false;
-}
-
-bool32 material_name_exists(Level_Info *level_info, String material_name) {
-    FOR_LIST_NODES(Material_Info, level_info->materials) {
-        Material_Info info = current_node->value;
-        if (string_equals(info.name, material_name)) {
             return true;
         }
     }
@@ -197,18 +188,31 @@ Level_Loader::Token Level_Loader::get_token(Tokenizer *tokenizer, char *file_con
     return token;
 }
 
+struct Parser_Context {
+    Material temp_material;
+    String temp_material_name;
+    bool32 should_add_new_temp_material;
+};
+
+void save_temp_material(Parser_Context *context, Level_Info *info) {
+    hash_table_add(&info->material_table, context->temp_material_name, context->temp_material);
+    context->temp_material_name = {};
+    context->temp_material = {}; 
+    context->should_add_new_temp_material = false;
+}
+
 bool32 Level_Loader::parse_level_info(Allocator *temp_allocator, File_Data file_data, Level_Info *level_info) {
     Tokenizer tokenizer = make_tokenizer(file_data);
 
     Token token;
     Parser_State state = WAIT_FOR_LEVEL_INFO_BLOCK_NAME;
-
+    Parser_Context context = {};
+    
     Normal_Entity_Info temp_normal_entity_info = {};
     Point_Light_Entity_Info temp_point_light_entity_info = {};
     Mesh_Info temp_mesh_info = {};
     Texture_Info temp_texture_info = {};
-    Material_Info temp_material_info = {};
-
+    
     Entity *temp_entity = NULL;
 
     Vec3 vec3_buffer = {};
@@ -217,7 +221,6 @@ bool32 Level_Loader::parse_level_info(Allocator *temp_allocator, File_Data file_
     bool32 *bool_to_edit = NULL;
 
     bool32 should_add_new_temp_entity = true;
-    bool32 should_add_new_temp_material = false;
 
     init_level_info(temp_allocator, level_info);
 
@@ -377,8 +380,7 @@ bool32 Level_Loader::parse_level_info(Allocator *temp_allocator, File_Data file_
             } break;
             case WAIT_FOR_MATERIAL_KEYWORD_OR_MATERIALS_BLOCK_CLOSE: {
                 if (token.type == KEYWORD && string_equals(token.string, "material")) {
-                    temp_material_info = {};
-                    temp_material_info.material = make_material();
+                    context.temp_material = {};
                     state = WAIT_FOR_MATERIAL_NAME_STRING;
                 } else if (token.type == CLOSE_BRACKET) {
                     state = WAIT_FOR_ENTITIES_BLOCK_NAME;
@@ -389,10 +391,11 @@ bool32 Level_Loader::parse_level_info(Allocator *temp_allocator, File_Data file_
             case WAIT_FOR_MATERIAL_NAME_STRING: {
                 if (token.type == STRING) {
                     assert(token.string.length <= MATERIAL_NAME_MAX_SIZE);
-                    assert(!material_name_exists(level_info, token.string));
-
-                    temp_material_info.name = token.string;
-                    should_add_new_temp_material = true;
+                    assert(!hash_table_exists(level_info->material_table, token.string));
+                    assert(!is_empty(context.temp_material_name));
+                    
+                    context.temp_material_name = token.string;
+                    context.should_add_new_temp_material = true;
 
                     state = WAIT_FOR_MATERIAL_PROPERTY_NAME_OR_MATERIAL_KEYWORD_OR_MATERIALS_BLOCK_CLOSE;
                 } else {
@@ -402,8 +405,8 @@ bool32 Level_Loader::parse_level_info(Allocator *temp_allocator, File_Data file_
             case WAIT_FOR_MATERIAL_PROPERTY_NAME_OR_MATERIAL_KEYWORD_OR_MATERIALS_BLOCK_CLOSE: {
                 if (token.type == KEYWORD) {
                     if (string_equals(token.string, "material")) {
-                        if (should_add_new_temp_material) {
-                            add(&level_info->materials, temp_material_info);
+                        if (context.should_add_new_temp_material) {
+                            save_temp_material(&context, level_info);
                         }
                         state = WAIT_FOR_MATERIAL_NAME_STRING;
                     } else if (string_equals(token.string, "texture")) {
@@ -419,14 +422,15 @@ bool32 Level_Loader::parse_level_info(Allocator *temp_allocator, File_Data file_
                         assert(!"Unrecognized material property.");
                     }
                 } else if (token.type == CLOSE_BRACKET) {
-                    if (should_add_new_temp_material) {
-                        add(&level_info->materials, temp_material_info);
+                    if (context.should_add_new_temp_material) {
+                        save_temp_material(&context, level_info);
                     }
                     state = WAIT_FOR_ENTITIES_BLOCK_NAME;
                 } else {
                     assert(!"Expected a material property name keyword.");
                 }
             } break;
+                // TODO: add PBR texture types to level files
             case WAIT_FOR_MATERIAL_TEXTURE_NAME_STRING: {
                 if (token.type == STRING) {
                     assert(token.string.length <= TEXTURE_NAME_MAX_SIZE);

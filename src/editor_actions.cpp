@@ -503,7 +503,7 @@ void do_add_material(Editor_State *editor_state, String material_name, int32 ent
     Allocator *allocator = asset_manager->allocator_pointer;
     String name = copy(allocator, material_name);
 
-    Material new_material = make_material(name, -1, 50.0f, make_vec4(0.0f, 0.0f, 0.0f, 1.0f), true);
+    Material new_material = make_material(name);
     int32 id = add_material(asset_manager, new_material, material_id);
 
     Entity *entity = get_entity(editor_state, entity_id);
@@ -622,20 +622,16 @@ void end_texture_change(Editor_State *editor_state, int32 texture_id) {
     do_modify_texture(editor_state, texture_id, editor_state->old_texture, new_texture);
 }
 
-void do_add_texture(Editor_State *editor_state, String texture_filename, String texture_name, int32 material_id,
-                    int32 texture_id = -1, bool32 is_redoing = false) {
+void do_add_texture(Editor_State *editor_state, String texture_filename, String texture_name,
+                    bool32 is_redoing = false) {
     Asset_Manager *asset_manager = &editor_state->asset_manager;
     
     Allocator *allocator = asset_manager->allocator_pointer;
     String filename = copy(allocator, texture_filename);
     String name = copy(allocator, texture_name);
 
-    Texture texture = make_texture(name, filename);
-    int32 id = add_texture(asset_manager, texture, texture_id);
-
-    Material *material = get_material_pointer(asset_manager, material_id);
-    int32 original_texture_id;
-    set_texture(material, id, &original_texture_id);
+    Texture texture = make_texture(filename);
+    add_texture(asset_manager, texture, name);
 
     if (!is_redoing) {
         Allocator *history_allocator = (Allocator *) &editor_state->history_heap;
@@ -643,11 +639,8 @@ void do_add_texture(Editor_State *editor_state, String texture_filename, String 
         texture_name = copy(history_allocator, texture_name);
 
         Add_Texture_Action action = { ACTION_ADD_TEXTURE };
-        action.material_id = material_id;
-        action.texture_id = id;
         action.filename = texture_filename;
         action.name = texture_name;
-        action.original_texture_id = original_texture_id;
         history_add_action(editor_state, Add_Texture_Action, action);
     }
 }
@@ -882,8 +875,7 @@ void history_redo(Editor_State *editor_state) {
         } break;
         case ACTION_ADD_TEXTURE: {
             Add_Texture_Action *action = (Add_Texture_Action *) redo_action;
-            do_add_texture(editor_state, action->filename, action->name, action->material_id, action->texture_id,
-                           true);
+            do_add_texture(editor_state, action->filename, action->name, true);
         } break;
         case ACTION_DELETE_TEXTURE: {
             Delete_Texture_Action *action = (Delete_Texture_Action *) redo_action;

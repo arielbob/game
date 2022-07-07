@@ -1170,6 +1170,8 @@ void draw_entity_box(Editor_State *editor_state, UI_Manager *ui_manager, Control
 
             x += padding_x;
 
+            // TODO: add textures somewhere else, not only when an entity is selected
+            #if 0
             bool32 add_texture_pressed = do_text_button(x, y,
                                                         small_button_width, row_height,
                                                         button_style, default_text_style,
@@ -1177,6 +1179,7 @@ void draw_entity_box(Editor_State *editor_state, UI_Manager *ui_manager, Control
             if (add_texture_pressed) {
                 editor_add_texture_press(editor_state, normal_entity->material_id);
             }
+            #endif
 
             x += small_button_width + padding_x;
             real32 edit_texture_button_width = row_width - (x - initial_x) - padding_x;

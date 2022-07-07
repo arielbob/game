@@ -1,13 +1,7 @@
 #include "asset.h"
 #include "level.h"
 
-Material default_material = {
-    make_string(""),
-    -1,
-    0.5f,
-    make_vec4(0.5f, 0.5f, 0.5f, 1.0f),
-    true
-};
+Material default_material = make_material(make_string(""));
 
 Asset_Manager make_asset_manager(Allocator *allocator) {
     Asset_Manager asset_manager = {};
@@ -16,7 +10,7 @@ Asset_Manager make_asset_manager(Allocator *allocator) {
     // i think it's probably fine that we use the same allocator to store the hash tables
     asset_manager.mesh_table = make_hash_table<int32, Mesh>(        allocator, HASH_TABLE_SIZE, &int32_equals);
     asset_manager.material_table = make_hash_table<int32, Material>(allocator, HASH_TABLE_SIZE, &int32_equals);
-    asset_manager.texture_table = make_hash_table<int32, Texture>(  allocator, HASH_TABLE_SIZE, &int32_equals);
+    asset_manager.texture_table = make_hash_table<String, Texture>(  allocator, HASH_TABLE_SIZE, &string_equals);
 
     asset_manager.font_table = make_hash_table<int32, Font>(           allocator, HASH_TABLE_SIZE, &int32_equals);
     asset_manager.font_file_table = make_hash_table<String, File_Data>(allocator, HASH_TABLE_SIZE, &string_equals);
@@ -203,63 +197,34 @@ void delete_mesh(Asset_Manager *asset_manager, int32 mesh_id) {
     hash_table_remove(&asset_manager->mesh_table, mesh_id);
 }
 
-int32 add_texture(Asset_Manager *asset_manager, Texture texture, int32 existing_id = -1) {
-    int32 id;
-    if (existing_id >= 0) {
-        id = existing_id;
-    } else {
-        id = asset_manager->texture_table.total_added_ever;
-    }
-
-    hash_table_add(&asset_manager->texture_table, id, texture);
-    return id;
+void add_texture(Asset_Manager *asset_manager, Texture texture, String name) {
+    hash_table_add(&asset_manager->texture_table, name, texture);
 }
 
-void delete_texture(Asset_Manager *asset_manager, int32 texture_id) {
-    hash_table_remove(&asset_manager->texture_table, texture_id);
+void delete_texture(Asset_Manager *asset_manager, String name) {
+    hash_table_remove(&asset_manager->texture_table, name);
 }
 
-Texture get_texture(Asset_Manager *asset_manager, int32 texture_id) {
+Texture get_texture(Asset_Manager *asset_manager, String name) {
     Texture texture;
     bool32 texture_exists = hash_table_find(asset_manager->texture_table,
-                                            texture_id,
+                                            name,
                                             &texture);
     assert(texture_exists);
     return texture;
 }
 
-Texture *get_texture_pointer(Asset_Manager *asset_manager, int32 texture_id) {
+Texture *get_texture_pointer(Asset_Manager *asset_manager, String name) {
     Texture *texture;
     bool32 texture_exists = hash_table_find_pointer(asset_manager->texture_table,
-                                                     texture_id,
-                                                     &texture);
+                                                    name,
+                                                    &texture);
     assert(texture_exists);
     return texture;
 }
 
-int32 get_texture_id_by_name(Asset_Manager *asset_manager, String texture_name) {
-    Hash_Table<int32, Texture> texture_table = asset_manager->texture_table;
-
-    FOR_ENTRY_POINTERS(int32, Texture, texture_table) {
-        if (string_equals(entry->value.name, texture_name)) {
-            return entry->key;
-        }
-    }
-
-    assert(false);
-    return -1;
-}
-
-int32 texture_name_exists(Asset_Manager *asset_manager, String texture_name) {
-    Hash_Table<int32, Texture> texture_table = asset_manager->texture_table;
-
-    FOR_ENTRY_POINTERS(int32, Texture, texture_table) {
-        if (string_equals(entry->value.name, texture_name)) {
-            return true;
-        }
-    }
-
-    return false;
+bool32 texture_exists(Asset_Manager *asset_manager, String name) {
+    return hash_table_exists(asset_manager->texture_table, name);
 }
 
 int32 add_material(Asset_Manager *asset_manager, Material material, int32 existing_id = -1) {
@@ -342,7 +307,7 @@ bool32 generate_texture_name(Asset_Manager *asset_manager, char *buffer, int32 b
     while (num_attempts < MAX_TEXTURES + 1) {
         char *format = (num_attempts == 0) ? "New Texture" : "New Texture %d";
         string_format(buffer, buffer_size, format, num_attempts + 1);
-        if (!texture_name_exists(asset_manager, make_string(buffer))) {
+        if (!texture_exists(asset_manager, make_string(buffer))) {
             return true;
         }
 
@@ -353,11 +318,27 @@ bool32 generate_texture_name(Asset_Manager *asset_manager, char *buffer, int32 b
     return false;
 }
 
-void set_texture(Material *material, int32 texture_id, int32 *original_texture_id = NULL) {
-    if (original_texture_id) {
-        *original_texture_id = material->texture_id;
+void set_texture(Asset_Manager *asset_manager, Material *material,
+                 Texture_Type texture_type, String texture_name) {
+    String *texture_name_to_change;
+    switch (texture_type) {
+        case Texture_Type::ALBEDO: {
+            texture_name_to_change = &material->albedo_texture_name;
+        } break;
+        case Texture_Type::METALNESS: {
+            texture_name_to_change = &material->metalness_texture_name;
+        } break;
+        case Texture_Type::ROUGHNESS: {
+            texture_name_to_change = &material->roughness_texture_name;
+        } break;
+        default: {
+            assert(!"Unhandled texture type");
+            return;
+        } break;
     }
-    material->texture_id = texture_id;
+
+    replace_with_copy(asset_manager->allocator_pointer,
+                      texture_name_to_change, texture_name);
 }
 
 Mesh read_and_load_mesh(Allocator *allocator, String filename, String name, Mesh_Type type) {
@@ -451,26 +432,16 @@ bool32 load_level_assets(Asset_Manager *asset_manager, Level_Info *level_info) {
         Allocator *allocator = asset_manager->allocator_pointer;
         String name = copy(allocator, texture_info.name);
         String filename = copy(allocator, texture_info.filename);
-        Texture texture = make_texture(name, filename);
+        Texture texture = make_texture(filename);
 
-        add_texture(asset_manager, texture);
+        add_texture(asset_manager, texture, name);
     }
 
-    FOR_LIST_NODES(Material_Info, level_info->materials) {
-        Material_Info material_info = current_node->value;
-
-        int32 texture_id = -1;
-        if (material_info.flags & HAS_TEXTURE) {
-            texture_id = get_texture_id_by_name(asset_manager, material_info.texture_name);
-        }
-        
-        Allocator *allocator = asset_manager->allocator_pointer;
-        Material material = material_info.material;
-        material.texture_id = texture_id;
-        material.name = copy(allocator, material_info.name);
-
+    FOR_ENTRY_POINTERS(String, Material, level_info->material_table) {
+        Material temp_material = entry->value;
+        Material material = copy(asset_manager->allocator_pointer, temp_material);
         add_material(asset_manager, material);
     }
-
+    
     return true;
 }

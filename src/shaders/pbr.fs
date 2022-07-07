@@ -20,7 +20,7 @@ layout (std140) uniform shader_globals {
 uniform vec3 camera_pos;
 
 uniform vec3 albedo_color;
-uniform float metallic;
+uniform float metalness;
 uniform float roughness;
 uniform float ao;
 
@@ -78,7 +78,6 @@ vec3 fresnel_schlick(float h_dot_v, vec3 f0) {
     return f0 + (1.0 - f0)*pow(clamp(1.0 - h_dot_v, 0.0, 1.0), 5.0);
 }
 
-// TODO: test on non-intel gpu
 void main() {
     // fragment to camera
     vec3 v = normalize(camera_pos - frag_pos);
@@ -110,7 +109,7 @@ void main() {
         vec3 radiance = attenuation * light_color;
 
         vec3 f0 = vec3(0.04);
-        f0 = mix(f0, albedo, metallic);
+        f0 = mix(f0, albedo, metalness);
         // i'm pretty sure we don't need to do max(dot(h, v), 0.0) here
         vec3 fresnel = fresnel_schlick(dot(h, v), f0);
         float ndf = normal_distribution_ggx(n, h, roughness);
@@ -124,7 +123,7 @@ void main() {
 
         vec3 k_specular = fresnel;
         vec3 k_diffuse = vec3(1.0) - k_specular;
-        k_diffuse *= (1.0 - metallic);
+        k_diffuse *= (1.0 - metalness);
         
         // we don't use k_specular here, since fresnel == k_specular and is already included
         // in the specular term.

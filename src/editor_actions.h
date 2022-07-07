@@ -147,10 +147,7 @@ struct Modify_Texture_Action {
 
 struct Add_Texture_Action {
     ACTION_HEADER
-
-    int32 texture_id;
-    int32 material_id;
-    int32 original_texture_id;
+    
     String filename;
     String name;
 };

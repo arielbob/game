@@ -54,16 +54,6 @@ struct Texture_Info {
     String filename;
 };
 
-// we store the Material struct in Material_Info because some fields can be set with the level file data.
-// since we don't store any mesh/texture info other than their names and filenames, we just store those and
-// when we load them is when we fill in their structs.
-struct Material_Info {
-    uint32 flags;
-    Material material;
-    String name;
-    String texture_name;
-};
-
 struct Level_Info {
     String name;
     
@@ -72,7 +62,7 @@ struct Level_Info {
 
     Linked_List<Mesh_Info> meshes;
     Linked_List<Texture_Info> textures;
-    Linked_List<Material_Info> materials;
+    Hash_Table<String, Material> material_table;
 };
 
 namespace Level_Loader {
