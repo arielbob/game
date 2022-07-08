@@ -391,6 +391,7 @@ void update_messages(Message_Manager *manager, real32 dt) {
     }
 }
 
+#if 0
 void draw_messages(Asset_Manager *asset_manager, Message_Manager *manager, real32 x_start, real32 y_start) {
     int32 index = (MAX_MESSAGES + (manager->current_message_index - 1)) % MAX_MESSAGES;
     Message *messages = manager->messages;
@@ -423,6 +424,7 @@ void draw_messages(Asset_Manager *asset_manager, Message_Manager *manager, real3
         index = (MAX_MESSAGES + (index - 1)) % MAX_MESSAGES;
     }
 }
+#endif
 
 void init_game(Game_State *game_state,
                Sound_Output *sound_output, uint32 num_samples) {
@@ -491,20 +493,30 @@ void init_game(Game_State *game_state,
 
     // init ui state
     UI_Manager *ui_manager = &game_state->ui_manager;
+    #if 0
     UI_Push_Buffer ui_push_buffer = {};
     ui_push_buffer.size = MEGABYTES(1);
     ui_push_buffer.base = allocate((Allocator *) game_data_arena, ui_push_buffer.size);
     ui_push_buffer.used = 0;
     ui_manager->push_buffer = ui_push_buffer;
     ui_manager->current_layer = 0;
-    // ui_manager->state_table = make_hash_table<UI_id, UI_State_Variant>((Allocator *) &memory.hash_table_stack,
-    //                                                                    HASH_TABLE_SIZE, &ui_id_equals);
     ui_manager->heap_pointer = &memory.ui_state_heap;
     ui_manager->state_table = make_hash_table<UI_id, UI_Element_State *>((Allocator *) &memory.hash_table_stack,
                                                                          HASH_TABLE_SIZE, &ui_id_equals);
+    #else
+    ui_manager->allocator = (Allocator *) &memory.ui_state_heap;
+    #endif
     Context::ui_manager = ui_manager;
 
     game_state->is_initted = true;
+
+    Normal_Entity test_entity = {};
+    test_entity.mesh_name = make_string("mesh");
+    test_entity.material_name = make_string("material");
+
+    Marker m = begin_region();
+    Buffer serialized_entity = serialize(temp_region, test_entity);
+    end_region(m);
 }
 
 Entity *get_entity(Game_State *game_state, int32 id) {
@@ -915,6 +927,29 @@ void update_game(Game_State *game_state, Controller_State *controller_state, Sou
     update_render_state(&game_state->render_state, game_state->camera);
 }
 
+void draw_test_ui(UI_Manager *ui, Display_Output *display_output) {
+    ui_frame_init(ui, display_output);
+
+    ui_push_position(ui, { 5.0f, 5.0f });
+    ui_push_size_type(ui, UI_SIZE_FIT_CHILDREN);
+    ui_push_background_color(ui, { 1.0f, 0.0f, 0.0f, 1.0f });
+    ui_push_widget(ui, make_ui_id("test"), UI_WIDGET_DRAW_BACKGROUND);
+
+    ui_push_size_type(ui, UI_SIZE_ABSOLUTE);
+    ui_push_position(ui, { 100.0f, 500.0f });
+    ui_push_size(ui, { 50.0f, 50.0f });
+    ui_push_background_color(ui, { 0.0f, 0.0f, 1.0f, 1.0f });
+    ui_add_widget(ui, make_ui_id("test2"), UI_WIDGET_DRAW_BACKGROUND);
+
+    ui_push_size(ui, { 100.0f, 80.0f });
+    ui_push_background_color(ui, { 0.0f, 1.0f, 0.0f, 1.0f });
+    ui_add_widget(ui, make_ui_id("test3"), UI_WIDGET_DRAW_BACKGROUND);
+    
+    ui_calculate_ancestor_dependent_sizes(ui);
+    ui_calculate_child_dependent_sizes(ui);
+    ui_calculate_positions(ui);
+}
+
 void update(Game_State *game_state,
             Controller_State *controller_state,
             Sound_Output *sound_output, uint32 num_samples) {
@@ -974,34 +1009,41 @@ void update(Game_State *game_state,
     if (game_state->mode == Game_Mode::EDITING) {
         asset_manager = &game_state->editor_state.asset_manager;
         update_editor(game_state, controller_state, dt);
-        draw_editor(game_state, controller_state);
+        //draw_editor(game_state, controller_state);
         game_state->editor_state.is_startup = false;
     } else {
         asset_manager = &game_state->asset_manager;
         update_game(game_state, controller_state, sound_output, dt);
     }
 
+    // TODO: walk through this in the debugger
+    draw_test_ui(ui_manager, display_output);
+    
     Player *player = &game_state->player;
 
+    #if 0
     int32 font_id;
     Font font = get_font(asset_manager, "calibri14", &font_id);
 
     char *dt_string = string_format((Allocator *) &memory.frame_arena, "FPS %d / dt %.3f", 
                                     (int32) round(game_state->last_second_fps), dt);
     do_text(ui_manager, 5.0f, 14.0f, dt_string, font_id, "dt_string");
+    #endif
 
     fill_sound_buffer_with_audio(sound_output, game_state->is_playing_music, &game_state->music, num_samples);
 
+    #if 0
     update_messages(&game_state->message_manager, dt);
     draw_messages(asset_manager, &game_state->message_manager,
                   display_output->width / 2.0f, display_output->height / 2.0f);
-
-    clear_hot_if_gone(ui_manager);
-    clear_active_if_gone(ui_manager);
+    #endif
+    
+    //clear_hot_if_gone(ui_manager);
+    //clear_active_if_gone(ui_manager);
 
     // NOTE: it's fine to call delete_state_if_gone() here. this won't cause any accesses of deallocated memory
     //       when we render the UI, since if some element isn't in the push_buffer, which is also the condition
     //       that we delete its state, it won't be rendered.
-    delete_state_if_gone(ui_manager);
-    assert(ui_manager->current_layer == 0);
+    //delete_state_if_gone(ui_manager);
+    //assert(ui_manager->current_layer == 0);
 }

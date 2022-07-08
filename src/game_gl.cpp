@@ -1506,7 +1506,7 @@ void gl_draw_text(GL_State *gl_state, Render_State *render_state,
         text++;
         i++;
     }
-
+    
     //glEnable(GL_DEPTH_TEST);
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindVertexArray(0);
@@ -1993,6 +1993,7 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
 
     // NOTE: disable culling for now, just for easier debugging...
 #if 1
+    glEnable(GL_BLEND);
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
     glFrontFace(GL_CW);
@@ -2494,547 +2495,46 @@ void draw_sound_buffer(GL_State *gl_state, Render_State *render_state,
                       write_cursor_position, make_vec3(1.0f, 0.0f, 0.0f));
 }
 
-void gl_draw_ui_text(GL_State *gl_state, Asset_Manager *asset_manager,
-                     Render_State *render_state,
-                     UI_Text ui_text) {
-    UI_Text_Style style = ui_text.style;
-
-    Font font = get_font(asset_manager, ui_text.font_id);
-
-    real32 x = ui_text.x;
-
-    if (style.text_align_flags & TEXT_JUSTIFY_CENTER) {
-        x -= 0.5f * get_width(font, ui_text.text);
-    }
-
-    if (style.use_offset_shadow) {
-        gl_draw_text(gl_state, render_state, ui_text.font_id, &font,
-                     x, ui_text.y,
-                     ui_text.text, style.color,
-                     style.offset_shadow_color, TEXT_SHADOW_OFFSET);
-    } else {
-        gl_draw_text(gl_state, render_state, ui_text.font_id, &font,
-                     x, ui_text.y,
-                     ui_text.text, style.color);
-    }
-}
-
-void gl_draw_ui_text_button(GL_State *gl_state, Asset_Manager *asset_manager,
-                            Render_State *render_state,
-                            UI_Manager *ui_manager, UI_Text_Button button) {
-    Vec4 color;
-
-    Font font = get_font(asset_manager, button.font_id);
-
-    UI_Text_Button_Style style = button.style;
-
-    if (ui_id_equals(ui_manager->hot, button.id)) {
-        color = style.hot_color;
-        if (ui_id_equals(ui_manager->active, button.id)) {
-            color = style.active_color;
-        }
-    } else {
-        color = style.normal_color;
-    }
-
-    if (button.is_disabled) {
-        color = style.disabled_color;
-    }
-
-    Rect rect = button.rect;
-    gl_draw_rounded_quad(gl_state, render_state, rect, style.corner_radius, style.corner_flags, color);
-
-    real32 adjusted_text_height = get_adjusted_font_height(font);
-
-    // center text
-    real32 text_width = get_width(font, button.text);
-    real32 x_offset = 0;
-    real32 y_offset = 0;
-
-    if (style.text_align_flags & TEXT_ALIGN_X) {
-        x_offset = get_center_x_offset(rect.width, text_width);
-    }
-    if (style.text_align_flags & TEXT_ALIGN_Y) {
-        y_offset = get_center_baseline_offset(rect.height, adjusted_text_height);
-    }
-    
-    UI_Text_Style text_style = button.text_style;
-
-    if (text_style.use_offset_shadow) {
-        gl_draw_text(gl_state, render_state, button.font_id, &font,
-                     rect.x + x_offset, rect.y + y_offset,
-                     button.text, text_style.color,
-                     text_style.offset_shadow_color, TEXT_SHADOW_OFFSET);
-    } else {
-        gl_draw_text(gl_state, render_state, button.font_id, &font,
-                     rect.x + x_offset, rect.y + y_offset,
-                     button.text, text_style.color);
-    }
-}
-
-void gl_draw_ui_image_button(GL_State *gl_state,
-                             Asset_Manager *asset_manager, Render_State *render_state,
-                             UI_Manager *ui_manager,
-                             UI_Image_Button button) {
-    UI_Image_Button_Style style = button.style;
-    Vec4 color;
-
-    if (ui_id_equals(ui_manager->hot, button.id)) {
-        color = style.hot_color;
-        if (ui_id_equals(ui_manager->active, button.id)) {
-            color = style.active_color;
-        }
-    } else {
-        color = style.normal_color;
-    }
-
-    Rect rect = { button.x, button.y, button.width, button.height + style.footer_height };
-    gl_draw_rounded_quad(gl_state, render_state, rect, style.corner_radius, style.corner_flags, color);
-
-    GL_Texture texture;
-    uint32 texture_exists = hash_table_find(gl_state->texture_table, button.texture_id, &texture);
-    assert(texture_exists);
-
-    real32 width_to_height_ratio = (real32) texture.width / texture.height;
-
-    uint32 image_constraint_flags = style.image_constraint_flags;
-
-    real32 inner_image_width = button.width - style.padding_x * 2;
-    real32 inner_image_height = button.height - style.padding_y * 2;
-
-    real32 image_width = (real32) texture.width;
-    real32 image_height = (real32) texture.height;
-    if (image_constraint_flags & CONSTRAINT_FILL_BUTTON_WIDTH) {
-        image_width = inner_image_width;
-        if (image_constraint_flags & CONSTRAINT_KEEP_IMAGE_PROPORTIONS) {
-            image_height = image_width / width_to_height_ratio;
-        }
-    }
-    if (image_constraint_flags & CONSTRAINT_FILL_BUTTON_HEIGHT) {
-        image_height = inner_image_height;
-        if (image_constraint_flags & CONSTRAINT_KEEP_IMAGE_PROPORTIONS) {
-            image_width = image_height * width_to_height_ratio;
-        }
-    }
-
-    gl_draw_quad(gl_state, render_state, button.x + style.padding_x, button.y + style.padding_y,
-                 image_width, image_height, button.texture_id);
-
-    if (button.has_text) {
-        real32 footer_height = style.footer_height + style.padding_y;
-        assert(footer_height >= 0);
-
-        Font font = get_font(asset_manager, button.font_id);
-        real32 adjusted_text_height = get_adjusted_font_height(font);
-
-        // center text
-        real32 text_width = get_width(font, button.text);
-        real32 x_offset = get_center_x_offset(button.width, text_width);
-        real32 y_offset = get_center_baseline_offset(footer_height, adjusted_text_height);
-    
-        UI_Text_Style text_style = button.text_style;
-
-        real32 text_x = button.x;
-        real32 text_y = button.y + image_height + style.padding_y;
-        
-        if (text_style.use_offset_shadow) {
-            gl_draw_text(gl_state, render_state, button.font_id, &font,
-                         text_x + x_offset, text_y + y_offset,
-                         button.text, text_style.color,
-                         text_style.offset_shadow_color, TEXT_SHADOW_OFFSET);
-        } else {
-            gl_draw_text(gl_state, render_state, button.font_id, &font,
-                         text_x + x_offset, text_y + y_offset,
-                         button.text, text_style.color);        
-        }
-    }
-}
-
-void gl_draw_ui_color_button(GL_State *gl_state, Render_State *render_state,
-                             UI_Manager *ui_manager,
-                             UI_Color_Button button) {
-    UI_Color_Button_Style style = button.style;
-    Vec4 button_color;
-
-    if (ui_id_equals(ui_manager->hot, button.id)) {
-        button_color = style.hot_color;
-        if (ui_id_equals(ui_manager->active, button.id)) {
-            button_color = style.active_color;
-        }
-    } else {
-        button_color = style.normal_color;
-    }
-
-    gl_draw_quad(gl_state, render_state, button.x, button.y,
-                 button.width, button.height, button_color);
-    gl_draw_quad(gl_state, render_state, button.x + style.padding_x, button.y + style.padding_y,
-                 button.width - style.padding_x*2, button.height - style.padding_y*2, button.color);
-}
-
-void gl_draw_ui_text_box(GL_State *gl_state, Asset_Manager *asset_manager,
-                         Render_State *render_state,
-                         UI_Manager *ui_manager, UI_Text_Box text_box) {
-    Display_Output display_output = render_state->display_output;
-    UI_Text_Box_Style style = text_box.style;
-    Vec4 color = style.normal_color;
-
-    Font font = get_font(asset_manager, text_box.font_id);
-
-    if (ui_id_equals(ui_manager->active, text_box.id)) {
-        color = style.active_color;
-    } else if (ui_id_equals(ui_manager->hot, text_box.id)) {
-        color = style.hot_color;
-    }
-
-    gl_draw_quad(gl_state, render_state, text_box.x, text_box.y,
-                 text_box.width, text_box.height,
-                 color);
-
-    UI_Text_Style text_style = text_box.text_style;
-
-    glEnable(GL_SCISSOR_TEST);
-    // TODO: should move where the text renders depending on if the cursor moves outside of the
-    //       text box's bounds.
-    glScissor((int32) (text_box.x + style.padding_x),
-              (int32) (display_output.height - text_box.y - text_box.height - style.padding_y),
-              (int32) (text_box.width - style.padding_x * 2), (int32) display_output.height);
-
-    real32 adjusted_text_height = font.height_pixels - font.scale_for_pixel_height * (font.ascent + font.descent);
-    real32 text_y = text_box.y + text_box.height - style.padding_y;
-    if (style.text_align_flags & TEXT_ALIGN_Y) {
-        real32 inner_height = (text_box.height - 2*style.padding_y);
-        text_y += -0.5f*inner_height + 0.5f*adjusted_text_height;
-        //y_offset = 0.5f * (-inner_height + adjusted_text_height);
-    }
-
-    if (text_style.use_offset_shadow) {
-        gl_draw_text(gl_state, render_state, text_box.font_id, &font,
-                     text_box.x + style.padding_x, text_y,
-                     text_box.buffer, text_style.color,
-                     text_style.offset_shadow_color, TEXT_SHADOW_OFFSET);
-    } else {
-        gl_draw_text(gl_state, render_state, text_box.font_id, &font,
-                     text_box.x + style.padding_x, text_y,
-                     text_box.buffer, text_style.color);
-    }
-    
-    glDisable(GL_SCISSOR_TEST);
-
-    real32 cursor_width = get_width(font, "I");
-
-    if (ui_id_equals(ui_manager->active, text_box.id)) {
-        // TODO: this cursor should actually be calculated using focus_cursor_index. we need to
-        //       split the text string on that index and draw the cursor at the width of the left
-        //       split. when we draw it, it has to be offset if it is outside the bounds of the text
-        //       box.
-
-        // in focus
-        real32 text_width = get_width(font, text_box.buffer);
+void gl_draw_ui_widget(GL_State *gl_state, Render_State *render_state, UI_Widget *widget) {
+    Vec2 computed_position = widget->computed_position;
+    Vec2 computed_size = widget->computed_size;
+    if (widget->flags & UI_WIDGET_DRAW_BACKGROUND) {
         gl_draw_quad(gl_state, render_state,
-                     text_box.x + text_width + style.padding_x, text_box.y + style.padding_y,
-                     cursor_width, text_box.height - style.padding_y * 2 + TEXT_SHADOW_OFFSET,
-                     make_vec3(0.0f, 1.0f, 0.0f));
+                     computed_position.x, computed_position.y, computed_size.x, computed_size.y,
+                     widget->background_color);
     }
 }
 
-void gl_draw_ui_slider(GL_State *gl_state, Asset_Manager *asset_manager,
-                       Render_State *render_state,
-                       UI_Manager *ui_manager, UI_Slider slider) {
-    Display_Output display_output = render_state->display_output;
-    UI_Slider_Style style = slider.style;
+void gl_draw_ui(GL_State *gl_state, Render_State *render_state, UI_Manager *manager) {
+    // pre-order traversal
+    UI_Widget *current = manager->root;
 
-
-
-    if (slider.is_text_box) {
-        UI_Text_Box_Style text_box_style = { TEXT_ALIGN_X | TEXT_ALIGN_Y, 5.0f, 5.0f,
-                                             style.normal_color, style.hot_color, style.normal_color };
-
-        UI_Text_Box text_box = make_ui_text_box(slider.x, slider.y, slider.width, slider.height,
-                                                slider.buffer, slider.font_id,
-                                                text_box_style, slider.text_style,
-                                                slider.layer, (char *) slider.id.string_ptr, slider.id.index);
-
-        gl_draw_ui_text_box(gl_state, asset_manager, render_state, ui_manager, text_box);
-        return;
-    }
-
-    // background box
-    Vec4 color = style.normal_color;
-    if (ui_id_equals(ui_manager->hot, slider.id)) {
-        color = style.hot_color;
-        if (ui_id_equals(ui_manager->active, slider.id)) {
-            color = style.active_color;
-        }
-    }
-
-    gl_draw_quad(gl_state, render_state, slider.x, slider.y,
-                 slider.width, slider.height,
-                 color);
-
-    // slider bar
-    if (slider.is_bounded) {
-        glEnable(GL_SCISSOR_TEST);
-        glScissor((int32) (slider.x),
-                  (int32) (display_output.height - slider.y - slider.height),
-                  (int32) slider.width, (int32) slider.height);
-    
-        Vec4 slider_color = style.slider_normal_color;
-        if (ui_id_equals(ui_manager->hot, slider.id)) {
-            slider_color = style.slider_hot_color;
-        }
-        if (ui_id_equals(ui_manager->active, slider.id)) {
-            slider_color = style.slider_active_color;
-        }
-
-        real32 bar_width = (slider.value / (slider.max - slider.min)) * slider.width;
-        gl_draw_quad(gl_state, render_state, slider.x, slider.y,
-                     bar_width, slider.height,
-                     slider_color);
-        glDisable(GL_SCISSOR_TEST);
-    }
-
-    // text
-    UI_Text_Style text_style = slider.text_style;
-    Font font = get_font(asset_manager, slider.font_id);
-    real32 adjusted_text_height = font.height_pixels - font.scale_for_pixel_height * (font.ascent + font.descent);
-    real32 text_width = get_width(font, slider.buffer);
-    real32 text_x = slider.x + 0.5f*slider.width - 0.5f*text_width;
-    real32 text_y = slider.y + 0.5f*slider.height + 0.5f*adjusted_text_height;
-
-    if (text_style.use_offset_shadow) {
-        gl_draw_text(gl_state, render_state, slider.font_id, &font,
-                     text_x, text_y,
-                     slider.buffer, text_style.color,
-                     text_style.offset_shadow_color, TEXT_SHADOW_OFFSET);
-    } else {
-        gl_draw_text(gl_state, render_state, slider.font_id, &font,
-                     text_x, text_y,
-                     slider.buffer, text_style.color);
-    }
-}
-
-void gl_draw_ui_hue_slider(GL_State *gl_state, Render_State *render_state,
-                           UI_Manager *ui_manager, UI_Hue_Slider slider) {
-    gl_draw_hue_slider_quad(gl_state, render_state,
-                            slider.x, slider.y,
-                            slider.width, slider.height);
-
-    real32 line_y = slider.y + (slider.height - ((real32) slider.hue_degrees / 360.0f) * slider.height);
-    real32 line_x = slider.x;
-
-    gl_draw_quad(gl_state, render_state,
-                 line_x, line_y,
-                 slider.width, 1.0f,
-                 make_vec4(1.0f, 1.0f, 1.0f, 1.0f));
-}
-
-void gl_draw_ui_hsv_picker(GL_State *gl_state, Render_State *render_state,
-                           UI_Manager *ui_manager, UI_HSV_Picker picker) {
-    gl_draw_hsv_quad(gl_state, render_state,
-                     picker.x, picker.y,
-                     picker.width, picker.height,
-                     picker.hsv_color.h);
-
-    gl_draw_circle(gl_state, render_state,
-                   picker.x + picker.relative_cursor_x, picker.y + picker.relative_cursor_y,
-                   14.0f, make_vec4(1.0f, 1.0f, 1.0f, 1.0f), true);
-
-    RGB_Color rgb_color = hsv_to_rgb(picker.hsv_color);
-    Vec4 color = make_vec4(rgb_to_vec3(rgb_color), 1.0f);
-    gl_draw_circle(gl_state, render_state,
-                   picker.x + picker.relative_cursor_x, picker.y + picker.relative_cursor_y,
-                   12.0f, color, true);
-                   
-
-/*
-    real32 line_y = slider.y + (slider.height - ((real32) slider.hue_degrees / 360.0f) * slider.height);
-    real32 line_x = slider.x;
-
-    gl_draw_quad(gl_state, render_state,
-                 line_x, line_y,
-                 slider.width, 1.0f,
-                 make_vec4(1.0f, 1.0f, 1.0f, 1.0f));
-*/
-}
-
-void gl_draw_ui_box(GL_State *gl_state, Render_State *render_state,
-                    UI_Manager *ui_manager, UI_Box box) {
-    UI_Box_Style style = box.style;
-
-    gl_draw_quad(gl_state, render_state,
-                 box.x, box.y,
-                 box.width, box.height, style.background_color);
-
-    // TODO: using box_* names for border quad data is confusing
-    uint32 border_flags = box.border_flags;
-    if (border_flags) {
-        if (border_flags & SIDE_LEFT) {
-            real32 box_x = box.x;
-            if (!style.inside_border) box_x -= style.border_width;
-
-            gl_draw_quad(gl_state, render_state,
-                         box_x, box.y,
-                         style.border_width, box.height, style.border_color);
-        }
-        if (border_flags & SIDE_BOTTOM) {
-            real32 box_x = box.x;
-            real32 box_y = box.y + box.height - style.border_width;
-            real32 box_width = box.width;
-            if (!style.inside_border) {
-                box_y = box.y + box.height;
-                if (border_flags & SIDE_LEFT) {
-                    box_x -= style.border_width;
-                    box_width += style.border_width;
-                }
-                if (border_flags & SIDE_RIGHT) {
-                    box_width += style.border_width;
-                }
-            } 
-
-            gl_draw_quad(gl_state, render_state,
-                         box_x, box_y,
-                         box_width, style.border_width, style.border_color);
-        }
-        if (border_flags & SIDE_TOP) {
-            real32 box_x = box.x;
-            real32 box_y = box.y;
-            real32 box_width = box.width;
-            if (!style.inside_border) {
-                box_y = box.y - style.border_width;
-                if (border_flags & SIDE_LEFT) {
-                    box_x -= style.border_width;
-                    box_width += style.border_width;
-                }
-                if (border_flags & SIDE_RIGHT) {
-                    box_width += style.border_width;
-                }
-            }
-
-            gl_draw_quad(gl_state, render_state,
-                         box_x, box_y,
-                         box_width, style.border_width, style.border_color);
-        }
-        if (border_flags & SIDE_RIGHT) {
-            real32 box_x = box.x + box.width - style.border_width;
-            if (!style.inside_border) box_x += style.border_width;
-            gl_draw_quad(gl_state, render_state,
-                         box_x, box.y,
-                         style.border_width, box.height, style.border_color);
-        }
-    }
-}
-
-void gl_draw_ui_line(GL_State *gl_state, Render_State *render_state,
-                     UI_Manager *ui_manager, UI_Line line) {
-    UI_Line_Style style = line.style;
-
-    // TODO: use style.line_width in gl_draw_line()
-    gl_draw_line(gl_state, render_state,
-                 line.start, line.end,
-                 style.color);
-}
-
-// TODO: we could, along with gl_draw_quad, replace the model_matrix stuff with just updating the VBO.
-//       the issue with this is that it could make it harder for us to do more interesting transformations like
-//       rotation.
-void gl_draw_ui(GL_State *gl_state,
-                Asset_Manager *asset_manager, Render_State *render_state,
-                UI_Manager *ui_manager) {
-    UI_Push_Buffer *push_buffer = &ui_manager->push_buffer;
-    uint8 *address = (uint8 *) push_buffer->base;
-    //Render_State *render_state = &game_state->render_state;
-
-    // NOTE: we don't store the lowest layer, so technically you could do a bunch of push_layer()'s, and
-    //       only add an element on the highest layer, which would cause us to loop a bunch of times until
-    //       we reach that layer. i.e. this procedure assumes that every layer has something on it.
-
-    int32 current_layer = 0;
-
-    UI_Element *element = next_element(NULL, push_buffer);
-
-    bool32 found_greater_layer_element = false;
-    UI_Element *first_greater_layer_element = element;
-
-    while (first_greater_layer_element) {
-        // start from the first element that was not on the last layer, i.e. skip all the one's before
-        // it, since those are guaranteed to have been on the last layer and thus already rendered.
-        element = first_greater_layer_element;
+    while (true) {
+        gl_draw_ui_widget(gl_state, render_state, current);
         
-        while (element) {
-            if (element->layer != current_layer) {
-                if (!found_greater_layer_element && (element->layer > current_layer)) {
-                    found_greater_layer_element = true;
-                    first_greater_layer_element = element;
-                }
-                element = next_element(element, push_buffer);
-                continue;
-            }
-
-            switch (element->type) {
-                case UI_TEXT: {
-                    UI_Text *ui_text = (UI_Text *) element;
-                    gl_draw_ui_text(gl_state, asset_manager, render_state, *ui_text);
-                } break;
-                case UI_TEXT_BUTTON: {
-                    UI_Text_Button *ui_text_button = (UI_Text_Button *) element;
-                    gl_draw_ui_text_button(gl_state, asset_manager, render_state, ui_manager, *ui_text_button);
-                } break;
-                case UI_IMAGE_BUTTON: {
-                    UI_Image_Button *ui_image_button = (UI_Image_Button *) element;
-                    gl_draw_ui_image_button(gl_state, asset_manager, render_state, ui_manager, *ui_image_button);
-                } break;
-                case UI_COLOR_BUTTON: {
-                    UI_Color_Button *ui_color_button = (UI_Color_Button *) element;
-                    gl_draw_ui_color_button(gl_state, render_state, ui_manager, *ui_color_button);
-                } break;
-                case UI_TEXT_BOX: {
-                    UI_Text_Box *ui_text_box = (UI_Text_Box *) element;
-                    gl_draw_ui_text_box(gl_state, asset_manager, render_state, ui_manager, *ui_text_box);
-                } break;
-                case UI_SLIDER: {
-                    UI_Slider *ui_slider = (UI_Slider *) element;
-                    gl_draw_ui_slider(gl_state, asset_manager, render_state, ui_manager, *ui_slider);
-                } break;
-                case UI_BOX: {
-                    UI_Box *ui_box = (UI_Box *) element;
-                    gl_draw_ui_box(gl_state, render_state, ui_manager, *ui_box);
-                } break;
-                case UI_LINE: {
-                    UI_Line *ui_line = (UI_Line *) element;
-                    gl_draw_ui_line(gl_state, render_state, ui_manager, *ui_line);
-                } break;
-                case UI_HUE_SLIDER: {
-                    UI_Hue_Slider *ui_hue_slider = (UI_Hue_Slider *) element;
-                    gl_draw_ui_hue_slider(gl_state, render_state, ui_manager, *ui_hue_slider);
-                } break;
-                case UI_HSV_PICKER: {
-                    UI_HSV_Picker *ui_hsv_picker = (UI_HSV_Picker *) element;
-                    gl_draw_ui_hsv_picker(gl_state, render_state, ui_manager, *ui_hsv_picker);
-                } break;
-                case UI_COLOR_PICKER: {
-                    UI_Color_Picker *ui_color_picker = (UI_Color_Picker *) element;
-                } break;
-                default: {
-                    assert(!"Unhandled UI element type.");
-                }
-            }
-
-            element = next_element(element, push_buffer);
-        }
-
-        if (!found_greater_layer_element) {
-            // on this loop, all the elements we visited were on the same layer or lower, so that means
-            // we've rendered up to and including the elements on the final layer, so we're done.
-            break;
+        if (current->first) {
+            current = current->first;
         } else {
-            found_greater_layer_element = false;
-            current_layer++;
+            if (current->next) {
+                current = current->next;
+            } else {
+                if (!current->parent) return;
+
+                UI_Widget *current_ancestor = current->parent;
+                while (!current_ancestor->next) {
+                    if (!current_ancestor->parent) return; // root
+                    current_ancestor = current_ancestor->parent;
+                }
+
+                current = current_ancestor->next;
+            }
         }
     }
 }
 
 void gl_draw_framebuffer(GL_State *gl_state, GL_Framebuffer framebuffer) {
     // use premultiplied alpha to prevent dark edges when transitioning from opaque to transparent
+    glEnable(GL_BLEND);
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
     
     if (framebuffer.is_multisampled) {
@@ -3576,11 +3076,7 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
         gl_render_game(gl_state, render_state, gl_state->msaa_framebuffer, game_state);
 
         glDisable(GL_DEPTH_TEST);
-        // TODO: for some reason, if we comment out this line, nothing renders at all, other than the gizmos
-        //       if we happen to click in an area where there is an entity
-        //       - pretty sure it has to do with gl_draw_text(), since if we never call that, then nothing
-        //         renders
-        gl_draw_ui(gl_state, asset_manager, render_state, &game_state->ui_manager);
+        //gl_draw_ui(gl_state, asset_manager, render_state, &game_state->ui_manager);
         glEnable(GL_DEPTH_TEST);
     } else {
         gl_render_editor(gl_state, render_state, gl_state->msaa_framebuffer,
@@ -3591,7 +3087,8 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
         //       if we happen to click in an area where there is an entity
         //       - pretty sure it has to do with gl_draw_text(), since if we never call that, then nothing
         //         renders
-        gl_draw_ui(gl_state, asset_manager, render_state, &game_state->ui_manager);
+        //gl_draw_ui(gl_state, asset_manager, render_state, &game_state->ui_manager);
+        gl_draw_ui(gl_state, render_state, &game_state->ui_manager);
         glEnable(GL_DEPTH_TEST);
     }
 

@@ -21,6 +21,10 @@ bool32 int32_equals(int32 a, int32 b) {
     return a == b;
 }
 
+int32 copy(Allocator *allocator, int32 n) {
+    return n;
+}
+
 int32 get_hash(int32 id, uint32 bucket_size) {
     return id % bucket_size;
 }
@@ -162,7 +166,11 @@ void hash_table_add(Hash_Table<Key_Type, Value_Type> *hash_table, Key_Type key, 
             hash %= hash_table->max_entries;
             num_checked++;
         } else {
-            Hash_Table_Entry<Key_Type, Value_Type> new_entry = { true, key, value };
+            Hash_Table_Entry<Key_Type, Value_Type> new_entry;
+            new_entry.is_occupied = true;
+            new_entry.key = copy(hash_table->allocator, key);
+            new_entry.value = value;
+            
             hash_table->entries[hash] = new_entry;
             hash_table->num_entries++;
             hash_table->total_added_ever++;

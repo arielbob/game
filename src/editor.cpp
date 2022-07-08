@@ -873,6 +873,7 @@ void draw_editor(Game_State *game_state, Controller_State *controller_state) {
     Render_State *render_state = &game_state->render_state;
 
     Entity *selected_entity = get_selected_entity(editor_state);
+    #if 0
     if (selected_entity) {
         draw_entity_box(editor_state, ui_manager, controller_state, selected_entity);
 
@@ -1003,6 +1004,7 @@ void draw_editor(Game_State *game_state, Controller_State *controller_state) {
     if (redo_clicked) {
         history_redo(editor_state);
     }
+    #endif
 
     #if 0
     Allocator *frame_allocator = (Allocator *) &memory.frame_arena;

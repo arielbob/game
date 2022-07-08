@@ -1,6 +1,7 @@
 #ifndef ENTITY_H
 #define ENTITY_H
 
+#include "platform.h"
 #include "math.h"
 #include "string.h"
 #include "mesh.h"
@@ -29,8 +30,11 @@ void deallocate(Entity *) {
 struct Normal_Entity {
     ENTITY_HEADER
 
+    String mesh_name;
+    String material_name;
     int32 mesh_id;
     int32 material_id;
+    
     AABB transformed_aabb;
     Collider_Variant collider;
     bool32 is_walkable;
@@ -61,6 +65,39 @@ void deallocate(Normal_Entity entity) {
 
 Normal_Entity copy(Allocator *allocator, Normal_Entity entity) {
     return entity;
+}
+
+Buffer serialize(Allocator *allocator, Normal_Entity entity) {
+    uint32 offset = 0;
+    offset += sizeof(Normal_Entity);
+    
+    uint32 mesh_name_offset = offset;
+    offset += entity.mesh_name.length;
+
+    uint32 material_name_offset = offset;
+    offset += entity.material_name.length;
+
+    uint8 *data = (uint8 *) allocate(allocator, offset);
+
+    memcpy(&data[mesh_name_offset],     entity.mesh_name.contents,     entity.mesh_name.length);
+    memcpy(&data[material_name_offset], entity.material_name.contents, entity.material_name.length);
+
+    entity.mesh_name.contents =     (char *) (data + mesh_name_offset);
+    entity.material_name.contents = (char *) (data + material_name_offset);
+    *((Normal_Entity *) data) = entity;
+
+    Buffer result;
+    result.data = data;
+    result.size = offset;
+    
+    return result;
+}
+
+Normal_Entity deserialize_normal_entity(Allocator *allocator, Buffer buffer) {
+    Normal_Entity result = *((Normal_Entity *) buffer.data);
+    result.mesh_name = copy(allocator, result.mesh_name);
+    result.material_name = copy(allocator, result.material_name);
+    return result;
 }
 
 struct Point_Light_Entity {

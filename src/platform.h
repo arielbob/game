@@ -13,6 +13,11 @@ struct File_Data {
     uint32 size;
 };
 
+struct Buffer {
+    uint8 *data;
+    int32 size;
+};
+
 #define array_length(array) sizeof(array) / sizeof((array)[0])
 
 void debug_print(char *format, ...);

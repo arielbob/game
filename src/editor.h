@@ -81,11 +81,13 @@ namespace Editor_Constants {
                                  hsv_picker_width + small_padding_x +
                                  hue_slider_width + small_padding_x);
     real32 color_picker_height = 200.0f + small_padding_y*2;
+    #if 0
     UI_Color_Picker_Style color_picker_style = { color_picker_width, color_picker_height,
                                                  hsv_picker_width, hsv_picker_height,
                                                  hue_slider_width,
                                                  small_padding_x, small_padding_y,
                                                  row_color };
+    #endif
 
     real32 small_row_height = 20.0f;
     //real32 row_height =  30.0f;

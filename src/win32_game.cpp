@@ -52,7 +52,7 @@ global_variable Allocator *temp_region;
 #include "entity.cpp"
 #include "gizmo.cpp"
 #include "editor_actions.cpp"
-#include "editor_ui.cpp"
+//#include "editor_ui.cpp"
 #include "editor.cpp"
 #include "game.cpp"
 
@@ -1261,9 +1261,11 @@ int WinMain(HINSTANCE hInstance,
                               &sound_output);
 
                     reset_debug_state(&game_state->debug_state);
-                    clear_push_buffer(&game_state->ui_manager.push_buffer);
+                    //clear_push_buffer(&game_state->ui_manager.push_buffer);
                     clear_arena(&memory.frame_arena);
                     verify(&memory.global_stack);
+                    
+                    ui_frame_end(ui_manager);
 
                     real64 work_time = win32_get_elapsed_time(last_perf_counter);
                     // debug_print("work time before sleep: %f\n", work_time);

@@ -249,7 +249,7 @@ bool32 editor_add_texture_press(Editor_State *editor_state, int32 material_id) {
 }
 
 void draw_texture_library(Editor_State *editor_state, UI_Manager *ui_manager, Controller_State *controller_state,
-                           Render_State *render_state, int32 material_id) {
+                          Render_State *render_state, int32 material_id) {
     Asset_Manager *asset_manager = &editor_state->asset_manager;
 
     Material *material = get_material_pointer(asset_manager, material_id);
