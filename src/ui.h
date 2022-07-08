@@ -107,6 +107,10 @@ struct UI_Stack_Widget {
     UI_Stack_Widget *next;
 };
 
+struct UI_Interact_Result {
+    bool32 clicked;
+};
+
 struct UI_Manager {
     UI_id hot;
     UI_id active;

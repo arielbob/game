@@ -134,6 +134,23 @@ void ui_frame_init(UI_Manager *manager, Display_Output *display_output) {
     manager->root = widget;
 }
 
+// TODO: we need to use the last frame's hierarchy since the actual visual positions are not calculated until
+//       the end of the update procedure. so basically just store the last frame's hierarchy and use that for..
+//       well actually, we want to be able to get the widgets without having to go through the tree. so maybe
+//       just store them in a hash table, keyed by the widget IDs.
+UI_Interact_Result ui_interact(UI_Manager *manager, UI_Widget *widget) {
+    if (widget->flags & UI_WIDGET_IS_CLICKABLE) {
+        
+    }
+
+    return {};
+}
+
+bool32 do_button(UI_Manager *manager, UI_id id) {
+    ui_add_widget(manager, id, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
+    return false;
+}
+
 void ui_calculate_ancestor_dependent_sizes(UI_Manager *manager) {
     UI_Widget *current = manager->root;
 
@@ -238,11 +255,7 @@ void ui_calculate_positions(UI_Manager *manager) {
     
     while (true) {
         UI_Widget *parent = current->parent;
-
-        // TODO: add prev field to UI_Widget, so that we can easily compute positions based on siblings.
-        //       we would also have to check the parent for their position, since we are positioning its children
-        //       relative to it.
-
+        
         // TODO: add centered layout
         
         if (parent) {
