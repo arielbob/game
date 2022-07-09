@@ -727,15 +727,15 @@ bool32 win32_init_memory() {
     uint32 font_arena_size = MEGABYTES(64);
     uint32 frame_arena_size = MEGABYTES(64);
 
-    uint32 ui_state_heap_size = MEGABYTES(64);
+    uint32 ui_arena_size = MEGABYTES(256);
     uint32 editor_arena_size = MEGABYTES(256);
-
+    
     uint32 total_memory_size = (global_stack_size +
                                 hash_table_stack_size +
                                 game_data_arena_size +
                                 font_arena_size +
                                 frame_arena_size +
-                                ui_state_heap_size +
+                                ui_arena_size +
                                 editor_arena_size);
     void *memory_base = VirtualAlloc(0, total_memory_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
@@ -761,9 +761,9 @@ bool32 win32_init_memory() {
         memory.frame_arena = frame_arena;
         base = (uint8 *) base + frame_arena_size;
 
-        Heap_Allocator ui_state_heap = make_heap_allocator(base, ui_state_heap_size);
-        memory.ui_state_heap = ui_state_heap;
-        base = (uint8 *) base + ui_state_heap_size;
+        Arena_Allocator ui_arena = make_arena_allocator(base, ui_arena_size);
+        memory.ui_arena = ui_arena;
+        base = (uint8 *) base + ui_arena_size;
 
         Arena_Allocator editor_arena = make_arena_allocator(base, editor_arena_size);
         memory.editor_arena = editor_arena;

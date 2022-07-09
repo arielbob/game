@@ -539,6 +539,14 @@ void clear_heap(Heap_Allocator *heap) {
     heap->first_block = first_block;
 }
 
+inline void *allocate(Arena_Allocator *arena, uint32 size, bool32 zero_memory = false) {
+    return arena_push(arena, size, zero_memory);
+}
+
+inline void *allocate(Heap_Allocator *heap, uint32 size, bool32 zero_memory = false) {
+    return heap_allocate(heap, size, zero_memory);
+}
+
 // TODO: should have alignment parameter too, i think
 void *allocate(Allocator *allocator, uint32 size, bool32 zero_memory) {
     switch (allocator->type) {

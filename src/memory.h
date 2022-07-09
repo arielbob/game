@@ -69,6 +69,9 @@ struct Heap_Allocator {
 struct Memory {
     bool32 is_initted;
 
+    void *base;
+    uint32 used;
+    
     Stack_Allocator global_stack;
     // i'm not exactly sure why hash_table_stack is a stack; this can be an arena, but either way, it'll
     // probably be replaced
@@ -78,8 +81,7 @@ struct Memory {
     Arena_Allocator font_arena;
     Arena_Allocator frame_arena;
 
-    Heap_Allocator ui_state_heap;
-
+    Arena_Allocator ui_arena;
     Arena_Allocator editor_arena;
 };
 

@@ -12,6 +12,9 @@ enum UI_Size_Type {
     UI_SIZE_FIT_CHILDREN
 };
 
+enum UI_Widget_State_Type {
+};
+
 enum UI_Layout_Type {
     UI_LAYOUT_NONE,
     UI_LAYOUT_HORIZONTAL,
@@ -53,6 +56,15 @@ struct UI_Style_Layout_Type {
 struct UI_Style_Size_Type {
     UI_Size_Type type;
     UI_Style_Size_Type *next;
+};
+
+// TODO: i think this state should be stored at a layer above this UI stuff. on the same layer that we
+//       create things like textboxes out of these components.
+struct UI_Widget_State {
+    UI_Widget_State_Type type;
+
+    union {
+    };
 };
 
 struct UI_id {
@@ -116,9 +128,12 @@ struct UI_Manager {
     UI_id active;
     UI_id last_frame_active;
 
+    UI_Widget *last_frame_root;
     UI_Widget *root;
-    
-    Allocator *allocator;
+
+    Heap_Allocator persistent_heap;
+    Arena_Allocator last_frame_arena;
+    Arena_Allocator frame_arena;
 
     UI_Stack_Widget *widget_stack;
     

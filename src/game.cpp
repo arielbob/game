@@ -464,10 +464,6 @@ void init_game(Game_State *game_state,
     void *level_arena_base = arena_push(&memory.game_data, level_arena_size, false);
     game_state->level_arena = make_arena_allocator(level_arena_base, level_arena_size);
 
-    // string pool allocators
-    //Allocator *string64_allocator = (Allocator *) &memory.string64_pool;
-    //Allocator *filename_allocator = (Allocator *) &memory.filename_pool;
-    
     // init camera
     init_camera(&game_state->camera, display_output, CAMERA_FOV);
 
@@ -493,6 +489,7 @@ void init_game(Game_State *game_state,
 
     // init ui state
     UI_Manager *ui_manager = &game_state->ui_manager;
+    ui_init(&memory.ui_arena, ui_manager);
     #if 0
     UI_Push_Buffer ui_push_buffer = {};
     ui_push_buffer.size = MEGABYTES(1);
@@ -503,8 +500,6 @@ void init_game(Game_State *game_state,
     ui_manager->heap_pointer = &memory.ui_state_heap;
     ui_manager->state_table = make_hash_table<UI_id, UI_Element_State *>((Allocator *) &memory.hash_table_stack,
                                                                          HASH_TABLE_SIZE, &ui_id_equals);
-    #else
-    ui_manager->allocator = (Allocator *) &memory.ui_state_heap;
     #endif
     Context::ui_manager = ui_manager;
 

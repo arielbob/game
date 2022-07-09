@@ -1,7 +1,7 @@
 #include "ui.h"
 
 UI_Widget *make_widget(UI_Manager *manager, UI_id id, uint32 flags) {
-    UI_Widget *widget = (UI_Widget *) allocate(manager->allocator, sizeof(UI_Widget));
+    UI_Widget *widget = (UI_Widget *) allocate(&manager->frame_arena, sizeof(UI_Widget));
 
     *widget = {};
     widget->id = id;
@@ -61,7 +61,7 @@ void ui_push_widget(UI_Manager *manager, UI_id id, uint32 flags) {
     ui_add_widget(manager, widget);
 
     // push to the stack
-    UI_Stack_Widget *entry = (UI_Stack_Widget *) allocate(manager->allocator, sizeof(UI_Stack_Widget));
+    UI_Stack_Widget *entry = (UI_Stack_Widget *) allocate(&manager->frame_arena, sizeof(UI_Stack_Widget));
 
     entry->widget = widget;
     entry->next = manager->widget_stack;
@@ -73,7 +73,7 @@ void ui_push_widget(UI_Manager *manager, UI_id id, uint32 flags) {
 // TODO: stack popping procedures
 
 void ui_push_position(UI_Manager *manager, Vec2 position) {
-    UI_Style_Position *entry = (UI_Style_Position *) allocate(manager->allocator, sizeof(UI_Style_Position));
+    UI_Style_Position *entry = (UI_Style_Position *) allocate(&manager->frame_arena, sizeof(UI_Style_Position));
 
     entry->position = position;
     entry->next = manager->position_stack;
@@ -82,7 +82,7 @@ void ui_push_position(UI_Manager *manager, Vec2 position) {
 }
 
 void ui_push_size(UI_Manager *manager, Vec2 size) {
-    UI_Style_Size *entry = (UI_Style_Size *) allocate(manager->allocator, sizeof(UI_Style_Size));
+    UI_Style_Size *entry = (UI_Style_Size *) allocate(&manager->frame_arena, sizeof(UI_Style_Size));
 
     entry->size = size;
     entry->next = manager->size_stack;
@@ -91,7 +91,7 @@ void ui_push_size(UI_Manager *manager, Vec2 size) {
 }
 
 void ui_push_background_color(UI_Manager *manager, Vec4 color) {
-    UI_Style_BG_Color *entry = (UI_Style_BG_Color *) allocate(manager->allocator, sizeof(UI_Style_BG_Color));
+    UI_Style_BG_Color *entry = (UI_Style_BG_Color *) allocate(&manager->frame_arena, sizeof(UI_Style_BG_Color));
 
     entry->background_color = color;
     entry->next = manager->background_color_stack;
@@ -100,7 +100,7 @@ void ui_push_background_color(UI_Manager *manager, Vec4 color) {
 }
 
 void ui_push_layout_type(UI_Manager *manager, UI_Layout_Type type) {
-    UI_Style_Layout_Type *entry = (UI_Style_Layout_Type *) allocate(manager->allocator, sizeof(UI_Style_Layout_Type));
+    UI_Style_Layout_Type *entry = (UI_Style_Layout_Type *) allocate(&manager->frame_arena, sizeof(UI_Style_Layout_Type));
 
     entry->type = type;
     entry->next = manager->layout_type_stack;
@@ -109,7 +109,7 @@ void ui_push_layout_type(UI_Manager *manager, UI_Layout_Type type) {
 }
 
 void ui_push_size_type(UI_Manager *manager, UI_Size_Type type) {
-    UI_Style_Size_Type *entry = (UI_Style_Size_Type *) allocate(manager->allocator, sizeof(UI_Style_Size_Type));
+    UI_Style_Size_Type *entry = (UI_Style_Size_Type *) allocate(&manager->frame_arena, sizeof(UI_Style_Size_Type));
 
     entry->type = type;
     entry->next = manager->size_type_stack;
@@ -125,7 +125,7 @@ void ui_frame_init(UI_Manager *manager, Display_Output *display_output) {
 
     UI_Widget *widget = make_widget(manager, make_ui_id("root"), 0);
 
-    UI_Stack_Widget *entry = (UI_Stack_Widget *) allocate(manager->allocator, sizeof(UI_Stack_Widget));
+    UI_Stack_Widget *entry = (UI_Stack_Widget *) allocate(&manager->frame_arena, sizeof(UI_Stack_Widget));
     assert(manager->widget_stack == NULL);
     entry->widget = widget;
     entry->next = manager->widget_stack;
@@ -304,11 +304,39 @@ void ui_calculate_positions(UI_Manager *manager) {
     }
 }
 
+void ui_init(Arena_Allocator *arena, UI_Manager *manager) {
+    uint32 max_padding = 8 * 3;
+    uint32 persistent_heap_size = MEGABYTES(64);
+    uint32 frame_arena_size = MEGABYTES(64);
+    uint32 last_frame_arena_size = MEGABYTES(64) - max_padding;
+
+    {
+        uint32 size = persistent_heap_size;
+        void *base = arena_push(arena, size, false);
+        manager->persistent_heap = make_heap_allocator(base, size);
+    }
+    {
+        uint32 size = frame_arena_size;
+        void *base = arena_push(arena, size, false);
+        manager->frame_arena = make_arena_allocator(base, size);
+    }
+    {
+        uint32 size = last_frame_arena_size;
+        void *base = arena_push(arena, size, false);
+        manager->last_frame_arena = make_arena_allocator(base, size);
+    }
+}
+
 // TODO: don't clear.. we want to keep state actually
 void ui_frame_end(UI_Manager *manager) {
+    manager->last_frame_root = manager->root;
     manager->root = NULL;
-    
-    clear(manager->allocator);
+
+    // swap allocators
+    Arena_Allocator temp = manager->last_frame_arena;
+    manager->last_frame_arena = manager->frame_arena;
+    manager->frame_arena = temp;
+    clear_arena(&manager->frame_arena);
     
     manager->widget_stack = NULL;
     manager->background_color_stack = NULL;
