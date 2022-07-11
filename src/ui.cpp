@@ -30,6 +30,64 @@ UI_Widget *make_widget(UI_Manager *manager, UI_id id, uint32 flags) {
     return widget;
 }
 
+uint32 get_hash(UI_id id, uint32 bucket_size) {
+    // don't use the pointer here for hashing, since that'll always be even
+    String_Iterator it = make_string_iterator(make_string((char *) id.string_ptr));
+    uint32 sum = 0;
+    char c = get_next_char(&it);
+    while (c) {
+        sum += c;
+        c = get_next_char(&it);
+    }
+    sum += id.index;
+
+    uint32 hash = sum % bucket_size;
+    
+    return hash;
+}
+
+UI_Widget *ui_table_get(UI_Manager *manager, UI_id id) {
+    uint32 hash = get_hash(id, MAX_WIDGETS);
+
+    UI_Widget *current = manager->widget_table[hash];
+    while (current) {
+        if (ui_id_equals(current->id, id)) {
+            return current;
+        }
+
+        current = current->table_next;
+    }
+
+    assert(!"Widget does not exist in table.");
+    return NULL;
+}
+
+void ui_table_add(UI_Manager *manager, UI_Widget *widget) {
+    uint32 hash = get_hash(widget->id, MAX_WIDGETS);
+
+    UI_Widget *current = manager->widget_table[hash];
+    if (!current) {
+        widget->table_next = NULL;
+        manager->widget_table[hash] = widget;
+        return;
+    }
+    
+    while (true) {
+        if (ui_id_equals(current->id, widget->id)) {
+            assert(!"Widget already exists in table.");
+            return;
+        }
+
+        if (!current->next) {
+            current->table_next = widget;
+            widget->table_next = NULL;
+            return;
+        }
+
+        current = current->table_next;
+    }
+}
+
 void ui_add_widget(UI_Manager *manager, UI_Widget *widget) {
     assert(manager->widget_stack); // ui should be initted with a root node (call ui_frame_init)
     
@@ -139,8 +197,13 @@ void ui_frame_init(UI_Manager *manager, Display_Output *display_output) {
 //       well actually, we want to be able to get the widgets without having to go through the tree. so maybe
 //       just store them in a hash table, keyed by the widget IDs.
 UI_Interact_Result ui_interact(UI_Manager *manager, UI_Widget *widget) {
+    Controller_State *controller_state = Context::controller_state;
+    Vec2 mouse_pos = controller_state->current_mouse;
+    
     if (widget->flags & UI_WIDGET_IS_CLICKABLE) {
-        
+        if (in_bounds(mouse_pos, widget->computed_position, widget->computed_size)) {
+            manager->hot = widget->id;
+        }
     }
 
     return {};
@@ -366,4 +429,18 @@ inline bool32 ui_has_hot(UI_Manager *manager) {
 
 inline bool32 ui_has_active(UI_Manager *manager) {
     return (manager->active.string_ptr != NULL);
+}
+
+inline bool32 in_bounds(Vec2 p, real32 x_min, real32 x_max, real32 y_min, real32 y_max) {
+    return (p.x >= x_min && p.x <= x_max && p.y >= y_min && p.y <= y_max);
+}
+
+inline bool32 in_bounds(Vec2 p, Vec2 widget_position, Vec2 widget_size) {
+    return in_bounds(p,
+                     widget_position.x, widget_position.x + widget_size.x,
+                     widget_position.y, widget_position.y + widget_size.y);
+}
+
+inline bool32 ui_id_equals(UI_id id1, UI_id id2) {
+    return ((id1.string_ptr == id2.string_ptr) && (id1.index == id2.index));
 }

@@ -5,6 +5,8 @@
 #define UI_WIDGET_DRAW_BACKGROUND (1 << 1)
 #define UI_WIDGET_DRAW_TEXT       (1 << 2)
 
+#define MAX_WIDGETS 1024
+
 enum UI_Size_Type {
     UI_SIZE_NONE,
     UI_SIZE_PERCENTAGE,
@@ -93,15 +95,15 @@ struct UI_Widget {
     UI_id id;
     uint32 flags;
 
-    // this is a linked-list of the children, right???
-    // first is the first child and next is a pointer to the next sibling, i.e. the next node on the same level
-    // of the tree
     UI_Widget *first;  // first child
     UI_Widget *last;   // last child
     UI_Widget *prev;   // prev sibling
     UI_Widget *next;   // next sibling
     UI_Widget *parent;
 
+    //UI_Widget *table_prev;
+    UI_Widget *table_next;
+    
     Vec4 background_color;
 
     UI_Layout_Type layout_type;
@@ -131,6 +133,10 @@ struct UI_Manager {
     UI_Widget *last_frame_root;
     UI_Widget *root;
 
+    // TODO: just store linked lists in buckets. store the links in the UI_Widget struct.
+    UI_Widget *last_frame_widget_table[MAX_WIDGETS];
+    UI_Widget *widget_table[MAX_WIDGETS];
+    
     Heap_Allocator persistent_heap;
     Arena_Allocator last_frame_arena;
     Arena_Allocator frame_arena;
@@ -145,5 +151,9 @@ struct UI_Manager {
     
     bool32 is_disabled;
 };
+
+bool32 in_bounds(Vec2 p, real32 x_min, real32 x_max, real32 y_min, real32 y_max);
+bool32 in_bounds(Vec2 p, Vec2 widget_position, Vec2 widget_size);
+bool32 ui_id_equals(UI_id id1, UI_id id2);
 
 #endif

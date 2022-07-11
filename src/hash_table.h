@@ -148,6 +148,13 @@ Hash_Table<Key_Type, Value_Type> copy_hash_table(Allocator *allocator,
     return new_table;
 }
 
+// TODO: this is actually wrong, since in the case where multiply entries map to the same hash, for example
+//       if the array starting from the hash is A, B, C, where all of them have the same hash, then removing
+//       B leaves a hole. then, if you were to try to add C, this procedure would put it where B was, making
+//       A, C, C, which is incorrect. so the naive solution here is to just always check the entire array
+//       before adding, but that can be slow. another solution is, when you remove a node, just search forward
+//       for an element with the same hash and fill the hole with that. and then fill the new hole the same
+//       way until you run out of elements with the same hash.
 template <class Key_Type, class Value_Type>
 void hash_table_add(Hash_Table<Key_Type, Value_Type> *hash_table, Key_Type key, Value_Type value) {
     assert(hash_table->num_entries < hash_table->max_entries);
