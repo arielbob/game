@@ -928,18 +928,35 @@ void draw_test_ui(UI_Manager *ui, Display_Output *display_output) {
 
     ui_push_position(ui, { 5.0f, 5.0f });
     ui_push_size_type(ui, UI_SIZE_FIT_CHILDREN);
+    ui_push_widget(ui, make_ui_id("row"), 0);
+    
+    ui_push_size_type(ui, UI_SIZE_ABSOLUTE);
+    ui_push_size(ui, { 200.0f, 20.0f });
     ui_push_background_color(ui, { 1.0f, 0.0f, 0.0f, 1.0f });
-    ui_push_widget(ui, make_ui_id("test"), UI_WIDGET_DRAW_BACKGROUND);
+    ui_push_hot_background_color(ui, { 1.0f, 0.5f, 0.5f, 1.0f });
+    ui_push_active_background_color(ui, { 0.5f, 0.0f, 0.0f, 1.0f });
+    bool32 clicked = do_button(ui, make_ui_id("test"));
+    #if 0
+    UI_Widget *test_button = ui_push_widget(ui, make_ui_id("test"),
+                                            UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
+    ui_interact(ui, test_button);
+    #endif
 
     ui_push_size_type(ui, UI_SIZE_ABSOLUTE);
     ui_push_position(ui, { 100.0f, 500.0f });
     ui_push_size(ui, { 50.0f, 50.0f });
     ui_push_background_color(ui, { 0.0f, 0.0f, 1.0f, 1.0f });
-    ui_add_widget(ui, make_ui_id("test2"), UI_WIDGET_DRAW_BACKGROUND);
+    ui_push_hot_background_color(ui, { 0.5f, 0.5f, 1.0f, 1.0f });
+    ui_push_active_background_color(ui, { 0.0f, 0.0f, 0.5f, 1.0f });
+    clicked = do_button(ui, make_ui_id("test2"));
+    //ui_add_widget(ui, make_ui_id("test2"), UI_WIDGET_DRAW_BACKGROUND);
 
     ui_push_size(ui, { 100.0f, 80.0f });
     ui_push_background_color(ui, { 0.0f, 1.0f, 0.0f, 1.0f });
-    ui_add_widget(ui, make_ui_id("test3"), UI_WIDGET_DRAW_BACKGROUND);
+    ui_push_hot_background_color(ui, { 0.5f, 1.0f, 0.5f, 1.0f });
+    ui_push_active_background_color(ui, { 0.0f, 0.5f, 0.0f, 1.0f });
+    //ui_add_widget(ui, make_ui_id("test3"), UI_WIDGET_DRAW_BACKGROUND);
+    clicked = do_button(ui, make_ui_id("test3"));
     
     ui_calculate_ancestor_dependent_sizes(ui);
     ui_calculate_child_dependent_sizes(ui);

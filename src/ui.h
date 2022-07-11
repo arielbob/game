@@ -5,7 +5,7 @@
 #define UI_WIDGET_DRAW_BACKGROUND (1 << 1)
 #define UI_WIDGET_DRAW_TEXT       (1 << 2)
 
-#define MAX_WIDGETS 1024
+#define NUM_WIDGET_BUCKETS 128
 
 enum UI_Size_Type {
     UI_SIZE_NONE,
@@ -105,6 +105,8 @@ struct UI_Widget {
     UI_Widget *table_next;
     
     Vec4 background_color;
+    Vec4 hot_background_color;
+    Vec4 active_background_color;
 
     UI_Layout_Type layout_type;
     UI_Size_Type size_type;
@@ -133,9 +135,11 @@ struct UI_Manager {
     UI_Widget *last_frame_root;
     UI_Widget *root;
 
-    // TODO: just store linked lists in buckets. store the links in the UI_Widget struct.
-    UI_Widget *last_frame_widget_table[MAX_WIDGETS];
-    UI_Widget *widget_table[MAX_WIDGETS];
+    // these tables are just so that we can easily get widgets without traversing the tree.
+    // these do NOT hold state; state is handled by the layer that creates stateful widgets out of the primitive
+    // widgets.
+    UI_Widget **last_frame_widget_table;
+    UI_Widget **widget_table;
     
     Heap_Allocator persistent_heap;
     Arena_Allocator last_frame_arena;
@@ -144,6 +148,8 @@ struct UI_Manager {
     UI_Stack_Widget *widget_stack;
     
     UI_Style_BG_Color *background_color_stack;
+    UI_Style_BG_Color *hot_background_color_stack;
+    UI_Style_BG_Color *active_background_color_stack;
     UI_Style_Layout_Type *layout_type_stack;
     UI_Style_Size *size_stack;
     UI_Style_Position *position_stack;
@@ -152,6 +158,8 @@ struct UI_Manager {
     bool32 is_disabled;
 };
 
+bool32 is_hot(UI_Manager *manager, UI_Widget *widget);
+bool32 is_active(UI_Manager *manager, UI_Widget *widget);
 bool32 in_bounds(Vec2 p, real32 x_min, real32 x_max, real32 y_min, real32 y_max);
 bool32 in_bounds(Vec2 p, Vec2 widget_position, Vec2 widget_size);
 bool32 ui_id_equals(UI_id id1, UI_id id2);

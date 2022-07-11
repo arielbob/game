@@ -7,10 +7,19 @@ UI_Widget *make_widget(UI_Manager *manager, UI_id id, uint32 flags) {
     widget->id = id;
     widget->flags = flags;
 
+    // TODO: just have initial values for these, so we don't have to do these checks
     if (manager->background_color_stack) {
         widget->background_color = manager->background_color_stack->background_color;
     }
 
+    if (manager->hot_background_color_stack) {
+        widget->hot_background_color = manager->hot_background_color_stack->background_color;
+    }
+
+    if (manager->active_background_color_stack) {
+        widget->active_background_color = manager->active_background_color_stack->background_color;
+    }
+    
     if (manager->size_stack) {
         widget->semantic_size = manager->size_stack->size;
     }
@@ -46,10 +55,10 @@ uint32 get_hash(UI_id id, uint32 bucket_size) {
     return hash;
 }
 
-UI_Widget *ui_table_get(UI_Manager *manager, UI_id id) {
-    uint32 hash = get_hash(id, MAX_WIDGETS);
+UI_Widget *ui_table_get(UI_Widget **table, UI_id id) {
+    uint32 hash = get_hash(id, NUM_WIDGET_BUCKETS);
 
-    UI_Widget *current = manager->widget_table[hash];
+    UI_Widget *current = table[hash];
     while (current) {
         if (ui_id_equals(current->id, id)) {
             return current;
@@ -58,17 +67,16 @@ UI_Widget *ui_table_get(UI_Manager *manager, UI_id id) {
         current = current->table_next;
     }
 
-    assert(!"Widget does not exist in table.");
     return NULL;
 }
 
-void ui_table_add(UI_Manager *manager, UI_Widget *widget) {
-    uint32 hash = get_hash(widget->id, MAX_WIDGETS);
+void ui_table_add(UI_Widget **table, UI_Widget *widget) {
+    uint32 hash = get_hash(widget->id, NUM_WIDGET_BUCKETS);
 
-    UI_Widget *current = manager->widget_table[hash];
+    UI_Widget *current = table[hash];
     if (!current) {
         widget->table_next = NULL;
-        manager->widget_table[hash] = widget;
+        table[hash] = widget;
         return;
     }
     
@@ -88,7 +96,13 @@ void ui_table_add(UI_Manager *manager, UI_Widget *widget) {
     }
 }
 
-void ui_add_widget(UI_Manager *manager, UI_Widget *widget) {
+void ui_table_clear(UI_Widget **table) {
+    for (int32 i = 0; i < NUM_WIDGET_BUCKETS; i++) {
+        table[i] = NULL;
+    }
+}
+
+UI_Widget *ui_add_widget(UI_Manager *manager, UI_Widget *widget) {
     assert(manager->widget_stack); // ui should be initted with a root node (call ui_frame_init)
     
     UI_Widget *parent = manager->widget_stack->widget;
@@ -102,19 +116,25 @@ void ui_add_widget(UI_Manager *manager, UI_Widget *widget) {
         parent->last->next = widget;
         widget->prev = parent->last;
         parent->last = widget;
-    }    
+    }
+
+    ui_table_add(manager->widget_table, widget);
+
+    return widget;
 }
 
 // NOTE: both ui_add_widget and ui_push_widget add widgets to the hierarchy. the only difference is that
 //       ui_push_widget also adds the widget to the widget stack, so that next calls to ui_add_widget or
 //       ui_push_widget will have their widget added as a child of the widget at the top of the widget
 //       stack.
-void ui_add_widget(UI_Manager *manager, UI_id id, uint32 flags) {
+UI_Widget *ui_add_widget(UI_Manager *manager, UI_id id, uint32 flags) {
     UI_Widget *widget = make_widget(manager, id, flags);
     ui_add_widget(manager, widget);
+
+    return widget;
 }
 
-void ui_push_widget(UI_Manager *manager, UI_id id, uint32 flags) {
+UI_Widget *ui_push_widget(UI_Manager *manager, UI_id id, uint32 flags) {
     UI_Widget *widget = make_widget(manager, id, flags);
     ui_add_widget(manager, widget);
 
@@ -125,6 +145,8 @@ void ui_push_widget(UI_Manager *manager, UI_id id, uint32 flags) {
     entry->next = manager->widget_stack;
     
     manager->widget_stack = entry;
+
+    return widget;
 }
 
 // TODO: layout types, and calculating positions (should be done after size calculations)
@@ -157,6 +179,24 @@ void ui_push_background_color(UI_Manager *manager, Vec4 color) {
     manager->background_color_stack = entry;
 }
 
+void ui_push_hot_background_color(UI_Manager *manager, Vec4 color) {
+    UI_Style_BG_Color *entry = (UI_Style_BG_Color *) allocate(&manager->frame_arena, sizeof(UI_Style_BG_Color));
+
+    entry->background_color = color;
+    entry->next = manager->hot_background_color_stack;
+    
+    manager->hot_background_color_stack = entry;
+}
+
+void ui_push_active_background_color(UI_Manager *manager, Vec4 color) {
+    UI_Style_BG_Color *entry = (UI_Style_BG_Color *) allocate(&manager->frame_arena, sizeof(UI_Style_BG_Color));
+
+    entry->background_color = color;
+    entry->next = manager->active_background_color_stack;
+    
+    manager->active_background_color_stack = entry;
+}
+
 void ui_push_layout_type(UI_Manager *manager, UI_Layout_Type type) {
     UI_Style_Layout_Type *entry = (UI_Style_Layout_Type *) allocate(&manager->frame_arena, sizeof(UI_Style_Layout_Type));
 
@@ -175,43 +215,54 @@ void ui_push_size_type(UI_Manager *manager, UI_Size_Type type) {
     manager->size_type_stack = entry;
 }
 
-void ui_frame_init(UI_Manager *manager, Display_Output *display_output) {
-    ui_push_position(manager, { 0.0f, 0.0f });
-    ui_push_layout_type(manager, UI_LAYOUT_HORIZONTAL);
-    ui_push_size_type(manager, UI_SIZE_ABSOLUTE);
-    ui_push_size(manager, { (real32) display_output->width, (real32) display_output->height });
-
-    UI_Widget *widget = make_widget(manager, make_ui_id("root"), 0);
-
-    UI_Stack_Widget *entry = (UI_Stack_Widget *) allocate(&manager->frame_arena, sizeof(UI_Stack_Widget));
-    assert(manager->widget_stack == NULL);
-    entry->widget = widget;
-    entry->next = manager->widget_stack;
-    manager->widget_stack = entry;
-
-    manager->root = widget;
-}
-
 // TODO: we need to use the last frame's hierarchy since the actual visual positions are not calculated until
 //       the end of the update procedure. so basically just store the last frame's hierarchy and use that for..
 //       well actually, we want to be able to get the widgets without having to go through the tree. so maybe
 //       just store them in a hash table, keyed by the widget IDs.
-UI_Interact_Result ui_interact(UI_Manager *manager, UI_Widget *widget) {
+UI_Interact_Result ui_interact(UI_Manager *manager, UI_Widget *semantic_widget) {
+    UI_Widget *computed_widget = ui_table_get(manager->last_frame_widget_table, semantic_widget->id);
+    if (!computed_widget) return {};
+    //assert(computed_widget);
+    
     Controller_State *controller_state = Context::controller_state;
     Vec2 mouse_pos = controller_state->current_mouse;
+
+    UI_Interact_Result result = {};
     
-    if (widget->flags & UI_WIDGET_IS_CLICKABLE) {
-        if (in_bounds(mouse_pos, widget->computed_position, widget->computed_size)) {
-            manager->hot = widget->id;
+    UI_id id = computed_widget->id;
+    if (computed_widget->flags & UI_WIDGET_IS_CLICKABLE) {
+        if (in_bounds(mouse_pos, computed_widget->computed_position, computed_widget->computed_size)) {
+            manager->hot = id;
+
+            if (controller_state->left_mouse.is_down && !controller_state->left_mouse.was_down) {
+                // we check for !was_down to avoid setting a button active if we click and hold outside then
+                // move into the button
+                manager->active = id;
+            } else if (!controller_state->left_mouse.is_down && controller_state->left_mouse.was_down) {
+                result.clicked = true;
+                if (is_active(manager, computed_widget)) {
+                    manager->active = {};
+                }
+            }
+        } else {
+            if (is_hot(manager, computed_widget)) {
+                manager->hot = {};
+            }
+
+            if (is_active(manager, computed_widget) && !controller_state->left_mouse.is_down) {
+                manager->active = {};
+            }
         }
     }
 
-    return {};
+    return result;
 }
 
 bool32 do_button(UI_Manager *manager, UI_id id) {
-    ui_add_widget(manager, id, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
-    return false;
+    UI_Widget *widget = ui_add_widget(manager, id, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
+    UI_Interact_Result interact_result = ui_interact(manager, widget);
+    
+    return interact_result.clicked;
 }
 
 void ui_calculate_ancestor_dependent_sizes(UI_Manager *manager) {
@@ -283,11 +334,13 @@ void ui_calculate_child_dependent_sizes(UI_Manager *manager) {
                 //       you can kind of do that now, but only when the cross-axis size is larger than the child's
                 //       size on that same axis. i can't really think of a case where you would want the cross-axis
                 //       size to be smaller than the largest child's on that cross-axis.
+
+                // TODO: fix the parent size not being set
                 if (parent && parent->size_type == UI_SIZE_FIT_CHILDREN) {
-                    if (parent->size_type == UI_LAYOUT_HORIZONTAL) {
+                    if (parent->layout_type == UI_LAYOUT_HORIZONTAL) {
                         parent->computed_size.x += current->computed_size.x;
                         parent->computed_size.y = max(parent->computed_size.y, current->computed_size.y);
-                    } else if (parent->size_type == UI_LAYOUT_VERTICAL) {
+                    } else if (parent->layout_type == UI_LAYOUT_VERTICAL) {
                         parent->computed_size.y += current->computed_size.y;
                         parent->computed_size.x = max(parent->computed_size.x, current->computed_size.x);
                     } else {
@@ -388,6 +441,33 @@ void ui_init(Arena_Allocator *arena, UI_Manager *manager) {
         void *base = arena_push(arena, size, false);
         manager->last_frame_arena = make_arena_allocator(base, size);
     }
+
+    manager->widget_table            = (UI_Widget **) arena_push(&manager->frame_arena,
+                                                                 sizeof(UI_Widget *) * NUM_WIDGET_BUCKETS, true);
+    manager->last_frame_widget_table = (UI_Widget **) arena_push(&manager->last_frame_arena,
+                                                                 sizeof(UI_Widget *) * NUM_WIDGET_BUCKETS, true);
+}
+
+void ui_frame_init(UI_Manager *manager, Display_Output *display_output) {
+    ui_push_position(manager, { 0.0f, 0.0f });
+    ui_push_layout_type(manager, UI_LAYOUT_HORIZONTAL);
+    ui_push_size_type(manager, UI_SIZE_ABSOLUTE);
+    ui_push_size(manager, { (real32) display_output->width, (real32) display_output->height });
+
+    UI_Widget *widget = make_widget(manager, make_ui_id("root"), 0);
+
+    UI_Stack_Widget *entry = (UI_Stack_Widget *) allocate(&manager->frame_arena, sizeof(UI_Stack_Widget));
+    assert(manager->widget_stack == NULL);
+    entry->widget = widget;
+    entry->next = manager->widget_stack;
+    manager->widget_stack = entry;
+
+    manager->root = widget;
+
+    manager->widget_table = (UI_Widget **) arena_push(&manager->frame_arena,
+                                                      sizeof(UI_Widget *) * NUM_WIDGET_BUCKETS, true);
+    
+    ui_table_add(manager->widget_table, widget);
 }
 
 // TODO: don't clear.. we want to keep state actually
@@ -400,9 +480,16 @@ void ui_frame_end(UI_Manager *manager) {
     manager->last_frame_arena = manager->frame_arena;
     manager->frame_arena = temp;
     clear_arena(&manager->frame_arena);
+
+    // swap tables
+    UI_Widget **temp_widget_table = manager->last_frame_widget_table;
+    manager->last_frame_widget_table = manager->widget_table;
+    manager->widget_table = temp_widget_table;
     
     manager->widget_stack = NULL;
     manager->background_color_stack = NULL;
+    manager->hot_background_color_stack = NULL;
+    manager->active_background_color_stack = NULL;
     manager->layout_type_stack = NULL;
     manager->size_stack = NULL;
     manager->position_stack = NULL;
@@ -421,6 +508,14 @@ void disable_input(UI_Manager *manager) {
 
 void enable_input(UI_Manager *manager) {
     manager->is_disabled = false;
+}
+
+inline bool32 is_hot(UI_Manager *manager, UI_Widget *widget) {
+    return ui_id_equals(manager->hot, widget->id);
+}
+
+inline bool32 is_active(UI_Manager *manager, UI_Widget *widget) {
+    return ui_id_equals(manager->active, widget->id);
 }
 
 inline bool32 ui_has_hot(UI_Manager *manager) {
