@@ -457,8 +457,6 @@ void ui_calculate_child_dependent_sizes(UI_Manager *manager) {
                     } else if (parent->layout_type == UI_LAYOUT_VERTICAL) {
                         parent->computed_size.y += current->computed_size.y;
                         parent->computed_size.x = max(parent->computed_size.x, current->computed_size.x);
-                    } else if (parent->layout_type == UI_LAYOUT_CENTER) {
-                        assert(!"Widget cannot have size_type be UI_SIZE_FIT_CHILDREN and layout_type be UI_LAYOUT_CENTER. ");
                     } else {
                         parent->computed_size.x = max(parent->computed_size.x, current->computed_size.x);
                         parent->computed_size.y = max(parent->computed_size.y, current->computed_size.y);
