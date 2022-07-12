@@ -337,8 +337,10 @@ UI_Interact_Result ui_interact(UI_Manager *manager, UI_Widget *semantic_widget) 
 
 void do_text(UI_Manager *manager, char *text, char *id, uint32 flags, int32 index = 0) {
     ui_push_size_type(manager, UI_SIZE_FIT_TEXT);
-    UI_Widget *text_widget = ui_add_widget(manager, make_ui_id(id, index), UI_WIDGET_DRAW_TEXT | flags);
+    //ui_push_background_color(manager, { 1.0f, 0.0f, 0.0f, 1.0f });
+    UI_Widget *text_widget = ui_add_widget(manager, make_ui_id(id, index), UI_WIDGET_DRAW_TEXT);
     text_widget->text = text;
+    //ui_pop_background_color(manager);
     ui_pop_size_type(manager);
 }
 
@@ -390,7 +392,9 @@ void ui_calculate_standalone_sizes(UI_Manager *manager, Asset_Manager *asset) {
             current->computed_size = current->semantic_size;
         } else if (current->size_type == UI_SIZE_FIT_TEXT) {
             Font font = get_font(asset, current->font);
-            current->computed_size = { get_width(font, current->text), get_adjusted_font_height(font) };
+            current->computed_size = { get_width(font, current->text), font.height_pixels };
+        } else if (current->size_type == UI_SIZE_FIT_CHILDREN) {
+            current->computed_size = current->semantic_size;
         }
         
         if (current->first) {
@@ -706,7 +710,7 @@ inline bool32 ui_id_equals(UI_id id1, UI_id id2) {
 }
 
 inline real32 get_adjusted_font_height(Font font) {
-    return font.height_pixels - (font.scale_for_pixel_height * font.line_gap);
+    return font.height_pixels + (font.scale_for_pixel_height * font.line_gap);
 }
 
 inline real32 get_center_x_offset(real32 container_width, real32 element_width) {

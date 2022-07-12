@@ -2519,7 +2519,7 @@ void gl_draw_ui_widget(GL_State *gl_state, Render_State *render_state,
         Font font = get_font(asset, widget->font, &font_id);
         gl_draw_text(gl_state, render_state,
                      font_id, &font,
-                     computed_position.x, computed_position.y + computed_size.y,
+                     computed_position.x, computed_position.y + computed_size.y - (font.scale_for_pixel_height*font.line_gap),
                      widget->text, widget->text_color);
     }
 }
