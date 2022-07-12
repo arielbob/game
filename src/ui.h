@@ -24,7 +24,8 @@ enum UI_Layout_Type {
     UI_LAYOUT_NONE,
     UI_LAYOUT_HORIZONTAL,
     UI_LAYOUT_VERTICAL,
-    UI_LAYOUT_CENTER
+    UI_LAYOUT_CENTER,
+    UI_LAYOUT_HORIZONTAL_SPACE_BETWEEN
 };
 
 struct Rect {
@@ -137,8 +138,11 @@ struct UI_Widget {
     Vec2 semantic_size;
     Vec2 semantic_position;
 
+    int32 num_children;
+    
     Vec2 computed_size;
     Vec2 computed_position;
+    Vec2 computed_child_size_sum;
 };
 
 struct UI_Stack_Widget {

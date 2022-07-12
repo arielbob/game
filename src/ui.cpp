@@ -132,6 +132,7 @@ UI_Widget *ui_add_widget(UI_Manager *manager, UI_Widget *widget) {
     widget->id.parent_string_ptr = parent->id.string_ptr;
     widget->id.parent_index      = parent->id.index;
     widget->parent = parent;
+    parent->num_children++;
     
     if (!parent->last) {
         assert(!parent->first);
@@ -159,6 +160,10 @@ UI_Widget *ui_add_widget(UI_Manager *manager, UI_id id, uint32 flags) {
     return widget;
 }
 
+UI_Widget *ui_add_widget(UI_Manager *manager, char *id_string_ptr, uint32 flags) {
+    return ui_add_widget(manager, make_ui_id(id_string_ptr), flags);
+}
+
 UI_Widget *ui_push_widget(UI_Manager *manager, UI_id id, uint32 flags) {
     UI_Widget *widget = make_widget(manager, id, flags);
     ui_add_widget(manager, widget);
@@ -172,6 +177,10 @@ UI_Widget *ui_push_widget(UI_Manager *manager, UI_id id, uint32 flags) {
     manager->widget_stack = entry;
 
     return widget;
+}
+
+UI_Widget *ui_push_widget(UI_Manager *manager, char *id_string_ptr, uint32 flags) {
+    return ui_push_widget(manager, make_ui_id(id_string_ptr), flags);
 }
 
 void ui_pop_widget(UI_Manager *manager) {
@@ -255,6 +264,16 @@ void ui_pop_size_type(UI_Manager *manager) {
     manager->size_type_stack = manager->size_type_stack->next;
 }
 
+void ui_pop_size(UI_Manager *manager) {
+    assert(manager->size_stack);
+    manager->size_stack = manager->size_stack->next;
+}
+
+void ui_pop_background_color(UI_Manager *manager) {
+    assert(manager->background_color_stack);
+    manager->background_color_stack = manager->background_color_stack->next;
+}
+
 void ui_push_text_color(UI_Manager *manager, Vec4 color) {
     UI_Style_Text_Color *entry = (UI_Style_Text_Color *) allocate(&manager->frame_arena, sizeof(UI_Style_Text_Color));
 
@@ -316,6 +335,13 @@ UI_Interact_Result ui_interact(UI_Manager *manager, UI_Widget *semantic_widget) 
     return result;
 }
 
+void do_text(UI_Manager *manager, char *text, char *id, uint32 flags, int32 index = 0) {
+    ui_push_size_type(manager, UI_SIZE_FIT_TEXT);
+    UI_Widget *text_widget = ui_add_widget(manager, make_ui_id(id, index), UI_WIDGET_DRAW_TEXT | flags);
+    text_widget->text = text;
+    ui_pop_size_type(manager);
+}
+
 bool32 do_button(UI_Manager *manager, UI_id id) {
     UI_Widget *widget = ui_add_widget(manager, id, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
     UI_Interact_Result interact_result = ui_interact(manager, widget);
@@ -323,13 +349,15 @@ bool32 do_button(UI_Manager *manager, UI_id id) {
     return interact_result.clicked;
 }
 
-bool32 do_text_button(UI_Manager *manager, UI_id id, char *text) {
+bool32 do_text_button(UI_Manager *manager, char *text, UI_id id) {
+    ui_push_size_type(manager, UI_SIZE_FIT_CHILDREN);
     ui_push_layout_type(manager, UI_LAYOUT_CENTER);
     UI_Widget *button = ui_push_widget(manager, id,
                                        UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
     
     UI_Interact_Result interact_result = ui_interact(manager, button);
-
+    ui_pop_size_type(manager);
+    
     ui_push_size_type(manager, UI_SIZE_FIT_TEXT);
 
     // TODO: we should probably use a hashing method for storing UI IDs, so that we can generate IDs dynamically.
@@ -346,6 +374,10 @@ bool32 do_text_button(UI_Manager *manager, UI_id id, char *text) {
     ui_pop_widget(manager);
 
     return interact_result.clicked;
+}
+
+inline bool32 do_text_button(UI_Manager *manager, char *text, char *id, int32 index = 0) {
+    return do_text_button(manager, text, make_ui_id(id, index));
 }
 
 void ui_calculate_standalone_sizes(UI_Manager *manager, Asset_Manager *asset) {
@@ -449,17 +481,22 @@ void ui_calculate_child_dependent_sizes(UI_Manager *manager) {
                 //       size on that same axis. i can't really think of a case where you would want the cross-axis
                 //       size to be smaller than the largest child's on that cross-axis.
 
-                // TODO: fix the parent size not being set
-                if (parent && parent->size_type == UI_SIZE_FIT_CHILDREN) {
-                    if (parent->layout_type == UI_LAYOUT_HORIZONTAL) {
-                        parent->computed_size.x += current->computed_size.x;
-                        parent->computed_size.y = max(parent->computed_size.y, current->computed_size.y);
-                    } else if (parent->layout_type == UI_LAYOUT_VERTICAL) {
-                        parent->computed_size.y += current->computed_size.y;
-                        parent->computed_size.x = max(parent->computed_size.x, current->computed_size.x);
-                    } else {
-                        parent->computed_size.x = max(parent->computed_size.x, current->computed_size.x);
-                        parent->computed_size.y = max(parent->computed_size.y, current->computed_size.y);
+                if (parent) {
+                    if (parent->size_type == UI_SIZE_FIT_CHILDREN) {
+                        if (parent->layout_type == UI_LAYOUT_HORIZONTAL) {
+                            parent->computed_size.x += current->computed_size.x;
+                            parent->computed_size.y = max(parent->computed_size.y, current->computed_size.y);
+                        } else if (parent->layout_type == UI_LAYOUT_VERTICAL) {
+                            parent->computed_size.y += current->computed_size.y;
+                            parent->computed_size.x = max(parent->computed_size.x, current->computed_size.x);
+                        } else {
+                            parent->computed_size.x = max(parent->computed_size.x, current->computed_size.x);
+                            parent->computed_size.y = max(parent->computed_size.y, current->computed_size.y);
+                        }
+                    }
+
+                    if (parent->layout_type == UI_LAYOUT_HORIZONTAL_SPACE_BETWEEN) {
+                        parent->computed_child_size_sum.x += current->computed_size.x;
                     }
                 }
                 
@@ -512,6 +549,13 @@ void ui_calculate_positions(UI_Manager *manager) {
                             (current->computed_size.y / 2.0f));
 
                 current->computed_position = { x, y };
+            } else if (parent->layout_type == UI_LAYOUT_HORIZONTAL_SPACE_BETWEEN) {
+                current->computed_position = parent->computed_position;
+
+                real32 d = (parent->computed_size.x - parent->computed_child_size_sum.x) / (parent->num_children - 1);
+                if (prev) {
+                    current->computed_position.x = prev->computed_position.x + prev->computed_size.x + d;
+                }
             } else {
                 current->computed_position = current->semantic_position;
             }
@@ -569,7 +613,7 @@ void ui_init(Arena_Allocator *arena, UI_Manager *manager) {
 
 void ui_frame_init(UI_Manager *manager, Display_Output *display_output) {
     ui_push_position(manager, { 0.0f, 0.0f });
-    ui_push_layout_type(manager, UI_LAYOUT_HORIZONTAL);
+    ui_push_layout_type(manager, UI_LAYOUT_NONE);
     ui_push_size_type(manager, UI_SIZE_ABSOLUTE);
     ui_push_size(manager, { (real32) display_output->width, (real32) display_output->height });
 

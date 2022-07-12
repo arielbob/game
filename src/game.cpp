@@ -928,16 +928,50 @@ void draw_test_ui(UI_Manager *ui, Asset_Manager *asset, Display_Output *display_
     ui_push_text_color(ui, { 0.0f, 0.0f, 0.0f, 1.0f });
     ui_push_font(ui, "calibri14");
 
-    
     ui_push_size_type(ui, UI_SIZE_FIT_CHILDREN);
     ui_push_layout_type(ui, UI_LAYOUT_VERTICAL);
+    ui_push_background_color(ui, { 0.0f, 0.0f, 1.0f, 1.0f });
+    ui_push_size(ui, { 250.0f, 0.0f });
+    ui_push_position(ui, { 10.0f, 10.0f });
+    
+    ui_push_widget(ui, "column", UI_WIDGET_DRAW_BACKGROUND);
+    {
+        ui_push_size(ui, { 200.0f, 30.0f });
+        ui_push_size_type(ui, UI_SIZE_ABSOLUTE);
+        ui_push_layout_type(ui, UI_LAYOUT_CENTER);
+        
+        ui_push_widget(ui, make_ui_id("row", 0), 0);
+        {
+            do_text(ui, "Entity Properties", "entity-properties-text", 0);
+        }
+        ui_pop_widget(ui);
+        ui_pop_layout_type(ui);
 
-    ui_push_widget(ui, make_ui_id("column"), 0);
+        //ui_push_background_color(ui, { 1.0f, 1.0f, 1.0f, 1.0f });
+        ui_push_size_type(ui, UI_SIZE_ABSOLUTE);
+        ui_push_size(ui, { 200.0f, 20.0f });
+        ui_push_layout_type(ui, UI_LAYOUT_HORIZONTAL_SPACE_BETWEEN);
+        ui_push_widget(ui, make_ui_id("row", 1), UI_WIDGET_DRAW_BACKGROUND);
+        {
+            ui_push_background_color(ui, { 1.0f, 1.0f, 1.0f, 1.0f });
+            ui_push_hot_background_color(ui, { 0.7f, 0.7f, 0.7f, 1.0f });
+            ui_push_active_background_color(ui, { 0.5f, 0.5f, 0.5f, 1.0f });
+            do_text_button(ui, "some text", "some-text");
 
-    ui_push_size_type(ui, UI_SIZE_FIT_CHILDREN);
-    ui_push_layout_type(ui, UI_LAYOUT_HORIZONTAL);
-    ui_push_widget(ui, make_ui_id("row"), 0);
+            do_text_button(ui, "some text", "some-text2");
+            //do_text(ui, "middle", "mid-text", UI_WIDGET_DRAW_BACKGROUND);
 
+            do_text_button(ui, "some text", "some-text3");
+            //do_text(ui, "more text", "more-text", UI_WIDGET_DRAW_BACKGROUND);
+            ui_pop_background_color(ui);
+        }
+        ui_pop_widget(ui);
+    }
+    ui_pop_widget(ui);
+    
+    
+
+    #if 0
     ui_push_size_type(ui, UI_SIZE_ABSOLUTE);
     ui_push_size(ui, { 200.0f, 20.0f });
     ui_push_background_color(ui, { 1.0f, 0.0f, 0.0f, 1.0f });
@@ -961,7 +995,6 @@ void draw_test_ui(UI_Manager *ui, Asset_Manager *asset, Display_Output *display_
 
     ui_pop_widget(ui);
 
-    // FIXME: for some reason this row is getting layout_center set on it and cause assert to fail
     ui_push_widget(ui, make_ui_id("row2"), 0);
     
     ui_push_size_type(ui, UI_SIZE_FIT_CHILDREN);
@@ -974,6 +1007,7 @@ void draw_test_ui(UI_Manager *ui, Asset_Manager *asset, Display_Output *display_
     do_text_button(ui, make_ui_id("3"), "button 3");
 
     ui_pop_widget(ui);
+    #endif
 
     ui_calculate_standalone_sizes(ui, asset);
     ui_calculate_ancestor_dependent_sizes(ui);
