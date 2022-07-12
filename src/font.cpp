@@ -14,7 +14,7 @@ real32 get_width(Font font, char *text) {
         
         if (*(text + 1)) {
             width += font.scale_for_pixel_height * stbtt_GetCodepointKernAdvance(&font.font_info,
-                                                                                 *text, *(text + 1));
+                                                                                  *text, *(text + 1));
         }
 
         text++;
@@ -35,7 +35,7 @@ real32 get_width(Font font, String string) {
         
         if (*(text + 1)) {
             width += font.scale_for_pixel_height * stbtt_GetCodepointKernAdvance(&font.font_info,
-                                                                                 *text, *(text + 1));
+                                                                                  *text, *(text + 1));
         }
 
         text++;

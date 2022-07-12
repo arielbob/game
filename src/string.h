@@ -321,6 +321,19 @@ inline void append_string(String_Buffer *buffer, String_Buffer to_append_buffer)
     append_string(buffer, to_append);
 }
 
+char *append_string(Allocator *allocator, char *base, char *to_append) {
+    int32 n_base = string_length(base);
+    int32 n_to_append = string_length(to_append);
+
+    char *buffer = (char *) allocate(allocator, n_base + n_to_append + 1);
+
+    memcpy(buffer, base, n_base);
+    memcpy(buffer + n_base, to_append, n_to_append);
+    buffer[n_base + n_to_append] = '\0';
+
+    return buffer;
+}
+
 void to_char_array(String string, char *buffer, int32 buffer_size) {
     assert(buffer_size >= string.length + 1);
     for (int32 i = 0; i < string.length; i++) {

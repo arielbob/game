@@ -36,12 +36,20 @@ UI_Widget *make_widget(UI_Manager *manager, UI_id id, uint32 flags) {
         widget->size_type = manager->size_type_stack->type;
     }
 
+    if (manager->font_stack) {
+        widget->font = manager->font_stack->font;
+    }
+    
+    if (manager->text_color_stack) {
+        widget->text_color = manager->text_color_stack->color;
+    }
+    
     return widget;
 }
 
 uint32 get_hash(UI_id id, uint32 bucket_size) {
     // don't use the pointer here for hashing, since that'll always be even
-    String_Iterator it = make_string_iterator(make_string((char *) id.string_ptr));
+    String_Iterator it = make_string_iterator(make_string(id.string_ptr));
     uint32 sum = 0;
     char c = get_next_char(&it);
     while (c) {
@@ -50,7 +58,22 @@ uint32 get_hash(UI_id id, uint32 bucket_size) {
     }
     sum += id.index;
 
+    it = make_string_iterator(make_string(id.parent_string_ptr));
+    c = get_next_char(&it);
+    while (c) {
+        sum += c;
+        c = get_next_char(&it);
+    }
+    sum += id.parent_index;
+    
     uint32 hash = sum % bucket_size;
+
+    #if 0
+    if (id.parent) {
+        hash += get_hash(id.parent->id, bucket_size);
+        hash %= bucket_size;
+    }
+    #endif
     
     return hash;
 }
@@ -86,7 +109,7 @@ void ui_table_add(UI_Widget **table, UI_Widget *widget) {
             return;
         }
 
-        if (!current->next) {
+        if (!current->table_next) {
             current->table_next = widget;
             widget->table_next = NULL;
             return;
@@ -106,6 +129,8 @@ UI_Widget *ui_add_widget(UI_Manager *manager, UI_Widget *widget) {
     assert(manager->widget_stack); // ui should be initted with a root node (call ui_frame_init)
     
     UI_Widget *parent = manager->widget_stack->widget;
+    widget->id.parent_string_ptr = parent->id.string_ptr;
+    widget->id.parent_index      = parent->id.index;
     widget->parent = parent;
     
     if (!parent->last) {
@@ -147,6 +172,11 @@ UI_Widget *ui_push_widget(UI_Manager *manager, UI_id id, uint32 flags) {
     manager->widget_stack = entry;
 
     return widget;
+}
+
+void ui_pop_widget(UI_Manager *manager) {
+    assert(manager->widget_stack);
+    manager->widget_stack = manager->widget_stack->next;
 }
 
 // TODO: layout types, and calculating positions (should be done after size calculations)
@@ -206,6 +236,11 @@ void ui_push_layout_type(UI_Manager *manager, UI_Layout_Type type) {
     manager->layout_type_stack = entry;
 }
 
+void ui_pop_layout_type(UI_Manager *manager) {
+    assert(manager->layout_type_stack);
+    manager->layout_type_stack = manager->layout_type_stack->next;
+}
+
 void ui_push_size_type(UI_Manager *manager, UI_Size_Type type) {
     UI_Style_Size_Type *entry = (UI_Style_Size_Type *) allocate(&manager->frame_arena, sizeof(UI_Style_Size_Type));
 
@@ -213,6 +248,29 @@ void ui_push_size_type(UI_Manager *manager, UI_Size_Type type) {
     entry->next = manager->size_type_stack;
     
     manager->size_type_stack = entry;
+}
+
+void ui_pop_size_type(UI_Manager *manager) {
+    assert(manager->size_type_stack);
+    manager->size_type_stack = manager->size_type_stack->next;
+}
+
+void ui_push_text_color(UI_Manager *manager, Vec4 color) {
+    UI_Style_Text_Color *entry = (UI_Style_Text_Color *) allocate(&manager->frame_arena, sizeof(UI_Style_Text_Color));
+
+    entry->color = color;
+    entry->next = manager->text_color_stack;
+    
+    manager->text_color_stack = entry;
+}
+
+void ui_push_font(UI_Manager *manager, char *font) {
+    UI_Style_Font *entry = (UI_Style_Font *) allocate(&manager->frame_arena, sizeof(UI_Style_Font));
+
+    entry->font = font;
+    entry->next = manager->font_stack;
+    
+    manager->font_stack = entry;
 }
 
 // TODO: we need to use the last frame's hierarchy since the actual visual positions are not calculated until
@@ -265,6 +323,64 @@ bool32 do_button(UI_Manager *manager, UI_id id) {
     return interact_result.clicked;
 }
 
+bool32 do_text_button(UI_Manager *manager, UI_id id, char *text) {
+    ui_push_layout_type(manager, UI_LAYOUT_CENTER);
+    UI_Widget *button = ui_push_widget(manager, id,
+                                       UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
+    
+    UI_Interact_Result interact_result = ui_interact(manager, button);
+
+    ui_push_size_type(manager, UI_SIZE_FIT_TEXT);
+
+    // TODO: we should probably use a hashing method for storing UI IDs, so that we can generate IDs dynamically.
+    //       right now we just use pointers, which is fine for read-only memory, but if we create new strings,
+    //       then the string addresses will not be consistent.
+    // TODO: scope UI IDs. have a parent UI_id be included in all UI_ids. that way, we can do stuff like this
+    //       without having collisions. actually, i don't think that'll work. try and use a hash. actually,
+    //       i think this is fine, since we always have the parent ID use some unique string.
+    UI_Widget *text_widget = ui_add_widget(manager, make_ui_id("button-text"), UI_WIDGET_DRAW_TEXT);
+    text_widget->text = text;
+
+    ui_pop_layout_type(manager);
+    ui_pop_size_type(manager);
+    ui_pop_widget(manager);
+
+    return interact_result.clicked;
+}
+
+void ui_calculate_standalone_sizes(UI_Manager *manager, Asset_Manager *asset) {
+    UI_Widget *current = manager->root;
+    
+    while (true) {
+        UI_Widget *parent = current->parent;
+        
+        if (current->size_type == UI_SIZE_ABSOLUTE) {
+            current->computed_size = current->semantic_size;
+        } else if (current->size_type == UI_SIZE_FIT_TEXT) {
+            Font font = get_font(asset, current->font);
+            current->computed_size = { get_width(font, current->text), get_adjusted_font_height(font) };
+        }
+        
+        if (current->first) {
+            current = current->first;
+        } else {
+            if (current->next) {
+                current = current->next;
+            } else {
+                if (!parent) return;
+
+                UI_Widget *current_ancestor = parent;
+                while (!current_ancestor->next) {
+                    if (!current_ancestor->parent) return; // root
+                    current_ancestor = current_ancestor->parent;
+                }
+
+                current = current_ancestor->next;
+            }
+        }
+    }
+}
+
 void ui_calculate_ancestor_dependent_sizes(UI_Manager *manager) {
     UI_Widget *current = manager->root;
 
@@ -283,8 +399,6 @@ void ui_calculate_ancestor_dependent_sizes(UI_Manager *manager) {
             } else {
                 assert(!"UI widgets with percentage based sizing must have absolute or percentage based parents.");
             }
-        } else if (current->size_type == UI_SIZE_ABSOLUTE) {
-            current->computed_size = current->semantic_size;
         }
         // we could add an else block here that just sets computed size to semantic size. this could be useful
         // if we wanted to be able to specify minimum sizes for widgets that use fit_children sizing.
@@ -343,6 +457,8 @@ void ui_calculate_child_dependent_sizes(UI_Manager *manager) {
                     } else if (parent->layout_type == UI_LAYOUT_VERTICAL) {
                         parent->computed_size.y += current->computed_size.y;
                         parent->computed_size.x = max(parent->computed_size.x, current->computed_size.x);
+                    } else if (parent->layout_type == UI_LAYOUT_CENTER) {
+                        assert(!"Widget cannot have size_type be UI_SIZE_FIT_CHILDREN and layout_type be UI_LAYOUT_CENTER. ");
                     } else {
                         parent->computed_size.x = max(parent->computed_size.x, current->computed_size.x);
                         parent->computed_size.y = max(parent->computed_size.y, current->computed_size.y);
@@ -372,8 +488,6 @@ void ui_calculate_positions(UI_Manager *manager) {
     while (true) {
         UI_Widget *parent = current->parent;
         
-        // TODO: add centered layout
-        
         if (parent) {
             UI_Widget *prev = current->prev;
 
@@ -393,6 +507,13 @@ void ui_calculate_positions(UI_Manager *manager) {
                 } else {
                     current->computed_position.y = prev->computed_position.y + prev->computed_size.y;
                 }
+            } else if (parent->layout_type == UI_LAYOUT_CENTER) {
+                real32 x = (parent->computed_position.x + (parent->computed_size.x / 2.0f) -
+                            (current->computed_size.x / 2.0f));
+                real32 y = (parent->computed_position.y + (parent->computed_size.y / 2.0f) -
+                            (current->computed_size.y / 2.0f));
+
+                current->computed_position = { x, y };
             } else {
                 current->computed_position = current->semantic_position;
             }
@@ -494,6 +615,7 @@ void ui_frame_end(UI_Manager *manager) {
     manager->size_stack = NULL;
     manager->position_stack = NULL;
     manager->size_type_stack = NULL;
+    manager->text_color_stack = NULL;
 }
 
 bool32 has_focus(UI_Manager *manager) {
@@ -537,5 +659,24 @@ inline bool32 in_bounds(Vec2 p, Vec2 widget_position, Vec2 widget_size) {
 }
 
 inline bool32 ui_id_equals(UI_id id1, UI_id id2) {
-    return ((id1.string_ptr == id2.string_ptr) && (id1.index == id2.index));
+    return ((id1.string_ptr == id2.string_ptr) && (id1.index == id2.index) &&
+            (id1.parent_string_ptr == id2.parent_string_ptr) && (id1.parent_index == id2.parent_index));
+}
+
+inline real32 get_adjusted_font_height(Font font) {
+    return font.height_pixels - (font.scale_for_pixel_height * font.line_gap);
+}
+
+inline real32 get_center_x_offset(real32 container_width, real32 element_width) {
+    return (container_width / 2.0f - element_width / 2.0f);
+}
+
+// this is different from get_center_y_offset because text is drawn from the bottom left corner and goes up
+// i.e. it's drawn going up from its baseline, instead of like for quads from the top left going down
+inline real32 get_center_baseline_offset(real32 container_height, real32 text_height) {
+    return 0.5f * (container_height + text_height);
+}
+
+inline real32 get_center_y_offset(real32 height, real32 box_height) {
+    return 0.5f * (height - box_height);
 }

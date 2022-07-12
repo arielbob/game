@@ -2496,7 +2496,7 @@ void draw_sound_buffer(GL_State *gl_state, Render_State *render_state,
 }
 
 void gl_draw_ui_widget(GL_State *gl_state, Render_State *render_state,
-                       UI_Manager *manager, UI_Widget *widget) {
+                       Asset_Manager *asset, UI_Manager *manager, UI_Widget *widget) {
     Vec2 computed_position = widget->computed_position;
     Vec2 computed_size = widget->computed_size;
     if (widget->flags & UI_WIDGET_DRAW_BACKGROUND) {
@@ -2512,16 +2512,24 @@ void gl_draw_ui_widget(GL_State *gl_state, Render_State *render_state,
         gl_draw_quad(gl_state, render_state,
                      computed_position.x, computed_position.y, computed_size.x, computed_size.y,
                      color);
-        
+    }
+
+    if (widget->flags & UI_WIDGET_DRAW_TEXT) {
+        int32 font_id;
+        Font font = get_font(asset, widget->font, &font_id);
+        gl_draw_text(gl_state, render_state,
+                     font_id, &font,
+                     computed_position.x, computed_position.y + computed_size.y,
+                     widget->text, widget->text_color);
     }
 }
 
-void gl_draw_ui(GL_State *gl_state, Render_State *render_state, UI_Manager *manager) {
+void gl_draw_ui(GL_State *gl_state, Render_State *render_state, Asset_Manager *asset, UI_Manager *manager) {
     // pre-order traversal
     UI_Widget *current = manager->root;
 
     while (true) {
-        gl_draw_ui_widget(gl_state, render_state, manager, current);
+        gl_draw_ui_widget(gl_state, render_state, asset, manager, current);
         
         if (current->first) {
             current = current->first;
@@ -3099,7 +3107,7 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
         //       - pretty sure it has to do with gl_draw_text(), since if we never call that, then nothing
         //         renders
         //gl_draw_ui(gl_state, asset_manager, render_state, &game_state->ui_manager);
-        gl_draw_ui(gl_state, render_state, &game_state->ui_manager);
+        gl_draw_ui(gl_state, render_state, asset_manager, &game_state->ui_manager);
         glEnable(GL_DEPTH_TEST);
     }
 

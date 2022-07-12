@@ -7,11 +7,14 @@
 
 #define NUM_WIDGET_BUCKETS 128
 
+struct UI_Widget;
+
 enum UI_Size_Type {
     UI_SIZE_NONE,
     UI_SIZE_PERCENTAGE,
     UI_SIZE_ABSOLUTE,
-    UI_SIZE_FIT_CHILDREN
+    UI_SIZE_FIT_CHILDREN,
+    UI_SIZE_FIT_TEXT
 };
 
 enum UI_Widget_State_Type {
@@ -20,7 +23,8 @@ enum UI_Widget_State_Type {
 enum UI_Layout_Type {
     UI_LAYOUT_NONE,
     UI_LAYOUT_HORIZONTAL,
-    UI_LAYOUT_VERTICAL
+    UI_LAYOUT_VERTICAL,
+    UI_LAYOUT_CENTER
 };
 
 struct Rect {
@@ -60,6 +64,16 @@ struct UI_Style_Size_Type {
     UI_Style_Size_Type *next;
 };
 
+struct UI_Style_Text_Color {
+    Vec4 color;
+    UI_Style_Text_Color *next;
+};
+
+struct UI_Style_Font {
+    char *font;
+    UI_Style_Font *next;
+};
+
 // TODO: i think this state should be stored at a layer above this UI stuff. on the same layer that we
 //       create things like textboxes out of these components.
 struct UI_Widget_State {
@@ -72,22 +86,27 @@ struct UI_Widget_State {
 struct UI_id {
     // NOTE: we use a pointer to some unique data, such as a constant string specific to a button, to
     //       identify UI elements
-    void *string_ptr;
+    char *string_ptr;
     // this can be used to differentiate between UI_ids that use the same string_ptr.
     // sometimes elements have the same string_ptr since we want to save time and we are creating a large
     // amount of UI elements such that having a unique string ID is not tenable. these ID strings should
     // not be stored in memory that can be overwritten because you could end up with undesirable behaviour.
     // this is why we use constant char arrays whose addresses point to some place in the executable.
-    int32 index; 
+    int32 index;
+
+    char *parent_string_ptr;
+    int32 parent_index;
 };
 
-inline UI_id make_ui_id(void *id) {
-    UI_id ui_id = { id, 0 };
+inline UI_id make_ui_id(char *id) {
+    //UI_id ui_id = { id, 0, NULL };
+    UI_id ui_id = { id, 0, NULL, 0 };
     return ui_id;
 }
 
-inline UI_id make_ui_id(void *id, int32 index) {
-    UI_id ui_id = { id, index };
+inline UI_id make_ui_id(char *id, int32 index) {
+    //UI_id ui_id = { id, index, NULL };
+    UI_id ui_id = { id, index, NULL, 0 };
     return ui_id;
 }
 
@@ -108,6 +127,10 @@ struct UI_Widget {
     Vec4 hot_background_color;
     Vec4 active_background_color;
 
+    Vec4 text_color;
+    char *font;
+    char *text;
+    
     UI_Layout_Type layout_type;
     UI_Size_Type size_type;
     
@@ -154,6 +177,8 @@ struct UI_Manager {
     UI_Style_Size *size_stack;
     UI_Style_Position *position_stack;
     UI_Style_Size_Type *size_type_stack;
+    UI_Style_Font *font_stack;
+    UI_Style_Text_Color *text_color_stack;
     
     bool32 is_disabled;
 };
@@ -163,5 +188,9 @@ bool32 is_active(UI_Manager *manager, UI_Widget *widget);
 bool32 in_bounds(Vec2 p, real32 x_min, real32 x_max, real32 y_min, real32 y_max);
 bool32 in_bounds(Vec2 p, Vec2 widget_position, Vec2 widget_size);
 bool32 ui_id_equals(UI_id id1, UI_id id2);
+real32 get_adjusted_font_height(Font font);
+real32 get_center_x_offset(real32 container_width, real32 element_width);
+real32 get_center_baseline_offset(real32 container_height, real32 text_height);
+real32 get_center_y_offset(real32 height, real32 box_height);
 
 #endif
