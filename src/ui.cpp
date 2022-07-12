@@ -94,6 +94,8 @@ UI_Widget *ui_table_get(UI_Widget **table, UI_id id) {
 }
 
 void ui_table_add(UI_Widget **table, UI_Widget *widget) {
+    if (!widget->id.string_ptr) return;
+    
     uint32 hash = get_hash(widget->id, NUM_WIDGET_BUCKETS);
 
     UI_Widget *current = table[hash];

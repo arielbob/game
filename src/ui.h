@@ -99,16 +99,14 @@ struct UI_id {
     int32 parent_index;
 };
 
-inline UI_id make_ui_id(char *id) {
-    //UI_id ui_id = { id, 0, NULL };
-    UI_id ui_id = { id, 0, NULL, 0 };
+inline UI_id make_ui_id(char *id, int32 index) {
+    if (!id || string_equals(id, "")) id = NULL;
+    UI_id ui_id = { id, index, NULL, 0 };
     return ui_id;
 }
 
-inline UI_id make_ui_id(char *id, int32 index) {
-    //UI_id ui_id = { id, index, NULL };
-    UI_id ui_id = { id, index, NULL, 0 };
-    return ui_id;
+inline UI_id make_ui_id(char *id) {
+    return make_ui_id(id, 0);
 }
 
 struct UI_Widget {

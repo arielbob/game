@@ -274,6 +274,10 @@ bool32 string_equals(String a, String b) {
     return true;
 }
 
+inline bool32 string_equals(char *a, char *b) {
+    return string_equals(make_string(a), make_string(b));
+}
+
 // NOTE: b is a null-terminated string
 inline bool32 string_equals(String a, char *b) {
     return string_equals(a, make_string(b));
