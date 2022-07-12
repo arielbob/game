@@ -162,7 +162,7 @@ UI_Widget *ui_add_widget(UI_Manager *manager, UI_id id, uint32 flags) {
     return widget;
 }
 
-UI_Widget *ui_add_widget(UI_Manager *manager, char *id_string_ptr, uint32 flags) {
+UI_Widget *ui_add_widget(UI_Manager *manager, char *id_string_ptr, uint32 flags = 0) {
     return ui_add_widget(manager, make_ui_id(id_string_ptr), flags);
 }
 
@@ -353,13 +353,46 @@ bool32 do_button(UI_Manager *manager, UI_id id) {
     return interact_result.clicked;
 }
 
-bool32 do_text_button(UI_Manager *manager, char *text, UI_id id) {
+bool32 do_text_button(UI_Manager *manager, char *text, real32 padding, UI_id id) {
+    ui_push_size(manager, {});
     ui_push_size_type(manager, UI_SIZE_FIT_CHILDREN);
-    ui_push_layout_type(manager, UI_LAYOUT_CENTER);
+    ui_push_layout_type(manager, UI_LAYOUT_VERTICAL);
     UI_Widget *button = ui_push_widget(manager, id,
                                        UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
+    {
+        ui_push_size(manager, { 0.0f, padding });
+        ui_add_widget(manager, "");
+
+        ui_push_layout_type(manager, UI_LAYOUT_HORIZONTAL);
+        ui_push_widget(manager, "", 0);
+        {
+            // inner row
+            ui_push_size(manager, { padding, 0.0f });
+            ui_add_widget(manager, "");
+            //ui_pop_size_type(manager);
+        
+            ui_push_size_type(manager, UI_SIZE_FIT_TEXT);
+            UI_Widget *text_widget = ui_add_widget(manager, make_ui_id(NULL), UI_WIDGET_DRAW_TEXT);
+            text_widget->text = text;
+            ui_pop_size_type(manager);
+
+            ui_add_widget(manager, "");
+            ui_pop_size(manager);
+        }
+        ui_pop_widget(manager);
+        ui_pop_layout_type(manager);
+        
+        ui_add_widget(manager, "");
+        ui_pop_size(manager);
+    }
+    ui_pop_widget(manager);
+    ui_pop_size(manager);
+    ui_pop_size_type(manager);
+    ui_pop_layout_type(manager);
+    
     
     UI_Interact_Result interact_result = ui_interact(manager, button);
+#if 0
     ui_pop_size_type(manager);
     
     ui_push_size_type(manager, UI_SIZE_FIT_TEXT);
@@ -376,12 +409,13 @@ bool32 do_text_button(UI_Manager *manager, char *text, UI_id id) {
     ui_pop_layout_type(manager);
     ui_pop_size_type(manager);
     ui_pop_widget(manager);
+#endif
 
     return interact_result.clicked;
 }
 
-inline bool32 do_text_button(UI_Manager *manager, char *text, char *id, int32 index = 0) {
-    return do_text_button(manager, text, make_ui_id(id, index));
+inline bool32 do_text_button(UI_Manager *manager, char *text, real32 padding, char *id, int32 index = 0) {
+    return do_text_button(manager, text, padding, make_ui_id(id, index));
 }
 
 void ui_calculate_standalone_sizes(UI_Manager *manager, Asset_Manager *asset) {
