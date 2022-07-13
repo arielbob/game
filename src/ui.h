@@ -9,6 +9,11 @@
 
 struct UI_Widget;
 
+enum UI_Widget_Axis {
+    UI_WIDGET_X_AXIS = 0,
+    UI_WIDGET_Y_AXIS = 1
+};
+
 enum UI_Size_Type {
     UI_SIZE_NONE,
     UI_SIZE_PERCENTAGE,
@@ -27,6 +32,21 @@ enum UI_Layout_Type {
     UI_LAYOUT_CENTER,
     UI_LAYOUT_HORIZONTAL_SPACE_BETWEEN
 };
+
+struct Vec2_UI_Size_Type {
+    union {
+        UI_Size_Type values[2];
+        struct {
+            UI_Size_Type x;
+            UI_Size_Type y;
+        };
+    };
+    inline UI_Size_Type &operator[](int32 index);
+};
+
+inline UI_Size_Type &Vec2_UI_Size_Type::operator[](int32 index) {
+    return (*this).values[index];
+}
 
 struct Rect {
     real32 x;
@@ -61,7 +81,7 @@ struct UI_Style_Layout_Type {
 };
 
 struct UI_Style_Size_Type {
-    UI_Size_Type type;
+    Vec2_UI_Size_Type type;
     UI_Style_Size_Type *next;
 };
 
@@ -131,7 +151,7 @@ struct UI_Widget {
     char *text;
     
     UI_Layout_Type layout_type;
-    UI_Size_Type size_type;
+    Vec2_UI_Size_Type size_type;
     
     Vec2 semantic_size;
     Vec2 semantic_position;

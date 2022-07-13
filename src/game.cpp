@@ -928,8 +928,19 @@ void draw_test_ui(UI_Manager *ui, Asset_Manager *asset, Display_Output *display_
     ui_push_text_color(ui, { 0.0f, 0.0f, 0.0f, 1.0f });
     ui_push_font(ui, "calibri14");
 
+    #if 0
+    ui_push_background_color(ui, { 1.0f, 1.0f, 1.0f, 1.0f });
+    ui_push_hot_background_color(ui, { 0.7f, 0.7f, 0.7f, 1.0f });
+    ui_push_active_background_color(ui, { 0.5f, 0.5f, 0.5f, 1.0f });
+    ui_push_size(ui, {});
+    if (do_text_button(ui, "Transform", 5.0f, "transform-button")) {
+        debug_print("open transform window clicked\n");
+    }
+    #endif
+
+    
     #if 1
-    ui_push_size_type(ui, UI_SIZE_FIT_CHILDREN);
+    ui_push_size_type(ui, { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN });
     ui_push_layout_type(ui, UI_LAYOUT_VERTICAL);
     ui_push_background_color(ui, { 0.0f, 0.0f, 1.0f, 1.0f });
 
@@ -940,7 +951,7 @@ void draw_test_ui(UI_Manager *ui, Asset_Manager *asset, Display_Output *display_
     ui_push_widget(ui, "", UI_WIDGET_DRAW_BACKGROUND);
     {
         ui_push_size(ui, { 300.0f, 50.0f });
-        ui_push_size_type(ui, UI_SIZE_FIT_CHILDREN);
+        ui_push_size_type(ui, { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN });
         ui_push_layout_type(ui, UI_LAYOUT_CENTER);
         ui_push_widget(ui, make_ui_id("row", 0), 0);
         {
@@ -1020,6 +1031,7 @@ void draw_test_ui(UI_Manager *ui, Asset_Manager *asset, Display_Output *display_
     ui_calculate_standalone_sizes(ui, asset);
     ui_calculate_ancestor_dependent_sizes(ui);
     ui_calculate_child_dependent_sizes(ui);
+    //ui_calculate_ancestor_dependent_sizes_part_2(ui);
     ui_calculate_positions(ui);
 }
 

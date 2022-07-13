@@ -252,7 +252,7 @@ void ui_pop_layout_type(UI_Manager *manager) {
     manager->layout_type_stack = manager->layout_type_stack->next;
 }
 
-void ui_push_size_type(UI_Manager *manager, UI_Size_Type type) {
+void ui_push_size_type(UI_Manager *manager, Vec2_UI_Size_Type type) {
     UI_Style_Size_Type *entry = (UI_Style_Size_Type *) allocate(&manager->frame_arena, sizeof(UI_Style_Size_Type));
 
     entry->type = type;
@@ -337,85 +337,23 @@ UI_Interact_Result ui_interact(UI_Manager *manager, UI_Widget *semantic_widget) 
     return result;
 }
 
-void do_text(UI_Manager *manager, char *text, char *id, uint32 flags, int32 index = 0) {
-    ui_push_size_type(manager, UI_SIZE_FIT_TEXT);
-    //ui_push_background_color(manager, { 1.0f, 0.0f, 0.0f, 1.0f });
-    UI_Widget *text_widget = ui_add_widget(manager, make_ui_id(id, index), UI_WIDGET_DRAW_TEXT);
-    text_widget->text = text;
-    //ui_pop_background_color(manager);
-    ui_pop_size_type(manager);
-}
-
-bool32 do_button(UI_Manager *manager, UI_id id) {
-    UI_Widget *widget = ui_add_widget(manager, id, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
-    UI_Interact_Result interact_result = ui_interact(manager, widget);
+void calculate_standalone_size(Asset_Manager *asset, UI_Widget *widget, UI_Widget_Axis axis) {
+    UI_Size_Type size_type = widget->size_type[axis];
+    real32 axis_semantic_size = widget->semantic_size[axis];
+    real32 *axis_computed_size = &widget->computed_size[axis];
     
-    return interact_result.clicked;
-}
-
-bool32 do_text_button(UI_Manager *manager, char *text, real32 padding, UI_id id) {
-    ui_push_size(manager, {});
-    ui_push_size_type(manager, UI_SIZE_FIT_CHILDREN);
-    ui_push_layout_type(manager, UI_LAYOUT_VERTICAL);
-    UI_Widget *button = ui_push_widget(manager, id,
-                                       UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
-    {
-        ui_push_size(manager, { 0.0f, padding });
-        ui_add_widget(manager, "");
-
-        ui_push_layout_type(manager, UI_LAYOUT_HORIZONTAL);
-        ui_push_widget(manager, "", 0);
-        {
-            // inner row
-            ui_push_size(manager, { padding, 0.0f });
-            ui_add_widget(manager, "");
-            //ui_pop_size_type(manager);
-        
-            ui_push_size_type(manager, UI_SIZE_FIT_TEXT);
-            UI_Widget *text_widget = ui_add_widget(manager, make_ui_id(NULL), UI_WIDGET_DRAW_TEXT);
-            text_widget->text = text;
-            ui_pop_size_type(manager);
-
-            ui_add_widget(manager, "");
-            ui_pop_size(manager);
+    if (size_type == UI_SIZE_ABSOLUTE) {
+        *axis_computed_size = axis_semantic_size;
+    } else if (size_type == UI_SIZE_FIT_TEXT) {
+        Font font = get_font(asset, widget->font);
+        if (axis == UI_WIDGET_X_AXIS) {
+            *axis_computed_size = get_width(font, widget->text);
+        } else {
+            *axis_computed_size = font.height_pixels;
         }
-        ui_pop_widget(manager);
-        ui_pop_layout_type(manager);
-        
-        ui_add_widget(manager, "");
-        ui_pop_size(manager);
+    } else if (size_type == UI_SIZE_FIT_CHILDREN) {
+        *axis_computed_size = axis_semantic_size;
     }
-    ui_pop_widget(manager);
-    ui_pop_size(manager);
-    ui_pop_size_type(manager);
-    ui_pop_layout_type(manager);
-    
-    
-    UI_Interact_Result interact_result = ui_interact(manager, button);
-#if 0
-    ui_pop_size_type(manager);
-    
-    ui_push_size_type(manager, UI_SIZE_FIT_TEXT);
-
-    // TODO: we should probably use a hashing method for storing UI IDs, so that we can generate IDs dynamically.
-    //       right now we just use pointers, which is fine for read-only memory, but if we create new strings,
-    //       then the string addresses will not be consistent.
-    // TODO: scope UI IDs. have a parent UI_id be included in all UI_ids. that way, we can do stuff like this
-    //       without having collisions. actually, i don't think that'll work. try and use a hash. actually,
-    //       i think this is fine, since we always have the parent ID use some unique string.
-    UI_Widget *text_widget = ui_add_widget(manager, make_ui_id("button-text"), UI_WIDGET_DRAW_TEXT);
-    text_widget->text = text;
-
-    ui_pop_layout_type(manager);
-    ui_pop_size_type(manager);
-    ui_pop_widget(manager);
-#endif
-
-    return interact_result.clicked;
-}
-
-inline bool32 do_text_button(UI_Manager *manager, char *text, real32 padding, char *id, int32 index = 0) {
-    return do_text_button(manager, text, padding, make_ui_id(id, index));
 }
 
 void ui_calculate_standalone_sizes(UI_Manager *manager, Asset_Manager *asset) {
@@ -423,15 +361,64 @@ void ui_calculate_standalone_sizes(UI_Manager *manager, Asset_Manager *asset) {
     
     while (true) {
         UI_Widget *parent = current->parent;
-        
-        if (current->size_type == UI_SIZE_ABSOLUTE) {
-            current->computed_size = current->semantic_size;
-        } else if (current->size_type == UI_SIZE_FIT_TEXT) {
-            Font font = get_font(asset, current->font);
-            current->computed_size = { get_width(font, current->text), font.height_pixels };
-        } else if (current->size_type == UI_SIZE_FIT_CHILDREN) {
-            current->computed_size = current->semantic_size;
+
+        calculate_standalone_size(asset, current, UI_WIDGET_X_AXIS);
+        calculate_standalone_size(asset, current, UI_WIDGET_Y_AXIS);
+                
+        if (current->first) {
+            current = current->first;
+        } else {
+            if (current->next) {
+                current = current->next;
+            } else {
+                if (!parent) return;
+
+                UI_Widget *current_ancestor = parent;
+                while (!current_ancestor->next) {
+                    if (!current_ancestor->parent) return; // root
+                    current_ancestor = current_ancestor->parent;
+                }
+
+                current = current_ancestor->next;
+            }
         }
+    }
+}
+
+void calculate_ancestor_dependent_size(UI_Widget *widget, UI_Widget_Axis axis) {
+    UI_Widget *parent = widget->parent;
+
+    UI_Size_Type size_type = widget->size_type[axis];
+    real32 axis_semantic_size = widget->semantic_size[axis];
+    real32 *axis_computed_size = &widget->computed_size[axis];
+    
+    if (size_type == UI_SIZE_PERCENTAGE) {
+        assert(parent); // root node cannot be percentage based
+        if (parent->size_type[axis] == UI_SIZE_PERCENTAGE ||
+            parent->size_type[axis] == UI_SIZE_ABSOLUTE) {
+            // since this is pre-order traversal, the parent should already have a computed size
+            *axis_computed_size = parent->computed_size[axis] * axis_semantic_size;
+        } else {
+            assert(!"UI widgets with percentage based sizing must have absolute or percentage based parents.");
+        }
+    }
+    
+    // we could add an else block here that just sets computed size to semantic size. this could be useful
+    // if we wanted to be able to specify minimum sizes for widgets that use fit_children sizing.
+    // when we compute children based sizes, we do max(parent->computed_size.x current->computed_size.x), so
+    // if we never set it, it'll just take the max child's computed size.
+    // ideally it would be clear if we're using pixels to specify the minimum size or a percentage. that's
+    // why i'm not doing it now, since it might result in unexpected behaviour.
+}
+
+void ui_calculate_ancestor_dependent_sizes(UI_Manager *manager) {
+    UI_Widget *current = manager->root;
+
+    while (true) {
+        UI_Widget *parent = current->parent;
+
+        calculate_ancestor_dependent_size(current, UI_WIDGET_X_AXIS);
+        calculate_ancestor_dependent_size(current, UI_WIDGET_Y_AXIS);
         
         if (current->first) {
             current = current->first;
@@ -453,48 +440,24 @@ void ui_calculate_standalone_sizes(UI_Manager *manager, Asset_Manager *asset) {
     }
 }
 
-void ui_calculate_ancestor_dependent_sizes(UI_Manager *manager) {
-    UI_Widget *current = manager->root;
+void calculate_child_dependent_size(UI_Widget *widget, UI_Widget_Axis axis) {
+    UI_Widget *parent = widget->parent;
 
-    while (true) {
-        UI_Widget *parent = current->parent;
-        
-        if (current->size_type == UI_SIZE_PERCENTAGE) {
-            assert(current->parent); // root node cannot be percentage based
-            if (parent->size_type == UI_SIZE_PERCENTAGE ||
-                parent->size_type == UI_SIZE_ABSOLUTE) {
-                // since this is pre-order traversal, the parent should already have a computed size
-                current->computed_size = {
-                    parent->computed_size.x * current->semantic_size.x,
-                    parent->computed_size.y * current->semantic_size.y
-                };
+    if (parent) {
+        if (parent->size_type[axis] == UI_SIZE_FIT_CHILDREN) {
+            // if the current axis matches with the parent's layout axis, then increase the parent's
+            // size on that axis.
+            bool32 axis_matches_with_parent_layout = ((axis == UI_WIDGET_X_AXIS && parent->layout_type == UI_LAYOUT_HORIZONTAL) ||
+                                                      (axis == UI_WIDGET_Y_AXIS && parent->layout_type == UI_LAYOUT_VERTICAL));
+            if (axis_matches_with_parent_layout) {
+                parent->computed_size[axis] += widget->computed_size[axis];
             } else {
-                assert(!"UI widgets with percentage based sizing must have absolute or percentage based parents.");
+                parent->computed_size[axis] = max(parent->computed_size[axis], widget->computed_size[axis]);
             }
         }
-        // we could add an else block here that just sets computed size to semantic size. this could be useful
-        // if we wanted to be able to specify minimum sizes for widgets that use fit_children sizing.
-        // when we compute children based sizes, we do max(parent->computed_size.x current->computed_size.x), so
-        // if we never set it, it'll just take the max child's computed size.
-        // ideally it would be clear if we're using pixels to specify the minimum size or a percentage. that's
-        // why i'm not doing it now, since it might result in unexpected behaviour.
-        
-        if (current->first) {
-            current = current->first;
-        } else {
-            if (current->next) {
-                current = current->next;
-            } else {
-                if (!parent) return;
 
-                UI_Widget *current_ancestor = parent;
-                while (!current_ancestor->next) {
-                    if (!current_ancestor->parent) return; // root
-                    current_ancestor = current_ancestor->parent;
-                }
-
-                current = current_ancestor->next;
-            }
+        if (axis == UI_WIDGET_X_AXIS && parent->layout_type == UI_LAYOUT_HORIZONTAL_SPACE_BETWEEN) {
+            parent->computed_child_size_sum[axis] += widget->computed_size[axis];
         }
     }
 }
@@ -521,24 +484,8 @@ void ui_calculate_child_dependent_sizes(UI_Manager *manager) {
                 //       size on that same axis. i can't really think of a case where you would want the cross-axis
                 //       size to be smaller than the largest child's on that cross-axis.
 
-                if (parent) {
-                    if (parent->size_type == UI_SIZE_FIT_CHILDREN) {
-                        if (parent->layout_type == UI_LAYOUT_HORIZONTAL) {
-                            parent->computed_size.x += current->computed_size.x;
-                            parent->computed_size.y = max(parent->computed_size.y, current->computed_size.y);
-                        } else if (parent->layout_type == UI_LAYOUT_VERTICAL) {
-                            parent->computed_size.y += current->computed_size.y;
-                            parent->computed_size.x = max(parent->computed_size.x, current->computed_size.x);
-                        } else {
-                            parent->computed_size.x = max(parent->computed_size.x, current->computed_size.x);
-                            parent->computed_size.y = max(parent->computed_size.y, current->computed_size.y);
-                        }
-                    }
-
-                    if (parent->layout_type == UI_LAYOUT_HORIZONTAL_SPACE_BETWEEN) {
-                        parent->computed_child_size_sum.x += current->computed_size.x;
-                    }
-                }
+                calculate_child_dependent_size(current, UI_WIDGET_X_AXIS);
+                calculate_child_dependent_size(current, UI_WIDGET_Y_AXIS);
                 
                 revisiting = false;
             }
@@ -555,6 +502,93 @@ void ui_calculate_child_dependent_sizes(UI_Manager *manager) {
     }
 }
 
+void calculate_ancestor_dependent_sizes_part_2(UI_Widget *widget, UI_Widget_Axis axis) {
+    UI_Widget *parent = widget->parent;
+    
+    if (widget->size_type[axis] == UI_SIZE_PERCENTAGE) {
+        assert(parent); // root node cannot be percentage based
+        widget->computed_size[axis] = parent->computed_size[axis] * widget->semantic_size[axis];
+    }
+}
+
+// since 
+void ui_calculate_ancestor_dependent_sizes_part_2(UI_Manager *manager) {
+    UI_Widget *current = manager->root;
+
+    while (true) {
+        UI_Widget *parent = current->parent;
+
+        calculate_ancestor_dependent_sizes_part_2(current, UI_WIDGET_X_AXIS);
+        calculate_ancestor_dependent_sizes_part_2(current, UI_WIDGET_Y_AXIS);
+        
+        if (current->first) {
+            current = current->first;
+        } else {
+            if (current->next) {
+                current = current->next;
+            } else {
+                if (!parent) return;
+
+                UI_Widget *current_ancestor = parent;
+                while (!current_ancestor->next) {
+                    if (!current_ancestor->parent) return; // root
+                    current_ancestor = current_ancestor->parent;
+                }
+
+                current = current_ancestor->next;
+            }
+        }
+    }
+}
+
+void calculate_position(UI_Widget *widget, UI_Widget_Axis axis) {
+    UI_Widget *parent = widget->parent;
+
+    if (parent) {
+        UI_Widget *prev = widget->prev;
+
+        if (parent->layout_type == UI_LAYOUT_HORIZONTAL) {
+            if (axis == UI_WIDGET_X_AXIS) {
+                if (!prev) {
+                    widget->computed_position[axis] = parent->computed_position[axis];
+                } else {
+                    widget->computed_position[axis] = prev->computed_position[axis] + prev->computed_size[axis];
+                }
+            } else {
+                widget->computed_position[axis] = parent->computed_position[axis];
+            }
+        } else if (parent->layout_type == UI_LAYOUT_VERTICAL) {
+            if (axis == UI_WIDGET_Y_AXIS) {
+                if (!prev) {
+                    widget->computed_position[axis] = parent->computed_position[axis];
+                } else {
+                    widget->computed_position[axis] = prev->computed_position[axis] + prev->computed_size[axis];
+                }
+            } else {
+                widget->computed_position[axis] = parent->computed_position[axis];
+            }
+        } else if (parent->layout_type == UI_LAYOUT_CENTER) {
+            widget->computed_position[axis] = (parent->computed_position[axis] + (parent->computed_size[axis] / 2.0f) -
+                                               (widget->computed_size[axis] / 2.0f));
+        } else if (parent->layout_type == UI_LAYOUT_HORIZONTAL_SPACE_BETWEEN) {
+            if (axis == UI_WIDGET_X_AXIS) {
+                real32 d = (parent->computed_size.x - parent->computed_child_size_sum.x) / (parent->num_children - 1);
+                if (prev) {
+                    widget->computed_position.x = prev->computed_position.x + prev->computed_size.x + d;
+                } else {
+                    widget->computed_position[axis] = parent->computed_position[axis];
+                }
+            } else {
+                widget->computed_position[axis] = parent->computed_position[axis];
+            }
+        } else {
+            widget->computed_position[axis] = widget->semantic_position[axis];
+        }
+    } else {
+        widget->computed_position[axis] = widget->semantic_position[axis];
+    }
+}
+
 void ui_calculate_positions(UI_Manager *manager) {
     UI_Widget *current = manager->root;
 
@@ -563,45 +597,8 @@ void ui_calculate_positions(UI_Manager *manager) {
     while (true) {
         UI_Widget *parent = current->parent;
         
-        if (parent) {
-            UI_Widget *prev = current->prev;
-
-            if (parent->layout_type == UI_LAYOUT_HORIZONTAL) {
-                current->computed_position.y = parent->computed_position.y;
-                
-                if (!prev) {
-                    current->computed_position.x = parent->computed_position.x;
-                } else {
-                    current->computed_position.x = prev->computed_position.x + prev->computed_size.x;
-                }
-            } else if (parent->layout_type == UI_LAYOUT_VERTICAL) {
-                current->computed_position.x = parent->computed_position.x;
-                
-                if (!prev) {
-                    current->computed_position.y = parent->computed_position.y;
-                } else {
-                    current->computed_position.y = prev->computed_position.y + prev->computed_size.y;
-                }
-            } else if (parent->layout_type == UI_LAYOUT_CENTER) {
-                real32 x = (parent->computed_position.x + (parent->computed_size.x / 2.0f) -
-                            (current->computed_size.x / 2.0f));
-                real32 y = (parent->computed_position.y + (parent->computed_size.y / 2.0f) -
-                            (current->computed_size.y / 2.0f));
-
-                current->computed_position = { x, y };
-            } else if (parent->layout_type == UI_LAYOUT_HORIZONTAL_SPACE_BETWEEN) {
-                current->computed_position = parent->computed_position;
-
-                real32 d = (parent->computed_size.x - parent->computed_child_size_sum.x) / (parent->num_children - 1);
-                if (prev) {
-                    current->computed_position.x = prev->computed_position.x + prev->computed_size.x + d;
-                }
-            } else {
-                current->computed_position = current->semantic_position;
-            }
-        } else {
-            current->computed_position = current->semantic_position;
-        }
+        calculate_position(current, UI_WIDGET_X_AXIS);
+        calculate_position(current, UI_WIDGET_Y_AXIS);
         
         if (current->first) {
             current = current->first;
@@ -654,7 +651,7 @@ void ui_init(Arena_Allocator *arena, UI_Manager *manager) {
 void ui_frame_init(UI_Manager *manager, Display_Output *display_output) {
     ui_push_position(manager, { 0.0f, 0.0f });
     ui_push_layout_type(manager, UI_LAYOUT_NONE);
-    ui_push_size_type(manager, UI_SIZE_ABSOLUTE);
+    ui_push_size_type(manager, { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE });
     ui_push_size(manager, { (real32) display_output->width, (real32) display_output->height });
 
     UI_Widget *widget = make_widget(manager, make_ui_id("root"), 0);
@@ -762,3 +759,94 @@ inline real32 get_center_baseline_offset(real32 container_height, real32 text_he
 inline real32 get_center_y_offset(real32 height, real32 box_height) {
     return 0.5f * (height - box_height);
 }
+
+
+
+// COMPOUND WIDGETS
+
+void do_text(UI_Manager *manager, char *text, char *id, uint32 flags, int32 index = 0) {
+    ui_push_size_type(manager, { UI_SIZE_FIT_TEXT, UI_SIZE_FIT_TEXT });
+    //ui_push_background_color(manager, { 1.0f, 0.0f, 0.0f, 1.0f });
+    UI_Widget *text_widget = ui_add_widget(manager, make_ui_id(id, index), UI_WIDGET_DRAW_TEXT);
+    text_widget->text = text;
+    //ui_pop_background_color(manager);
+    ui_pop_size_type(manager);
+}
+
+bool32 do_button(UI_Manager *manager, UI_id id) {
+    UI_Widget *widget = ui_add_widget(manager, id, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
+    UI_Interact_Result interact_result = ui_interact(manager, widget);
+    
+    return interact_result.clicked;
+}
+
+bool32 do_text_button(UI_Manager *manager, char *text, real32 padding, UI_id id) {
+    ui_push_size(manager, {});
+    ui_push_size_type(manager, { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN });
+    ui_push_layout_type(manager, UI_LAYOUT_VERTICAL);
+    UI_Widget *button = ui_push_widget(manager, id,
+                                       UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
+    {
+        ui_push_size(manager, { 0.0f, padding });
+        ui_add_widget(manager, "");
+
+        ui_push_layout_type(manager, UI_LAYOUT_HORIZONTAL);
+        ui_push_widget(manager, "", 0);
+        {
+            // inner row
+            ui_push_size(manager, { padding, 0.0f });
+            ui_add_widget(manager, "");
+            //ui_pop_size_type(manager);
+        
+            ui_push_size_type(manager, { UI_SIZE_FIT_TEXT, UI_SIZE_FIT_TEXT });
+            UI_Widget *text_widget = ui_add_widget(manager, make_ui_id(NULL), UI_WIDGET_DRAW_TEXT);
+            text_widget->text = text;
+            ui_pop_size_type(manager);
+
+            ui_add_widget(manager, "");
+            ui_pop_size(manager);
+        }
+        ui_pop_widget(manager);
+        ui_pop_layout_type(manager);
+        
+        ui_add_widget(manager, "");
+        ui_pop_size(manager);
+    }
+    ui_pop_widget(manager);
+    ui_pop_layout_type(manager);
+    ui_pop_size_type(manager);
+    ui_pop_size(manager);
+    
+    
+    UI_Interact_Result interact_result = ui_interact(manager, button);
+#if 0
+    ui_pop_size_type(manager);
+    
+    ui_push_size_type(manager, UI_SIZE_FIT_TEXT);
+
+    // TODO: we should probably use a hashing method for storing UI IDs, so that we can generate IDs dynamically.
+    //       right now we just use pointers, which is fine for read-only memory, but if we create new strings,
+    //       then the string addresses will not be consistent.
+    // TODO: scope UI IDs. have a parent UI_id be included in all UI_ids. that way, we can do stuff like this
+    //       without having collisions. actually, i don't think that'll work. try and use a hash. actually,
+    //       i think this is fine, since we always have the parent ID use some unique string.
+    UI_Widget *text_widget = ui_add_widget(manager, make_ui_id("button-text"), UI_WIDGET_DRAW_TEXT);
+    text_widget->text = text;
+
+    ui_pop_layout_type(manager);
+    ui_pop_size_type(manager);
+    ui_pop_widget(manager);
+#endif
+
+    return interact_result.clicked;
+}
+
+inline bool32 do_text_button(UI_Manager *manager, char *text, real32 padding, char *id, int32 index = 0) {
+    return do_text_button(manager, text, padding, make_ui_id(id, index));
+}
+
+#if 0
+void do_window(UI_Manager *manager, char *text, char *id, int32 index = 0) {
+    ui_push_widget(manager, 
+}
+        #endif
