@@ -166,10 +166,7 @@ UI_Widget *ui_add_widget(UI_Manager *manager, char *id_string_ptr, uint32 flags 
     return ui_add_widget(manager, make_ui_id(id_string_ptr), flags);
 }
 
-UI_Widget *ui_push_widget(UI_Manager *manager, UI_id id, uint32 flags) {
-    UI_Widget *widget = make_widget(manager, id, flags);
-    ui_add_widget(manager, widget);
-
+UI_Widget *ui_push_widget(UI_Manager *manager, UI_Widget *widget) {
     // push to the stack
     UI_Stack_Widget *entry = (UI_Stack_Widget *) allocate(&manager->frame_arena, sizeof(UI_Stack_Widget));
 
@@ -179,6 +176,13 @@ UI_Widget *ui_push_widget(UI_Manager *manager, UI_id id, uint32 flags) {
     manager->widget_stack = entry;
 
     return widget;
+}
+
+UI_Widget *ui_push_widget(UI_Manager *manager, UI_id id, uint32 flags) {
+    UI_Widget *widget = make_widget(manager, id, flags);
+    ui_add_widget(manager, widget);
+
+    return ui_push_widget(manager, widget);
 }
 
 UI_Widget *ui_push_widget(UI_Manager *manager, char *id_string_ptr, uint32 flags) {
@@ -271,9 +275,19 @@ void ui_pop_size(UI_Manager *manager) {
     manager->size_stack = manager->size_stack->next;
 }
 
+void ui_pop_position(UI_Manager *manager) {
+    assert(manager->position_stack);
+    manager->position_stack = manager->position_stack->next;
+}
+
 void ui_pop_background_color(UI_Manager *manager) {
     assert(manager->background_color_stack);
     manager->background_color_stack = manager->background_color_stack->next;
+}
+
+void ui_pop_text_color(UI_Manager *manager) {
+    assert(manager->text_color_stack);
+    manager->text_color_stack = manager->text_color_stack->next;
 }
 
 void ui_push_text_color(UI_Manager *manager, Vec4 color) {
@@ -398,8 +412,6 @@ void calculate_ancestor_dependent_size(UI_Widget *widget, UI_Widget_Axis axis) {
             parent->size_type[axis] == UI_SIZE_ABSOLUTE) {
             // since this is pre-order traversal, the parent should already have a computed size
             *axis_computed_size = parent->computed_size[axis] * axis_semantic_size;
-        } else {
-            assert(!"UI widgets with percentage based sizing must have absolute or percentage based parents.");
         }
     }
     
@@ -444,7 +456,11 @@ void calculate_child_dependent_size(UI_Widget *widget, UI_Widget_Axis axis) {
     UI_Widget *parent = widget->parent;
 
     if (parent) {
-        if (parent->size_type[axis] == UI_SIZE_FIT_CHILDREN) {
+        // we also check percentage since if the parent of the percentage based widget is FIT_CHILDREN,
+        // we need to bubble up the child width to the FIT_CHILDREN widget. we do this by setting the
+        // percentage based computed size as if it were a FIT_CHILDREN widget. this computed size will be
+        // overwritten later to be based on its parent's size.
+        if (parent->size_type[axis] == UI_SIZE_FIT_CHILDREN || parent->size_type[axis] == UI_SIZE_PERCENTAGE) {
             // if the current axis matches with the parent's layout axis, then increase the parent's
             // size on that axis.
             bool32 axis_matches_with_parent_layout = ((axis == UI_WIDGET_X_AXIS && parent->layout_type == UI_LAYOUT_HORIZONTAL) ||
@@ -511,7 +527,10 @@ void calculate_ancestor_dependent_sizes_part_2(UI_Widget *widget, UI_Widget_Axis
     }
 }
 
-// since 
+// this is to resolve percentage widths that are children of components that have child-dependent sizes
+// for example, if the parent of a percentage width widget is a FIT_CHILDREN widget, then we have to wait
+// until the parent widget has a computed width, then we can set the computed width of the percantage
+// based widget.
 void ui_calculate_ancestor_dependent_sizes_part_2(UI_Manager *manager) {
     UI_Widget *current = manager->root;
 
@@ -764,10 +783,10 @@ inline real32 get_center_y_offset(real32 height, real32 box_height) {
 
 // COMPOUND WIDGETS
 
-void do_text(UI_Manager *manager, char *text, char *id, uint32 flags, int32 index = 0) {
+void do_text(UI_Manager *manager, char *text, char *id, uint32 flags = 0, int32 index = 0) {
     ui_push_size_type(manager, { UI_SIZE_FIT_TEXT, UI_SIZE_FIT_TEXT });
     //ui_push_background_color(manager, { 1.0f, 0.0f, 0.0f, 1.0f });
-    UI_Widget *text_widget = ui_add_widget(manager, make_ui_id(id, index), UI_WIDGET_DRAW_TEXT);
+    UI_Widget *text_widget = ui_add_widget(manager, make_ui_id(id, index), UI_WIDGET_DRAW_TEXT | flags);
     text_widget->text = text;
     //ui_pop_background_color(manager);
     ui_pop_size_type(manager);
@@ -845,8 +864,48 @@ inline bool32 do_text_button(UI_Manager *manager, char *text, real32 padding, ch
     return do_text_button(manager, text, padding, make_ui_id(id, index));
 }
 
-#if 0
+// TODO: this should be push_window and should move all the popping calls to a pop_window procedure
 void do_window(UI_Manager *manager, char *text, char *id, int32 index = 0) {
-    ui_push_widget(manager, 
-}
+    ui_push_widget(manager, manager->root);
+    ui_push_position(manager, { 200.0f, 200.0f });
+    
+    ui_push_size(manager, {});
+    ui_push_layout_type(manager, UI_LAYOUT_VERTICAL);
+    ui_push_size_type(manager, { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN });
+    //ui_push_size_type(manager, { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE });
+
+    ui_push_text_color(manager, { 1.0f, 1.0f, 1.0f, 1.0f });
+    #if 1
+    ui_push_widget(manager, id, UI_WIDGET_DRAW_BACKGROUND);
+    {
+        #if 1
+        ui_push_size_type(manager, { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN });
+        ui_push_size(manager, { 1.0f, 20.0f });
+        ui_push_layout_type(manager, UI_LAYOUT_CENTER);
+        ui_push_background_color(manager, { 1.0f, 0.0f, 0.0f, 1.0f });
+
+        ui_push_widget(manager, "", UI_WIDGET_DRAW_BACKGROUND);
+        do_text(manager, text, "");
+        ui_pop_widget(manager);
+
+        ui_pop_background_color(manager);
+        
+        ui_push_size(manager, { 200.0f, 200.0f });
+        ui_push_size_type(manager, { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE });
+        ui_push_widget(manager, "", UI_WIDGET_DRAW_BACKGROUND);
+        {
+        }
+        ui_pop_size(manager);
+        ui_pop_size_type(manager);
+        ui_pop_size(manager);
+        ui_pop_layout_type(manager);
+        ui_pop_size_type(manager);
         #endif
+    }
+    ui_pop_widget(manager);
+    #endif
+    ui_pop_text_color(manager);
+
+    ui_pop_position(manager);
+    ui_pop_widget(manager);
+}

@@ -987,7 +987,8 @@ void draw_test_ui(UI_Manager *ui, Asset_Manager *asset, Display_Output *display_
     }
     ui_pop_widget(ui);
     #endif
-    
+
+    do_window(ui, "Window Name", "window-test");
     
 
     #if 0
@@ -1031,7 +1032,7 @@ void draw_test_ui(UI_Manager *ui, Asset_Manager *asset, Display_Output *display_
     ui_calculate_standalone_sizes(ui, asset);
     ui_calculate_ancestor_dependent_sizes(ui);
     ui_calculate_child_dependent_sizes(ui);
-    //ui_calculate_ancestor_dependent_sizes_part_2(ui);
+    ui_calculate_ancestor_dependent_sizes_part_2(ui);
     ui_calculate_positions(ui);
 }
 
