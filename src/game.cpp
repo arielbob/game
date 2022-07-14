@@ -96,6 +96,10 @@ inline bool32 just_lifted(Controller_Button_State button_state) {
     return (!button_state.is_down && button_state.was_down);
 }
 
+inline Vec2 get_mouse_delta() {
+    return (Context::controller_state->current_mouse - Context::controller_state->last_mouse);
+}
+
 Vec3 cursor_pos_to_world_space(Vec2 cursor_pos, Render_State *render_state) {
     Display_Output display_output = render_state->display_output;
     
@@ -488,8 +492,8 @@ void init_game(Game_State *game_state,
     transform.scale = make_vec3(1.0f, 0.5f, 1.0f);
 
     // init ui state
-    UI_Manager *ui_manager = &game_state->ui_manager;
-    ui_init(&memory.ui_arena, ui_manager);
+    ui_manager = &game_state->ui_manager;
+    ui_init(&memory.ui_arena);
     #if 0
     UI_Push_Buffer ui_push_buffer = {};
     ui_push_buffer.size = MEGABYTES(1);
@@ -501,8 +505,6 @@ void init_game(Game_State *game_state,
     ui_manager->state_table = make_hash_table<UI_id, UI_Element_State *>((Allocator *) &memory.hash_table_stack,
                                                                          HASH_TABLE_SIZE, &ui_id_equals);
     #endif
-    Context::ui_manager = ui_manager;
-
     game_state->is_initted = true;
 
     Normal_Entity test_entity = {};
@@ -922,118 +924,118 @@ void update_game(Game_State *game_state, Controller_State *controller_state, Sou
     update_render_state(&game_state->render_state, game_state->camera);
 }
 
-void draw_test_ui(UI_Manager *ui, Asset_Manager *asset, Display_Output *display_output) {
-    ui_frame_init(ui, display_output);
+void draw_test_ui(Asset_Manager *asset, Display_Output *display_output) {
+    ui_frame_init(display_output);
 
-    ui_push_text_color(ui, { 0.0f, 0.0f, 0.0f, 1.0f });
-    ui_push_font(ui, "calibri14");
+    ui_push_text_color({ 0.0f, 0.0f, 0.0f, 1.0f });
+    ui_push_font("calibri14");
 
     #if 0
-    ui_push_background_color(ui, { 1.0f, 1.0f, 1.0f, 1.0f });
-    ui_push_hot_background_color(ui, { 0.7f, 0.7f, 0.7f, 1.0f });
-    ui_push_active_background_color(ui, { 0.5f, 0.5f, 0.5f, 1.0f });
-    ui_push_size(ui, {});
-    if (do_text_button(ui, "Transform", 5.0f, "transform-button")) {
+    ui_push_background_color({ 1.0f, 1.0f, 1.0f, 1.0f });
+    ui_push_hot_background_color({ 0.7f, 0.7f, 0.7f, 1.0f });
+    ui_push_active_background_color({ 0.5f, 0.5f, 0.5f, 1.0f });
+    ui_push_size({});
+    if (do_text_button("Transform", 5.0f, "transform-button")) {
         debug_print("open transform window clicked\n");
     }
     #endif
 
     
     #if 1
-    ui_push_size_type(ui, { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN });
-    ui_push_layout_type(ui, UI_LAYOUT_VERTICAL);
-    ui_push_background_color(ui, { 0.0f, 0.0f, 1.0f, 1.0f });
+    ui_push_size_type({ UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN });
+    ui_push_layout_type(UI_LAYOUT_VERTICAL);
+    ui_push_background_color({ 0.0f, 0.0f, 1.0f, 1.0f });
 
     // TODO: maybe do push_width and push_height?
-    ui_push_size(ui, { 300.0f, 0.0f });
-    ui_push_position(ui, { 10.0f, 10.0f });
+    ui_push_size({ 300.0f, 0.0f });
+    ui_push_position({ 10.0f, 10.0f });
     
-    ui_push_widget(ui, "", UI_WIDGET_DRAW_BACKGROUND);
+    ui_push_widget("", UI_WIDGET_DRAW_BACKGROUND);
     {
-        ui_push_size(ui, { 300.0f, 50.0f });
-        ui_push_size_type(ui, { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN });
-        ui_push_layout_type(ui, UI_LAYOUT_CENTER);
-        ui_push_widget(ui, make_ui_id("row", 0), 0);
+        ui_push_size({ 300.0f, 50.0f });
+        ui_push_size_type({ UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN });
+        ui_push_layout_type(UI_LAYOUT_CENTER);
+        ui_push_widget(make_ui_id("row", 0), 0);
         {
-            do_text(ui, "Entity Properties", "entity-properties-text", 0);
+            do_text("Entity Properties", "entity-properties-text", 0);
         }
-        ui_pop_widget(ui);
-        ui_pop_size(ui);
-        ui_pop_layout_type(ui);
+        ui_pop_widget();
+        ui_pop_size();
+        ui_pop_layout_type();
 
-        //ui_push_background_color(ui, { 1.0f, 1.0f, 1.0f, 1.0f });
-        //ui_push_size_type(ui, UI_SIZE_ABSOLUTE);
+        //ui_push_background_color({ 1.0f, 1.0f, 1.0f, 1.0f });
+        //ui_push_size_type(UI_SIZE_ABSOLUTE);
         // TODO: add per axis size types, so we can set width to be absolute, but height to fit children
-        ui_push_layout_type(ui, UI_LAYOUT_HORIZONTAL_SPACE_BETWEEN);
-        ui_push_widget(ui, "", UI_WIDGET_DRAW_BACKGROUND);
+        ui_push_layout_type(UI_LAYOUT_HORIZONTAL_SPACE_BETWEEN);
+        ui_push_widget("", UI_WIDGET_DRAW_BACKGROUND);
         {
-            ui_push_background_color(ui, { 1.0f, 1.0f, 1.0f, 1.0f });
-            ui_push_hot_background_color(ui, { 0.7f, 0.7f, 0.7f, 1.0f });
-            ui_push_active_background_color(ui, { 0.5f, 0.5f, 0.5f, 1.0f });
-            ui_push_size(ui, {});
-            if (do_text_button(ui, "Transform", 5.0f, "transform-button")) {
+            ui_push_background_color({ 1.0f, 1.0f, 1.0f, 1.0f });
+            ui_push_hot_background_color({ 0.7f, 0.7f, 0.7f, 1.0f });
+            ui_push_active_background_color({ 0.5f, 0.5f, 0.5f, 1.0f });
+            ui_push_size({});
+            if (do_text_button("Transform", 5.0f, "transform-button")) {
                 debug_print("open transform window clicked\n");
             }
 
-            do_text_button(ui, "some text", 5.0f, "some-text2");
-            //do_text(ui, "middle", "mid-text", UI_WIDGET_DRAW_BACKGROUND);
+            do_text_button("some text", 5.0f, "some-text2");
+            //do_text("middle", "mid-text", UI_WIDGET_DRAW_BACKGROUND);
 
-            do_text_button(ui, "some text", 5.0f, "some-text3");
-            //do_text(ui, "more text", "more-text", UI_WIDGET_DRAW_BACKGROUND);
-            ui_pop_size(ui);
-            ui_pop_background_color(ui);
+            do_text_button("some text", 5.0f, "some-text3");
+            //do_text("more text", "more-text", UI_WIDGET_DRAW_BACKGROUND);
+            ui_pop_size();
+            ui_pop_background_color();
         }
-        ui_pop_widget(ui);
+        ui_pop_widget();
     }
-    ui_pop_widget(ui);
+    ui_pop_widget();
     #endif
 
-    do_window(ui, "Window Name", "window-test");
+    do_window("Window Name", "window-test");
     
 
     #if 0
-    ui_push_size_type(ui, UI_SIZE_ABSOLUTE);
-    ui_push_size(ui, { 200.0f, 20.0f });
-    ui_push_background_color(ui, { 1.0f, 0.0f, 0.0f, 1.0f });
-    ui_push_hot_background_color(ui, { 1.0f, 0.5f, 0.5f, 1.0f });
-    ui_push_active_background_color(ui, { 0.5f, 0.0f, 0.0f, 1.0f });
-    bool32 clicked = do_text_button(ui, make_ui_id("test"), "hello");
+    ui_push_size_type(UI_SIZE_ABSOLUTE);
+    ui_push_size({ 200.0f, 20.0f });
+    ui_push_background_color({ 1.0f, 0.0f, 0.0f, 1.0f });
+    ui_push_hot_background_color({ 1.0f, 0.5f, 0.5f, 1.0f });
+    ui_push_active_background_color({ 0.5f, 0.0f, 0.0f, 1.0f });
+    bool32 clicked = do_text_button(make_ui_id("test"), "hello");
 
-    ui_push_size(ui, { 50.0f, 50.0f });
-    ui_push_background_color(ui, { 0.0f, 0.0f, 1.0f, 1.0f });
-    ui_push_hot_background_color(ui, { 0.5f, 0.5f, 1.0f, 1.0f });
-    ui_push_active_background_color(ui, { 0.0f, 0.0f, 0.5f, 1.0f });
-    clicked = do_text_button(ui, make_ui_id("test2"), "hello2");
-    //ui_add_widget(ui, make_ui_id("test2"), UI_WIDGET_DRAW_BACKGROUND);
+    ui_push_size({ 50.0f, 50.0f });
+    ui_push_background_color({ 0.0f, 0.0f, 1.0f, 1.0f });
+    ui_push_hot_background_color({ 0.5f, 0.5f, 1.0f, 1.0f });
+    ui_push_active_background_color({ 0.0f, 0.0f, 0.5f, 1.0f });
+    clicked = do_text_button(make_ui_id("test2"), "hello2");
+    //ui_add_widget(make_ui_id("test2"), UI_WIDGET_DRAW_BACKGROUND);
 
-    ui_push_size(ui, { 100.0f, 80.0f });
-    ui_push_background_color(ui, { 0.0f, 1.0f, 0.0f, 1.0f });
-    ui_push_hot_background_color(ui, { 0.5f, 1.0f, 0.5f, 1.0f });
-    ui_push_active_background_color(ui, { 0.0f, 0.5f, 0.0f, 1.0f });
-    //ui_add_widget(ui, make_ui_id("test3"), UI_WIDGET_DRAW_BACKGROUND);
-    clicked = do_text_button(ui, make_ui_id("test3"), "HELLO WORLD");
+    ui_push_size({ 100.0f, 80.0f });
+    ui_push_background_color({ 0.0f, 1.0f, 0.0f, 1.0f });
+    ui_push_hot_background_color({ 0.5f, 1.0f, 0.5f, 1.0f });
+    ui_push_active_background_color({ 0.0f, 0.5f, 0.0f, 1.0f });
+    //ui_add_widget(make_ui_id("test3"), UI_WIDGET_DRAW_BACKGROUND);
+    clicked = do_text_button(make_ui_id("test3"), "HELLO WORLD");
 
-    ui_pop_widget(ui);
+    ui_pop_widget();
 
-    ui_push_widget(ui, make_ui_id("row2"), 0);
+    ui_push_widget(make_ui_id("row2"), 0);
     
-    ui_push_size_type(ui, UI_SIZE_FIT_CHILDREN);
-    ui_push_background_color(ui, { 1.0f, 1.0f, 1.0f, 1.0f });
-    ui_push_hot_background_color(ui, { 0.7f, 0.7f, 0.7f, 1.0f });
-    ui_push_active_background_color(ui, { 0.5f, 0.5f, 0.5f, 1.0f });
+    ui_push_size_type(UI_SIZE_FIT_CHILDREN);
+    ui_push_background_color({ 1.0f, 1.0f, 1.0f, 1.0f });
+    ui_push_hot_background_color({ 0.7f, 0.7f, 0.7f, 1.0f });
+    ui_push_active_background_color({ 0.5f, 0.5f, 0.5f, 1.0f });
 
-    do_text_button(ui, make_ui_id("1"), "button 1");
-    do_text_button(ui, make_ui_id("2"), "button 2");
-    do_text_button(ui, make_ui_id("3"), "button 3");
+    do_text_button(make_ui_id("1"), "button 1");
+    do_text_button(make_ui_id("2"), "button 2");
+    do_text_button(make_ui_id("3"), "button 3");
 
-    ui_pop_widget(ui);
+    ui_pop_widget();
     #endif
 
-    ui_calculate_standalone_sizes(ui, asset);
-    ui_calculate_ancestor_dependent_sizes(ui);
-    ui_calculate_child_dependent_sizes(ui);
-    ui_calculate_ancestor_dependent_sizes_part_2(ui);
-    ui_calculate_positions(ui);
+    ui_calculate_standalone_sizes(asset);
+    ui_calculate_ancestor_dependent_sizes();
+    ui_calculate_child_dependent_sizes();
+    ui_calculate_ancestor_dependent_sizes_part_2();
+    ui_calculate_positions();
 }
 
 void update(Game_State *game_state,
@@ -1083,7 +1085,6 @@ void update(Game_State *game_state,
         }
     }
 
-    UI_Manager *ui_manager = &game_state->ui_manager;
     Render_State *render_state = &game_state->render_state;
 
     ui_manager->last_frame_active = ui_manager->active;
@@ -1103,7 +1104,7 @@ void update(Game_State *game_state,
     }
 
     // TODO: walk through this in the debugger
-    draw_test_ui(ui_manager, asset_manager, display_output);
+    draw_test_ui(asset_manager, display_output);
     
     Player *player = &game_state->player;
 

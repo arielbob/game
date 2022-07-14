@@ -1,47 +1,47 @@
 #include "ui.h"
 
-UI_Widget *make_widget(UI_Manager *manager, UI_id id, uint32 flags) {
-    UI_Widget *widget = (UI_Widget *) allocate(&manager->frame_arena, sizeof(UI_Widget));
+UI_Widget *make_widget(UI_id id, uint32 flags) {
+    UI_Widget *widget = (UI_Widget *) allocate(&ui_manager->frame_arena, sizeof(UI_Widget));
 
     *widget = {};
     widget->id = id;
     widget->flags = flags;
 
     // TODO: just have initial values for these, so we don't have to do these checks
-    if (manager->background_color_stack) {
-        widget->background_color = manager->background_color_stack->background_color;
+    if (ui_manager->background_color_stack) {
+        widget->background_color = ui_manager->background_color_stack->background_color;
     }
 
-    if (manager->hot_background_color_stack) {
-        widget->hot_background_color = manager->hot_background_color_stack->background_color;
+    if (ui_manager->hot_background_color_stack) {
+        widget->hot_background_color = ui_manager->hot_background_color_stack->background_color;
     }
 
-    if (manager->active_background_color_stack) {
-        widget->active_background_color = manager->active_background_color_stack->background_color;
+    if (ui_manager->active_background_color_stack) {
+        widget->active_background_color = ui_manager->active_background_color_stack->background_color;
     }
     
-    if (manager->size_stack) {
-        widget->semantic_size = manager->size_stack->size;
+    if (ui_manager->size_stack) {
+        widget->semantic_size = ui_manager->size_stack->size;
     }
 
-    if (manager->position_stack) {
-        widget->semantic_position = manager->position_stack->position;
+    if (ui_manager->position_stack) {
+        widget->semantic_position = ui_manager->position_stack->position;
     }
 
-    if (manager->layout_type_stack) {
-        widget->layout_type = manager->layout_type_stack->type;
+    if (ui_manager->layout_type_stack) {
+        widget->layout_type = ui_manager->layout_type_stack->type;
     }
     
-    if (manager->size_type_stack) {
-        widget->size_type = manager->size_type_stack->type;
+    if (ui_manager->size_type_stack) {
+        widget->size_type = ui_manager->size_type_stack->type;
     }
 
-    if (manager->font_stack) {
-        widget->font = manager->font_stack->font;
+    if (ui_manager->font_stack) {
+        widget->font = ui_manager->font_stack->font;
     }
     
-    if (manager->text_color_stack) {
-        widget->text_color = manager->text_color_stack->color;
+    if (ui_manager->text_color_stack) {
+        widget->text_color = ui_manager->text_color_stack->color;
     }
     
     return widget;
@@ -127,10 +127,10 @@ void ui_table_clear(UI_Widget **table) {
     }
 }
 
-UI_Widget *ui_add_widget(UI_Manager *manager, UI_Widget *widget) {
-    assert(manager->widget_stack); // ui should be initted with a root node (call ui_frame_init)
+UI_Widget *ui_add_widget(UI_Widget *widget) {
+    assert(ui_manager->widget_stack); // ui should be initted with a root node (call ui_frame_init)
     
-    UI_Widget *parent = manager->widget_stack->widget;
+    UI_Widget *parent = ui_manager->widget_stack->widget;
     widget->id.parent_string_ptr = parent->id.string_ptr;
     widget->id.parent_index      = parent->id.index;
     widget->parent = parent;
@@ -146,7 +146,7 @@ UI_Widget *ui_add_widget(UI_Manager *manager, UI_Widget *widget) {
         parent->last = widget;
     }
 
-    ui_table_add(manager->widget_table, widget);
+    ui_table_add(ui_manager->widget_table, widget);
 
     return widget;
 }
@@ -155,165 +155,165 @@ UI_Widget *ui_add_widget(UI_Manager *manager, UI_Widget *widget) {
 //       ui_push_widget also adds the widget to the widget stack, so that next calls to ui_add_widget or
 //       ui_push_widget will have their widget added as a child of the widget at the top of the widget
 //       stack.
-UI_Widget *ui_add_widget(UI_Manager *manager, UI_id id, uint32 flags) {
-    UI_Widget *widget = make_widget(manager, id, flags);
-    ui_add_widget(manager, widget);
+UI_Widget *ui_add_widget(UI_id id, uint32 flags) {
+    UI_Widget *widget = make_widget(id, flags);
+    ui_add_widget(widget);
 
     return widget;
 }
 
-UI_Widget *ui_add_widget(UI_Manager *manager, char *id_string_ptr, uint32 flags = 0) {
-    return ui_add_widget(manager, make_ui_id(id_string_ptr), flags);
+UI_Widget *ui_add_widget(char *id_string_ptr, uint32 flags = 0) {
+    return ui_add_widget(make_ui_id(id_string_ptr), flags);
 }
 
-UI_Widget *ui_push_widget(UI_Manager *manager, UI_Widget *widget) {
+UI_Widget *ui_push_widget(UI_Widget *widget) {
     // push to the stack
-    UI_Stack_Widget *entry = (UI_Stack_Widget *) allocate(&manager->frame_arena, sizeof(UI_Stack_Widget));
+    UI_Stack_Widget *entry = (UI_Stack_Widget *) allocate(&ui_manager->frame_arena, sizeof(UI_Stack_Widget));
 
     entry->widget = widget;
-    entry->next = manager->widget_stack;
+    entry->next = ui_manager->widget_stack;
     
-    manager->widget_stack = entry;
+    ui_manager->widget_stack = entry;
 
     return widget;
 }
 
-UI_Widget *ui_push_widget(UI_Manager *manager, UI_id id, uint32 flags) {
-    UI_Widget *widget = make_widget(manager, id, flags);
-    ui_add_widget(manager, widget);
+UI_Widget *ui_push_widget(UI_id id, uint32 flags) {
+    UI_Widget *widget = make_widget(id, flags);
+    ui_add_widget(widget);
 
-    return ui_push_widget(manager, widget);
+    return ui_push_widget(widget);
 }
 
-UI_Widget *ui_push_widget(UI_Manager *manager, char *id_string_ptr, uint32 flags) {
-    return ui_push_widget(manager, make_ui_id(id_string_ptr), flags);
+UI_Widget *ui_push_widget(char *id_string_ptr, uint32 flags) {
+    return ui_push_widget(make_ui_id(id_string_ptr), flags);
 }
 
-void ui_pop_widget(UI_Manager *manager) {
-    assert(manager->widget_stack);
-    manager->widget_stack = manager->widget_stack->next;
+void ui_pop_widget() {
+    assert(ui_manager->widget_stack);
+    ui_manager->widget_stack = ui_manager->widget_stack->next;
 }
 
 // TODO: layout types, and calculating positions (should be done after size calculations)
 // TODO: stack popping procedures
 
-void ui_push_position(UI_Manager *manager, Vec2 position) {
-    UI_Style_Position *entry = (UI_Style_Position *) allocate(&manager->frame_arena, sizeof(UI_Style_Position));
+void ui_push_position(Vec2 position) {
+    UI_Style_Position *entry = (UI_Style_Position *) allocate(&ui_manager->frame_arena, sizeof(UI_Style_Position));
 
     entry->position = position;
-    entry->next = manager->position_stack;
+    entry->next = ui_manager->position_stack;
     
-    manager->position_stack = entry;
+    ui_manager->position_stack = entry;
 }
 
-void ui_push_size(UI_Manager *manager, Vec2 size) {
-    UI_Style_Size *entry = (UI_Style_Size *) allocate(&manager->frame_arena, sizeof(UI_Style_Size));
+void ui_push_size(Vec2 size) {
+    UI_Style_Size *entry = (UI_Style_Size *) allocate(&ui_manager->frame_arena, sizeof(UI_Style_Size));
 
     entry->size = size;
-    entry->next = manager->size_stack;
+    entry->next = ui_manager->size_stack;
     
-    manager->size_stack = entry;
+    ui_manager->size_stack = entry;
 }
 
-void ui_push_background_color(UI_Manager *manager, Vec4 color) {
-    UI_Style_BG_Color *entry = (UI_Style_BG_Color *) allocate(&manager->frame_arena, sizeof(UI_Style_BG_Color));
+void ui_push_background_color(Vec4 color) {
+    UI_Style_BG_Color *entry = (UI_Style_BG_Color *) allocate(&ui_manager->frame_arena, sizeof(UI_Style_BG_Color));
 
     entry->background_color = color;
-    entry->next = manager->background_color_stack;
+    entry->next = ui_manager->background_color_stack;
     
-    manager->background_color_stack = entry;
+    ui_manager->background_color_stack = entry;
 }
 
-void ui_push_hot_background_color(UI_Manager *manager, Vec4 color) {
-    UI_Style_BG_Color *entry = (UI_Style_BG_Color *) allocate(&manager->frame_arena, sizeof(UI_Style_BG_Color));
+void ui_push_hot_background_color(Vec4 color) {
+    UI_Style_BG_Color *entry = (UI_Style_BG_Color *) allocate(&ui_manager->frame_arena, sizeof(UI_Style_BG_Color));
 
     entry->background_color = color;
-    entry->next = manager->hot_background_color_stack;
+    entry->next = ui_manager->hot_background_color_stack;
     
-    manager->hot_background_color_stack = entry;
+    ui_manager->hot_background_color_stack = entry;
 }
 
-void ui_push_active_background_color(UI_Manager *manager, Vec4 color) {
-    UI_Style_BG_Color *entry = (UI_Style_BG_Color *) allocate(&manager->frame_arena, sizeof(UI_Style_BG_Color));
+void ui_push_active_background_color(Vec4 color) {
+    UI_Style_BG_Color *entry = (UI_Style_BG_Color *) allocate(&ui_manager->frame_arena, sizeof(UI_Style_BG_Color));
 
     entry->background_color = color;
-    entry->next = manager->active_background_color_stack;
+    entry->next = ui_manager->active_background_color_stack;
     
-    manager->active_background_color_stack = entry;
+    ui_manager->active_background_color_stack = entry;
 }
 
-void ui_push_layout_type(UI_Manager *manager, UI_Layout_Type type) {
-    UI_Style_Layout_Type *entry = (UI_Style_Layout_Type *) allocate(&manager->frame_arena, sizeof(UI_Style_Layout_Type));
+void ui_push_layout_type(UI_Layout_Type type) {
+    UI_Style_Layout_Type *entry = (UI_Style_Layout_Type *) allocate(&ui_manager->frame_arena, sizeof(UI_Style_Layout_Type));
 
     entry->type = type;
-    entry->next = manager->layout_type_stack;
+    entry->next = ui_manager->layout_type_stack;
     
-    manager->layout_type_stack = entry;
+    ui_manager->layout_type_stack = entry;
 }
 
-void ui_pop_layout_type(UI_Manager *manager) {
-    assert(manager->layout_type_stack);
-    manager->layout_type_stack = manager->layout_type_stack->next;
+void ui_pop_layout_type() {
+    assert(ui_manager->layout_type_stack);
+    ui_manager->layout_type_stack = ui_manager->layout_type_stack->next;
 }
 
-void ui_push_size_type(UI_Manager *manager, Vec2_UI_Size_Type type) {
-    UI_Style_Size_Type *entry = (UI_Style_Size_Type *) allocate(&manager->frame_arena, sizeof(UI_Style_Size_Type));
+void ui_push_size_type(Vec2_UI_Size_Type type) {
+    UI_Style_Size_Type *entry = (UI_Style_Size_Type *) allocate(&ui_manager->frame_arena, sizeof(UI_Style_Size_Type));
 
     entry->type = type;
-    entry->next = manager->size_type_stack;
+    entry->next = ui_manager->size_type_stack;
     
-    manager->size_type_stack = entry;
+    ui_manager->size_type_stack = entry;
 }
 
-void ui_pop_size_type(UI_Manager *manager) {
-    assert(manager->size_type_stack);
-    manager->size_type_stack = manager->size_type_stack->next;
+void ui_pop_size_type() {
+    assert(ui_manager->size_type_stack);
+    ui_manager->size_type_stack = ui_manager->size_type_stack->next;
 }
 
-void ui_pop_size(UI_Manager *manager) {
-    assert(manager->size_stack);
-    manager->size_stack = manager->size_stack->next;
+void ui_pop_size() {
+    assert(ui_manager->size_stack);
+    ui_manager->size_stack = ui_manager->size_stack->next;
 }
 
-void ui_pop_position(UI_Manager *manager) {
-    assert(manager->position_stack);
-    manager->position_stack = manager->position_stack->next;
+void ui_pop_position() {
+    assert(ui_manager->position_stack);
+    ui_manager->position_stack = ui_manager->position_stack->next;
 }
 
-void ui_pop_background_color(UI_Manager *manager) {
-    assert(manager->background_color_stack);
-    manager->background_color_stack = manager->background_color_stack->next;
+void ui_pop_background_color() {
+    assert(ui_manager->background_color_stack);
+    ui_manager->background_color_stack = ui_manager->background_color_stack->next;
 }
 
-void ui_pop_text_color(UI_Manager *manager) {
-    assert(manager->text_color_stack);
-    manager->text_color_stack = manager->text_color_stack->next;
+void ui_pop_text_color() {
+    assert(ui_manager->text_color_stack);
+    ui_manager->text_color_stack = ui_manager->text_color_stack->next;
 }
 
-void ui_push_text_color(UI_Manager *manager, Vec4 color) {
-    UI_Style_Text_Color *entry = (UI_Style_Text_Color *) allocate(&manager->frame_arena, sizeof(UI_Style_Text_Color));
+void ui_push_text_color(Vec4 color) {
+    UI_Style_Text_Color *entry = (UI_Style_Text_Color *) allocate(&ui_manager->frame_arena, sizeof(UI_Style_Text_Color));
 
     entry->color = color;
-    entry->next = manager->text_color_stack;
+    entry->next = ui_manager->text_color_stack;
     
-    manager->text_color_stack = entry;
+    ui_manager->text_color_stack = entry;
 }
 
-void ui_push_font(UI_Manager *manager, char *font) {
-    UI_Style_Font *entry = (UI_Style_Font *) allocate(&manager->frame_arena, sizeof(UI_Style_Font));
+void ui_push_font(char *font) {
+    UI_Style_Font *entry = (UI_Style_Font *) allocate(&ui_manager->frame_arena, sizeof(UI_Style_Font));
 
     entry->font = font;
-    entry->next = manager->font_stack;
+    entry->next = ui_manager->font_stack;
     
-    manager->font_stack = entry;
+    ui_manager->font_stack = entry;
 }
 
 // TODO: we need to use the last frame's hierarchy since the actual visual positions are not calculated until
 //       the end of the update procedure. so basically just store the last frame's hierarchy and use that for..
 //       well actually, we want to be able to get the widgets without having to go through the tree. so maybe
 //       just store them in a hash table, keyed by the widget IDs.
-UI_Interact_Result ui_interact(UI_Manager *manager, UI_Widget *semantic_widget) {
-    UI_Widget *computed_widget = ui_table_get(manager->last_frame_widget_table, semantic_widget->id);
+UI_Interact_Result ui_interact(UI_Widget *semantic_widget) {
+    UI_Widget *computed_widget = ui_table_get(ui_manager->last_frame_widget_table, semantic_widget->id);
     if (!computed_widget) return {};
     //assert(computed_widget);
     
@@ -325,31 +325,31 @@ UI_Interact_Result ui_interact(UI_Manager *manager, UI_Widget *semantic_widget) 
     UI_id id = computed_widget->id;
     if (computed_widget->flags & UI_WIDGET_IS_CLICKABLE) {
         if (in_bounds(mouse_pos, computed_widget->computed_position, computed_widget->computed_size)) {
-            manager->hot = id;
+            ui_manager->hot = id;
 
             if (just_pressed(controller_state->left_mouse)) {
                 // we check for !was_down to avoid setting a button active if we click and hold outside then
                 // move into the button
-                manager->active = id;
-            } else if (is_active(manager, computed_widget) && just_lifted(controller_state->left_mouse)) {
+                ui_manager->active = id;
+            } else if (is_active(computed_widget) && just_lifted(controller_state->left_mouse)) {
                 result.clicked = true;
-                if (is_active(manager, computed_widget)) {
-                    manager->active = {};
+                if (is_active(computed_widget)) {
+                    ui_manager->active = {};
                 }
             }
         } else {
-            if (is_hot(manager, computed_widget)) {
-                manager->hot = {};
+            if (is_hot(computed_widget)) {
+                ui_manager->hot = {};
             }
 
-            if (is_active(manager, computed_widget) && !controller_state->left_mouse.is_down) {
-                manager->active = {};
+            if (is_active(computed_widget) && !controller_state->left_mouse.is_down) {
+                ui_manager->active = {};
             }
         }
 
         // must be active, since active can only be started when starting click inside the bounds.
         // we don't want to be able to start dragging by holding down outside and moving into bounds.
-        if (is_active(manager, computed_widget)) {
+        if (is_active(computed_widget)) {
             if (being_held(controller_state->left_mouse)) {
                 result.holding = true;
             }
@@ -378,8 +378,8 @@ void calculate_standalone_size(Asset_Manager *asset, UI_Widget *widget, UI_Widge
     }
 }
 
-void ui_calculate_standalone_sizes(UI_Manager *manager, Asset_Manager *asset) {
-    UI_Widget *current = manager->root;
+void ui_calculate_standalone_sizes(Asset_Manager *asset) {
+    UI_Widget *current = ui_manager->root;
     
     while (true) {
         UI_Widget *parent = current->parent;
@@ -431,8 +431,8 @@ void calculate_ancestor_dependent_size(UI_Widget *widget, UI_Widget_Axis axis) {
     // why i'm not doing it now, since it might result in unexpected behaviour.
 }
 
-void ui_calculate_ancestor_dependent_sizes(UI_Manager *manager) {
-    UI_Widget *current = manager->root;
+void ui_calculate_ancestor_dependent_sizes() {
+    UI_Widget *current = ui_manager->root;
 
     while (true) {
         UI_Widget *parent = current->parent;
@@ -486,8 +486,8 @@ void calculate_child_dependent_size(UI_Widget *widget, UI_Widget_Axis axis) {
     }
 }
 
-void ui_calculate_child_dependent_sizes(UI_Manager *manager) {
-    UI_Widget *current = manager->root;
+void ui_calculate_child_dependent_sizes() {
+    UI_Widget *current = ui_manager->root;
 
     bool32 revisiting = false;
     while (current) {
@@ -539,8 +539,8 @@ void calculate_ancestor_dependent_sizes_part_2(UI_Widget *widget, UI_Widget_Axis
 // for example, if the parent of a percentage width widget is a FIT_CHILDREN widget, then we have to wait
 // until the parent widget has a computed width, then we can set the computed width of the percantage
 // based widget.
-void ui_calculate_ancestor_dependent_sizes_part_2(UI_Manager *manager) {
-    UI_Widget *current = manager->root;
+void ui_calculate_ancestor_dependent_sizes_part_2() {
+    UI_Widget *current = ui_manager->root;
 
     while (true) {
         UI_Widget *parent = current->parent;
@@ -616,8 +616,8 @@ void calculate_position(UI_Widget *widget, UI_Widget_Axis axis) {
     }
 }
 
-void ui_calculate_positions(UI_Manager *manager) {
-    UI_Widget *current = manager->root;
+void ui_calculate_positions() {
+    UI_Widget *current = ui_manager->root;
 
     // pre-order traversal
     
@@ -647,7 +647,7 @@ void ui_calculate_positions(UI_Manager *manager) {
     }
 }
 
-void ui_init(Arena_Allocator *arena, UI_Manager *manager) {
+void ui_init(Arena_Allocator *arena) {
     uint32 max_padding = 8 * 3;
     uint32 persistent_heap_size = MEGABYTES(64);
     uint32 frame_arena_size = MEGABYTES(64);
@@ -656,104 +656,104 @@ void ui_init(Arena_Allocator *arena, UI_Manager *manager) {
     {
         uint32 size = persistent_heap_size;
         void *base = arena_push(arena, size, false);
-        manager->persistent_heap = make_heap_allocator(base, size);
+        ui_manager->persistent_heap = make_heap_allocator(base, size);
     }
     {
         uint32 size = frame_arena_size;
         void *base = arena_push(arena, size, false);
-        manager->frame_arena = make_arena_allocator(base, size);
+        ui_manager->frame_arena = make_arena_allocator(base, size);
     }
     {
         uint32 size = last_frame_arena_size;
         void *base = arena_push(arena, size, false);
-        manager->last_frame_arena = make_arena_allocator(base, size);
+        ui_manager->last_frame_arena = make_arena_allocator(base, size);
     }
 
-    manager->widget_table            = (UI_Widget **) arena_push(&manager->frame_arena,
+    ui_manager->widget_table            = (UI_Widget **) arena_push(&ui_manager->frame_arena,
                                                                  sizeof(UI_Widget *) * NUM_WIDGET_BUCKETS, true);
-    manager->last_frame_widget_table = (UI_Widget **) arena_push(&manager->last_frame_arena,
+    ui_manager->last_frame_widget_table = (UI_Widget **) arena_push(&ui_manager->last_frame_arena,
                                                                  sizeof(UI_Widget *) * NUM_WIDGET_BUCKETS, true);
-    manager->state_table             = (UI_Widget_State **) heap_allocate(&manager->persistent_heap,
+    ui_manager->state_table             = (UI_Widget_State **) heap_allocate(&ui_manager->persistent_heap,
                                                                           sizeof(UI_Widget_State *) * NUM_WIDGET_BUCKETS, true);
 }
 
-void ui_frame_init(UI_Manager *manager, Display_Output *display_output) {
-    ui_push_position(manager, { 0.0f, 0.0f });
-    ui_push_layout_type(manager, UI_LAYOUT_NONE);
-    ui_push_size_type(manager, { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE });
-    ui_push_size(manager, { (real32) display_output->width, (real32) display_output->height });
+void ui_frame_init(Display_Output *display_output) {
+    ui_push_position({ 0.0f, 0.0f });
+    ui_push_layout_type(UI_LAYOUT_NONE);
+    ui_push_size_type({ UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE });
+    ui_push_size({ (real32) display_output->width, (real32) display_output->height });
 
-    UI_Widget *widget = make_widget(manager, make_ui_id("root"), 0);
+    UI_Widget *widget = make_widget(make_ui_id("root"), 0);
 
-    UI_Stack_Widget *entry = (UI_Stack_Widget *) allocate(&manager->frame_arena, sizeof(UI_Stack_Widget));
-    assert(manager->widget_stack == NULL);
+    UI_Stack_Widget *entry = (UI_Stack_Widget *) allocate(&ui_manager->frame_arena, sizeof(UI_Stack_Widget));
+    assert(ui_manager->widget_stack == NULL);
     entry->widget = widget;
-    entry->next = manager->widget_stack;
-    manager->widget_stack = entry;
+    entry->next = ui_manager->widget_stack;
+    ui_manager->widget_stack = entry;
 
-    manager->root = widget;
+    ui_manager->root = widget;
 
-    manager->widget_table = (UI_Widget **) arena_push(&manager->frame_arena,
+    ui_manager->widget_table = (UI_Widget **) arena_push(&ui_manager->frame_arena,
                                                       sizeof(UI_Widget *) * NUM_WIDGET_BUCKETS, true);
     
-    ui_table_add(manager->widget_table, widget);
+    ui_table_add(ui_manager->widget_table, widget);
 }
 
 // TODO: don't clear.. we want to keep state actually
-void ui_frame_end(UI_Manager *manager) {
-    manager->last_frame_root = manager->root;
-    manager->root = NULL;
+void ui_frame_end() {
+    ui_manager->last_frame_root = ui_manager->root;
+    ui_manager->root = NULL;
 
     // swap allocators
-    Arena_Allocator temp = manager->last_frame_arena;
-    manager->last_frame_arena = manager->frame_arena;
-    manager->frame_arena = temp;
-    clear_arena(&manager->frame_arena);
+    Arena_Allocator temp = ui_manager->last_frame_arena;
+    ui_manager->last_frame_arena = ui_manager->frame_arena;
+    ui_manager->frame_arena = temp;
+    clear_arena(&ui_manager->frame_arena);
 
     // swap tables
-    UI_Widget **temp_widget_table = manager->last_frame_widget_table;
-    manager->last_frame_widget_table = manager->widget_table;
-    manager->widget_table = temp_widget_table;
+    UI_Widget **temp_widget_table = ui_manager->last_frame_widget_table;
+    ui_manager->last_frame_widget_table = ui_manager->widget_table;
+    ui_manager->widget_table = temp_widget_table;
     
-    manager->widget_stack = NULL;
-    manager->background_color_stack = NULL;
-    manager->hot_background_color_stack = NULL;
-    manager->active_background_color_stack = NULL;
-    manager->layout_type_stack = NULL;
-    manager->size_stack = NULL;
-    manager->position_stack = NULL;
-    manager->size_type_stack = NULL;
-    manager->text_color_stack = NULL;
+    ui_manager->widget_stack = NULL;
+    ui_manager->background_color_stack = NULL;
+    ui_manager->hot_background_color_stack = NULL;
+    ui_manager->active_background_color_stack = NULL;
+    ui_manager->layout_type_stack = NULL;
+    ui_manager->size_stack = NULL;
+    ui_manager->position_stack = NULL;
+    ui_manager->size_type_stack = NULL;
+    ui_manager->text_color_stack = NULL;
 }
 
-bool32 has_focus(UI_Manager *manager) {
+bool32 ui_has_focus() {
     return false;
 }
 
-void disable_input(UI_Manager *manager) {
-    manager->hot = {};
-    manager->active = {};
-    manager->is_disabled = true;
+void ui_disable_input() {
+    ui_manager->hot = {};
+    ui_manager->active = {};
+    ui_manager->is_disabled = true;
 }
 
-void enable_input(UI_Manager *manager) {
-    manager->is_disabled = false;
+void ui_enable_input() {
+    ui_manager->is_disabled = false;
 }
 
-inline bool32 is_hot(UI_Manager *manager, UI_Widget *widget) {
-    return ui_id_equals(manager->hot, widget->id);
+inline bool32 is_hot(UI_Widget *widget) {
+    return ui_id_equals(ui_manager->hot, widget->id);
 }
 
-inline bool32 is_active(UI_Manager *manager, UI_Widget *widget) {
-    return ui_id_equals(manager->active, widget->id);
+inline bool32 is_active(UI_Widget *widget) {
+    return ui_id_equals(ui_manager->active, widget->id);
 }
 
-inline bool32 ui_has_hot(UI_Manager *manager) {
-    return (manager->hot.string_ptr != NULL);
+inline bool32 ui_has_hot() {
+    return (ui_manager->hot.string_ptr != NULL);
 }
 
-inline bool32 ui_has_active(UI_Manager *manager) {
-    return (manager->active.string_ptr != NULL);
+inline bool32 ui_has_active() {
+    return (ui_manager->active.string_ptr != NULL);
 }
 
 inline bool32 in_bounds(Vec2 p, real32 x_min, real32 x_max, real32 y_min, real32 y_max) {
@@ -789,10 +789,10 @@ inline real32 get_center_y_offset(real32 height, real32 box_height) {
     return 0.5f * (height - box_height);
 }
 
-UI_Widget_State *ui_get_state(UI_Manager *manager, UI_id id) {
+UI_Widget_State *ui_get_state(UI_id id) {
     uint32 hash = get_hash(id, NUM_WIDGET_BUCKETS);
 
-    UI_Widget_State *current = manager->state_table[hash];
+    UI_Widget_State *current = ui_manager->state_table[hash];
     while (current) {
         if (ui_id_equals(current->id, id)) {
             return current;
@@ -804,12 +804,12 @@ UI_Widget_State *ui_get_state(UI_Manager *manager, UI_id id) {
     return NULL;
 }
 
-void _ui_add_state(UI_Manager *manager, UI_Widget_State *state) {
+void _ui_add_state(UI_Widget_State *state) {
     if (!state->id.string_ptr) return;
     
     uint32 hash = get_hash(state->id, NUM_WIDGET_BUCKETS);
 
-    UI_Widget_State **state_table = manager->state_table;
+    UI_Widget_State **state_table = ui_manager->state_table;
     UI_Widget_State *current = state_table[hash];
     if (!current) {
         state->next = NULL;
@@ -835,19 +835,19 @@ void _ui_add_state(UI_Manager *manager, UI_Widget_State *state) {
     assert(!"Should be unreachable.");
 }
 
-UI_Widget_State *ui_make_widget_state(UI_Manager *manager) {
-    UI_Widget_State *result = (UI_Widget_State *) heap_allocate(&manager->persistent_heap,
+UI_Widget_State *ui_make_widget_state() {
+    UI_Widget_State *result = (UI_Widget_State *) heap_allocate(&ui_manager->persistent_heap,
                                                                 sizeof(UI_Widget_State), true);
     return result;
 }
 
-UI_Window_State *ui_add_window_state(UI_Manager *manager, UI_id id, Vec2 position) {
-    UI_Widget_State *state = ui_make_widget_state(manager);
+UI_Window_State *ui_add_window_state(UI_id id, Vec2 position) {
+    UI_Widget_State *state = ui_make_widget_state();
     state->id = id;
     state->type = UI_STATE_WINDOW;
     state->window = { position };
 
-    _ui_add_state(manager, state);
+    _ui_add_state(state);
 
     return &state->window;
 }
@@ -856,65 +856,65 @@ UI_Window_State *ui_add_window_state(UI_Manager *manager, UI_id id, Vec2 positio
 
 // COMPOUND WIDGETS
 
-void do_text(UI_Manager *manager, char *text, char *id, uint32 flags = 0, int32 index = 0) {
-    ui_push_size_type(manager, { UI_SIZE_FIT_TEXT, UI_SIZE_FIT_TEXT });
-    //ui_push_background_color(manager, { 1.0f, 0.0f, 0.0f, 1.0f });
-    UI_Widget *text_widget = ui_add_widget(manager, make_ui_id(id, index), UI_WIDGET_DRAW_TEXT | flags);
+void do_text(char *text, char *id, uint32 flags = 0, int32 index = 0) {
+    ui_push_size_type({ UI_SIZE_FIT_TEXT, UI_SIZE_FIT_TEXT });
+    //ui_push_background_color({ 1.0f, 0.0f, 0.0f, 1.0f });
+    UI_Widget *text_widget = ui_add_widget(make_ui_id(id, index), UI_WIDGET_DRAW_TEXT | flags);
     text_widget->text = text;
-    //ui_pop_background_color(manager);
-    ui_pop_size_type(manager);
+    //ui_pop_background_color();
+    ui_pop_size_type();
 }
 
-bool32 do_button(UI_Manager *manager, UI_id id) {
-    UI_Widget *widget = ui_add_widget(manager, id, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
-    UI_Interact_Result interact_result = ui_interact(manager, widget);
+bool32 do_button(UI_id id) {
+    UI_Widget *widget = ui_add_widget(id, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
+    UI_Interact_Result interact_result = ui_interact(widget);
     
     return interact_result.clicked;
 }
 
-bool32 do_text_button(UI_Manager *manager, char *text, real32 padding, UI_id id) {
-    ui_push_size(manager, {});
-    ui_push_size_type(manager, { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN });
-    ui_push_layout_type(manager, UI_LAYOUT_VERTICAL);
-    UI_Widget *button = ui_push_widget(manager, id,
+bool32 do_text_button(char *text, real32 padding, UI_id id) {
+    ui_push_size({});
+    ui_push_size_type({ UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN });
+    ui_push_layout_type(UI_LAYOUT_VERTICAL);
+    UI_Widget *button = ui_push_widget(id,
                                        UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
     {
-        ui_push_size(manager, { 0.0f, padding });
-        ui_add_widget(manager, "");
+        ui_push_size({ 0.0f, padding });
+        ui_add_widget("");
 
-        ui_push_layout_type(manager, UI_LAYOUT_HORIZONTAL);
-        ui_push_widget(manager, "", 0);
+        ui_push_layout_type(UI_LAYOUT_HORIZONTAL);
+        ui_push_widget("", 0);
         {
             // inner row
-            ui_push_size(manager, { padding, 0.0f });
-            ui_add_widget(manager, "");
-            //ui_pop_size_type(manager);
+            ui_push_size({ padding, 0.0f });
+            ui_add_widget("");
+            //ui_pop_size_type();
         
-            ui_push_size_type(manager, { UI_SIZE_FIT_TEXT, UI_SIZE_FIT_TEXT });
-            UI_Widget *text_widget = ui_add_widget(manager, make_ui_id(NULL), UI_WIDGET_DRAW_TEXT);
+            ui_push_size_type({ UI_SIZE_FIT_TEXT, UI_SIZE_FIT_TEXT });
+            UI_Widget *text_widget = ui_add_widget(make_ui_id(NULL), UI_WIDGET_DRAW_TEXT);
             text_widget->text = text;
-            ui_pop_size_type(manager);
+            ui_pop_size_type();
 
-            ui_add_widget(manager, "");
-            ui_pop_size(manager);
+            ui_add_widget("");
+            ui_pop_size();
         }
-        ui_pop_widget(manager);
-        ui_pop_layout_type(manager);
+        ui_pop_widget();
+        ui_pop_layout_type();
         
-        ui_add_widget(manager, "");
-        ui_pop_size(manager);
+        ui_add_widget("");
+        ui_pop_size();
     }
-    ui_pop_widget(manager);
-    ui_pop_layout_type(manager);
-    ui_pop_size_type(manager);
-    ui_pop_size(manager);
+    ui_pop_widget();
+    ui_pop_layout_type();
+    ui_pop_size_type();
+    ui_pop_size();
     
     
-    UI_Interact_Result interact_result = ui_interact(manager, button);
+    UI_Interact_Result interact_result = ui_interact(button);
 #if 0
-    ui_pop_size_type(manager);
+    ui_pop_size_type();
     
-    ui_push_size_type(manager, UI_SIZE_FIT_TEXT);
+    ui_push_size_type(UI_SIZE_FIT_TEXT);
 
     // TODO: we should probably use a hashing method for storing UI IDs, so that we can generate IDs dynamically.
     //       right now we just use pointers, which is fine for read-only memory, but if we create new strings,
@@ -922,92 +922,93 @@ bool32 do_text_button(UI_Manager *manager, char *text, real32 padding, UI_id id)
     // TODO: scope UI IDs. have a parent UI_id be included in all UI_ids. that way, we can do stuff like this
     //       without having collisions. actually, i don't think that'll work. try and use a hash. actually,
     //       i think this is fine, since we always have the parent ID use some unique string.
-    UI_Widget *text_widget = ui_add_widget(manager, make_ui_id("button-text"), UI_WIDGET_DRAW_TEXT);
+    UI_Widget *text_widget = ui_add_widget(make_ui_id("button-text"), UI_WIDGET_DRAW_TEXT);
     text_widget->text = text;
 
-    ui_pop_layout_type(manager);
-    ui_pop_size_type(manager);
-    ui_pop_widget(manager);
+    ui_pop_layout_type();
+    ui_pop_size_type();
+    ui_pop_widget();
 #endif
 
     return interact_result.clicked;
 }
 
-inline bool32 do_text_button(UI_Manager *manager, char *text, real32 padding, char *id, int32 index = 0) {
-    return do_text_button(manager, text, padding, make_ui_id(id, index));
+inline bool32 do_text_button(char *text, real32 padding, char *id, int32 index = 0) {
+    return do_text_button(text, padding, make_ui_id(id, index));
 }
 
 // TODO: this should be push_window and should move all the popping calls to a pop_window procedure
 // TODO: add state and window dragging
-void do_window(UI_Manager *manager, char *text, char *id_string, int32 index = 0) {
+void do_window(char *text, char *id_string, int32 index = 0) {
     UI_id id = make_ui_id(id_string, index);
-    UI_Widget_State *state_variant = ui_get_state(manager, id);
+    UI_Widget_State *state_variant = ui_get_state(id);
     UI_Window_State *state;
     if (!state_variant) {
-        state = ui_add_window_state(manager, id, { 100.0f, 200.0f });
+        state = ui_add_window_state(id, { 100.0f, 200.0f });
     } else {
         state = &state_variant->window;
     }
     
     
     #if 0
-    UI_Widget_State *state_variant = get_state(manager, id);
+    UI_Widget_State *state_variant = get_state(id);
     UI_Window_State *state;
     if (!state_variant) {
-        state = &(add_state(manager, id))->window_state;
+        state = &(add_state(id))->window_state;
         state.position = { 200.0f, 200.0f };
     } else {
         state = &state_variant->window_state;
     }
     #endif
     
-    ui_push_widget(manager, manager->root);
-    ui_push_position(manager, state->position);
+    ui_push_widget(ui_manager->root);
+    ui_push_position(state->position);
     
-    ui_push_size(manager, {});
-    ui_push_layout_type(manager, UI_LAYOUT_VERTICAL);
-    ui_push_size_type(manager, { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN });
-    //ui_push_size_type(manager, { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE });
+    ui_push_size({});
+    ui_push_layout_type(UI_LAYOUT_VERTICAL);
+    ui_push_size_type({ UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN });
+    //ui_push_size_type({ UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE });
 
-    ui_push_text_color(manager, { 1.0f, 1.0f, 1.0f, 1.0f });
+    ui_push_text_color({ 1.0f, 1.0f, 1.0f, 1.0f });
     #if 1
-    ui_push_widget(manager, id, UI_WIDGET_DRAW_BACKGROUND);
+    ui_push_widget(id, UI_WIDGET_DRAW_BACKGROUND);
     {
-        ui_push_size_type(manager, { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN });
-        ui_push_size(manager, { 1.0f, 20.0f });
-        ui_push_layout_type(manager, UI_LAYOUT_CENTER);
-        ui_push_background_color(manager, { 1.0f, 0.0f, 0.0f, 1.0f });
+        ui_push_size_type({ UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN });
+        ui_push_size({ 1.0f, 20.0f });
+        ui_push_layout_type(UI_LAYOUT_CENTER);
+        ui_push_background_color({ 1.0f, 0.0f, 0.0f, 1.0f });
 
         // title bar
-        UI_Widget *title_bar = ui_push_widget(manager, "window-title-bar", UI_WIDGET_IS_CLICKABLE | UI_WIDGET_DRAW_BACKGROUND);
-        UI_Interact_Result title_bar_interact = ui_interact(manager, title_bar);
+        UI_Widget *title_bar = ui_push_widget("window-title-bar",
+                                              UI_WIDGET_IS_CLICKABLE | UI_WIDGET_DRAW_BACKGROUND);
+        UI_Interact_Result title_bar_interact = ui_interact(title_bar);
         {
-            do_text(manager, text, "");
+            do_text(text, "");
         }
-        ui_pop_widget(manager);
+        ui_pop_widget();
 
         if (title_bar_interact.holding) {
-            Vec2 delta = Context::controller_state->current_mouse - Context::controller_state->last_mouse;
+            Vec2 delta = get_mouse_delta();
             state->position += delta;
         }
         
-        ui_pop_background_color(manager);
+        ui_pop_background_color();
         
-        ui_push_size(manager, { 200.0f, 200.0f });
-        ui_push_size_type(manager, { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE });
-        ui_push_widget(manager, "", UI_WIDGET_DRAW_BACKGROUND);
+        ui_push_size({ 200.0f, 200.0f });
+        ui_push_size_type({ UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE });
+        ui_push_widget("", UI_WIDGET_DRAW_BACKGROUND);
         {
         }
-        ui_pop_size(manager);
-        ui_pop_size_type(manager);
-        ui_pop_size(manager);
-        ui_pop_layout_type(manager);
-        ui_pop_size_type(manager);
+        ui_pop_size();
+        ui_pop_size_type();
+        ui_pop_size();
+        ui_pop_layout_type();
+        ui_pop_size_type();
     }
-    ui_pop_widget(manager);
+    ui_pop_widget();
     #endif
-    ui_pop_text_color(manager);
+    ui_pop_text_color();
 
-    ui_pop_position(manager);
-    ui_pop_widget(manager);
+    ui_pop_position();
+    ui_pop_widget();
 }

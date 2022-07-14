@@ -40,6 +40,7 @@
 
 global_variable Memory memory;
 global_variable Allocator *temp_region;
+global_variable UI_Manager *ui_manager;
 
 #include "memory.cpp"
 #include "math.cpp"
@@ -1265,7 +1266,7 @@ int WinMain(HINSTANCE hInstance,
                     clear_arena(&memory.frame_arena);
                     verify(&memory.global_stack);
                     
-                    ui_frame_end(ui_manager);
+                    ui_frame_end();
 
                     real64 work_time = win32_get_elapsed_time(last_perf_counter);
                     // debug_print("work time before sleep: %f\n", work_time);

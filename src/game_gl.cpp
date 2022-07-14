@@ -2502,10 +2502,10 @@ void gl_draw_ui_widget(GL_State *gl_state, Render_State *render_state,
     if (widget->flags & UI_WIDGET_DRAW_BACKGROUND) {
         Vec4 color = widget->background_color;
         if (widget->flags & UI_WIDGET_IS_CLICKABLE) {
-            if (is_hot(manager, widget)) {
+            if (is_hot(widget)) {
                 color = widget->hot_background_color;
             }
-            if (is_active(manager, widget)) {
+            if (is_active(widget)) {
                 color = widget->active_background_color;
             }
         }

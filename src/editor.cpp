@@ -701,19 +701,19 @@ void debug_check_collisions(Asset_Manager *asset_manager, Editor_Level *level, N
 }
 
 void update_editor(Game_State *game_state, Controller_State *controller_state, real32 dt) {
-    UI_Manager *ui_manager = &game_state->ui_manager;
+    //UI_Manager *ui_manager = &game_state->ui_manager;
     Editor_State *editor_state = &game_state->editor_state;
     Gizmo_State *gizmo_state = &editor_state->gizmo_state;
     Render_State *render_state = &game_state->render_state;
     Display_Output *display_output = &game_state->render_state.display_output;
     Asset_Manager *asset_manager = &editor_state->asset_manager;
 
-    if (just_pressed(controller_state->key_tab) && !has_focus(ui_manager)) {
+    if (just_pressed(controller_state->key_tab) && !ui_has_focus()) {
         editor_state->use_freecam = !editor_state->use_freecam;
         platform_set_cursor_visible(!editor_state->use_freecam);
     }
     
-    bool32 camera_should_move = editor_state->use_freecam && !has_focus(ui_manager);
+    bool32 camera_should_move = editor_state->use_freecam && !ui_has_focus();
     update_editor_camera(editor_state, controller_state,
                          platform_window_has_focus(), camera_should_move, dt);
     update_render_state(render_state, editor_state->camera);
@@ -725,9 +725,9 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
     }
 
     if (editor_state->use_freecam) {
-        disable_input(ui_manager);
+        ui_disable_input();
     } else {
-        enable_input(ui_manager);
+        ui_enable_input();
     }
 
     if (just_pressed(controller_state->key_z)) {
@@ -754,8 +754,8 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
     Ray cursor_ray = { cursor_world_space,
                        normalize(cursor_world_space - render_state->camera.position) };
     
-    if (!ui_has_hot(ui_manager) &&
-        !ui_has_active(ui_manager) &&
+    if (!ui_has_hot() &&
+        !ui_has_active() &&
         !editor_state->use_freecam && was_clicked(controller_state->left_mouse)) {
         if (!gizmo_state->selected_gizmo_handle) {
             Entity *entity = pick_entity(editor_state, cursor_ray);
@@ -779,7 +779,7 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
 
     // gizmo picking
     if (editor_state->selected_entity_id >= 0 &&
-        !ui_has_hot(ui_manager) &&
+        !ui_has_hot() &&
         !gizmo_state->selected_gizmo_handle) {
         real32 pick_gizmo_t;
         Gizmo_Handle picked_handle = pick_gizmo(editor_state, cursor_ray, &pick_gizmo_t);
@@ -815,13 +815,13 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
     }
 
     if (editor_state->use_freecam ||
-        (ui_has_hot(ui_manager) && !controller_state->left_mouse.is_down)) {
+        (ui_has_hot() && !controller_state->left_mouse.is_down)) {
         gizmo_state->hovered_gizmo_handle = GIZMO_HANDLE_NONE;
         gizmo_state->selected_gizmo_handle = GIZMO_HANDLE_NONE;
     }
 
     if (gizmo_state->selected_gizmo_handle) {
-        disable_input(ui_manager);
+        ui_disable_input();
         Entity *entity = get_selected_entity(editor_state);
         if (controller_state->left_mouse.is_down) {
             gizmo_state->gizmo_transform_axis = get_gizmo_transform_axis(gizmo_state->transform_mode,
@@ -869,7 +869,6 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
 
 void draw_editor(Game_State *game_state, Controller_State *controller_state) {
     Editor_State *editor_state = &game_state->editor_state;
-    UI_Manager *ui_manager = &game_state->ui_manager;
     Render_State *render_state = &game_state->render_state;
 
     Entity *selected_entity = get_selected_entity(editor_state);

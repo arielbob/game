@@ -215,8 +215,8 @@ struct UI_Manager {
     bool32 is_disabled;
 };
 
-bool32 is_hot(UI_Manager *manager, UI_Widget *widget);
-bool32 is_active(UI_Manager *manager, UI_Widget *widget);
+bool32 is_hot(UI_Widget *widget);
+bool32 is_active(UI_Widget *widget);
 bool32 in_bounds(Vec2 p, real32 x_min, real32 x_max, real32 y_min, real32 y_max);
 bool32 in_bounds(Vec2 p, Vec2 widget_position, Vec2 widget_size);
 bool32 ui_id_equals(UI_id id1, UI_id id2);

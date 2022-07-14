@@ -226,7 +226,7 @@ namespace Context {
     Game_State *game_state;
     Editor_State *editor_state;
     Controller_State *controller_state;
-    UI_Manager *ui_manager;
+    //UI_Manager *ui_manager;
     Message_Manager *message_manager;
 };
 
@@ -261,6 +261,7 @@ inline bool32 was_clicked(Controller_Button_State button_state);
 inline bool32 being_held(Controller_Button_State button_state);
 inline bool32 just_pressed(Controller_Button_State button_state);
 inline bool32 just_lifted(Controller_Button_State button_state);
+inline Vec2 get_mouse_delta();
 void update_render_state(Render_State *render_state);
 Vec3 cursor_pos_to_world_space(Vec2 cursor_pos, Render_State *render_state);
 bool32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, bool32 include_backside,
