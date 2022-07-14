@@ -32,14 +32,19 @@
 #include "lib/stb_image.h"
 
 #include "win32_game.h"
+
+#include "memory.h"
+
+global_variable Allocator *temp_region;
+
+#include "string.h"
+
 #include "math.h"
 #include "entity.h"
 #include "game.h"
-#include "memory.h"
 #include "platform.h"
 
 global_variable Memory memory;
-global_variable Allocator *temp_region;
 global_variable UI_Manager *ui_manager;
 
 #include "memory.cpp"
@@ -523,90 +528,95 @@ internal void win32_process_keyboard_input(bool was_down, bool is_down,
         }
     }
 
-    if (was_down != is_down) {
-        switch (vk_code) {
-            case 'W': {
-                controller_state->key_w.is_down = is_down;
-                controller_state->key_w.was_down = was_down;
-                return;
-            }
-            case 'A': {
-                controller_state->key_a.is_down = is_down;
-                controller_state->key_a.was_down = was_down;
-                return;
-            }
-            case 'S': {
-                controller_state->key_s.is_down = is_down;
-                controller_state->key_s.was_down = was_down;
-                return;
-            }
-            case 'D': {
-                controller_state->key_d.is_down = is_down;
-                controller_state->key_d.was_down = was_down;
-                return;
-            }
-            case 'E': {
-                controller_state->key_e.is_down = is_down;
-                controller_state->key_e.was_down = was_down;
-                return;
-            }
-            case 'X': {
-                controller_state->key_x.is_down = is_down;
-                controller_state->key_x.was_down = was_down;
-                return;
-            }
-            case 'Z': {
-                controller_state->key_z.is_down = is_down;
-                controller_state->key_z.was_down = was_down;
-                return;
-            }
-            case VK_UP: {
-                controller_state->key_up.is_down = is_down;
-                controller_state->key_up.was_down = was_down;
-                return;
-            }
-            case VK_DOWN: {
-                controller_state->key_down.is_down = is_down;
-                controller_state->key_down.was_down = was_down;
-                return;
-            }
-            case VK_RIGHT: {
-                controller_state->key_right.is_down = is_down;
-                controller_state->key_right.was_down = was_down;
-                return;
-            }
-            case VK_LEFT: {
-                controller_state->key_left.is_down = is_down;
-                controller_state->key_left.was_down = was_down;
-                return;
-            }
-            case VK_SHIFT: {
-                controller_state->key_shift.is_down = is_down;
-                controller_state->key_shift.was_down = was_down;
-                return;
-            }
-            case VK_CONTROL: {
-                controller_state->key_ctrl.is_down = is_down;
-                controller_state->key_ctrl.was_down = was_down;
-                return;
-            }
-            case VK_MENU: {
-                controller_state->key_alt.is_down = is_down;
-                controller_state->key_alt.was_down = was_down;
-                return;
-            }
-            case VK_TAB: {
-                controller_state->key_tab.is_down = is_down;
-                controller_state->key_tab.was_down = was_down;
-                return;
-            }
+    switch (vk_code) {
+        case 'W': {
+            controller_state->key_w.is_down = is_down;
+            controller_state->key_w.was_down = was_down;
+            return;
+        }
+        case 'A': {
+            controller_state->key_a.is_down = is_down;
+            controller_state->key_a.was_down = was_down;
+            return;
+        }
+        case 'S': {
+            controller_state->key_s.is_down = is_down;
+            controller_state->key_s.was_down = was_down;
+            return;
+        }
+        case 'D': {
+            controller_state->key_d.is_down = is_down;
+            controller_state->key_d.was_down = was_down;
+            return;
+        }
+        case 'E': {
+            controller_state->key_e.is_down = is_down;
+            controller_state->key_e.was_down = was_down;
+            return;
+        }
+        case 'X': {
+            controller_state->key_x.is_down = is_down;
+            controller_state->key_x.was_down = was_down;
+            return;
+        }
+        case 'Z': {
+            controller_state->key_z.is_down = is_down;
+            controller_state->key_z.was_down = was_down;
+            return;
+        }
+        case VK_UP: {
+            controller_state->key_up.is_down = is_down;
+            controller_state->key_up.was_down = was_down;
+            return;
+        }
+        case VK_DOWN: {
+            controller_state->key_down.is_down = is_down;
+            controller_state->key_down.was_down = was_down;
+            return;
+        }
+        case VK_RIGHT: {
+            controller_state->key_right.is_down = is_down;
+            controller_state->key_right.was_down = was_down;
+            controller_state->key_right.repeat = is_down == was_down;
+            return;
+        }
+        case VK_LEFT: {
+            controller_state->key_left.is_down = is_down;
+            controller_state->key_left.was_down = was_down;
+            controller_state->key_left.repeat = is_down == was_down;
+            return;
+        }
+        case VK_SHIFT: {
+            controller_state->key_shift.is_down = is_down;
+            controller_state->key_shift.was_down = was_down;
+            return;
+        }
+        case VK_CONTROL: {
+            controller_state->key_ctrl.is_down = is_down;
+            controller_state->key_ctrl.was_down = was_down;
+            return;
+        }
+        case VK_RETURN: {
+            controller_state->key_enter.is_down = is_down;
+            controller_state->key_enter.was_down = was_down;
+            return;
+        }
+        case VK_MENU: {
+            controller_state->key_alt.is_down = is_down;
+            controller_state->key_alt.was_down = was_down;
+            return;
+        }
+        case VK_TAB: {
+            controller_state->key_tab.is_down = is_down;
+            controller_state->key_tab.was_down = was_down;
+            return;
+        }
             // NOTE: you cannot handle VK_F10 here, since F10 sends a WM_SYSKEYDOWN message instead of
             //       WM_KEYDOWN, and we call this procedure only on WM_KEYDOWN and WM_KEYUP messages
-            case VK_F5: {
-                controller_state->key_f5.is_down = is_down;
-                controller_state->key_f5.was_down = was_down;
-                return;
-            }
+        case VK_F5: {
+            controller_state->key_f5.is_down = is_down;
+            controller_state->key_f5.was_down = was_down;
+            return;
         }
     }
 }
@@ -1147,6 +1157,7 @@ int WinMain(HINSTANCE hInstance,
                 while (is_running) {
                     for (uint32 i = 0; i < array_length(controller_state->key_states); i++) {
                         controller_state->key_states[i].was_down = controller_state->key_states[i].is_down;
+                        controller_state->key_states[i].repeat = false;
                     }
                     controller_state->num_pressed_chars = 0;
 

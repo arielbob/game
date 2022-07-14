@@ -92,6 +92,10 @@ inline bool32 just_pressed(Controller_Button_State button_state) {
     return (button_state.is_down && !button_state.was_down);
 }
 
+inline bool32 just_pressed_or_repeated(Controller_Button_State button_state) {
+    return ((button_state.is_down && !button_state.was_down) || button_state.repeat);
+}
+
 inline bool32 just_lifted(Controller_Button_State button_state) {
     return (!button_state.is_down && button_state.was_down);
 }
@@ -924,19 +928,29 @@ void update_game(Game_State *game_state, Controller_State *controller_state, Sou
     update_render_state(&game_state->render_state, game_state->camera);
 }
 
-void draw_test_ui(Asset_Manager *asset, Display_Output *display_output) {
-    ui_frame_init(display_output);
+void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 dt) {
+    ui_frame_init(display_output, dt);
 
     ui_push_text_color({ 0.0f, 0.0f, 0.0f, 1.0f });
     ui_push_font("calibri14");
 
+    ui_push_text_color({ 1.0f, 1.0f, 1.0f, 1.0f });
+    ui_push_position({ 5.0f, 5.0f });
+    char *focus_text = string_format((Allocator *) &ui_manager->frame_arena, "focus: %s", ui_manager->focus.string_ptr);
+    do_text(focus_text, "");
+    ui_pop_position();
+    ui_pop_text_color();
+
     #if 1
     ui_push_background_color({ 1.0f, 1.0f, 1.0f, 1.0f });
+    ui_push_hot_background_color({ 0.7f, 0.7f, 0.7f, 1.0f });
+    ui_push_active_background_color({ 0.5f, 0.5f, 0.5f, 1.0f });
     ui_push_size_type({ UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE });
     ui_push_size({ 500.0f, 20.0f });
     ui_push_position({ 200.0f, 200.0f });
-    
-    do_text_field_slider("textbox text", "textbox-test");
+
+    static real32 value = 50.0f;
+    value = do_text_field_slider(asset, value, "textbox-test");
     
     ui_pop_position();
     ui_pop_size();
@@ -1115,7 +1129,7 @@ void update(Game_State *game_state,
     }
 
     // TODO: walk through this in the debugger
-    draw_test_ui(asset_manager, display_output);
+    draw_test_ui(asset_manager, display_output, dt);
     
     Player *player = &game_state->player;
 

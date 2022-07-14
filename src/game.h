@@ -54,6 +54,7 @@ struct Audio_Source {
 struct Controller_Button_State {
     bool32 was_down;
     bool32 is_down;
+    bool32 repeat;
 };
 
 struct Controller_State {
@@ -65,7 +66,7 @@ struct Controller_State {
     char pressed_chars[MAX_PRESSED_CHARS];
 
     union {
-        Controller_Button_State key_states[19];
+        Controller_Button_State key_states[20];
         struct {
             Controller_Button_State key_shift;
             Controller_Button_State key_ctrl;
@@ -83,6 +84,7 @@ struct Controller_State {
             Controller_Button_State key_down;
             Controller_Button_State key_right;
             Controller_Button_State key_left;
+            Controller_Button_State key_enter;
             Controller_Button_State left_mouse;
             Controller_Button_State right_mouse;
             Controller_Button_State middle_mouse;
@@ -260,6 +262,7 @@ struct Closest_Vertical_Point_On_Mesh_Result {
 inline bool32 was_clicked(Controller_Button_State button_state);
 inline bool32 being_held(Controller_Button_State button_state);
 inline bool32 just_pressed(Controller_Button_State button_state);
+inline bool32 just_pressed_or_repeated(Controller_Button_State button_state);
 inline bool32 just_lifted(Controller_Button_State button_state);
 inline Vec2 get_mouse_delta();
 void update_render_state(Render_State *render_state);

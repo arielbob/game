@@ -28,6 +28,10 @@ UI_Widget *make_widget(UI_id id, uint32 flags) {
         widget->semantic_position = ui_manager->position_stack->position;
     }
 
+    if (ui_manager->position_type_stack) {
+        widget->position_type = ui_manager->position_type_stack->type;
+    }
+
     if (ui_manager->layout_type_stack) {
         widget->layout_type = ui_manager->layout_type_stack->type;
     }
@@ -135,10 +139,12 @@ UI_Widget *ui_add_widget(UI_Widget *widget) {
     widget->id.parent_index      = parent->id.index;
     widget->parent = parent;
 
-    if (widget->size_type[UI_WIDGET_X_AXIS] != UI_SIZE_FILL_REMAINING) {
-        parent->num_sized_children++;
-    } else {
-        parent->num_fill_children++;
+    if (widget->position_type != UI_POSITION_FLOAT) {
+        if (widget->size_type[UI_WIDGET_X_AXIS] != UI_SIZE_FILL_REMAINING) {
+            parent->num_sized_children++;
+        } else {
+            parent->num_fill_children++;
+        }
     }
     
     if (!parent->last) {
@@ -183,14 +189,14 @@ UI_Widget *ui_push_widget(UI_Widget *widget) {
     return widget;
 }
 
-UI_Widget *ui_push_widget(UI_id id, uint32 flags) {
+UI_Widget *ui_push_widget(UI_id id, uint32 flags = 0) {
     UI_Widget *widget = make_widget(id, flags);
     ui_add_widget(widget);
 
     return ui_push_widget(widget);
 }
 
-UI_Widget *ui_push_widget(char *id_string_ptr, uint32 flags) {
+UI_Widget *ui_push_widget(char *id_string_ptr, uint32 flags = 0) {
     return ui_push_widget(make_ui_id(id_string_ptr), flags);
 }
 
@@ -209,6 +215,16 @@ void ui_push_position(Vec2 position) {
     entry->next = ui_manager->position_stack;
     
     ui_manager->position_stack = entry;
+}
+
+void ui_push_position_type(UI_Position_Type type) {
+    UI_Style_Position_Type *entry = (UI_Style_Position_Type *) allocate(&ui_manager->frame_arena,
+                                                                        sizeof(UI_Style_Position_Type));
+
+    entry->type = type;
+    entry->next = ui_manager->position_type_stack;
+    
+    ui_manager->position_type_stack = entry;
 }
 
 void ui_push_size(Vec2 size) {
@@ -283,6 +299,11 @@ void ui_pop_size() {
 void ui_pop_position() {
     assert(ui_manager->position_stack);
     ui_manager->position_stack = ui_manager->position_stack->next;
+}
+
+void ui_pop_position_type() {
+    assert(ui_manager->position_type_stack);
+    ui_manager->position_type_stack = ui_manager->position_type_stack->next;
 }
 
 void ui_pop_background_color() {
@@ -361,6 +382,33 @@ UI_Interact_Result ui_interact(UI_Widget *semantic_widget) {
         }
     }
 
+    if (computed_widget->flags & UI_WIDGET_IS_FOCUSABLE) {
+        if (in_bounds(mouse_pos, computed_widget->computed_position, computed_widget->computed_size)) {
+            ui_manager->hot = id;
+            if (just_pressed(controller_state->left_mouse)) {
+                if (!is_focus(computed_widget)) {
+                    ui_manager->focus = id;
+                    result.focused = true;
+                    ui_manager->focus_t = 0;
+                }
+            } else if (just_pressed(controller_state->key_enter)) {
+                ui_manager->focus = {};
+                result.lost_focus = true;
+            }
+        } else {
+            if (is_hot(computed_widget)) {
+                ui_manager->hot = {};
+            }
+
+            if (just_pressed(controller_state->left_mouse) || just_pressed(controller_state->key_enter)) {
+                if (is_focus(computed_widget)) {
+                    ui_manager->focus = {};
+                    result.lost_focus = true;
+                }
+            }
+        }
+    }
+    
     return result;
 }
 
@@ -466,6 +514,8 @@ void ui_calculate_ancestor_dependent_sizes() {
 }
 
 void calculate_child_dependent_size(UI_Widget *widget, UI_Widget_Axis axis) {
+    if (widget->position_type == UI_POSITION_FLOAT) return;
+    
     UI_Widget *parent = widget->parent;
 
     if (parent) {
@@ -541,6 +591,7 @@ void calculate_ancestor_dependent_sizes_part_2(UI_Widget *widget, UI_Widget_Axis
         assert(parent); // root node cannot be percentage based
         widget->computed_size[axis] = parent->computed_size[axis] * widget->semantic_size[axis];
     } else if (widget->size_type[axis] == UI_SIZE_FILL_REMAINING) {
+        assert(widget->position_type != UI_POSITION_FLOAT);
         assert(parent);
         if (axis == UI_WIDGET_X_AXIS) {
             widget->computed_size[axis] = ((parent->computed_size[axis] - parent->computed_child_size_sum[axis]) /
@@ -591,6 +642,12 @@ void calculate_position(UI_Widget *widget, UI_Widget_Axis axis) {
     if (parent) {
         UI_Widget *prev = widget->prev;
 
+        if (widget->position_type == UI_POSITION_FLOAT) {
+            widget->computed_position[axis] = (parent->computed_position[axis] +
+                                               widget->semantic_position[axis]);
+            return;
+        }
+        
         if (parent->layout_type == UI_LAYOUT_HORIZONTAL) {
             if (axis == UI_WIDGET_X_AXIS) {
                 if (!prev) {
@@ -695,7 +752,7 @@ void ui_init(Arena_Allocator *arena) {
                                                                           sizeof(UI_Widget_State *) * NUM_WIDGET_BUCKETS, true);
 }
 
-void ui_frame_init(Display_Output *display_output) {
+void ui_frame_init(Display_Output *display_output, real32 dt) {
     ui_push_position({ 0.0f, 0.0f });
     ui_push_layout_type(UI_LAYOUT_NONE);
     ui_push_size_type({ UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE });
@@ -715,6 +772,8 @@ void ui_frame_init(Display_Output *display_output) {
                                                       sizeof(UI_Widget *) * NUM_WIDGET_BUCKETS, true);
     
     ui_table_add(ui_manager->widget_table, widget);
+
+    ui_manager->focus_t += dt;
 }
 
 // TODO: don't clear.. we want to keep state actually
@@ -764,6 +823,10 @@ inline bool32 is_hot(UI_Widget *widget) {
 
 inline bool32 is_active(UI_Widget *widget) {
     return ui_id_equals(ui_manager->active, widget->id);
+}
+
+inline bool32 is_focus(UI_Widget *widget) {
+    return ui_id_equals(ui_manager->focus, widget->id);
 }
 
 inline bool32 ui_has_hot() {
@@ -870,6 +933,17 @@ UI_Window_State *ui_add_window_state(UI_id id, Vec2 position) {
     return &state->window;
 }
 
+UI_Text_Field_Slider_State *ui_add_text_field_slider_state(UI_id id, real32 value) {
+    UI_Widget_State *state = ui_make_widget_state();
+    state->id = id;
+    state->type = UI_STATE_TEXT_FIELD_SLIDER;
+    String_Buffer buffer = make_string_buffer((Allocator *) &ui_manager->persistent_heap, 64);
+    state->text_field_slider = { buffer, false };
+    
+    _ui_add_state(state);
+
+    return &state->text_field_slider;
+}
 
 
 // COMPOUND WIDGETS
@@ -964,25 +1038,105 @@ void ui_x_pad(real32 width) {
     ui_pop_size_type();
 }
 
-void do_text_field_slider(char *text, char *id_string, int32 index = 0) {
+real32 do_text_field_slider(Asset_Manager *asset, real32 value, char *id_string, int32 index = 0) {
+    UI_id id = make_ui_id(id_string, index);
+    UI_Widget_State *state_variant = ui_get_state(id);
+    UI_Text_Field_Slider_State *state;
+    if (!state_variant) {
+        state = ui_add_text_field_slider_state(id, value);
+    } else {
+        state = &state_variant->text_field_slider;
+    }
+    
     // size, position, background color, text color should be set before this is called
     ui_push_layout_type(UI_LAYOUT_CENTER);
-    ui_push_widget(id_string, UI_WIDGET_DRAW_BACKGROUND);
-    {
+    UI_Widget *textbox = ui_push_widget(id_string,
+                                        UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE | UI_WIDGET_IS_FOCUSABLE);
+    UI_Interact_Result interact = ui_interact(textbox);
 
+    if (interact.focused) {
+        char *value_text = string_format((Allocator *) &ui_manager->frame_arena, "%f", value);
+        set_string_buffer_text(&state->buffer, value_text);
+        state->cursor_index = state->buffer.current_length;
+    }
+    
+    if (is_focus(textbox)) {
+        Controller_State *controller_state = Context::controller_state;
+        int32 original_cursor_index = state->cursor_index;
+        
+        if (just_pressed_or_repeated(controller_state->key_left)) {
+            state->cursor_index--;
+            state->cursor_index = max(state->cursor_index, 0);
+        }
+
+        if (just_pressed_or_repeated(controller_state->key_right)) {
+            state->cursor_index++;
+            state->cursor_index = min(state->cursor_index, state->buffer.current_length);
+            state->cursor_index = min(state->cursor_index, state->buffer.size);
+        }
+
+        String_Buffer *buffer = &state->buffer;
+        for (int32 i = 0; i < controller_state->num_pressed_chars; i++) {
+            char c = controller_state->pressed_chars[i];
+            if (c == '\b') { // backspace key
+                splice(&state->buffer, state->cursor_index - 1);
+                state->cursor_index--;
+                state->cursor_index = max(state->cursor_index, 0);
+            } else if ((buffer->current_length < buffer->size) && (state->cursor_index < buffer->size)) {
+                if (c >= 32 && c <= 126) {
+                    splice_insert(&state->buffer, state->cursor_index, c);
+                    state->cursor_index++;
+                }
+            }
+        }
+
+        if (state->cursor_index != original_cursor_index) {
+            ui_manager->focus_t = 0.0f;
+        }
+    }
+    
+    {
         ui_push_size_type({ UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN });
         ui_push_layout_type(UI_LAYOUT_HORIZONTAL);
         ui_push_size({ 1.0f, 0.0f });
 
-        ui_push_widget("", UI_WIDGET_DRAW_BACKGROUND);
+        ui_push_widget("");
         {
             ui_x_pad(5.0f);
             ui_push_size_type({ UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN });
             ui_push_layout_type(UI_LAYOUT_HORIZONTAL);
             ui_push_background_color({ 0.0f, 1.0f, 0.0f, 1.0f });
-            ui_push_widget("", UI_WIDGET_DRAW_BACKGROUND);
+            ui_push_widget("");
             {
-                do_text(text, "");
+                if (is_focus(textbox)) {
+                    char *str = to_char_array((Allocator *) &ui_manager->frame_arena, state->buffer);
+                    do_text(str, "");
+
+                    // draw cursor
+
+                    ui_push_size_type({ UI_SIZE_ABSOLUTE, UI_SIZE_PERCENTAGE });
+                    ui_push_size({ 2.0f, 1.0f });
+                    ui_push_position_type(UI_POSITION_FLOAT);
+
+                    Font font = get_font(asset, textbox->font);
+                    real32 width_to_index = get_width(font, str, state->cursor_index);
+                    ui_push_position({ width_to_index, 0.0f });
+
+                    ui_push_background_color({ 0.0f, 0.0f, 0.0f, 1.0f });
+                    real32 time_to_switch = 0.5f; // time spent in either state
+                    bool32 show_background = ((int32) (ui_manager->focus_t*(1.0f / time_to_switch)) + 1) % 2;
+                    
+                    UI_Widget *cursor = ui_add_widget("", show_background ? UI_WIDGET_DRAW_BACKGROUND : 0);
+                    ui_pop_background_color();
+                    
+                    ui_pop_position();
+                    ui_pop_position_type();
+                    ui_pop_size();
+                    ui_pop_size_type();    
+                } else {
+                    char *buf = string_format((Allocator *) &ui_manager->frame_arena, "%f", value);
+                    do_text(buf, "");
+                }
             }
             ui_pop_widget();
             ui_pop_background_color();
@@ -999,6 +1153,17 @@ void do_text_field_slider(char *text, char *id_string, int32 index = 0) {
     }
     ui_pop_widget();
     ui_pop_layout_type();
+
+    // we do validation that it's a number, but any putting value into bounds should be done by the caller
+    if (interact.lost_focus) {
+        real32 result;
+        bool32 conversion_result = string_to_real32(make_string(state->buffer), &result);
+        if (conversion_result) {
+            return result;
+        }
+    }
+    
+    return value;
 }
 
 // TODO: this should be push_window and should move all the popping calls to a pop_window procedure

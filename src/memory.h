@@ -85,6 +85,8 @@ struct Memory {
     Arena_Allocator editor_arena;
 };
 
+Marker begin_region();
+void end_region(Marker marker);
 void *allocate(Allocator *allocator, uint32 size, bool32 zero_memory = true);
 void deallocate(Allocator *allocator, void *address);
 

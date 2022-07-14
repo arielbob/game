@@ -1,9 +1,10 @@
 #ifndef UI_2_H
 #define UI_2_H
 
-#define UI_WIDGET_IS_CLICKABLE    (1 << 0)
-#define UI_WIDGET_DRAW_BACKGROUND (1 << 1)
-#define UI_WIDGET_DRAW_TEXT       (1 << 2)
+#define UI_WIDGET_IS_CLICKABLE       (1 << 0)
+#define UI_WIDGET_DRAW_BACKGROUND    (1 << 1)
+#define UI_WIDGET_DRAW_TEXT          (1 << 2)
+#define UI_WIDGET_IS_FOCUSABLE       (1 << 3)
 
 #define NUM_WIDGET_BUCKETS 128
 
@@ -23,16 +24,22 @@ enum UI_Size_Type {
     UI_SIZE_FILL_REMAINING
 };
 
-enum UI_Widget_State_Type {
-    UI_STATE_WINDOW
-};
-
 enum UI_Layout_Type {
     UI_LAYOUT_NONE,
     UI_LAYOUT_HORIZONTAL,
     UI_LAYOUT_VERTICAL,
     UI_LAYOUT_CENTER,
     UI_LAYOUT_HORIZONTAL_SPACE_BETWEEN
+};
+
+enum UI_Position_Type {
+    UI_POSITION_NONE,
+    UI_POSITION_FLOAT
+};
+
+enum UI_Widget_State_Type {
+    UI_STATE_WINDOW,
+    UI_STATE_TEXT_FIELD_SLIDER
 };
 
 struct Vec2_UI_Size_Type {
@@ -70,6 +77,11 @@ struct UI_Style_Rect {
 struct UI_Style_Position {
     Vec2 position;
     UI_Style_Position *next;
+};
+
+struct UI_Style_Position_Type {
+    UI_Position_Type type;
+    UI_Style_Position_Type *next;
 };
 
 struct UI_Style_Size {
@@ -126,12 +138,19 @@ struct UI_Window_State {
     Vec2 position;
 };
 
+struct UI_Text_Field_Slider_State {
+    String_Buffer buffer;
+    bool32 is_slider;
+    int32 cursor_index;
+};
+
 struct UI_Widget_State {
     UI_id id;
     UI_Widget_State_Type type;
 
     union {
         UI_Window_State window;
+        UI_Text_Field_Slider_State text_field_slider;
     };
 
     UI_Widget_State *next;
@@ -160,6 +179,7 @@ struct UI_Widget {
     
     UI_Layout_Type layout_type;
     Vec2_UI_Size_Type size_type;
+    UI_Position_Type position_type;
     
     Vec2 semantic_size;
     Vec2 semantic_position;
@@ -180,12 +200,16 @@ struct UI_Stack_Widget {
 struct UI_Interact_Result {
     bool32 clicked;
     bool32 holding;
+    bool32 focused;
+    bool32 lost_focus;
 };
 
 struct UI_Manager {
     UI_id hot;
     UI_id active;
     UI_id last_frame_active;
+    UI_id focus;
+    real32 focus_t;
 
     UI_Widget *last_frame_root;
     UI_Widget *root;
@@ -210,6 +234,7 @@ struct UI_Manager {
     UI_Style_Layout_Type *layout_type_stack;
     UI_Style_Size *size_stack;
     UI_Style_Position *position_stack;
+    UI_Style_Position_Type *position_type_stack;
     UI_Style_Size_Type *size_type_stack;
     UI_Style_Font *font_stack;
     UI_Style_Text_Color *text_color_stack;
@@ -219,6 +244,7 @@ struct UI_Manager {
 
 bool32 is_hot(UI_Widget *widget);
 bool32 is_active(UI_Widget *widget);
+bool32 is_focus(UI_Widget *widget);
 bool32 in_bounds(Vec2 p, real32 x_min, real32 x_max, real32 y_min, real32 y_max);
 bool32 in_bounds(Vec2 p, Vec2 widget_position, Vec2 widget_size);
 bool32 ui_id_equals(UI_id id1, UI_id id2);

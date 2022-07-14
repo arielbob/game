@@ -169,6 +169,22 @@ String_Buffer copy(Allocator *allocator, String_Buffer source_buffer) {
     return buffer;
 }
 
+// copies from index (inclusive) to end of buffer contents
+String substring_after(Allocator *allocator, String_Buffer source_buffer, int32 index) {
+    assert(index >= 0);
+    assert(index <= source_buffer.current_length);
+
+    int32 substring_length = source_buffer.current_length - index;
+    char *contents = (char *) allocate(allocator, substring_length);
+    memcpy(contents, source_buffer.contents + index, substring_length);
+
+    String string;
+    string.allocator = allocator;
+    string.contents = contents;
+    string.length = substring_length;
+    return string;
+}
+
 void set_string_buffer_text(String_Buffer *string_buffer, char *text) {
     int32 len = string_length(text);
     assert(len < string_buffer->size);
@@ -338,6 +354,30 @@ char *append_string(Allocator *allocator, char *base, char *to_append) {
     return buffer;
 }
 
+// removes the character at index
+void splice(String_Buffer *buffer, int32 index) {
+    if (index < 0 || index >= buffer->current_length) return;
+
+    memcpy(&buffer->contents[index], &buffer->contents[index + 1], buffer->current_length - index - 1);
+    buffer->current_length--;
+}
+
+void splice_insert(String_Buffer *buffer, int32 index, char c) {
+    assert(buffer->current_length < buffer->size);
+    assert(index >= 0);
+    assert(index <= buffer->current_length);
+
+    Marker m = begin_region();
+    String after = substring_after(temp_region, *buffer, index);
+    buffer->contents[index] = c;
+
+    memcpy(&buffer->contents[index + 1], after.contents, after.length);
+    buffer->current_length++;
+    
+    end_region(m);
+}
+
+// TODO: rename these to to_c_string or something
 void to_char_array(String string, char *buffer, int32 buffer_size) {
     assert(buffer_size >= string.length + 1);
     for (int32 i = 0; i < string.length; i++) {
