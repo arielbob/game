@@ -23,6 +23,7 @@ enum UI_Size_Type {
 };
 
 enum UI_Widget_State_Type {
+    UI_STATE_WINDOW
 };
 
 enum UI_Layout_Type {
@@ -95,15 +96,6 @@ struct UI_Style_Font {
     UI_Style_Font *next;
 };
 
-// TODO: i think this state should be stored at a layer above this UI stuff. on the same layer that we
-//       create things like textboxes out of these components.
-struct UI_Widget_State {
-    UI_Widget_State_Type type;
-
-    union {
-    };
-};
-
 struct UI_id {
     // NOTE: we use a pointer to some unique data, such as a constant string specific to a button, to
     //       identify UI elements
@@ -128,6 +120,21 @@ inline UI_id make_ui_id(char *id, int32 index) {
 inline UI_id make_ui_id(char *id) {
     return make_ui_id(id, 0);
 }
+
+struct UI_Window_State {
+    Vec2 position;
+};
+
+struct UI_Widget_State {
+    UI_id id;
+    UI_Widget_State_Type type;
+
+    union {
+        UI_Window_State window;
+    };
+
+    UI_Widget_State *next;
+};
 
 struct UI_Widget {
     UI_id id;
@@ -170,6 +177,7 @@ struct UI_Stack_Widget {
 
 struct UI_Interact_Result {
     bool32 clicked;
+    bool32 holding;
 };
 
 struct UI_Manager {
@@ -185,6 +193,8 @@ struct UI_Manager {
     // widgets.
     UI_Widget **last_frame_widget_table;
     UI_Widget **widget_table;
+
+    UI_Widget_State **state_table;
     
     Heap_Allocator persistent_heap;
     Arena_Allocator last_frame_arena;

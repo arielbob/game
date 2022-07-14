@@ -327,11 +327,11 @@ UI_Interact_Result ui_interact(UI_Manager *manager, UI_Widget *semantic_widget) 
         if (in_bounds(mouse_pos, computed_widget->computed_position, computed_widget->computed_size)) {
             manager->hot = id;
 
-            if (controller_state->left_mouse.is_down && !controller_state->left_mouse.was_down) {
+            if (just_pressed(controller_state->left_mouse)) {
                 // we check for !was_down to avoid setting a button active if we click and hold outside then
                 // move into the button
                 manager->active = id;
-            } else if (!controller_state->left_mouse.is_down && controller_state->left_mouse.was_down) {
+            } else if (is_active(manager, computed_widget) && just_lifted(controller_state->left_mouse)) {
                 result.clicked = true;
                 if (is_active(manager, computed_widget)) {
                     manager->active = {};
@@ -344,6 +344,14 @@ UI_Interact_Result ui_interact(UI_Manager *manager, UI_Widget *semantic_widget) 
 
             if (is_active(manager, computed_widget) && !controller_state->left_mouse.is_down) {
                 manager->active = {};
+            }
+        }
+
+        // must be active, since active can only be started when starting click inside the bounds.
+        // we don't want to be able to start dragging by holding down outside and moving into bounds.
+        if (is_active(manager, computed_widget)) {
+            if (being_held(controller_state->left_mouse)) {
+                result.holding = true;
             }
         }
     }
@@ -665,6 +673,8 @@ void ui_init(Arena_Allocator *arena, UI_Manager *manager) {
                                                                  sizeof(UI_Widget *) * NUM_WIDGET_BUCKETS, true);
     manager->last_frame_widget_table = (UI_Widget **) arena_push(&manager->last_frame_arena,
                                                                  sizeof(UI_Widget *) * NUM_WIDGET_BUCKETS, true);
+    manager->state_table             = (UI_Widget_State **) heap_allocate(&manager->persistent_heap,
+                                                                          sizeof(UI_Widget_State *) * NUM_WIDGET_BUCKETS, true);
 }
 
 void ui_frame_init(UI_Manager *manager, Display_Output *display_output) {
@@ -779,6 +789,69 @@ inline real32 get_center_y_offset(real32 height, real32 box_height) {
     return 0.5f * (height - box_height);
 }
 
+UI_Widget_State *ui_get_state(UI_Manager *manager, UI_id id) {
+    uint32 hash = get_hash(id, NUM_WIDGET_BUCKETS);
+
+    UI_Widget_State *current = manager->state_table[hash];
+    while (current) {
+        if (ui_id_equals(current->id, id)) {
+            return current;
+        }
+
+        current = current->next;
+    }
+
+    return NULL;
+}
+
+void _ui_add_state(UI_Manager *manager, UI_Widget_State *state) {
+    if (!state->id.string_ptr) return;
+    
+    uint32 hash = get_hash(state->id, NUM_WIDGET_BUCKETS);
+
+    UI_Widget_State **state_table = manager->state_table;
+    UI_Widget_State *current = state_table[hash];
+    if (!current) {
+        state->next = NULL;
+        state_table[hash] = state;
+        return;
+    }
+    
+    while (true) {
+        if (ui_id_equals(current->id, state->id)) {
+            assert(!"Widget state already exists in table.");
+            return;
+        }
+
+        if (!current->next) {
+            current->next = state;
+            state->next = NULL;
+            return;
+        }
+
+        current = current->next;
+    }
+    
+    assert(!"Should be unreachable.");
+}
+
+UI_Widget_State *ui_make_widget_state(UI_Manager *manager) {
+    UI_Widget_State *result = (UI_Widget_State *) heap_allocate(&manager->persistent_heap,
+                                                                sizeof(UI_Widget_State), true);
+    return result;
+}
+
+UI_Window_State *ui_add_window_state(UI_Manager *manager, UI_id id, Vec2 position) {
+    UI_Widget_State *state = ui_make_widget_state(manager);
+    state->id = id;
+    state->type = UI_STATE_WINDOW;
+    state->window = { position };
+
+    _ui_add_state(manager, state);
+
+    return &state->window;
+}
+
 
 
 // COMPOUND WIDGETS
@@ -865,9 +938,31 @@ inline bool32 do_text_button(UI_Manager *manager, char *text, real32 padding, ch
 }
 
 // TODO: this should be push_window and should move all the popping calls to a pop_window procedure
-void do_window(UI_Manager *manager, char *text, char *id, int32 index = 0) {
+// TODO: add state and window dragging
+void do_window(UI_Manager *manager, char *text, char *id_string, int32 index = 0) {
+    UI_id id = make_ui_id(id_string, index);
+    UI_Widget_State *state_variant = ui_get_state(manager, id);
+    UI_Window_State *state;
+    if (!state_variant) {
+        state = ui_add_window_state(manager, id, { 100.0f, 200.0f });
+    } else {
+        state = &state_variant->window;
+    }
+    
+    
+    #if 0
+    UI_Widget_State *state_variant = get_state(manager, id);
+    UI_Window_State *state;
+    if (!state_variant) {
+        state = &(add_state(manager, id))->window_state;
+        state.position = { 200.0f, 200.0f };
+    } else {
+        state = &state_variant->window_state;
+    }
+    #endif
+    
     ui_push_widget(manager, manager->root);
-    ui_push_position(manager, { 200.0f, 200.0f });
+    ui_push_position(manager, state->position);
     
     ui_push_size(manager, {});
     ui_push_layout_type(manager, UI_LAYOUT_VERTICAL);
@@ -878,16 +973,24 @@ void do_window(UI_Manager *manager, char *text, char *id, int32 index = 0) {
     #if 1
     ui_push_widget(manager, id, UI_WIDGET_DRAW_BACKGROUND);
     {
-        #if 1
         ui_push_size_type(manager, { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN });
         ui_push_size(manager, { 1.0f, 20.0f });
         ui_push_layout_type(manager, UI_LAYOUT_CENTER);
         ui_push_background_color(manager, { 1.0f, 0.0f, 0.0f, 1.0f });
 
-        ui_push_widget(manager, "", UI_WIDGET_DRAW_BACKGROUND);
-        do_text(manager, text, "");
+        // title bar
+        UI_Widget *title_bar = ui_push_widget(manager, "window-title-bar", UI_WIDGET_IS_CLICKABLE | UI_WIDGET_DRAW_BACKGROUND);
+        UI_Interact_Result title_bar_interact = ui_interact(manager, title_bar);
+        {
+            do_text(manager, text, "");
+        }
         ui_pop_widget(manager);
 
+        if (title_bar_interact.holding) {
+            Vec2 delta = Context::controller_state->current_mouse - Context::controller_state->last_mouse;
+            state->position += delta;
+        }
+        
         ui_pop_background_color(manager);
         
         ui_push_size(manager, { 200.0f, 200.0f });
@@ -900,7 +1003,6 @@ void do_window(UI_Manager *manager, char *text, char *id, int32 index = 0) {
         ui_pop_size(manager);
         ui_pop_layout_type(manager);
         ui_pop_size_type(manager);
-        #endif
     }
     ui_pop_widget(manager);
     #endif
