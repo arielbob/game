@@ -930,18 +930,27 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output) {
     ui_push_text_color({ 0.0f, 0.0f, 0.0f, 1.0f });
     ui_push_font("calibri14");
 
-    #if 0
+    #if 1
     ui_push_background_color({ 1.0f, 1.0f, 1.0f, 1.0f });
-    ui_push_hot_background_color({ 0.7f, 0.7f, 0.7f, 1.0f });
-    ui_push_active_background_color({ 0.5f, 0.5f, 0.5f, 1.0f });
-    ui_push_size({});
+    ui_push_size_type({ UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE });
+    ui_push_size({ 500.0f, 20.0f });
+    ui_push_position({ 200.0f, 200.0f });
+    
+    do_text_field_slider("textbox text", "textbox-test");
+    
+    ui_pop_position();
+    ui_pop_size();
+    ui_pop_size_type();
+    ui_pop_background_color();
+    #if 0
     if (do_text_button("Transform", 5.0f, "transform-button")) {
         debug_print("open transform window clicked\n");
     }
     #endif
+    #endif
 
     
-    #if 1
+    #if 0
     ui_push_size_type({ UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN });
     ui_push_layout_type(UI_LAYOUT_VERTICAL);
     ui_push_background_color({ 0.0f, 0.0f, 1.0f, 1.0f });
@@ -988,9 +997,11 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output) {
         ui_pop_widget();
     }
     ui_pop_widget();
-    #endif
 
     do_window("Window Name", "window-test");
+
+    #endif
+
     
 
     #if 0

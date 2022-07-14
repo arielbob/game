@@ -134,7 +134,12 @@ UI_Widget *ui_add_widget(UI_Widget *widget) {
     widget->id.parent_string_ptr = parent->id.string_ptr;
     widget->id.parent_index      = parent->id.index;
     widget->parent = parent;
-    parent->num_children++;
+
+    if (widget->size_type[UI_WIDGET_X_AXIS] != UI_SIZE_FILL_REMAINING) {
+        parent->num_sized_children++;
+    } else {
+        parent->num_fill_children++;
+    }
     
     if (!parent->last) {
         assert(!parent->first);
@@ -480,7 +485,10 @@ void calculate_child_dependent_size(UI_Widget *widget, UI_Widget_Axis axis) {
             }
         }
 
-        if (axis == UI_WIDGET_X_AXIS && parent->layout_type == UI_LAYOUT_HORIZONTAL_SPACE_BETWEEN) {
+        if (axis == UI_WIDGET_X_AXIS &&
+            (widget->size_type[axis] != UI_SIZE_FILL_REMAINING) &&
+            (parent->layout_type == UI_LAYOUT_HORIZONTAL_SPACE_BETWEEN ||
+             parent->layout_type == UI_LAYOUT_HORIZONTAL)) {
             parent->computed_child_size_sum[axis] += widget->computed_size[axis];
         }
     }
@@ -532,6 +540,15 @@ void calculate_ancestor_dependent_sizes_part_2(UI_Widget *widget, UI_Widget_Axis
     if (widget->size_type[axis] == UI_SIZE_PERCENTAGE) {
         assert(parent); // root node cannot be percentage based
         widget->computed_size[axis] = parent->computed_size[axis] * widget->semantic_size[axis];
+    } else if (widget->size_type[axis] == UI_SIZE_FILL_REMAINING) {
+        assert(parent);
+        if (axis == UI_WIDGET_X_AXIS) {
+            widget->computed_size[axis] = ((parent->computed_size[axis] - parent->computed_child_size_sum[axis]) /
+                                           parent->num_fill_children);
+        } else {
+            assert(!"UI_SIZE_FIT_REMAINING only supported for x-axis.");
+        }
+        
     }
 }
 
@@ -599,7 +616,8 @@ void calculate_position(UI_Widget *widget, UI_Widget_Axis axis) {
                                                (widget->computed_size[axis] / 2.0f));
         } else if (parent->layout_type == UI_LAYOUT_HORIZONTAL_SPACE_BETWEEN) {
             if (axis == UI_WIDGET_X_AXIS) {
-                real32 d = (parent->computed_size.x - parent->computed_child_size_sum.x) / (parent->num_children - 1);
+                real32 d = ((parent->computed_size.x - parent->computed_child_size_sum.x) /
+                            (parent->num_sized_children - 1));
                 if (prev) {
                     widget->computed_position.x = prev->computed_position.x + prev->computed_size.x + d;
                 } else {
@@ -858,10 +876,11 @@ UI_Window_State *ui_add_window_state(UI_id id, Vec2 position) {
 
 void do_text(char *text, char *id, uint32 flags = 0, int32 index = 0) {
     ui_push_size_type({ UI_SIZE_FIT_TEXT, UI_SIZE_FIT_TEXT });
-    //ui_push_background_color({ 1.0f, 0.0f, 0.0f, 1.0f });
-    UI_Widget *text_widget = ui_add_widget(make_ui_id(id, index), UI_WIDGET_DRAW_TEXT | flags);
+    ui_push_background_color({ 1.0f, 0.0f, 0.0f, 1.0f });
+    //UI_Widget *text_widget = ui_add_widget(make_ui_id(id, index), UI_WIDGET_DRAW_TEXT | UI_WIDGET_DRAW_BACKGROUND);
+    UI_Widget *text_widget = ui_add_widget(make_ui_id(id, index), UI_WIDGET_DRAW_TEXT);
     text_widget->text = text;
-    //ui_pop_background_color();
+    ui_pop_background_color();
     ui_pop_size_type();
 }
 
@@ -889,7 +908,7 @@ bool32 do_text_button(char *text, real32 padding, UI_id id) {
             ui_push_size({ padding, 0.0f });
             ui_add_widget("");
             //ui_pop_size_type();
-        
+
             ui_push_size_type({ UI_SIZE_FIT_TEXT, UI_SIZE_FIT_TEXT });
             UI_Widget *text_widget = ui_add_widget(make_ui_id(NULL), UI_WIDGET_DRAW_TEXT);
             text_widget->text = text;
@@ -935,6 +954,51 @@ bool32 do_text_button(char *text, real32 padding, UI_id id) {
 
 inline bool32 do_text_button(char *text, real32 padding, char *id, int32 index = 0) {
     return do_text_button(text, padding, make_ui_id(id, index));
+}
+
+void ui_x_pad(real32 width) {
+    ui_push_size_type({ UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE });
+    ui_push_size({ width, 0.0f });
+    ui_add_widget("");
+    ui_pop_size();
+    ui_pop_size_type();
+}
+
+void do_text_field_slider(char *text, char *id_string, int32 index = 0) {
+    // size, position, background color, text color should be set before this is called
+    ui_push_layout_type(UI_LAYOUT_CENTER);
+    ui_push_widget(id_string, UI_WIDGET_DRAW_BACKGROUND);
+    {
+
+        ui_push_size_type({ UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN });
+        ui_push_layout_type(UI_LAYOUT_HORIZONTAL);
+        ui_push_size({ 1.0f, 0.0f });
+
+        ui_push_widget("", UI_WIDGET_DRAW_BACKGROUND);
+        {
+            ui_x_pad(5.0f);
+            ui_push_size_type({ UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN });
+            ui_push_layout_type(UI_LAYOUT_HORIZONTAL);
+            ui_push_background_color({ 0.0f, 1.0f, 0.0f, 1.0f });
+            ui_push_widget("", UI_WIDGET_DRAW_BACKGROUND);
+            {
+                do_text(text, "");
+            }
+            ui_pop_widget();
+            ui_pop_background_color();
+            ui_pop_layout_type();
+            ui_pop_size_type();
+            
+            ui_x_pad(5.0f);
+        }
+        ui_pop_widget();
+
+        ui_pop_size();
+        ui_pop_layout_type();
+        ui_pop_size_type();
+    }
+    ui_pop_widget();
+    ui_pop_layout_type();
 }
 
 // TODO: this should be push_window and should move all the popping calls to a pop_window procedure

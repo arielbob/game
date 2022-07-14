@@ -19,7 +19,8 @@ enum UI_Size_Type {
     UI_SIZE_PERCENTAGE,
     UI_SIZE_ABSOLUTE,
     UI_SIZE_FIT_CHILDREN,
-    UI_SIZE_FIT_TEXT
+    UI_SIZE_FIT_TEXT,
+    UI_SIZE_FILL_REMAINING
 };
 
 enum UI_Widget_State_Type {
@@ -163,11 +164,12 @@ struct UI_Widget {
     Vec2 semantic_size;
     Vec2 semantic_position;
 
-    int32 num_children;
+    int32 num_fill_children; // only on x-axis
+    int32 num_sized_children;
     
     Vec2 computed_size;
     Vec2 computed_position;
-    Vec2 computed_child_size_sum;
+    Vec2 computed_child_size_sum; // only on x-axis
 };
 
 struct UI_Stack_Widget {
