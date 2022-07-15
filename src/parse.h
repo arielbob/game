@@ -47,16 +47,21 @@ real32 string_to_real32(char *str, uint32 length) {
     bool32 has_decimal = false;
     real32 decimal_denom = 10.0f;
     bool32 is_negative = false;
+
+    uint32 i = 0;
+    if (length > 0) {
+        if (str[0] == '-') {
+            is_negative = true;
+            i++;
+        }
+    }
     
-    for (uint32 i = 0; i < length; i++) {
+    for (; i < length; i++) {
         char c = str[i];
 
         if (c == '.') {
             assert(has_decimal == false);
             has_decimal = true;
-        } else if (c == '-') {
-            assert(is_negative == false);
-            is_negative = true;
         } else {
             if (has_decimal) {
                 result += (real32) ascii_to_uint32(str[i]) / decimal_denom;
@@ -83,24 +88,30 @@ bool32 string_to_real32(char *str, uint32 length, real32 *real32_result) {
     bool32 has_decimal = false;
     real32 decimal_denom = 10.0f;
     bool32 is_negative = false;
+
+    uint32 i = 0;
+    if (length > 0) {
+        if (str[0] == '-') {
+            is_negative = true;
+            i++;
+        }
+    }
     
-    for (uint32 i = 0; i < length; i++) {
+    for (; i < length; i++) {
         char c = str[i];
-        if (!is_digit(c) && (c != '-') && (c != '.')) return false;
 
         if (c == '.') {
             if (has_decimal) return false;
             has_decimal = true;
-        } else if (c == '-') {
-            if (is_negative) return false;
-            is_negative = true;
-        } else {
+        } else if (is_digit(c)) {
             if (has_decimal) {
                 result += (real32) ascii_to_uint32(str[i]) / decimal_denom;
                 decimal_denom *= 10;
             } else {
                 result = result*10 + ascii_to_uint32(str[i]);
             }            
+        } else {
+            return false;
         }
     }
 

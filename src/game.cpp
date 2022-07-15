@@ -964,7 +964,7 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     #endif
 
     
-    #if 0
+    #if 1
     ui_push_size_type({ UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN });
     ui_push_layout_type(UI_LAYOUT_VERTICAL);
     ui_push_background_color({ 0.0f, 0.0f, 1.0f, 1.0f });
