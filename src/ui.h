@@ -140,7 +140,8 @@ struct UI_Window_State {
 
 struct UI_Text_Field_Slider_State {
     String_Buffer buffer;
-    bool32 is_slider;
+    bool32 is_using;
+    bool32 is_sliding;
     int32 cursor_index;
 };
 
@@ -202,6 +203,11 @@ struct UI_Interact_Result {
     bool32 holding;
     bool32 focused;
     bool32 lost_focus;
+
+    real32 click_t;
+
+    Vec2 relative_mouse; // relative mouse position from top left of the computed position
+    Vec2 relative_mouse_percentage;
 };
 
 struct UI_Manager {
@@ -209,6 +215,8 @@ struct UI_Manager {
     UI_id active;
     UI_id last_frame_active;
     UI_id focus;
+
+    real32 active_t;
     real32 focus_t;
 
     UI_Widget *last_frame_root;

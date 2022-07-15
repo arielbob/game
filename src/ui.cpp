@@ -347,6 +347,10 @@ UI_Interact_Result ui_interact(UI_Widget *semantic_widget) {
     Vec2 mouse_pos = controller_state->current_mouse;
 
     UI_Interact_Result result = {};
+
+    result.relative_mouse = mouse_pos - computed_widget->computed_position;
+    result.relative_mouse_percentage = { result.relative_mouse.x / computed_widget->computed_size.x,
+                                         result.relative_mouse.y / computed_widget->computed_size.y };
     
     UI_id id = computed_widget->id;
     if (computed_widget->flags & UI_WIDGET_IS_CLICKABLE) {
@@ -357,11 +361,11 @@ UI_Interact_Result ui_interact(UI_Widget *semantic_widget) {
                 // we check for !was_down to avoid setting a button active if we click and hold outside then
                 // move into the button
                 ui_manager->active = id;
+                ui_manager->active_t = 0.0f;
             } else if (is_active(computed_widget) && just_lifted(controller_state->left_mouse)) {
                 result.clicked = true;
-                if (is_active(computed_widget)) {
-                    ui_manager->active = {};
-                }
+                result.click_t = ui_manager->active_t;
+                ui_manager->active = {};
             }
         } else {
             if (is_hot(computed_widget)) {
@@ -774,6 +778,7 @@ void ui_frame_init(Display_Output *display_output, real32 dt) {
     ui_table_add(ui_manager->widget_table, widget);
 
     ui_manager->focus_t += dt;
+    ui_manager->active_t += dt;
 }
 
 // TODO: don't clear.. we want to keep state actually
@@ -938,7 +943,7 @@ UI_Text_Field_Slider_State *ui_add_text_field_slider_state(UI_id id, real32 valu
     state->id = id;
     state->type = UI_STATE_TEXT_FIELD_SLIDER;
     String_Buffer buffer = make_string_buffer((Allocator *) &ui_manager->persistent_heap, 64);
-    state->text_field_slider = { buffer, false };
+    state->text_field_slider = { buffer, false, false, 0 };
     
     _ui_add_state(state);
 
@@ -1038,7 +1043,25 @@ void ui_x_pad(real32 width) {
     ui_pop_size_type();
 }
 
-real32 do_text_field_slider(Asset_Manager *asset, real32 value, char *id_string, int32 index = 0) {
+void ui_add_slider_bar(real32 value, real32 min, real32 max) {
+    ui_push_size_type({ UI_SIZE_PERCENTAGE, UI_SIZE_PERCENTAGE });
+    ui_push_position_type(UI_POSITION_FLOAT);
+    ui_push_position({});
+    ui_push_size({ clamp((value - min) / (max - min), 0.0f, 1.0f), 1.0f });
+    
+    ui_add_widget("", UI_WIDGET_DRAW_BACKGROUND);
+
+    ui_pop_size();
+    ui_pop_position();
+    ui_pop_position_type();
+    ui_pop_size_type();
+}
+
+// TODO: add slider
+real32 do_text_field_slider(Asset_Manager *asset, real32 value,
+                            real32 min_value, real32 max_value,
+                            bool32 show_slider,
+                            char *id_string, int32 index = 0) {
     UI_id id = make_ui_id(id_string, index);
     UI_Widget_State *state_variant = ui_get_state(id);
     UI_Text_Field_Slider_State *state;
@@ -1054,13 +1077,49 @@ real32 do_text_field_slider(Asset_Manager *asset, real32 value, char *id_string,
                                         UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE | UI_WIDGET_IS_FOCUSABLE);
     UI_Interact_Result interact = ui_interact(textbox);
 
-    if (interact.focused) {
-        char *value_text = string_format((Allocator *) &ui_manager->frame_arena, "%f", value);
-        set_string_buffer_text(&state->buffer, value_text);
-        state->cursor_index = state->buffer.current_length;
+    real32 x_delta = fabsf((get_mouse_delta()).x);
+    real32 deadzone = 1.0f;
+
+    if (!state->is_using) {
+        state->is_sliding = is_active(textbox) && (x_delta > deadzone);
+
+        if (state->is_sliding) {
+            state->is_using = true;
+        } else if (interact.clicked) {
+            state->is_using = true;
+
+            char *value_text = string_format((Allocator *) &ui_manager->frame_arena, "%f", value);
+            set_string_buffer_text(&state->buffer, value_text);
+            state->cursor_index = state->buffer.current_length;
+        }
+    }
+
+
+    if (state->is_using) {
+        if (state->is_sliding) {
+            if (!is_active(textbox)) {
+                state->is_using = false;
+            }
+        } else {
+            if (interact.lost_focus) {
+                state->is_using = false;
+
+                real32 result;
+                bool32 conversion_result = string_to_real32(make_string(state->buffer), &result);
+                if (conversion_result) {
+                    value = result;
+                    //return result;
+                }
+            }
+        }
     }
     
-    if (is_focus(textbox)) {
+    if (state->is_using && state->is_sliding) {
+        value = interact.relative_mouse_percentage.x * (max_value - min_value);
+        value = clamp(value, min_value, max_value);
+    }
+    
+    if (state->is_using && !state->is_sliding) {
         Controller_State *controller_state = Context::controller_state;
         int32 original_cursor_index = state->cursor_index;
         
@@ -1094,6 +1153,14 @@ real32 do_text_field_slider(Asset_Manager *asset, real32 value, char *id_string,
             ui_manager->focus_t = 0.0f;
         }
     }
+
+    if (show_slider) {
+        if (!state->is_using || state->is_sliding) {
+            ui_push_background_color({ 0.0f, 0.0f, 1.0f, 1.0f });
+            ui_add_slider_bar(value, min_value, max_value);
+            ui_pop_background_color();
+        }
+    }
     
     {
         ui_push_size_type({ UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN });
@@ -1108,19 +1175,20 @@ real32 do_text_field_slider(Asset_Manager *asset, real32 value, char *id_string,
             ui_push_background_color({ 0.0f, 1.0f, 0.0f, 1.0f });
             ui_push_widget("");
             {
-                if (is_focus(textbox)) {
+                if (state->is_using && !state->is_sliding) {
+                    //if (false) {
                     char *str = to_char_array((Allocator *) &ui_manager->frame_arena, state->buffer);
                     do_text(str, "");
 
                     // draw cursor
 
                     ui_push_size_type({ UI_SIZE_ABSOLUTE, UI_SIZE_PERCENTAGE });
-                    ui_push_size({ 2.0f, 1.0f });
+                    ui_push_size({ 1.0f, 1.0f });
                     ui_push_position_type(UI_POSITION_FLOAT);
 
                     Font font = get_font(asset, textbox->font);
                     real32 width_to_index = get_width(font, str, state->cursor_index);
-                    ui_push_position({ width_to_index, 0.0f });
+                    ui_push_position({ floorf(width_to_index), 0.0f });
 
                     ui_push_background_color({ 0.0f, 0.0f, 0.0f, 1.0f });
                     real32 time_to_switch = 0.5f; // time spent in either state
@@ -1155,6 +1223,7 @@ real32 do_text_field_slider(Asset_Manager *asset, real32 value, char *id_string,
     ui_pop_layout_type();
 
     // we do validation that it's a number, but any putting value into bounds should be done by the caller
+    #if 0
     if (interact.lost_focus) {
         real32 result;
         bool32 conversion_result = string_to_real32(make_string(state->buffer), &result);
@@ -1162,6 +1231,7 @@ real32 do_text_field_slider(Asset_Manager *asset, real32 value, char *id_string,
             return result;
         }
     }
+    #endif
     
     return value;
 }

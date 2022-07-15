@@ -950,7 +950,7 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     ui_push_position({ 200.0f, 200.0f });
 
     static real32 value = 50.0f;
-    value = do_text_field_slider(asset, value, "textbox-test");
+    value = do_text_field_slider(asset, value, 0.0f, 100.0f, true, "textbox-test");
     
     ui_pop_position();
     ui_pop_size();
