@@ -51,6 +51,35 @@ UI_Widget *make_widget(UI_id id, uint32 flags) {
     return widget;
 }
 
+UI_Widget *make_widget(UI_id id, UI_Theme theme, uint32 flags) {
+    UI_Widget *widget = (UI_Widget *) allocate(&ui_manager->frame_arena, sizeof(UI_Widget));
+
+    *widget = {};
+    widget->id = id;
+    widget->flags = flags;
+
+    widget->background_color        = theme.background_color;
+    widget->hot_background_color    = theme.hot_background_color;
+    widget->active_background_color = theme.active_background_color;
+
+    widget->text_color              = theme.text_color;
+    widget->font                    = theme.font;
+    widget->text                    = theme.text;
+    
+    widget->layout_type             = theme.layout_type;
+    widget->size_type               = theme.size_type;
+    widget->position_type           = theme.position_type;
+    
+    widget->semantic_size           = theme.semantic_size;
+    widget->semantic_position       = theme.semantic_position;
+    
+    return widget;
+}
+
+inline UI_Widget *make_widget(char *id_string, UI_Theme theme, uint32 flags) {
+    return make_widget(make_ui_id(id_string, 0), theme, flags);
+}
+
 uint32 get_hash(UI_id id, uint32 bucket_size) {
     // don't use the pointer here for hashing, since that'll always be even
     String_Iterator it = make_string_iterator(make_string(id.string_ptr));
@@ -177,7 +206,8 @@ UI_Widget *ui_add_widget(char *id_string_ptr, uint32 flags = 0) {
     return ui_add_widget(make_ui_id(id_string_ptr), flags);
 }
 
-UI_Widget *ui_push_widget(UI_Widget *widget) {
+// should only be used to push widgets that have already been added using add_widget
+UI_Widget *ui_push_existing_widget(UI_Widget *widget) {
     // push to the stack
     UI_Stack_Widget *entry = (UI_Stack_Widget *) allocate(&ui_manager->frame_arena, sizeof(UI_Stack_Widget));
 
@@ -193,11 +223,17 @@ UI_Widget *ui_push_widget(UI_id id, uint32 flags = 0) {
     UI_Widget *widget = make_widget(id, flags);
     ui_add_widget(widget);
 
-    return ui_push_widget(widget);
+    return ui_push_existing_widget(widget);
 }
 
 UI_Widget *ui_push_widget(char *id_string_ptr, uint32 flags = 0) {
     return ui_push_widget(make_ui_id(id_string_ptr), flags);
+}
+
+UI_Widget *ui_add_and_push_widget(UI_Widget *widget) {
+    ui_add_widget(widget);
+    ui_push_existing_widget(widget);
+    return widget;
 }
 
 void ui_pop_widget() {
@@ -1237,49 +1273,44 @@ real32 do_text_field_slider(Asset_Manager *asset, real32 value,
 }
 
 // TODO: this should be push_window and should move all the popping calls to a pop_window procedure
-// TODO: add state and window dragging
-void do_window(char *text, char *id_string, int32 index = 0) {
+void push_window(char *text, char *id_string, int32 index = 0) {
     UI_id id = make_ui_id(id_string, index);
     UI_Widget_State *state_variant = ui_get_state(id);
     UI_Window_State *state;
     if (!state_variant) {
-        state = ui_add_window_state(id, { 100.0f, 200.0f });
+        state = ui_add_window_state(id, { 100.0f, 250.0f });
     } else {
         state = &state_variant->window;
     }
-    
-    
-    #if 0
-    UI_Widget_State *state_variant = get_state(id);
-    UI_Window_State *state;
-    if (!state_variant) {
-        state = &(add_state(id))->window_state;
-        state.position = { 200.0f, 200.0f };
-    } else {
-        state = &state_variant->window_state;
-    }
-    #endif
-    
-    ui_push_widget(ui_manager->root);
-    ui_push_position(state->position);
-    
-    ui_push_size({});
-    ui_push_layout_type(UI_LAYOUT_VERTICAL);
-    ui_push_size_type({ UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN });
-    //ui_push_size_type({ UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE });
 
-    ui_push_text_color({ 1.0f, 1.0f, 1.0f, 1.0f });
+    ui_push_existing_widget(ui_manager->root);
+
+    UI_Theme window_theme = {};
+    window_theme.semantic_position = state->position;
+    window_theme.layout_type = UI_LAYOUT_VERTICAL;
+    window_theme.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN };
+    window_theme.background_color = ui_manager->background_color_stack->background_color;
+    window_theme.text_color = ui_manager->text_color_stack->color;
+    UI_Widget *window = make_widget(id, window_theme, UI_WIDGET_DRAW_BACKGROUND);
+    ui_add_and_push_widget(window);
+    
     #if 1
-    ui_push_widget(id, UI_WIDGET_DRAW_BACKGROUND);
     {
-        ui_push_size_type({ UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN });
-        ui_push_size({ 1.0f, 20.0f });
-        ui_push_layout_type(UI_LAYOUT_CENTER);
-        ui_push_background_color({ 1.0f, 0.0f, 0.0f, 1.0f });
-
+        UI_Theme title_bar_theme = {};
+        title_bar_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
+        title_bar_theme.semantic_size = { 1.0f, 20.0f };
+        title_bar_theme.layout_type = UI_LAYOUT_CENTER;
+        title_bar_theme.background_color = { 1.0f, 0.0f, 0.0f, 1.0f };
+        title_bar_theme.hot_background_color = { 1.0f, 0.3f, 0.3f, 1.0f };
+        title_bar_theme.active_background_color = { 0.8f, 0.0f, 0.0f, 1.0f };
+        title_bar_theme.text_color = { 0.0f, 0.0f, 0.0f, 1.0f };
+        UI_Widget *title_bar = make_widget("window-title-bar", title_bar_theme,
+                                           UI_WIDGET_IS_CLICKABLE | UI_WIDGET_DRAW_BACKGROUND);
+        ui_add_and_push_widget(title_bar);
+        
         // title bar
-        UI_Widget *title_bar = ui_push_widget("window-title-bar",
-                                              UI_WIDGET_IS_CLICKABLE | UI_WIDGET_DRAW_BACKGROUND);
+        //UI_Widget *title_bar = ui_push_widget("window-title-bar",
+        //UI_WIDGET_IS_CLICKABLE | UI_WIDGET_DRAW_BACKGROUND);
         UI_Interact_Result title_bar_interact = ui_interact(title_bar);
         {
             do_text(text, "");
@@ -1290,24 +1321,10 @@ void do_window(char *text, char *id_string, int32 index = 0) {
             Vec2 delta = get_mouse_delta();
             state->position += delta;
         }
-        
-        ui_pop_background_color();
-        
-        ui_push_size({ 200.0f, 200.0f });
-        ui_push_size_type({ UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE });
-        ui_push_widget("", UI_WIDGET_DRAW_BACKGROUND);
-        {
-        }
-        ui_pop_size();
-        ui_pop_size_type();
-        ui_pop_size();
-        ui_pop_layout_type();
-        ui_pop_size_type();
     }
-    ui_pop_widget();
     #endif
-    ui_pop_text_color();
+}
 
-    ui_pop_position();
+void pop_window() {
     ui_pop_widget();
 }

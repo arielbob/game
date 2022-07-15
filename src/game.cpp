@@ -1012,7 +1012,14 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     }
     ui_pop_widget();
 
-    do_window("Window Name", "window-test");
+    ui_push_background_color({ 0.0f, 0.0f, 1.0f, 1.0f });
+    push_window("Entity Transform", "window-test");
+    ui_push_size_type({ UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE });
+    ui_push_size({ 200.0f, 200.0f });
+    ui_push_widget("window-content");
+    ui_pop_size_type();
+    ui_pop_size();
+    pop_window();
 
     #endif
 

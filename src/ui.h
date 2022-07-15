@@ -64,6 +64,23 @@ struct Rect {
     real32 height;
 };
 
+struct UI_Theme {
+    Vec4 background_color;
+    Vec4 hot_background_color;
+    Vec4 active_background_color;
+
+    Vec4 text_color;
+    char *font;
+    char *text;
+    
+    UI_Layout_Type layout_type;
+    Vec2_UI_Size_Type size_type;
+    UI_Position_Type position_type;
+    
+    Vec2 semantic_size;
+    Vec2 semantic_position;
+};
+
 struct UI_Style_BG_Color {
     Vec4 background_color;
     UI_Style_BG_Color *next;
@@ -157,6 +174,8 @@ struct UI_Widget_State {
     UI_Widget_State *next;
 };
 
+// NOTE: fields should not be set directly, since there is logic when adding widgets based on some fields
+//       (for example, whether we add to num_sized_children or num_fill_children based on size type)
 struct UI_Widget {
     UI_id id;
     uint32 flags;
