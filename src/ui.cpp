@@ -427,10 +427,6 @@ UI_Interact_Result ui_interact(UI_Widget *semantic_widget) {
             if (is_hot(computed_widget)) {
                 ui_manager->hot = {};
             }
-
-            if (is_active(computed_widget) && !controller_state->left_mouse.is_down) {
-                ui_manager->active = {};
-            }
         }
 
         // must be active, since active can only be started when starting click inside the bounds.
@@ -439,36 +435,41 @@ UI_Interact_Result ui_interact(UI_Widget *semantic_widget) {
             if (being_held(controller_state->left_mouse)) {
                 result.holding = true;
             }
+
+            if (!controller_state->left_mouse.is_down) {
+                ui_manager->active = {};
+            }
         }
     }
 
-    // TODO: do we actually want this to be in ui_interact, or should we move it up a layer?
+    // we want focus to be managed globally, since there should be only one widget in focus and handling
+    // enter key press should be done here and not by the calling code
     if (computed_widget->flags & UI_WIDGET_IS_FOCUSABLE) {
         if (in_bounds(mouse_pos, computed_widget->computed_position, computed_widget->computed_size)) {
             set_hot_if_above_current_hot(computed_widget);
-
-            if (is_hot(computed_widget)) {
-                if (just_pressed(controller_state->left_mouse)) {
-                    if (!is_focus(computed_widget)) {
-                        ui_manager->focus = id;
-                        result.focused = true;
-                        ui_manager->focus_t = 0;
-                    }
-                } else if (just_pressed(controller_state->key_enter)) {
-                    ui_manager->focus = {};
-                    result.lost_focus = true;
-                }
-            }
         } else {
-            if (is_hot(computed_widget)) {
-                ui_manager->hot = {};
-            }
-
             if (just_pressed(controller_state->left_mouse) || just_pressed(controller_state->key_enter)) {
                 if (is_focus(computed_widget)) {
                     ui_manager->focus = {};
                     result.lost_focus = true;
                 }
+            }
+        }
+
+        if (is_hot(computed_widget)) {
+            if (just_pressed(controller_state->left_mouse)) {
+                if (!is_focus(computed_widget)) {
+                    ui_manager->focus = id;
+                    result.focused = true;
+                    ui_manager->focus_t = 0;
+                }
+            }
+        }
+
+        if (is_focus(computed_widget)) {
+            if (just_pressed(controller_state->key_enter)) {
+                ui_manager->focus = {};
+                result.lost_focus = true;
             }
         }
     }
