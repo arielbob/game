@@ -177,6 +177,7 @@ UI_Widget *ui_add_widget(UI_Widget *widget) {
             parent->num_fill_children++;
         }
     }
+    parent->num_total_children++;
     
     if (!parent->last) {
         assert(!parent->first);
@@ -668,6 +669,7 @@ void calculate_ancestor_dependent_sizes_part_2(UI_Widget *widget, UI_Widget_Axis
         if (axis == UI_WIDGET_X_AXIS) {
             widget->computed_size[axis] = ((parent->computed_size[axis] - parent->computed_child_size_sum[axis]) /
                                            parent->num_fill_children);
+            parent->computed_child_size_sum[axis] += widget->computed_size[axis];
         } else {
             assert(!"UI_SIZE_FIT_REMAINING only supported for x-axis.");
         }
@@ -745,8 +747,10 @@ void calculate_position(UI_Widget *widget, UI_Widget_Axis axis) {
                                                (widget->computed_size[axis] / 2.0f));
         } else if (parent->layout_type == UI_LAYOUT_HORIZONTAL_SPACE_BETWEEN) {
             if (axis == UI_WIDGET_X_AXIS) {
+                // all children will be sized at this point.
+                // parent->computed_child_size_sum contains all children widths now, even FILL_REMAINING sized ones
                 real32 d = ((parent->computed_size.x - parent->computed_child_size_sum.x) /
-                            (parent->num_sized_children - 1));
+                            (parent->num_total_children - 1));
                 if (prev) {
                     widget->computed_position.x = prev->computed_position.x + prev->computed_size.x + d;
                 } else {
@@ -1111,6 +1115,52 @@ void ui_x_pad(real32 width) {
     ui_pop_size_type();
 }
 
+void ui_y_pad(real32 height) {
+    ui_push_size_type({ UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE });
+    ui_push_size({ 0.0f, height });
+    ui_add_widget("");
+    ui_pop_size();
+    ui_pop_size_type();
+}
+
+void ui_push_container(real32 x_padding, real32 y_padding) {
+    ui_push_size_type({ UI_SIZE_PERCENTAGE, UI_SIZE_PERCENTAGE });
+    ui_push_size({ 1.0f, 1.0f });
+    ui_push_layout_type(UI_LAYOUT_VERTICAL);
+
+    // vertical
+    UI_Widget *inner;
+    ui_push_widget("");
+    {
+        ui_y_pad(y_padding);
+
+        ui_push_layout_type(UI_LAYOUT_HORIZONTAL);
+        
+        // horizontal
+        ui_push_widget("");
+        {
+            ui_x_pad(x_padding);
+            ui_push_size_type({ UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN });
+            //ui_push_background_color({ 1.0f, 0.0f, 0.0f, 1.0f });
+            inner = ui_add_widget("", 0);
+            //ui_pop_background_color();
+            ui_pop_size_type();
+            ui_x_pad(x_padding);
+        }
+        ui_pop_widget();
+        ui_pop_layout_type();
+        
+        ui_y_pad(y_padding);
+    }
+    ui_pop_widget();
+
+    ui_pop_layout_type();
+    ui_pop_size();
+    ui_pop_size_type();
+
+    ui_push_existing_widget(inner);
+}
+
 void ui_add_slider_bar(real32 value, real32 min, real32 max) {
     ui_push_size_type({ UI_SIZE_PERCENTAGE, UI_SIZE_PERCENTAGE });
     ui_push_position_type(UI_POSITION_FLOAT);
@@ -1125,7 +1175,6 @@ void ui_add_slider_bar(real32 value, real32 min, real32 max) {
     ui_pop_size_type();
 }
 
-// TODO: add slider
 real32 do_text_field_slider(Asset_Manager *asset, real32 value,
                             real32 min_value, real32 max_value,
                             bool32 show_slider,
@@ -1143,6 +1192,7 @@ real32 do_text_field_slider(Asset_Manager *asset, real32 value,
     ui_push_layout_type(UI_LAYOUT_CENTER);
     UI_Widget *textbox = ui_push_widget(id_string,
                                         UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE | UI_WIDGET_IS_FOCUSABLE);
+    ui_pop_layout_type();
     UI_Interact_Result interact = ui_interact(textbox);
 
     real32 x_delta = fabsf((get_mouse_delta()).x);
@@ -1287,7 +1337,6 @@ real32 do_text_field_slider(Asset_Manager *asset, real32 value,
         ui_pop_size_type();
     }
     ui_pop_widget();
-    ui_pop_layout_type();
 
     // we do validation that it's a number, but any putting value into bounds should be done by the caller
     #if 0

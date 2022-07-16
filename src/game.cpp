@@ -934,6 +934,7 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     ui_push_text_color({ 0.0f, 0.0f, 0.0f, 1.0f });
     ui_push_font("calibri14");
 
+    #if 0
     ui_push_text_color({ 1.0f, 1.0f, 1.0f, 1.0f });
     ui_push_position({ 5.0f, 5.0f });
     char *focus_text = string_format((Allocator *) &ui_manager->frame_arena, "focus: %s\nhot: %s\nactive: %s",
@@ -943,8 +944,9 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     do_text(focus_text, "");
     ui_pop_position();
     ui_pop_text_color();
+    #endif
 
-    #if 1
+    #if 0
     ui_push_background_color({ 1.0f, 1.0f, 1.0f, 1.0f });
     ui_push_hot_background_color({ 0.7f, 0.7f, 0.7f, 1.0f });
     ui_push_active_background_color({ 0.5f, 0.5f, 0.5f, 1.0f });
@@ -966,6 +968,26 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     #endif
     #endif
 
+    // debugging fill_remaining
+    #if 0
+    UI_Theme test_theme1 = {};
+    test_theme1.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
+    test_theme1.semantic_size = { 200.0f, 30.0f };
+    test_theme1.layout_type = UI_LAYOUT_HORIZONTAL_SPACE_BETWEEN;
+    test_theme1.semantic_position = { 600.0f, 500.0f };
+    test_theme1.background_color = { 1.0f, 1.0f, 1.0f, 1.0f };
+    ui_add_and_push_widget(make_widget("", test_theme1, UI_WIDGET_DRAW_BACKGROUND));
+    {
+        do_text("hello", "");
+        UI_Theme test_theme2 = {};
+        test_theme2.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_PERCENTAGE };
+        test_theme2.semantic_size = { 10.0f, 1.0f };
+        test_theme2.background_color = { 1.0f, 0.0f, 0.0f, 1.0f };
+        //test_theme1.layout_type = UI_HORIZONTAL_SPACE_BETWEEN;
+        ui_add_widget(make_widget("", test_theme2, UI_WIDGET_DRAW_BACKGROUND));
+    }
+    ui_pop_widget();
+    #endif
     
     #if 1
     ui_push_size_type({ UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN });
@@ -1017,9 +1039,148 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     ui_pop_widget();
     #endif
 
-    ui_push_background_color({ 1.0f, 0.0f, 1.0f, 1.0f });
+    ui_push_background_color({ 1.0f, 1.0f, 1.0f, 1.0f });
     push_window("Entity Transform", "window-test");
 
+    UI_Theme content_theme = {};
+    content_theme.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN };
+    content_theme.layout_type = UI_LAYOUT_VERTICAL;
+    content_theme.text_color = { 0.0f, 0.0f, 0.0f, 1.0f };
+
+    UI_Widget *content = make_widget("transform-window-content", content_theme, 0);
+    ui_add_and_push_widget(content);
+
+    {
+        UI_Theme row_theme = {};
+        row_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_FIT_CHILDREN };
+        row_theme.layout_type = UI_LAYOUT_HORIZONTAL;
+        row_theme.semantic_size = { 200.0f, 0.0f };
+
+        UI_Theme left_col_theme = {};
+        left_col_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
+        left_col_theme.semantic_size = { 0.3f, 0.0f };
+        left_col_theme.layout_type = UI_LAYOUT_HORIZONTAL;
+
+        UI_Theme right_col_theme = left_col_theme;
+        right_col_theme.semantic_size = { 1.0f, 0.0f };
+        right_col_theme.background_color = { 1.0f, 0.0f, 0.0f, 1.0f };
+        right_col_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_PERCENTAGE };
+        right_col_theme.semantic_size = { 1.0f, 1.0f };
+
+        UI_Theme inner_row_theme = {};
+        inner_row_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_PERCENTAGE };
+        inner_row_theme.layout_type = UI_LAYOUT_HORIZONTAL;
+        inner_row_theme.semantic_size = { 1.0f, 1.0f };
+        
+        ui_add_and_push_widget(make_widget("", row_theme, 0));
+        {
+            ui_push_container(5.0f, 5.0f);
+            ui_add_and_push_widget(make_widget("", inner_row_theme, 0));
+            {
+                do_text("Position", "");
+            }
+            ui_pop_widget();
+            ui_pop_widget();
+        }
+        ui_pop_widget();
+
+        // TODO: factor this stuff out into separate procedurex
+        ui_add_and_push_widget(make_widget("", row_theme, 0));
+        {
+            ui_push_container(5.0f, 0.0f);
+            ui_add_and_push_widget(make_widget("", inner_row_theme, 0));
+            {
+                do_text("X", "");
+
+                ui_x_pad(5.0f);
+                ui_push_size_type({ UI_SIZE_FILL_REMAINING, UI_SIZE_PERCENTAGE });
+                ui_push_size({ 1.0f, 1.0f });
+
+                static real32 x_val = 5.0f;
+                x_val = do_text_field_slider(asset, x_val, 0.0f, 100.0f, true, "transform-x-slider");
+                
+                ui_pop_size();
+                ui_pop_size_type();
+            }
+            ui_pop_widget();
+            ui_pop_widget();
+        }
+        ui_pop_widget();
+        ui_y_pad(1.0f);
+        
+        ui_add_and_push_widget(make_widget("", row_theme, 0));
+        {
+            ui_push_container(5.0f, 0.0f);
+            ui_add_and_push_widget(make_widget("", inner_row_theme, 0));
+            {
+                do_text("Y", "");
+
+                ui_x_pad(5.0f);
+                ui_push_size_type({ UI_SIZE_FILL_REMAINING, UI_SIZE_PERCENTAGE });
+                ui_push_size({ 1.0f, 1.0f });
+
+                static real32 y_val = 5.0f;
+                y_val = do_text_field_slider(asset, y_val, 0.0f, 100.0f, true, "transform-y-slider");
+                
+                ui_pop_size();
+                ui_pop_size_type();
+            }
+            ui_pop_widget();
+            ui_pop_widget();
+        }
+        ui_pop_widget();
+        ui_y_pad(1.0f);
+        
+        ui_add_and_push_widget(make_widget("", row_theme, 0));
+        {
+            ui_push_container(5.0f, 0.0f);
+            ui_add_and_push_widget(make_widget("", inner_row_theme, 0));
+            {
+                do_text("Z", "");
+
+                ui_x_pad(5.0f);
+                ui_push_size_type({ UI_SIZE_FILL_REMAINING, UI_SIZE_PERCENTAGE });
+                ui_push_size({ 1.0f, 1.0f });
+
+                static real32 z_val = 5.0f;
+                z_val = do_text_field_slider(asset, z_val, 0.0f, 100.0f, true, "transform-z-slider");
+                
+                ui_pop_size();
+                ui_pop_size_type();
+            }
+            ui_pop_widget();
+            ui_pop_widget();
+        }
+        ui_pop_widget();
+        ui_y_pad(1.0f);
+        
+        ui_y_pad(5.0f);
+        
+        #if 0
+        ui_add_and_push_widget(make_widget("", row_theme, UI_WIDGET_DRAW_BACKGROUND));
+        {
+            do_text("hello", "");
+            do_text("hello2", "");
+        }
+        ui_pop_widget();
+        #endif
+    }
+
+    ui_pop_widget();
+    
+    #if 0
+    ui_push_size_type({ UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN });
+    ui_push_size({});
+    ui_push_layout_type(UI_LAYOUT_VERTICAL);
+    ui_pop_size
+    
+    ui_push_size_type({ UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE });
+    ui_push_layout_type(UI_LAYOUT_CENTER);
+    ui_push_size()
+    ui_add_widget();
+    #endif
+    
+    #if 0
     ui_push_background_color({ 1.0f, 1.0f, 0.0f, 1.0f });
     ui_push_size_type({ UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE });
     ui_push_size({ 200.0f, 200.0f });
@@ -1027,6 +1188,7 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     ui_pop_size_type();
     ui_pop_background_color();
     ui_pop_size();
+    #endif
 
     pop_window();
 

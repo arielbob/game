@@ -206,6 +206,7 @@ struct UI_Widget {
 
     int32 num_fill_children; // only on x-axis
     int32 num_sized_children;
+    int32 num_total_children;
     
     Vec2 computed_size;
     Vec2 computed_position;
