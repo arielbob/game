@@ -210,6 +210,10 @@ struct UI_Widget {
     Vec2 computed_size;
     Vec2 computed_position;
     Vec2 computed_child_size_sum; // only on x-axis
+
+    // rendering is done in pre-order; we set this in ui_calculate_standalone_sizes since that is
+    // also in pre-order
+    int32 rendering_index; 
 };
 
 struct UI_Stack_Widget {

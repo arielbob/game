@@ -112,6 +112,8 @@ uint32 get_hash(UI_id id, uint32 bucket_size) {
 }
 
 UI_Widget *ui_table_get(UI_Widget **table, UI_id id) {
+    if (!id.string_ptr) return NULL;
+    
     uint32 hash = get_hash(id, NUM_WIDGET_BUCKETS);
 
     UI_Widget *current = table[hash];
@@ -370,11 +372,27 @@ void ui_push_font(char *font) {
     ui_manager->font_stack = entry;
 }
 
+// this sets hot based on the rendering_index, which is just when the widget was drawn, higher being later/above.
+// we do this so that we set hot to the widget that is above other widgets and don't set hot to a widget that is
+// visually below another one at the cursor position.
+void set_hot_if_above_current_hot(UI_Widget *widget) {
+    UI_Widget *hot_widget = ui_table_get(ui_manager->last_frame_widget_table, ui_manager->hot);
+    if (hot_widget) {
+        if (widget->rendering_index > hot_widget->rendering_index) {
+            ui_manager->hot = widget->id;
+        }
+    } else {
+        ui_manager->hot = widget->id;
+    }
+}
+
 // TODO: we need to use the last frame's hierarchy since the actual visual positions are not calculated until
 //       the end of the update procedure. so basically just store the last frame's hierarchy and use that for..
 //       well actually, we want to be able to get the widgets without having to go through the tree. so maybe
 //       just store them in a hash table, keyed by the widget IDs.
 UI_Interact_Result ui_interact(UI_Widget *semantic_widget) {
+    // we don't add widgets with NULL IDs to the table, so to interact with a widget, the widget must have a
+    // non-null ID.
     UI_Widget *computed_widget = ui_table_get(ui_manager->last_frame_widget_table, semantic_widget->id);
     if (!computed_widget) return {};
     //assert(computed_widget);
@@ -391,17 +409,19 @@ UI_Interact_Result ui_interact(UI_Widget *semantic_widget) {
     UI_id id = computed_widget->id;
     if (computed_widget->flags & UI_WIDGET_IS_CLICKABLE) {
         if (in_bounds(mouse_pos, computed_widget->computed_position, computed_widget->computed_size)) {
-            ui_manager->hot = id;
+            set_hot_if_above_current_hot(computed_widget);
 
-            if (just_pressed(controller_state->left_mouse)) {
-                // we check for !was_down to avoid setting a button active if we click and hold outside then
-                // move into the button
-                ui_manager->active = id;
-                ui_manager->active_t = 0.0f;
-            } else if (is_active(computed_widget) && just_lifted(controller_state->left_mouse)) {
-                result.clicked = true;
-                result.click_t = ui_manager->active_t;
-                ui_manager->active = {};
+            if (is_hot(computed_widget)) {
+                if (just_pressed(controller_state->left_mouse)) {
+                    // we check for !was_down to avoid setting a button active if we click and hold outside then
+                    // move into the button
+                    ui_manager->active = id;
+                    ui_manager->active_t = 0.0f;
+                } else if (is_active(computed_widget) && just_lifted(controller_state->left_mouse)) {
+                    result.clicked = true;
+                    result.click_t = ui_manager->active_t;
+                    ui_manager->active = {};
+                }
             }
         } else {
             if (is_hot(computed_widget)) {
@@ -422,18 +442,22 @@ UI_Interact_Result ui_interact(UI_Widget *semantic_widget) {
         }
     }
 
+    // TODO: do we actually want this to be in ui_interact, or should we move it up a layer?
     if (computed_widget->flags & UI_WIDGET_IS_FOCUSABLE) {
         if (in_bounds(mouse_pos, computed_widget->computed_position, computed_widget->computed_size)) {
-            ui_manager->hot = id;
-            if (just_pressed(controller_state->left_mouse)) {
-                if (!is_focus(computed_widget)) {
-                    ui_manager->focus = id;
-                    result.focused = true;
-                    ui_manager->focus_t = 0;
+            set_hot_if_above_current_hot(computed_widget);
+
+            if (is_hot(computed_widget)) {
+                if (just_pressed(controller_state->left_mouse)) {
+                    if (!is_focus(computed_widget)) {
+                        ui_manager->focus = id;
+                        result.focused = true;
+                        ui_manager->focus_t = 0;
+                    }
+                } else if (just_pressed(controller_state->key_enter)) {
+                    ui_manager->focus = {};
+                    result.lost_focus = true;
                 }
-            } else if (just_pressed(controller_state->key_enter)) {
-                ui_manager->focus = {};
-                result.lost_focus = true;
             }
         } else {
             if (is_hot(computed_widget)) {
@@ -473,8 +497,15 @@ void calculate_standalone_size(Asset_Manager *asset, UI_Widget *widget, UI_Widge
 
 void ui_calculate_standalone_sizes(Asset_Manager *asset) {
     UI_Widget *current = ui_manager->root;
+
+    int32 num_visited = 0;
     
     while (true) {
+        // pre-order
+
+        current->rendering_index = num_visited;
+        num_visited++;
+        
         UI_Widget *parent = current->parent;
 
         calculate_standalone_size(asset, current, UI_WIDGET_X_AXIS);
@@ -1130,14 +1161,13 @@ real32 do_text_field_slider(Asset_Manager *asset, real32 value,
         }
     }
 
-
     if (state->is_using) {
         if (state->is_sliding) {
             if (!is_active(textbox)) {
                 state->is_using = false;
             }
         } else {
-            if (interact.lost_focus) {
+            if (!is_focus(textbox)) {
                 state->is_using = false;
 
                 real32 result;
@@ -1283,16 +1313,20 @@ void push_window(char *text, char *id_string, int32 index = 0) {
         state = &state_variant->window;
     }
 
-    ui_push_existing_widget(ui_manager->root);
+    //ui_push_existing_widget(ui_manager->root);
 
     UI_Theme window_theme = {};
     window_theme.semantic_position = state->position;
     window_theme.layout_type = UI_LAYOUT_VERTICAL;
     window_theme.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN };
     window_theme.background_color = ui_manager->background_color_stack->background_color;
+    window_theme.hot_background_color = window_theme.background_color;
+    window_theme.active_background_color = window_theme.background_color;
     window_theme.text_color = ui_manager->text_color_stack->color;
-    UI_Widget *window = make_widget(id, window_theme, UI_WIDGET_DRAW_BACKGROUND);
+    UI_Widget *window = make_widget(id, window_theme,
+                                    UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE | UI_WIDGET_IS_FOCUSABLE);
     ui_add_and_push_widget(window);
+    ui_interact(window);
     
     #if 1
     {

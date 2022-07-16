@@ -936,7 +936,10 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
 
     ui_push_text_color({ 1.0f, 1.0f, 1.0f, 1.0f });
     ui_push_position({ 5.0f, 5.0f });
-    char *focus_text = string_format((Allocator *) &ui_manager->frame_arena, "focus: %s", ui_manager->focus.string_ptr);
+    char *focus_text = string_format((Allocator *) &ui_manager->frame_arena, "focus: %s\nhot: %s\nactive: %s",
+                                     ui_manager->focus.string_ptr,
+                                     ui_manager->hot.string_ptr,
+                                     ui_manager->active.string_ptr);
     do_text(focus_text, "");
     ui_pop_position();
     ui_pop_text_color();
@@ -972,7 +975,8 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     // TODO: maybe do push_width and push_height?
     ui_push_size({ 300.0f, 0.0f });
     ui_push_position({ 10.0f, 10.0f });
-    
+
+    #if 0
     ui_push_widget("", UI_WIDGET_DRAW_BACKGROUND);
     {
         ui_push_size({ 300.0f, 50.0f });
@@ -1011,15 +1015,21 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
         ui_pop_widget();
     }
     ui_pop_widget();
+    #endif
 
-    ui_push_background_color({ 0.0f, 0.0f, 1.0f, 1.0f });
+    ui_push_background_color({ 1.0f, 0.0f, 1.0f, 1.0f });
     push_window("Entity Transform", "window-test");
+
+    ui_push_background_color({ 1.0f, 1.0f, 0.0f, 1.0f });
     ui_push_size_type({ UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE });
     ui_push_size({ 200.0f, 200.0f });
-    ui_push_widget("window-content");
+    ui_add_widget("window-content", UI_WIDGET_DRAW_BACKGROUND);
     ui_pop_size_type();
+    ui_pop_background_color();
     ui_pop_size();
+
     pop_window();
+
 
     #endif
 
