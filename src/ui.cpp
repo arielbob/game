@@ -47,6 +47,15 @@ UI_Widget *make_widget(UI_id id, uint32 flags) {
     if (ui_manager->text_color_stack) {
         widget->text_color = ui_manager->text_color_stack->color;
     }
+
+    if (ui_manager->border_color_stack) {
+        widget->border_color = ui_manager->border_color_stack->border_color;
+    }
+
+    if (ui_manager->corners_stack) {
+        widget->corner_flags = ui_manager->corners_stack->corner_flags;
+    }
+    
     
     return widget;
 }
@@ -65,6 +74,10 @@ UI_Widget *make_widget(UI_id id, UI_Theme theme, uint32 flags) {
     widget->text_color              = theme.text_color;
     widget->font                    = theme.font;
     widget->text                    = theme.text;
+
+    widget->border_color            = theme.border_color;
+    widget->corner_radius           = theme.corner_radius;
+    widget->corner_flags            = theme.corner_flags;
     
     widget->layout_type             = theme.layout_type;
     widget->size_type               = theme.size_type;
@@ -314,6 +327,33 @@ void ui_push_layout_type(UI_Layout_Type type) {
 void ui_pop_layout_type() {
     assert(ui_manager->layout_type_stack);
     ui_manager->layout_type_stack = ui_manager->layout_type_stack->next;
+}
+
+void ui_push_border_color(Vec4 color) {
+    UI_Style_Border_Color *entry = (UI_Style_Border_Color *) allocate(&ui_manager->frame_arena, sizeof(UI_Style_Border_Color));
+
+    entry->border_color = color;
+    entry->next = ui_manager->border_color_stack;
+
+    ui_manager->border_color_stack = entry;
+}
+
+void ui_push_corner_radius(real32 radius) {
+    UI_Style_Corner_Radius *entry = (UI_Style_Corner_Radius *) allocate(&ui_manager->frame_arena, sizeof(UI_Style_Corner_Radius));
+
+    entry->radius = radius;
+    entry->next = ui_manager->corner_radius_stack;
+
+    ui_manager->corner_radius_stack = entry;
+}
+
+void ui_push_corners(uint32 corner_flags) {
+    UI_Style_Corners *entry = (UI_Style_Corners *) allocate(&ui_manager->frame_arena, sizeof(UI_Style_Corners));
+
+    entry->corner_flags = corner_flags;
+    entry->next = ui_manager->corners_stack;
+
+    ui_manager->corners_stack = entry;
 }
 
 void ui_push_size_type(Vec2_UI_Size_Type type) {

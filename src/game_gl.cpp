@@ -2077,6 +2077,13 @@ void gl_draw_line_p(GL_State *gl_state,
 }
 #endif
 
+void gl_draw_rounded_quad(GL_State *gl_state,
+                          Render_State *render_state,
+                          Vec2 position, Vec2 dimensions,
+                          Vec4 color) {
+    uint32 shader_id = gl_use_shader(gl_state, "rounded_quad");
+}
+
 void gl_draw_line(GL_State *gl_state,
                   Render_State *render_state,
                   Vec2 start_pixels, Vec2 end_pixels,
@@ -2089,8 +2096,8 @@ void gl_draw_line(GL_State *gl_state,
     GL_Mesh line_mesh = gl_use_rendering_mesh(gl_state, gl_state->line_mesh_id);
 
     real32 line_vertices[] = {
-        start_pixels.x, start_pixels.y, 0.0f,
-        end_pixels.x, end_pixels.y, 0.0f,
+        start_pixels.x + 0.5f, start_pixels.y + 0.5f, 0.0f,
+        end_pixels.x + 0.5f, end_pixels.y + 0.5f, 0.0f,
     };
     glBindBuffer(GL_ARRAY_BUFFER, line_mesh.vbo);
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(line_vertices), line_vertices);
@@ -2303,16 +2310,17 @@ void gl_draw_quad(GL_State *gl_state,
 }
 
 void gl_draw_rounded_quad(GL_State *gl_state, Render_State *render_state,
-                          Rect rect, real32 corner_radius, uint32 corner_flags, Vec4 color) {
+                          Vec2 position, Vec2 size,
+                          real32 corner_radius, uint32 corner_flags, Vec4 color) {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     uint32 shader_id = gl_use_shader(gl_state, "rounded_quad");
     GL_Mesh quad_mesh = gl_use_rendering_mesh(gl_state, gl_state->quad_mesh_id);
     
     real32 quad_vertices[8] = {
-        rect.x, rect.y + rect.height,             // bottom left
-        rect.x, rect.y,                           // top left
-        rect.x + rect.width, rect.y,              // top right
-        rect.x + rect.width, rect.y + rect.height // bottom right
+        position.x, position.y + size.y,         // bottom left
+        position.x, position.y,                  // top left
+        position.x + size.x, position.y,         // top right
+        position.x + size.x, position.y + size.y // bottom right
     };
     
     glBindBuffer(GL_ARRAY_BUFFER, quad_mesh.vbo);
@@ -2320,12 +2328,10 @@ void gl_draw_rounded_quad(GL_State *gl_state, Render_State *render_state,
     gl_set_uniform_mat4(shader_id, "ortho_matrix", &render_state->ortho_clip_matrix);
     gl_set_uniform_vec4(shader_id, "color", &color);
 
-    Vec2 position = make_vec2(rect.x, rect.y);
     gl_set_uniform_vec2(shader_id, "position", &position); 
-    gl_set_uniform_float(shader_id, "width", rect.width);
-    gl_set_uniform_float(shader_id, "height", rect.height);
-    gl_set_uniform_float(shader_id, "corner_radius", corner_radius);
-    gl_set_uniform_uint(shader_id, "corner_flags", corner_flags);
+    gl_set_uniform_vec2(shader_id, "size", &size);;
+    //gl_set_uniform_float(shader_id, "corner_radius", corner_radius);
+    //gl_set_uniform_uint(shader_id, "corner_flags", corner_flags);
 
     //gl_set_uniform_int(shader_id, "use_color", true);
 
@@ -2525,6 +2531,9 @@ void gl_draw_ui_widget(GL_State *gl_state, Render_State *render_state,
 }
 
 void gl_draw_ui(GL_State *gl_state, Render_State *render_state, Asset_Manager *asset, UI_Manager *manager) {
+    gl_draw_rounded_quad(gl_state, render_state, { 5.0f, 5.0f }, { 200.0f, 100.0f }, 0, 0,
+                         { 1.0f, 1.0f, 1.0f, 1.0f });
+    
     // pre-order traversal
     UI_Widget *current = manager->root;
 

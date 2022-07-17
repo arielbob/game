@@ -5,9 +5,8 @@
 #define BOTTOM_LEFT  0x4u
 #define BOTTOM_RIGHT 0x8u
 
-uniform vec2 position; // top left of the quad
-uniform float width;
-uniform float height;
+uniform vec2 position;   // top left of the quad
+uniform vec2 size;
 uniform float corner_radius;
 uniform uint corner_flags;
 
@@ -20,7 +19,45 @@ in vec2 uv;
 
 out vec4 FragColor;
 
+// https://www.youtube.com/watch?v=62-pRVZuS5c
+// negative on the inside, positive on the outside
+// position is top left of box
+float box_sdf(vec2 frag_pos, vec2 position, vec2 size) {
+    //vec2 bounds = position + size;
+    vec2 half_size = size / 2.0;
+    vec2 center = position + half_size;
+    
+    // abs(frag_pos) moves all points to the bottom right quadrant of the grid who's origin is at the center
+    // of the quad
+    vec2 d = abs(frag_pos - center) - half_size;
+
+    // length(max(d, 0.0)):
+    // zeroes out negative components of the signed distance from box edges to point
+    // when we're in the bottom right corner, then we do the full pythagorean theorem
+    // when we're in the bottom, to the left of the corner, then we just do the vertical distance from edge to point
+    // when we're in the right, we just do the horizontal distance from edge to point
+
+    // min(max(d.x, d.y), 0.0):
+    // when we're on the inside, we add the least negative component. so if for example, d is (-2, -5), we return
+    // -2.
+    return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+}
+
 void main() {
+    float box = box_sdf(frag_pos, position, size);
+
+    #if 0
+    float factor = abs(box) / min(size.x / 2.0, size.y / 2.0);
+    FragColor = vec4(factor * vec3(1.0f, 1.0f, 1.0f), 1.0f);
+    #endif
+
+    float factor = clamp(0.0f, 1.0f, -box);
+    FragColor = vec4(factor * vec3(1.0f, 0.0f, 0.0f), 1.0);
+
+    
+        //length(max(d, 0.0));
+    
+    #if 0
     float x = position.x;
     float y = position.y;
     vec2 top_left = vec2(x + corner_radius, y + corner_radius);
@@ -59,4 +96,5 @@ void main() {
             FragColor = frag_color;
         }
     }
+    #endif
 }

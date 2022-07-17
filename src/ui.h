@@ -5,6 +5,13 @@
 #define UI_WIDGET_DRAW_BACKGROUND    (1 << 1)
 #define UI_WIDGET_DRAW_TEXT          (1 << 2)
 #define UI_WIDGET_IS_FOCUSABLE       (1 << 3)
+#define UI_WIDGET_ROUND_CORNERS      (1 << 4)
+#define UI_WIDGET_DRAW_BORDER        (1 << 5)
+
+#define CORNER_TOP_LEFT     (1 << 0)
+#define CORNER_TOP_RIGHT    (1 << 1)
+#define CORNER_BOTTOM_LEFT  (1 << 2)
+#define CORNER_BOTTOM_RIGHT (1 << 3)
 
 #define NUM_WIDGET_BUCKETS 128
 
@@ -72,6 +79,10 @@ struct UI_Theme {
     Vec4 text_color;
     char *font;
     char *text;
+
+    Vec4 border_color;
+    real32 corner_radius;
+    uint32 corner_flags;
     
     UI_Layout_Type layout_type;
     Vec2_UI_Size_Type size_type;
@@ -86,9 +97,19 @@ struct UI_Style_BG_Color {
     UI_Style_BG_Color *next;
 };
 
-struct UI_Style_Rect {
-    Rect rect;
-    UI_Style_Rect *next;
+struct UI_Style_Border_Color {
+    Vec4 border_color;
+    UI_Style_Border_Color *next;
+};
+
+struct UI_Style_Corners {
+    uint32 corner_flags;
+    UI_Style_Corners *next;
+};
+
+struct UI_Style_Corner_Radius {
+    real32 radius;
+    UI_Style_Corner_Radius *next;
 };
 
 struct UI_Style_Position {
@@ -196,6 +217,10 @@ struct UI_Widget {
     Vec4 text_color;
     char *font;
     char *text;
+
+    Vec4 border_color;
+    real32 corner_radius;
+    uint32 corner_flags;
     
     UI_Layout_Type layout_type;
     Vec2_UI_Size_Type size_type;
@@ -211,7 +236,7 @@ struct UI_Widget {
     Vec2 computed_size;
     Vec2 computed_position;
     Vec2 computed_child_size_sum; // only on x-axis
-
+    
     // rendering is done in pre-order; we set this in ui_calculate_standalone_sizes since that is
     // also in pre-order
     int32 rendering_index; 
@@ -263,6 +288,11 @@ struct UI_Manager {
     UI_Style_BG_Color *background_color_stack;
     UI_Style_BG_Color *hot_background_color_stack;
     UI_Style_BG_Color *active_background_color_stack;
+
+    UI_Style_Corner_Radius *corner_radius_stack;
+    UI_Style_Border_Color *border_color_stack;
+    UI_Style_Corners *corners_stack;
+    
     UI_Style_Layout_Type *layout_type_stack;
     UI_Style_Size *size_stack;
     UI_Style_Position *position_stack;

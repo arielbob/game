@@ -928,6 +928,9 @@ void update_game(Game_State *game_state, Controller_State *controller_state, Sou
     update_render_state(&game_state->render_state, game_state->camera);
 }
 
+// TODO: border radius (per corner)
+// TODO: box borders
+// TODO: boxes with image backgrounds for icons
 void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 dt) {
     ui_frame_init(display_output, dt);
 
@@ -946,6 +949,18 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     ui_pop_text_color();
     #endif
 
+    // test border drawing
+    #if 0
+    ui_push_background_color({ 1.0f, 1.0f, 1.0f, 1.0f });
+    ui_push_hot_background_color({ 0.7f, 0.7f, 0.7f, 1.0f });
+    ui_push_active_background_color({ 0.5f, 0.5f, 0.5f, 1.0f });
+    ui_push_size_type({ UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE });
+    ui_push_size({ 500.0f, 20.0f });
+    ui_push_position({ 200.0f, 200.0f });
+    ui_push_border_color({ 1.0f, 0.0f, 0.0f, 1.0f });
+    ui_add_widget("", UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_DRAW_BORDER);
+    #endif
+    
     #if 0
     ui_push_background_color({ 1.0f, 1.0f, 1.0f, 1.0f });
     ui_push_hot_background_color({ 0.7f, 0.7f, 0.7f, 1.0f });
