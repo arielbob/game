@@ -52,7 +52,7 @@ void main() {
     #endif
 
     float factor = clamp(0.0f, 1.0f, -box);
-    FragColor = vec4(factor * vec3(1.0f, 0.0f, 0.0f), 1.0);
+    FragColor = vec4(factor * vec3(frag_color), 1.0);
 
     
         //length(max(d, 0.0));

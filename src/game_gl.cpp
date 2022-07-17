@@ -2532,7 +2532,7 @@ void gl_draw_ui_widget(GL_State *gl_state, Render_State *render_state,
 
 void gl_draw_ui(GL_State *gl_state, Render_State *render_state, Asset_Manager *asset, UI_Manager *manager) {
     gl_draw_rounded_quad(gl_state, render_state, { 5.0f, 5.0f }, { 200.0f, 100.0f }, 0, 0,
-                         { 1.0f, 1.0f, 1.0f, 1.0f });
+                         { 1.0f, 0.0f, 1.0f, 1.0f });
     
     // pre-order traversal
     UI_Widget *current = manager->root;
