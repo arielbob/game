@@ -893,7 +893,6 @@ void ui_frame_init(Display_Output *display_output, real32 dt) {
     ui_manager->active_t += dt;
 }
 
-// TODO: don't clear.. we want to keep state actually
 void ui_frame_end() {
     ui_manager->last_frame_root = ui_manager->root;
     ui_manager->root = NULL;

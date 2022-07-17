@@ -14,6 +14,12 @@
 #define CORNER_BOTTOM_RIGHT (1 << 3)
 #define CORNER_ALL          (0b1111)
 
+#define BORDER_LEFT   (1 << 0)
+#define BORDER_RIGHT  (1 << 1)
+#define BORDER_BOTTOM (1 << 2)
+#define BORDER_TOP    (1 << 3)
+#define BORDER_ALL    (0b1111)
+
 #define NUM_WIDGET_BUCKETS 128
 
 struct UI_Widget;

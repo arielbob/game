@@ -928,8 +928,9 @@ void update_game(Game_State *game_state, Controller_State *controller_state, Sou
     update_render_state(&game_state->render_state, game_state->camera);
 }
 
-// TODO: border radius (per corner)
-// TODO: box borders
+// TODO: draw UI elements with rounded corners and borders
+//       - may want to add basic quad shader for quads with no border or rounding
+// TODO: rounded corner masks
 // TODO: boxes with image backgrounds for icons
 void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 dt) {
     ui_frame_init(display_output, dt);

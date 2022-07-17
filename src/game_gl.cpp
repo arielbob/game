@@ -2311,7 +2311,9 @@ void gl_draw_quad(GL_State *gl_state,
 
 void gl_draw_rounded_quad(GL_State *gl_state, Render_State *render_state,
                           Vec2 position, Vec2 size,
-                          real32 corner_radius, uint32 corner_flags, Vec4 color) {
+                          Vec4 color,
+                          real32 corner_radius, uint32 corner_flags,
+                          Vec4 border_color, real32 border_width, uint32 border_side_flags) {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     uint32 shader_id = gl_use_shader(gl_state, "rounded_quad");
     GL_Mesh quad_mesh = gl_use_rendering_mesh(gl_state, gl_state->quad_mesh_id);
@@ -2329,10 +2331,13 @@ void gl_draw_rounded_quad(GL_State *gl_state, Render_State *render_state,
     gl_set_uniform_vec4(shader_id, "color", &color);
 
     gl_set_uniform_vec2(shader_id, "position", &position); 
-    gl_set_uniform_vec2(shader_id, "size", &size);;
-    gl_set_uniform_float(shader_id, "corner_radius", corner_radius);
+    gl_set_uniform_vec2(shader_id, "size", &size);
+    gl_set_uniform_float(shader_id, "corner_radius", 5.0f);//corner_radius);
     gl_set_uniform_uint(shader_id, "corner_flags", corner_flags);
-
+    gl_set_uniform_float(shader_id, "border_width", border_width);
+    gl_set_uniform_uint(shader_id, "border_side_flags", border_side_flags);
+    gl_set_uniform_vec4(shader_id, "border_color", &border_color);
+    
     //gl_set_uniform_int(shader_id, "use_color", true);
 
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -2531,8 +2536,10 @@ void gl_draw_ui_widget(GL_State *gl_state, Render_State *render_state,
 }
 
 void gl_draw_ui(GL_State *gl_state, Render_State *render_state, Asset_Manager *asset, UI_Manager *manager) {
-    gl_draw_rounded_quad(gl_state, render_state, { 5.0f, 5.0f }, { 200.0f, 100.0f }, 5.0f, CORNER_ALL,
-                         { 1.0f, 1.0f, 1.0f, 1.0f });
+    gl_draw_rounded_quad(gl_state, render_state, { 5.0f, 5.0f }, { 200.0f, 100.0f },
+                         { 1.0f, 1.0f, 1.0f, 1.0f },
+                         10.0f, CORNER_TOP_LEFT | CORNER_TOP_RIGHT,
+                         { 1.0f, 0.0f, 0.0f, 1.0f }, 2.0f, BORDER_TOP | BORDER_LEFT | BORDER_RIGHT);
     
     // pre-order traversal
     UI_Widget *current = manager->root;

@@ -5,10 +5,18 @@
 #define BOTTOM_LEFT  0x4u
 #define BOTTOM_RIGHT 0x8u
 
-uniform vec2 position;   // top left of the quad
+#define BORDER_LEFT   0x1u
+#define BORDER_RIGHT  0x2u
+#define BORDER_BOTTOM 0x4u
+#define BORDER_TOP    0x8u
+
+uniform vec2 position; // top left of the quad
 uniform vec2 size;
 uniform float corner_radius;
 uniform uint corner_flags;
+uniform float border_width;
+uniform uint border_side_flags;
+uniform vec4 border_color;
 
 //uniform sampler2D image_texture;
 //uniform bool use_color;
@@ -46,79 +54,88 @@ void main() {
     vec2 center = position + half_size;
     vec2 center_to_frag = frag_pos - center;
 
-    uint should_round = 0;
+    float radius = 0.0;
     if (center_to_frag.x < 0.0) {
         if (center_to_frag.y < 0.0) {
-            should_round |= (TOP_LEFT & corner_flags);
+            if (TOP_LEFT & corner_flags) {
+                radius = corner_radius;
+            }
         } else {
-            should_round |= (BOTTOM_LEFT & corner_flags);
+            if (BOTTOM_LEFT & corner_flags) {
+                radius = corner_radius;
+            }
         }
     } else {
         if (center_to_frag.y < 0.0) {
-            should_round |= (TOP_RIGHT & corner_flags);
+            if (TOP_RIGHT & corner_flags) {
+                radius = corner_radius;
+            }
         } else {
-            should_round |= (BOTTOM_RIGHT & corner_flags);
+            if (BOTTOM_RIGHT & corner_flags) {
+                radius = corner_radius;
+            }
         }
     }
 
-
-    float box;
-    if (should_round) {
-        // shrink the quad by the radius so that we can grow it by the same amount to get rounded corners
-        vec2 inner_position = position + vec2(corner_radius);
-        vec2 inner_size = size - vec2(corner_radius * 2.0);
-        half_size = inner_size / 2.0;
-        box = box_sdf(frag_pos, inner_position, half_size) - corner_radius;
-    } else {
-        box = box_sdf(frag_pos, position, half_size);
-    }
-    
-    #if 0
-    float factor = abs(box) / min(size.x / 2.0, size.y / 2.0);
-    FragColor = vec4(factor * vec3(1.0f, 1.0f, 1.0f), 1.0f);
-    #endif
-
-    float factor = clamp(0.0f, 1.0f, -box + 0.5); // 0.5 so that edges are crisper
-    FragColor = vec4(vec3(frag_color), factor);
-    
-    #if 0
-    float x = position.x;
-    float y = position.y;
-    vec2 top_left = vec2(x + corner_radius, y + corner_radius);
-    vec2 top_right = vec2(x + width - corner_radius, y + corner_radius);
-    vec2 bottom_left = vec2(x + corner_radius, y + height - corner_radius);
-    vec2 bottom_right = vec2(x + width - corner_radius, y + height - corner_radius);
-
-    bool in_top_left = (frag_pos.x < top_left.x) && (frag_pos.y < top_left.y);
-    bool in_top_right = (frag_pos.x > top_right.x) && (frag_pos.y < top_right.y);
-    bool in_bottom_left = (frag_pos.x < bottom_left.x) && (frag_pos.y > bottom_left.y);
-    bool in_bottom_right = (frag_pos.x > bottom_right.x) && (frag_pos.y > bottom_right.y);
-
-    if (!(in_top_left || in_top_right || in_bottom_left || in_bottom_right)) {
-        FragColor = frag_color;
-    } else {
-        float d1 = distance(frag_pos, top_left);
-        float d2 = distance(frag_pos, top_right);
-        float d3 = distance(frag_pos, bottom_left);
-        float d4 = distance(frag_pos, bottom_right);
-        float corner_antialias_end_radius = corner_radius + 0.5f;
-
-        // we use smoothstep instead of discard, since we use MSAA. MSAA only runs the fragment shader once per
-        // however many samples we have per pixel. so, if we call discard() on a single pixel, all the samples
-        // for that pixel will not be rendered, thus eliminating any anti-aliasing. so we just smoothstep the
-        // alpha from the end of the circle to some small distance outside from it to create some look of
-        // anti-aliasing. we're basically just feathering the edge to make it look smoother.
-        if (bool(corner_flags & TOP_LEFT) && in_top_left) {
-            FragColor = vec4(frag_color.xyz, 1.0f - smoothstep(corner_radius, corner_antialias_end_radius, d1));
-        } else if (bool(corner_flags & TOP_RIGHT) && in_top_right) {
-            FragColor = vec4(frag_color.xyz, 1.0f - smoothstep(corner_radius, corner_antialias_end_radius, d2));
-        } else if (bool(corner_flags & BOTTOM_LEFT) && in_bottom_left) {
-            FragColor = vec4(frag_color.xyz, 1.0f - smoothstep(corner_radius, corner_antialias_end_radius, d3));
-        } else if (bool(corner_flags & BOTTOM_RIGHT) && in_bottom_right) {
-            FragColor = vec4(frag_color.xyz, 1.0f - smoothstep(corner_radius, corner_antialias_end_radius, d4));
+    float side_border_width = 0.0;
+    if (abs(center_to_frag.x) > (half_size.x - border_width - radius)) {
+        if (center_to_frag.x < 0.0) {
+            if (BORDER_LEFT & border_side_flags) {
+                side_border_width = border_width;
+            }
         } else {
-            FragColor = frag_color;
+            if (BORDER_RIGHT & border_side_flags) {
+                side_border_width = border_width;
+            }
         }
     }
+
+    if (abs(center_to_frag.y) > (half_size.y - border_width - radius)) {
+        if (center_to_frag.y < 0.0) {
+            if (BORDER_TOP & border_side_flags) {
+                side_border_width = border_width;
+            }
+        } else {
+            if (BORDER_BOTTOM & border_side_flags) {
+                side_border_width = border_width;
+            }
+        }
+    }
+
+    float shrink_amount = radius;
+
+    // uncomment this if you want the inner border to round around rounded corners. a consequence of this is that
+    // the outer radius will have to become larger to compensate, and thus the outer radius will not match the
+    // passed in corner_radius. this is just due to the fact that as you go inwards into the sdf, the rectangle
+    // becomes more straight. so if you have a large border_width compared to your corner_radius, without compensating,
+    // the inner border will have straight corners. if you instead go outwards from the sdf, the rectangle
+    // becomes rounder. that's why when we shrink by the side border width and then expand by border_width + radius,
+    // the outer corners become rounder.
+    //
+    // in the current way, with this commented out, as long as your border width is small compared to your radius,
+    // the border will be rounded.
+    #if 0
+    if (radius > 0.0) {
+        // when there are no rounded corners, we don't shrink/grow the sdf, since we don't want the corner to round
+        // at all. we shrink by side_border_width when there is a rounded corner because we want the border to
+        // also be rounded. we do that be shrinking by the radius + side_border_width, then growing twice. that
+        // way, the border is rounded along with the corner.
+        shrink_amount += side_border_width;
+    }
     #endif
+    
+    vec2 inner_position = position + vec2(shrink_amount);
+    vec2 inner_size = size - vec2(shrink_amount * 2.0);
+    
+    half_size = inner_size / 2.0;
+    float box_d = box_sdf(frag_pos, inner_position, half_size) - shrink_amount;
+    
+    // take negative so that it grows as you move further inwards (do this so that we can just clamp to get it to be 0/1
+    // for outside/inside)
+    box_d = -box_d + 0.5; // add 0.5 so that edges are crisper
+    
+    float border_factor = smoothstep(side_border_width, side_border_width + 1.0, box_d);
+
+    float factor = clamp(0.0f, 1.0f, box_d); 
+    FragColor = vec4(mix(vec3(border_color), vec3(frag_color), border_factor), factor);
 }
