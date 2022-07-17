@@ -22,9 +22,7 @@ out vec4 FragColor;
 // https://www.youtube.com/watch?v=62-pRVZuS5c
 // negative on the inside, positive on the outside
 // position is top left of box
-float box_sdf(vec2 frag_pos, vec2 position, vec2 size) {
-    //vec2 bounds = position + size;
-    vec2 half_size = size / 2.0;
+float box_sdf(vec2 frag_pos, vec2 position, vec2 half_size) {
     vec2 center = position + half_size;
     
     // abs(frag_pos) moves all points to the bottom right quadrant of the grid who's origin is at the center
@@ -38,24 +36,50 @@ float box_sdf(vec2 frag_pos, vec2 position, vec2 size) {
     // when we're in the right, we just do the horizontal distance from edge to point
 
     // min(max(d.x, d.y), 0.0):
-    // when we're on the inside, we add the least negative component. so if for example, d is (-2, -5), we return
-    // -2.
+    // when we're on the inside, we add the highest component. so if for example, d is (-2, -5), we return
+    // -2. this bounds us to the smaller dimension of the size.
     return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
 }
 
 void main() {
-    float box = box_sdf(frag_pos, position, size);
+    vec2 half_size = size / 2.0;
+    vec2 center = position + half_size;
+    vec2 center_to_frag = frag_pos - center;
 
+    uint should_round = 0;
+    if (center_to_frag.x < 0.0) {
+        if (center_to_frag.y < 0.0) {
+            should_round |= (TOP_LEFT & corner_flags);
+        } else {
+            should_round |= (BOTTOM_LEFT & corner_flags);
+        }
+    } else {
+        if (center_to_frag.y < 0.0) {
+            should_round |= (TOP_RIGHT & corner_flags);
+        } else {
+            should_round |= (BOTTOM_RIGHT & corner_flags);
+        }
+    }
+
+
+    float box;
+    if (should_round) {
+        // shrink the quad by the radius so that we can grow it by the same amount to get rounded corners
+        vec2 inner_position = position + vec2(corner_radius);
+        vec2 inner_size = size - vec2(corner_radius * 2.0);
+        half_size = inner_size / 2.0;
+        box = box_sdf(frag_pos, inner_position, half_size) - corner_radius;
+    } else {
+        box = box_sdf(frag_pos, position, half_size);
+    }
+    
     #if 0
     float factor = abs(box) / min(size.x / 2.0, size.y / 2.0);
     FragColor = vec4(factor * vec3(1.0f, 1.0f, 1.0f), 1.0f);
     #endif
 
-    float factor = clamp(0.0f, 1.0f, -box);
-    FragColor = vec4(factor * vec3(frag_color), 1.0);
-
-    
-        //length(max(d, 0.0));
+    float factor = clamp(0.0f, 1.0f, -box + 0.5); // 0.5 so that edges are crisper
+    FragColor = vec4(vec3(frag_color), factor);
     
     #if 0
     float x = position.x;

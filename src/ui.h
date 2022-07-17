@@ -12,6 +12,7 @@
 #define CORNER_TOP_RIGHT    (1 << 1)
 #define CORNER_BOTTOM_LEFT  (1 << 2)
 #define CORNER_BOTTOM_RIGHT (1 << 3)
+#define CORNER_ALL          (0b1111)
 
 #define NUM_WIDGET_BUCKETS 128
 

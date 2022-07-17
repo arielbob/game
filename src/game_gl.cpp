@@ -2330,8 +2330,8 @@ void gl_draw_rounded_quad(GL_State *gl_state, Render_State *render_state,
 
     gl_set_uniform_vec2(shader_id, "position", &position); 
     gl_set_uniform_vec2(shader_id, "size", &size);;
-    //gl_set_uniform_float(shader_id, "corner_radius", corner_radius);
-    //gl_set_uniform_uint(shader_id, "corner_flags", corner_flags);
+    gl_set_uniform_float(shader_id, "corner_radius", corner_radius);
+    gl_set_uniform_uint(shader_id, "corner_flags", corner_flags);
 
     //gl_set_uniform_int(shader_id, "use_color", true);
 
@@ -2531,8 +2531,8 @@ void gl_draw_ui_widget(GL_State *gl_state, Render_State *render_state,
 }
 
 void gl_draw_ui(GL_State *gl_state, Render_State *render_state, Asset_Manager *asset, UI_Manager *manager) {
-    gl_draw_rounded_quad(gl_state, render_state, { 5.0f, 5.0f }, { 200.0f, 100.0f }, 0, 0,
-                         { 1.0f, 0.0f, 1.0f, 1.0f });
+    gl_draw_rounded_quad(gl_state, render_state, { 5.0f, 5.0f }, { 200.0f, 100.0f }, 5.0f, CORNER_ALL,
+                         { 1.0f, 1.0f, 1.0f, 1.0f });
     
     // pre-order traversal
     UI_Widget *current = manager->root;
