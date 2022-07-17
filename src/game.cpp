@@ -951,15 +951,28 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     #endif
 
     // test border drawing
-    #if 0
-    ui_push_background_color({ 1.0f, 1.0f, 1.0f, 1.0f });
+    #if 1
+    //ui_push_background_color({ 1.0f, 1.0f, 1.0f, 1.0f });
     ui_push_hot_background_color({ 0.7f, 0.7f, 0.7f, 1.0f });
     ui_push_active_background_color({ 0.5f, 0.5f, 0.5f, 1.0f });
     ui_push_size_type({ UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE });
-    ui_push_size({ 500.0f, 20.0f });
-    ui_push_position({ 200.0f, 200.0f });
-    ui_push_border_color({ 1.0f, 0.0f, 0.0f, 1.0f });
-    ui_add_widget("", UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_DRAW_BORDER);
+    ui_push_size({ 200.0f, 200.0f });
+    ui_push_position({ 50.0f, 20.0f });
+    ui_push_border_color({ 1.0f, 1.0f, 1.0f, 1.0f });
+    ui_push_border_width(5.0f);
+    ui_push_border_flags(BORDER_ALL);
+    ui_push_corner_radius(5.0f);
+    ui_push_corner_flags(CORNER_ALL);
+    ui_push_layout_type(UI_LAYOUT_HORIZONTAL);
+    ui_push_widget("", UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_DRAW_BORDER);
+
+    UI_Theme inner_box_theme = {};
+    inner_box_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_ABSOLUTE };
+    inner_box_theme.semantic_size = { 1.0f, 30.0f };
+    inner_box_theme.background_color = { 0.0f, 0.0f, 1.0f, 1.0f };
+    ui_add_widget(make_widget("", inner_box_theme, UI_WIDGET_DRAW_BACKGROUND));
+
+    ui_pop_widget();
     #endif
     
     #if 0

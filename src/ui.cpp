@@ -52,6 +52,14 @@ UI_Widget *make_widget(UI_id id, uint32 flags) {
         widget->border_color = ui_manager->border_color_stack->border_color;
     }
 
+    if (ui_manager->border_flags_stack) {
+        widget->border_flags = ui_manager->border_flags_stack->border_flags;
+    }
+
+    if (ui_manager->border_width_stack) {
+        widget->border_width = ui_manager->border_width_stack->border_width;
+    }
+    
     if (ui_manager->corners_stack) {
         widget->corner_flags = ui_manager->corners_stack->corner_flags;
     }
@@ -76,6 +84,8 @@ UI_Widget *make_widget(UI_id id, UI_Theme theme, uint32 flags) {
     widget->text                    = theme.text;
 
     widget->border_color            = theme.border_color;
+    widget->border_flags            = theme.border_flags;
+    widget->border_width            = theme.border_width;
     widget->corner_radius           = theme.corner_radius;
     widget->corner_flags            = theme.corner_flags;
     
@@ -338,6 +348,24 @@ void ui_push_border_color(Vec4 color) {
     ui_manager->border_color_stack = entry;
 }
 
+void ui_push_border_width(real32 width) {
+    UI_Style_Border_Width *entry = (UI_Style_Border_Width *) allocate(&ui_manager->frame_arena, sizeof(UI_Style_Border_Width));
+
+    entry->border_width = width;
+    entry->next = ui_manager->border_width_stack;
+
+    ui_manager->border_width_stack = entry;
+}
+
+void ui_push_border_flags(uint32 flags) {
+    UI_Style_Border_Flags *entry = (UI_Style_Border_Flags *) allocate(&ui_manager->frame_arena, sizeof(UI_Style_Border_Flags));
+
+    entry->border_flags = flags;
+    entry->next = ui_manager->border_flags_stack;
+
+    ui_manager->border_flags_stack = entry;
+}
+
 void ui_push_corner_radius(real32 radius) {
     UI_Style_Corner_Radius *entry = (UI_Style_Corner_Radius *) allocate(&ui_manager->frame_arena, sizeof(UI_Style_Corner_Radius));
 
@@ -347,7 +375,7 @@ void ui_push_corner_radius(real32 radius) {
     ui_manager->corner_radius_stack = entry;
 }
 
-void ui_push_corners(uint32 corner_flags) {
+void ui_push_corner_flags(uint32 corner_flags) {
     UI_Style_Corners *entry = (UI_Style_Corners *) allocate(&ui_manager->frame_arena, sizeof(UI_Style_Corners));
 
     entry->corner_flags = corner_flags;

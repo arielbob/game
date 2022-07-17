@@ -2520,11 +2520,20 @@ void gl_draw_ui_widget(GL_State *gl_state, Render_State *render_state,
                 color = widget->active_background_color;
             }
         }
-        gl_draw_quad(gl_state, render_state,
-                     computed_position.x, computed_position.y, computed_size.x, computed_size.y,
-                     color);
-    }
 
+        if (widget->flags & UI_WIDGET_DRAW_BORDER) {
+            gl_draw_rounded_quad(gl_state, render_state,
+                                 computed_position, computed_size,
+                                 color,
+                                 widget->corner_radius, widget->corner_flags,
+                                 widget->border_color, widget->border_width, widget->border_flags);
+        } else {
+            gl_draw_quad(gl_state, render_state,
+                         computed_position.x, computed_position.y, computed_size.x, computed_size.y,
+                         color);
+        }
+    }
+    
     if (widget->flags & UI_WIDGET_DRAW_TEXT) {
         int32 font_id;
         Font font = get_font(asset, widget->font, &font_id);
@@ -2536,10 +2545,12 @@ void gl_draw_ui_widget(GL_State *gl_state, Render_State *render_state,
 }
 
 void gl_draw_ui(GL_State *gl_state, Render_State *render_state, Asset_Manager *asset, UI_Manager *manager) {
+    #if 0
     gl_draw_rounded_quad(gl_state, render_state, { 5.0f, 5.0f }, { 200.0f, 100.0f },
                          { 1.0f, 1.0f, 1.0f, 1.0f },
                          10.0f, CORNER_TOP_LEFT | CORNER_TOP_RIGHT,
                          { 1.0f, 0.0f, 0.0f, 1.0f }, 2.0f, BORDER_TOP | BORDER_LEFT | BORDER_RIGHT);
+    #endif
     
     // pre-order traversal
     UI_Widget *current = manager->root;

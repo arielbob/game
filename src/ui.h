@@ -5,8 +5,7 @@
 #define UI_WIDGET_DRAW_BACKGROUND    (1 << 1)
 #define UI_WIDGET_DRAW_TEXT          (1 << 2)
 #define UI_WIDGET_IS_FOCUSABLE       (1 << 3)
-#define UI_WIDGET_ROUND_CORNERS      (1 << 4)
-#define UI_WIDGET_DRAW_BORDER        (1 << 5)
+#define UI_WIDGET_DRAW_BORDER        (1 << 4)
 
 #define CORNER_TOP_LEFT     (1 << 0)
 #define CORNER_TOP_RIGHT    (1 << 1)
@@ -88,6 +87,8 @@ struct UI_Theme {
     char *text;
 
     Vec4 border_color;
+    uint32 border_flags;
+    real32 border_width;
     real32 corner_radius;
     uint32 corner_flags;
     
@@ -107,6 +108,16 @@ struct UI_Style_BG_Color {
 struct UI_Style_Border_Color {
     Vec4 border_color;
     UI_Style_Border_Color *next;
+};
+
+struct UI_Style_Border_Flags {
+    uint32 border_flags;
+    UI_Style_Border_Flags *next;
+};
+
+struct UI_Style_Border_Width {
+    real32 border_width;
+    UI_Style_Border_Width *next;
 };
 
 struct UI_Style_Corners {
@@ -226,6 +237,8 @@ struct UI_Widget {
     char *text;
 
     Vec4 border_color;
+    uint32 border_flags;
+    real32 border_width;
     real32 corner_radius;
     uint32 corner_flags;
     
@@ -298,6 +311,8 @@ struct UI_Manager {
 
     UI_Style_Corner_Radius *corner_radius_stack;
     UI_Style_Border_Color *border_color_stack;
+    UI_Style_Border_Flags *border_flags_stack;
+    UI_Style_Border_Width *border_width_stack;
     UI_Style_Corners *corners_stack;
     
     UI_Style_Layout_Type *layout_type_stack;
