@@ -1631,14 +1631,20 @@ void gl_init_alpha_mask_stack(GL_State *gl_state, int32 width, int32 height) {
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-uint32 gl_push_alpha_mask(GL_State *gl_state) {
+uint32 gl_push_new_alpha_mask_texture(GL_State *gl_state) {
     GL_Alpha_Mask_Stack *stack = &gl_state->alpha_mask_stack;
     stack->index++;
     assert(stack->index < MAX_ALPHA_MASKS);
-    
-    uint32 alpha_texture_id = stack->texture_ids[stack->index];
+    return stack->texture_ids[stack->index];
+}
 
-    return alpha_texture_id;
+// pushes new alpha mask onto the alpha mask stack and binds the framebuffer for drawing
+void gl_push_alpha_mask(GL_State *gl_state) {
+    glBindFramebuffer(GL_FRAMEBUFFER, gl_state->alpha_mask_framebuffer.fbo);
+    uint32 alpha_texture_id = gl_push_new_alpha_mask_texture(gl_state);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                           alpha_texture_id, 0);
+    glClear(GL_COLOR_BUFFER_BIT);
 }
 
 void gl_pop_alpha_mask(GL_State *gl_state) {
@@ -2355,7 +2361,7 @@ void gl_draw_quad(GL_State *gl_state,
                   Render_State *render_state,
                   real32 x_pos_pixels, real32 y_pos_pixels,
                   real32 width_pixels, real32 height_pixels,
-                  Vec4 color) {
+                  Vec4 color, bool32 has_alpha = false) {
     uint32 basic_shader_id = gl_use_shader(gl_state, "basic2");
     GL_Mesh quad_mesh = gl_use_rendering_mesh(gl_state, gl_state->quad_mesh_id);
     
@@ -2371,6 +2377,7 @@ void gl_draw_quad(GL_State *gl_state,
     gl_set_uniform_mat4(basic_shader_id, "ortho_matrix", &render_state->ortho_clip_matrix);
     gl_set_uniform_vec4(basic_shader_id, "color", &color);
     gl_set_uniform_int(basic_shader_id, "use_color", true);
+    gl_set_uniform_int(basic_shader_id, "has_alpha", has_alpha);
 
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     glUseProgram(0);
@@ -2391,8 +2398,7 @@ void gl_draw_rounded_quad(GL_State *gl_state, Render_State *render_state,
                           Vec4 color,
                           real32 corner_radius, uint32 corner_flags,
                           Vec4 border_color, real32 border_width, uint32 border_side_flags,
-                          bool32 is_alpha_pass = false) {
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+                          bool32 is_alpha_pass = false, bool32 has_alpha = false) {
     uint32 shader_id = gl_use_shader(gl_state, "rounded_quad");
     GL_Mesh quad_mesh = gl_use_rendering_mesh(gl_state, gl_state->quad_mesh_id);
     
@@ -2416,6 +2422,7 @@ void gl_draw_rounded_quad(GL_State *gl_state, Render_State *render_state,
     gl_set_uniform_uint(shader_id, "border_side_flags", border_side_flags);
     gl_set_uniform_vec4(shader_id, "border_color", &border_color);
     gl_set_uniform_int(shader_id, "is_alpha_pass", is_alpha_pass);
+    gl_set_uniform_int(shader_id, "has_alpha", has_alpha);
     
     //gl_set_uniform_int(shader_id, "use_color", true);
 
@@ -2585,14 +2592,18 @@ void draw_sound_buffer(GL_State *gl_state, Render_State *render_state,
                       write_cursor_position, make_vec3(1.0f, 0.0f, 0.0f));
 }
 
-void push_alpha_mask(GL_State *gl_state, Render_State *render_state) {
-    
-}
-
 void gl_draw_ui_widget(GL_State *gl_state, Render_State *render_state,
                        Asset_Manager *asset, UI_Manager *manager, UI_Widget *widget) {
     Vec2 computed_position = widget->computed_position;
     Vec2 computed_size = widget->computed_size;
+
+    GL_Alpha_Mask_Stack *alpha_mask_stack = &gl_state->alpha_mask_stack;
+    bool32 has_alpha = alpha_mask_stack->index >= 0;
+
+    if (has_alpha) {
+        glBindTexture(GL_TEXTURE_2D, alpha_mask_stack->texture_ids[alpha_mask_stack->index]);
+    }
+    
     if (widget->flags & UI_WIDGET_DRAW_BACKGROUND) {
         Vec4 color = widget->background_color;
         if (widget->flags & UI_WIDGET_IS_CLICKABLE) {
@@ -2604,16 +2615,54 @@ void gl_draw_ui_widget(GL_State *gl_state, Render_State *render_state,
             }
         }
 
+        // this flag is for both border drawing and corner rounding
         if (widget->flags & UI_WIDGET_DRAW_BORDER) {
             gl_draw_rounded_quad(gl_state, render_state,
                                  computed_position, computed_size,
                                  color,
                                  widget->corner_radius, widget->corner_flags,
-                                 widget->border_color, widget->border_width, widget->border_flags);
+                                 widget->border_color, widget->border_width, widget->border_flags,
+                                 false, has_alpha);
+
+            // draw inner area alpha mask
+            gl_push_alpha_mask(gl_state);
+            glDisable(GL_BLEND);
+            gl_draw_rounded_quad(gl_state, render_state,
+                                 computed_position, computed_size,
+                                 color,
+                                 widget->corner_radius, widget->corner_flags,
+                                 widget->border_color, widget->border_width, widget->border_flags,
+                                 true, has_alpha);
+            glEnable(GL_BLEND);
+            
+            glBindFramebuffer(GL_FRAMEBUFFER, gl_state->msaa_framebuffer.fbo);
         } else {
             gl_draw_quad(gl_state, render_state,
                          computed_position.x, computed_position.y, computed_size.x, computed_size.y,
-                         color);
+                         color, has_alpha);
+        }
+    } else {
+        Vec4 color = { 0.0f, 0.0f, 0.0f, 0.0f };
+        if (widget->flags & UI_WIDGET_DRAW_BORDER) {
+            gl_draw_rounded_quad(gl_state, render_state,
+                                 computed_position, computed_size,
+                                 color,
+                                 widget->corner_radius, widget->corner_flags,
+                                 widget->border_color, widget->border_width, widget->border_flags,
+                                 false, has_alpha);
+
+            // draw inner area alpha mask
+            gl_push_alpha_mask(gl_state);
+            glDisable(GL_BLEND);
+            gl_draw_rounded_quad(gl_state, render_state,
+                                 computed_position, computed_size,
+                                 color,
+                                 widget->corner_radius, widget->corner_flags,
+                                 widget->border_color, widget->border_width, widget->border_flags,
+                                 true, has_alpha);
+            glEnable(GL_BLEND);
+            
+            glBindFramebuffer(GL_FRAMEBUFFER, gl_state->msaa_framebuffer.fbo);
         }
     }
     
@@ -2628,10 +2677,12 @@ void gl_draw_ui_widget(GL_State *gl_state, Render_State *render_state,
 }
 
 void gl_draw_ui(GL_State *gl_state, Render_State *render_state, Asset_Manager *asset, UI_Manager *manager) {
+    #if 0
     glBindFramebuffer(GL_FRAMEBUFFER, gl_state->alpha_mask_framebuffer.fbo);
     uint32 alpha_texture_id = gl_push_alpha_mask(gl_state);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
                            alpha_texture_id, 0);
+    //glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
 #if 1
@@ -2645,14 +2696,12 @@ void gl_draw_ui(GL_State *gl_state, Render_State *render_state, Asset_Manager *a
 
     
     glBindTexture(GL_TEXTURE_2D, alpha_texture_id);
-    
-    // draw something
-    // rebind the msaa framebuffer
-    // pass the texture into the widget shader
+    #endif
     
     // pre-order traversal
     UI_Widget *current = manager->root;
 
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     while (current) {
         gl_draw_ui_widget(gl_state, render_state, asset, manager, current);
         
@@ -2662,24 +2711,37 @@ void gl_draw_ui(GL_State *gl_state, Render_State *render_state, Asset_Manager *a
             if (current->next) {
                 current = current->next;
             } else {
-                if (!current->parent) break;
+                if (!current->parent) {
+                    // root should not push an alpha mask
+                    assert(!(current->flags & UI_WIDGET_DRAW_BORDER));
+                    break;
+                }
 
-                UI_Widget *current_ancestor = current->parent;
-                while (!current_ancestor->next) {
+                // as we go up the tree, checking for next nodes on ancestors, we pop off alpha masks if necessary
+                if (current->flags & UI_WIDGET_DRAW_BORDER) {
+                    gl_pop_alpha_mask(gl_state);
+                }
+
+                UI_Widget *current_ancestor = current;
+
+                do {
+                    current_ancestor = current_ancestor->parent;
+
+                    if (current_ancestor->flags & UI_WIDGET_DRAW_BORDER) {
+                        gl_pop_alpha_mask(gl_state);
+                    }
+                    
                     if (!current_ancestor->parent) {
                         // root
-                        // this will break out of outer loop as well, since root-> next is NULL
-                        break; 
+                        // this will break out of outer loop as well, since root->next is NULL
+                        break;
                     }
-                    current_ancestor = current_ancestor->parent;
-                }
+                } while (!current_ancestor->next);
 
                 current = current_ancestor->next;
             }
         }
     }
-
-    gl_pop_alpha_mask(gl_state);
 }
 
 void gl_draw_framebuffer(GL_State *gl_state, GL_Framebuffer framebuffer) {

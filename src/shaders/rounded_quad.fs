@@ -18,6 +18,7 @@ uniform float border_width;
 uniform uint border_side_flags;
 uniform vec4 border_color;
 uniform bool is_alpha_pass;
+uniform bool has_alpha;
 
 uniform sampler2D alpha_texture;
 //uniform bool use_color;
@@ -50,11 +51,19 @@ float box_sdf(vec2 frag_pos, vec2 position, vec2 half_size) {
     return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
 }
 
-void main() {
+float get_alpha_from_screen_position() {
     vec2 texture_size = textureSize(alpha_texture, 0);
     // flip y, so that it matches uv's coordinate space (y increases going up in uv-space)
     vec2 screen_position = vec2(frag_pos.x, -(frag_pos.y - texture_size.y));
     float alpha = (texture(alpha_texture, screen_position / texture_size)).r;
+    return alpha;
+}
+
+void main() {
+    float alpha = 1.0;
+    if (has_alpha) {
+        alpha = get_alpha_from_screen_position();
+    }
     
     vec2 half_size = size / 2.0;
     vec2 center = position + half_size;
@@ -63,21 +72,21 @@ void main() {
     float radius = 0.0;
     if (center_to_frag.x < 0.0) {
         if (center_to_frag.y < 0.0) {
-            if (TOP_LEFT & corner_flags) {
+            if (bool(TOP_LEFT & corner_flags)) {
                 radius = corner_radius;
             }
         } else {
-            if (BOTTOM_LEFT & corner_flags) {
+            if (bool(BOTTOM_LEFT & corner_flags)) {
                 radius = corner_radius;
             }
         }
     } else {
         if (center_to_frag.y < 0.0) {
-            if (TOP_RIGHT & corner_flags) {
+            if (bool(TOP_RIGHT & corner_flags)) {
                 radius = corner_radius;
             }
         } else {
-            if (BOTTOM_RIGHT & corner_flags) {
+            if (bool(BOTTOM_RIGHT & corner_flags)) {
                 radius = corner_radius;
             }
         }
@@ -86,11 +95,11 @@ void main() {
     float side_border_width = 0.0;
     if (abs(center_to_frag.x) > (half_size.x - border_width - radius)) {
         if (center_to_frag.x < 0.0) {
-            if (BORDER_LEFT & border_side_flags) {
+            if (bool(BORDER_LEFT & border_side_flags)) {
                 side_border_width = border_width;
             }
         } else {
-            if (BORDER_RIGHT & border_side_flags) {
+            if (bool(BORDER_RIGHT & border_side_flags)) {
                 side_border_width = border_width;
             }
         }
@@ -98,11 +107,11 @@ void main() {
 
     if (abs(center_to_frag.y) > (half_size.y - border_width - radius)) {
         if (center_to_frag.y < 0.0) {
-            if (BORDER_TOP & border_side_flags) {
+            if (bool(BORDER_TOP & border_side_flags)) {
                 side_border_width = border_width;
             }
         } else {
-            if (BORDER_BOTTOM & border_side_flags) {
+            if (bool(BORDER_BOTTOM & border_side_flags)) {
                 side_border_width = border_width;
             }
         }
@@ -144,9 +153,11 @@ void main() {
     // for outside/inside)
     box_d = -box_d + 0.5; // add 0.5 so that edges are crisper
     
-    float border_factor = smoothstep(side_border_width, side_border_width + 1.0, box_d);
-
-    float factor = clamp(0.0, 1.0, box_d);
+    //float factor = clamp(0.0, 1.0, box_d);
+    // for some reason, clamp doesn't work with negative numbers on my laptop's intel integrated graphics,
+    // so i was getting a negative alpha value, which lead to colors getting inverted when under a transparent
+    // area. so, we replace it with what is should be doing, and it works.
+    float factor = min(max(0.0, box_d), 1.0);
 
     if (is_alpha_pass) {
         // for some reason, the alpha mask framebuffer still has alpha even though its format is GL_RED, so we keep
@@ -154,8 +165,9 @@ void main() {
         // channel, but when we draw the texture for debugging purposes using the alpha mask framebuffer, if we set
         // alpha to 0.0, you won't see anything.
         // this might have something to do with premultiplied alpha? i forget how that works.
-        FragColor = vec4(factor, 0.0f, 0.0f, 1.0); 
+        FragColor = vec4(factor * alpha, 0.0, 0.0, 0.0);
     } else {
-        FragColor = vec4(mix(vec3(border_color), vec3(frag_color), border_factor), alpha);
+        float border_factor = smoothstep(side_border_width, side_border_width + 1.0, box_d);
+        FragColor = vec4(mix(vec3(border_color), vec3(frag_color), border_factor), factor * alpha);
     }
 }

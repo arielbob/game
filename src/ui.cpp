@@ -59,11 +59,14 @@ UI_Widget *make_widget(UI_id id, uint32 flags) {
     if (ui_manager->border_width_stack) {
         widget->border_width = ui_manager->border_width_stack->border_width;
     }
-    
-    if (ui_manager->corners_stack) {
-        widget->corner_flags = ui_manager->corners_stack->corner_flags;
+
+    if (ui_manager->corner_radius_stack) {
+        widget->corner_radius = ui_manager->corner_radius_stack->radius;
     }
     
+    if (ui_manager->corner_flags_stack) {
+        widget->corner_flags = ui_manager->corner_flags_stack->corner_flags;
+    }
     
     return widget;
 }
@@ -376,12 +379,12 @@ void ui_push_corner_radius(real32 radius) {
 }
 
 void ui_push_corner_flags(uint32 corner_flags) {
-    UI_Style_Corners *entry = (UI_Style_Corners *) allocate(&ui_manager->frame_arena, sizeof(UI_Style_Corners));
+    UI_Style_Corner_Flags *entry = (UI_Style_Corner_Flags *) allocate(&ui_manager->frame_arena, sizeof(UI_Style_Corner_Flags));
 
     entry->corner_flags = corner_flags;
-    entry->next = ui_manager->corners_stack;
+    entry->next = ui_manager->corner_flags_stack;
 
-    ui_manager->corners_stack = entry;
+    ui_manager->corner_flags_stack = entry;
 }
 
 void ui_push_size_type(Vec2_UI_Size_Type type) {
@@ -421,6 +424,31 @@ void ui_pop_background_color() {
 void ui_pop_text_color() {
     assert(ui_manager->text_color_stack);
     ui_manager->text_color_stack = ui_manager->text_color_stack->next;
+}
+
+void ui_pop_corner_radius() {
+    assert(ui_manager->corner_radius_stack);
+    ui_manager->corner_radius_stack = ui_manager->corner_radius_stack->next;
+}
+
+void ui_pop_corner_flags() {
+    assert(ui_manager->corner_flags_stack);
+    ui_manager->corner_flags_stack = ui_manager->corner_flags_stack->next;
+}
+
+void ui_pop_border_flags() {
+    assert(ui_manager->border_flags_stack);
+    ui_manager->border_flags_stack = ui_manager->border_flags_stack->next;
+}
+
+void ui_pop_border_width() {
+    assert(ui_manager->border_width_stack);
+    ui_manager->border_width_stack = ui_manager->border_width_stack->next;
+}
+
+void ui_pop_border_color() {
+    assert(ui_manager->border_color_stack);
+    ui_manager->border_color_stack = ui_manager->border_color_stack->next;
 }
 
 void ui_push_text_color(Vec4 color) {
@@ -1419,7 +1447,6 @@ real32 do_text_field_slider(Asset_Manager *asset, real32 value,
     return value;
 }
 
-// TODO: this should be push_window and should move all the popping calls to a pop_window procedure
 void push_window(char *text, char *id_string, int32 index = 0) {
     UI_id id = make_ui_id(id_string, index);
     UI_Widget_State *state_variant = ui_get_state(id);
@@ -1440,8 +1467,14 @@ void push_window(char *text, char *id_string, int32 index = 0) {
     window_theme.hot_background_color = window_theme.background_color;
     window_theme.active_background_color = window_theme.background_color;
     window_theme.text_color = ui_manager->text_color_stack->color;
+    window_theme.corner_flags = ui_manager->corner_flags_stack->corner_flags;
+    window_theme.corner_radius = ui_manager->corner_radius_stack->radius;
+    window_theme.border_flags = ui_manager->border_flags_stack->border_flags;
+    window_theme.border_color = ui_manager->border_color_stack->border_color;
+    window_theme.border_width = ui_manager->border_width_stack->border_width;
     UI_Widget *window = make_widget(id, window_theme,
-                                    UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE | UI_WIDGET_IS_FOCUSABLE);
+                                    UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE | UI_WIDGET_IS_FOCUSABLE |
+                                    UI_WIDGET_DRAW_BORDER);
     ui_add_and_push_widget(window);
     ui_interact(window);
     

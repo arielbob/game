@@ -120,9 +120,9 @@ struct UI_Style_Border_Width {
     UI_Style_Border_Width *next;
 };
 
-struct UI_Style_Corners {
+struct UI_Style_Corner_Flags {
     uint32 corner_flags;
-    UI_Style_Corners *next;
+    UI_Style_Corner_Flags *next;
 };
 
 struct UI_Style_Corner_Radius {
@@ -313,7 +313,7 @@ struct UI_Manager {
     UI_Style_Border_Color *border_color_stack;
     UI_Style_Border_Flags *border_flags_stack;
     UI_Style_Border_Width *border_width_stack;
-    UI_Style_Corners *corners_stack;
+    UI_Style_Corner_Flags *corner_flags_stack;
     
     UI_Style_Layout_Type *layout_type_stack;
     UI_Style_Size *size_stack;

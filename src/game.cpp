@@ -928,14 +928,7 @@ void update_game(Game_State *game_state, Controller_State *controller_state, Sou
     update_render_state(&game_state->render_state, game_state->camera);
 }
 
-// TODO: draw UI elements with rounded corners and borders
-//       - may want to add basic quad shader for quads with no border or rounding
-// TODO: rounded corner masks
 // TODO: boxes with image backgrounds for icons
-
-// TODO: add gl procedure to get the current alpha texture id
-// TODO: add separate quad shader for widgets specifically that has field for alpha texture
-// TODO: add the alpha mask pushing/popping/drawing code to gl_draw_ui_widget()
 void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 dt) {
     ui_frame_init(display_output, dt);
 
@@ -955,7 +948,7 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     #endif
 
     // test border drawing
-    #if 1
+    #if 0
     ui_push_background_color({ 1.0f, 1.0f, 1.0f, 1.0f });
     ui_push_hot_background_color({ 0.7f, 0.7f, 0.7f, 1.0f });
     ui_push_active_background_color({ 0.5f, 0.5f, 0.5f, 1.0f });
@@ -967,14 +960,16 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     ui_push_border_flags(BORDER_ALL);
     ui_push_corner_radius(5.0f);
     ui_push_corner_flags(CORNER_ALL);
-    ui_push_layout_type(UI_LAYOUT_HORIZONTAL);
+    ui_push_layout_type(UI_LAYOUT_VERTICAL);
     ui_push_widget("", UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_DRAW_BORDER);
 
+    #if 1
     UI_Theme inner_box_theme = {};
     inner_box_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_ABSOLUTE };
     inner_box_theme.semantic_size = { 1.0f, 30.0f };
     inner_box_theme.background_color = { 0.0f, 0.0f, 1.0f, 1.0f };
     ui_add_widget(make_widget("", inner_box_theme, UI_WIDGET_DRAW_BACKGROUND));
+    #endif
 
     ui_pop_widget();
     #endif
@@ -1027,7 +1022,6 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     ui_push_layout_type(UI_LAYOUT_VERTICAL);
     ui_push_background_color({ 0.0f, 0.0f, 1.0f, 1.0f });
 
-    // TODO: maybe do push_width and push_height?
     ui_push_size({ 300.0f, 0.0f });
     ui_push_position({ 10.0f, 10.0f });
 
@@ -1072,16 +1066,46 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     ui_pop_widget();
     #endif
 
-    ui_push_background_color({ 1.0f, 1.0f, 1.0f, 1.0f });
-    push_window("Entity Transform", "window-test");
+    
+    ui_push_background_color(rgb_to_vec4(24, 24, 28));
+#if 0
+    ui_push_border_color({ 50.0f, 50.0f, 60.0f, 1.0f });
+    ui_push_border_width(1.0f);
+    ui_push_border_radius(5.0f);
+#endif
+    ui_push_corner_radius(5.0f);
+    ui_push_corner_flags(CORNER_ALL);
+    ui_push_border_flags(BORDER_ALL);
+    ui_push_border_width(1.0f);
+    ui_push_border_color(rgb_to_vec4(50, 50, 60));
 
+
+    // TODO: just create specific theme structs for windows, text field sliders, etc.
+    //       it's too annoying to have to constantly keep track of the style stacks.
+    //       but still just use the main Theme struct and use the specific theme structs to pass in
+    //       all the styles.
+    {
+        push_window("Entity Transform", "window-test");
+    }
+
+    ui_pop_border_color();
+    ui_pop_border_width();
+    ui_pop_border_flags();
+    ui_pop_corner_flags();
+    ui_pop_corner_radius();
+    ui_pop_background_color();
+    
     UI_Theme content_theme = {};
-    content_theme.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN };
-    content_theme.layout_type = UI_LAYOUT_VERTICAL;
-    content_theme.text_color = { 0.0f, 0.0f, 0.0f, 1.0f };
+    ui_push_size_type({ UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN });
+    ui_push_size({});
+    ui_push_layout_type(UI_LAYOUT_VERTICAL);
+    ui_push_text_color({ 1.0f, 1.0f, 1.0f, 1.0f });
+    //content_theme.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN };
+    //content_theme.layout_type = UI_LAYOUT_VERTICAL;
+    //content_theme.text_color = { 1.0f, 1.0f, 1.0f, 1.0f };
 
-    UI_Widget *content = make_widget("transform-window-content", content_theme, 0);
-    ui_add_and_push_widget(content);
+    //UI_Widget *content = make_widget("transform-window-content", content_theme, 0);
+    ui_push_widget("transform-window-content");
 
     {
         UI_Theme row_theme = {};
@@ -1117,6 +1141,9 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
         }
         ui_pop_widget();
 
+        ui_push_background_color(rgb_to_vec4(9, 9, 10));
+        ui_push_hot_background_color(rgb_to_vec4(9, 9, 10));
+        ui_push_active_background_color(rgb_to_vec4(9, 9, 10));
         // TODO: factor this stuff out into separate procedurex
         ui_add_and_push_widget(make_widget("", row_theme, 0));
         {
@@ -1174,7 +1201,7 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
                 ui_x_pad(5.0f);
                 ui_push_size_type({ UI_SIZE_FILL_REMAINING, UI_SIZE_PERCENTAGE });
                 ui_push_size({ 1.0f, 1.0f });
-
+                
                 static real32 z_val = 5.0f;
                 z_val = do_text_field_slider(asset, z_val, 0.0f, 100.0f, true, "transform-z-slider");
                 
