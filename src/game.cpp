@@ -932,6 +932,10 @@ void update_game(Game_State *game_state, Controller_State *controller_state, Sou
 //       - may want to add basic quad shader for quads with no border or rounding
 // TODO: rounded corner masks
 // TODO: boxes with image backgrounds for icons
+
+// TODO: add gl procedure to get the current alpha texture id
+// TODO: add separate quad shader for widgets specifically that has field for alpha texture
+// TODO: add the alpha mask pushing/popping/drawing code to gl_draw_ui_widget()
 void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 dt) {
     ui_frame_init(display_output, dt);
 
@@ -952,14 +956,14 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
 
     // test border drawing
     #if 1
-    //ui_push_background_color({ 1.0f, 1.0f, 1.0f, 1.0f });
+    ui_push_background_color({ 1.0f, 1.0f, 1.0f, 1.0f });
     ui_push_hot_background_color({ 0.7f, 0.7f, 0.7f, 1.0f });
     ui_push_active_background_color({ 0.5f, 0.5f, 0.5f, 1.0f });
     ui_push_size_type({ UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE });
     ui_push_size({ 200.0f, 200.0f });
     ui_push_position({ 50.0f, 20.0f });
-    ui_push_border_color({ 1.0f, 1.0f, 1.0f, 1.0f });
-    ui_push_border_width(5.0f);
+    ui_push_border_color({ 1.0f, 0.0f, 0.0f, 1.0f });
+    ui_push_border_width(1.0f);
     ui_push_border_flags(BORDER_ALL);
     ui_push_corner_radius(5.0f);
     ui_push_corner_flags(CORNER_ALL);

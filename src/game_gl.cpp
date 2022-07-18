@@ -1616,6 +1616,80 @@ GL_Framebuffer gl_make_framebuffer(int32 width, int32 height, uint32 flags) {
     return framebuffer;
 }
 
+void gl_init_alpha_mask_stack(GL_State *gl_state, int32 width, int32 height) {
+    GL_Alpha_Mask_Stack *stack = &gl_state->alpha_mask_stack;
+    glGenTextures(MAX_ALPHA_MASKS, stack->texture_ids);
+
+    for (int32 i = 0; i < MAX_ALPHA_MASKS; i++) {
+        uint32 texture_id = stack->texture_ids[i];
+        glBindTexture(GL_TEXTURE_2D, texture_id);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);        
+    }
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+uint32 gl_push_alpha_mask(GL_State *gl_state) {
+    GL_Alpha_Mask_Stack *stack = &gl_state->alpha_mask_stack;
+    stack->index++;
+    assert(stack->index < MAX_ALPHA_MASKS);
+    
+    uint32 alpha_texture_id = stack->texture_ids[stack->index];
+
+    return alpha_texture_id;
+}
+
+void gl_pop_alpha_mask(GL_State *gl_state) {
+    GL_Alpha_Mask_Stack *stack = &gl_state->alpha_mask_stack;
+    stack->index--;
+    assert(stack->index >= -1);
+}
+
+// TODO: add procedure to deallocate and reset alpha masks and framebuffer when window dimensions change
+
+GL_Framebuffer gl_make_alpha_mask_framebuffer(int32 width, int32 height) {
+    GL_Framebuffer framebuffer = {};
+
+    glGenFramebuffers(1, &framebuffer.fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.fbo);
+
+    // color buffer texture
+    #if 0
+    glGenTextures(1, &framebuffer.color_buffer_texture);
+    glBindTexture(GL_TEXTURE_2D, framebuffer.color_buffer_texture);
+    
+    GLint format = gl_get_framebuffer_format(flags);
+    glTexImage2D(GL_TEXTURE_2D, 0, format,
+                 width, height,
+                 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                           framebuffer.color_buffer_texture, 0);
+    #endif
+
+    // render buffer
+    #if 0
+    glGenRenderbuffers(1, &framebuffer.render_buffer);
+    glBindRenderbuffer(GL_RENDERBUFFER, framebuffer.render_buffer);
+    glRenderbufferStorage(GL_RENDERBUFFER, 0, width, height);
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, framebuffer.render_buffer);
+    #endif
+
+    #if 0
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        debug_print("Framebuffer is not complete.\n");
+        assert(false);
+    }
+    #endif
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    return framebuffer;
+}
+
 GL_Framebuffer gl_make_msaa_framebuffer(int32 width, int32 height, int32 num_samples, uint32 flags) {
     GL_Framebuffer framebuffer;
 
@@ -1970,7 +2044,11 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
                                                            num_samples, framebuffer_flags);
     gl_state->msaa_framebuffer = gl_make_msaa_framebuffer(display_output.width, display_output.height,
                                                           num_samples, framebuffer_flags);
+    gl_state->alpha_mask_framebuffer = gl_make_alpha_mask_framebuffer(display_output.width, display_output.height);
 
+    // NOTE: alpha mask textures
+    gl_init_alpha_mask_stack(gl_state, display_output.width, display_output.height);
+    
     // NOTE: unified buffer object
     glGenBuffers(1, &gl_state->global_ubo);
     glBindBuffer(GL_UNIFORM_BUFFER, gl_state->global_ubo);
@@ -1979,7 +2057,6 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
     // maybe we could put num_point lights at the end of the uniform buffer object?
     glBufferData(GL_UNIFORM_BUFFER, (MAX_POINT_LIGHTS + 1) * sizeof(GL_Point_Light), NULL, GL_STATIC_DRAW);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
-    //glBindBufferRange(GL_UNIFORM_BUFFER, 0, gl_state->global_ubo, 0, 4);
     glBindBufferBase(GL_UNIFORM_BUFFER, 0, gl_state->global_ubo);
 
     uint32 shader_id = gl_use_shader(gl_state, "basic_3d");
@@ -2313,7 +2390,8 @@ void gl_draw_rounded_quad(GL_State *gl_state, Render_State *render_state,
                           Vec2 position, Vec2 size,
                           Vec4 color,
                           real32 corner_radius, uint32 corner_flags,
-                          Vec4 border_color, real32 border_width, uint32 border_side_flags) {
+                          Vec4 border_color, real32 border_width, uint32 border_side_flags,
+                          bool32 is_alpha_pass = false) {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     uint32 shader_id = gl_use_shader(gl_state, "rounded_quad");
     GL_Mesh quad_mesh = gl_use_rendering_mesh(gl_state, gl_state->quad_mesh_id);
@@ -2332,11 +2410,12 @@ void gl_draw_rounded_quad(GL_State *gl_state, Render_State *render_state,
 
     gl_set_uniform_vec2(shader_id, "position", &position); 
     gl_set_uniform_vec2(shader_id, "size", &size);
-    gl_set_uniform_float(shader_id, "corner_radius", 5.0f);//corner_radius);
+    gl_set_uniform_float(shader_id, "corner_radius", corner_radius);
     gl_set_uniform_uint(shader_id, "corner_flags", corner_flags);
     gl_set_uniform_float(shader_id, "border_width", border_width);
     gl_set_uniform_uint(shader_id, "border_side_flags", border_side_flags);
     gl_set_uniform_vec4(shader_id, "border_color", &border_color);
+    gl_set_uniform_int(shader_id, "is_alpha_pass", is_alpha_pass);
     
     //gl_set_uniform_int(shader_id, "use_color", true);
 
@@ -2506,6 +2585,10 @@ void draw_sound_buffer(GL_State *gl_state, Render_State *render_state,
                       write_cursor_position, make_vec3(1.0f, 0.0f, 0.0f));
 }
 
+void push_alpha_mask(GL_State *gl_state, Render_State *render_state) {
+    
+}
+
 void gl_draw_ui_widget(GL_State *gl_state, Render_State *render_state,
                        Asset_Manager *asset, UI_Manager *manager, UI_Widget *widget) {
     Vec2 computed_position = widget->computed_position;
@@ -2545,17 +2628,32 @@ void gl_draw_ui_widget(GL_State *gl_state, Render_State *render_state,
 }
 
 void gl_draw_ui(GL_State *gl_state, Render_State *render_state, Asset_Manager *asset, UI_Manager *manager) {
-    #if 0
-    gl_draw_rounded_quad(gl_state, render_state, { 5.0f, 5.0f }, { 200.0f, 100.0f },
+    glBindFramebuffer(GL_FRAMEBUFFER, gl_state->alpha_mask_framebuffer.fbo);
+    uint32 alpha_texture_id = gl_push_alpha_mask(gl_state);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                           alpha_texture_id, 0);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+#if 1
+    gl_draw_rounded_quad(gl_state, render_state, { 200.0f, 20.0f }, { 200.0f, 100.0f },
                          { 1.0f, 1.0f, 1.0f, 1.0f },
-                         10.0f, CORNER_TOP_LEFT | CORNER_TOP_RIGHT,
-                         { 1.0f, 0.0f, 0.0f, 1.0f }, 2.0f, BORDER_TOP | BORDER_LEFT | BORDER_RIGHT);
-    #endif
+                         50.0f, CORNER_ALL,
+                         { 1.0f, 0.0f, 0.0f, 1.0f }, 5.0f, BORDER_ALL, true);
+#endif
+    
+    glBindFramebuffer(GL_FRAMEBUFFER, gl_state->msaa_framebuffer.fbo);
+
+    
+    glBindTexture(GL_TEXTURE_2D, alpha_texture_id);
+    
+    // draw something
+    // rebind the msaa framebuffer
+    // pass the texture into the widget shader
     
     // pre-order traversal
     UI_Widget *current = manager->root;
 
-    while (true) {
+    while (current) {
         gl_draw_ui_widget(gl_state, render_state, asset, manager, current);
         
         if (current->first) {
@@ -2564,11 +2662,15 @@ void gl_draw_ui(GL_State *gl_state, Render_State *render_state, Asset_Manager *a
             if (current->next) {
                 current = current->next;
             } else {
-                if (!current->parent) return;
+                if (!current->parent) break;
 
                 UI_Widget *current_ancestor = current->parent;
                 while (!current_ancestor->next) {
-                    if (!current_ancestor->parent) return; // root
+                    if (!current_ancestor->parent) {
+                        // root
+                        // this will break out of outer loop as well, since root-> next is NULL
+                        break; 
+                    }
                     current_ancestor = current_ancestor->parent;
                 }
 
@@ -2576,6 +2678,8 @@ void gl_draw_ui(GL_State *gl_state, Render_State *render_state, Asset_Manager *a
             }
         }
     }
+
+    gl_pop_alpha_mask(gl_state);
 }
 
 void gl_draw_framebuffer(GL_State *gl_state, GL_Framebuffer framebuffer) {
@@ -3150,10 +3254,21 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
     glLineWidth(1.0f);
     glEnable(GL_DEPTH_TEST);
 
+
     // draw msaa framebuffer
+    #if 1
     glBindFramebuffer(GL_READ_FRAMEBUFFER, gl_state->msaa_framebuffer.fbo);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
     glBlitFramebuffer(0, 0, display_output.width, display_output.height, 0, 0,
                       display_output.width, display_output.height,
                       GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    #endif
+
+    #if 0
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, gl_state->alpha_mask_framebuffer.fbo);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    glBlitFramebuffer(0, 0, display_output.width, display_output.height, 0, 0,
+                      display_output.width, display_output.height,
+                      GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    #endif
 }

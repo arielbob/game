@@ -111,10 +111,13 @@
 #define GL_DRAW_FRAMEBUFFER               0x8CA9
 #define GL_RGBA16F                        0x881A
 #define GL_RGB16F                         0x881B
+#define GL_R8                             0x8229
+#define GL_R16                            0x822A
 
 #define TEXT_SHADOW_OFFSET 2.0f
 #define NUM_CIRCLE_VERTICES 64
 #define NUM_MSAA_SAMPLES 1
+#define MAX_ALPHA_MASKS 16
 
 #define FRAMEBUFFER_IS_HDR   (1 << 0)
 #define FRAMEBUFFER_HAS_ALPHA (1 << 1)
@@ -169,6 +172,14 @@ struct GL_Point_Light {
     real32 d_max;
 };
 
+// TODO: just have a single framebuffer with alpha, see gl_make_framebuffer(), generate all the textures at once.
+//       we don't need to free them at all, just change the index. will have to free and re-init textures if the
+//       window dimensions change.
+struct GL_Alpha_Mask_Stack {
+    uint32 texture_ids[MAX_ALPHA_MASKS];
+    int32 index = -1;
+};
+
 struct GL_State {
     Hash_Table<String, uint32> shader_ids_table;
 
@@ -201,6 +212,9 @@ struct GL_State {
     GL_Framebuffer msaa_framebuffer;
     uint32 global_ubo;
 
+    GL_Framebuffer alpha_mask_framebuffer;
+    GL_Alpha_Mask_Stack alpha_mask_stack;
+    
     // TODO: maybe figure out a better way of doing this.
     //       we switched to using IDs instead of strings, but the downside is that we can't just search
     //       tables with a string anymore.

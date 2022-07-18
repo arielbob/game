@@ -17,8 +17,9 @@ uniform uint corner_flags;
 uniform float border_width;
 uniform uint border_side_flags;
 uniform vec4 border_color;
+uniform bool is_alpha_pass;
 
-//uniform sampler2D image_texture;
+uniform sampler2D alpha_texture;
 //uniform bool use_color;
 
 in vec2 frag_pos;
@@ -50,6 +51,11 @@ float box_sdf(vec2 frag_pos, vec2 position, vec2 half_size) {
 }
 
 void main() {
+    vec2 texture_size = textureSize(alpha_texture, 0);
+    // flip y, so that it matches uv's coordinate space (y increases going up in uv-space)
+    vec2 screen_position = vec2(frag_pos.x, -(frag_pos.y - texture_size.y));
+    float alpha = (texture(alpha_texture, screen_position / texture_size)).r;
+    
     vec2 half_size = size / 2.0;
     vec2 center = position + half_size;
     vec2 center_to_frag = frag_pos - center;
@@ -129,6 +135,10 @@ void main() {
     
     half_size = inner_size / 2.0;
     float box_d = box_sdf(frag_pos, inner_position, half_size) - shrink_amount;
+
+    if (is_alpha_pass) {
+        box_d += side_border_width; // shrink the sdf by border so that we mask the inner area of the box
+    }
     
     // take negative so that it grows as you move further inwards (do this so that we can just clamp to get it to be 0/1
     // for outside/inside)
@@ -136,6 +146,16 @@ void main() {
     
     float border_factor = smoothstep(side_border_width, side_border_width + 1.0, box_d);
 
-    float factor = clamp(0.0f, 1.0f, box_d); 
-    FragColor = vec4(mix(vec3(border_color), vec3(frag_color), border_factor), factor);
+    float factor = clamp(0.0, 1.0, box_d);
+
+    if (is_alpha_pass) {
+        // for some reason, the alpha mask framebuffer still has alpha even though its format is GL_RED, so we keep
+        // alpha 1.0 here even though it should ignore it. and technically, we can, since we only use the red
+        // channel, but when we draw the texture for debugging purposes using the alpha mask framebuffer, if we set
+        // alpha to 0.0, you won't see anything.
+        // this might have something to do with premultiplied alpha? i forget how that works.
+        FragColor = vec4(factor, 0.0f, 0.0f, 1.0); 
+    } else {
+        FragColor = vec4(mix(vec3(border_color), vec3(frag_color), border_factor), alpha);
+    }
 }
