@@ -27,6 +27,22 @@ struct Vec2 {
     inline real32 &operator[](int32 index);
 };
 
+struct Vec2_int32 {
+    union {
+        int32 values[2];
+        struct {
+            int32 x;
+            int32 y;
+        };
+    };
+
+    inline Vec2_int32 &operator+=(Vec2_int32 v);
+    inline Vec2_int32 &operator-=(Vec2_int32 v);
+    inline Vec2_int32 &operator*=(int32 factor);
+    inline Vec2_int32 &operator/=(int32 factor);
+    inline int32 &operator[](int32 index);
+};
+
 struct Vec3 {
     union {
         real32 values[3];

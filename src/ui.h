@@ -249,8 +249,8 @@ struct UI_Widget {
     Vec2 semantic_size;
     Vec2 semantic_position;
 
-    int32 num_fill_children; // only on x-axis
-    int32 num_sized_children;
+    Vec2_int32 num_fill_children; // only on x-axis
+    Vec2_int32 num_sized_children;
     int32 num_total_children;
     
     Vec2 computed_size;

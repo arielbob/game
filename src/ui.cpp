@@ -198,9 +198,15 @@ UI_Widget *ui_add_widget(UI_Widget *widget) {
 
     if (widget->position_type != UI_POSITION_FLOAT) {
         if (widget->size_type[UI_WIDGET_X_AXIS] != UI_SIZE_FILL_REMAINING) {
-            parent->num_sized_children++;
+            parent->num_sized_children[UI_WIDGET_X_AXIS]++;
         } else {
-            parent->num_fill_children++;
+            parent->num_fill_children[UI_WIDGET_X_AXIS]++;
+        }
+
+        if (widget->size_type[UI_WIDGET_Y_AXIS] != UI_SIZE_FILL_REMAINING) {
+            parent->num_sized_children[UI_WIDGET_Y_AXIS]++;
+        } else {
+            parent->num_fill_children[UI_WIDGET_Y_AXIS]++;
         }
     }
     parent->num_total_children++;
@@ -228,6 +234,12 @@ UI_Widget *ui_add_widget(UI_id id, uint32 flags) {
     UI_Widget *widget = make_widget(id, flags);
     ui_add_widget(widget);
 
+    return widget;
+}
+
+UI_Widget *ui_add_widget(char *id_string_ptr, UI_Theme theme, uint32 flags = 0) {
+    UI_Widget *widget = make_widget(make_ui_id(id_string_ptr, 0), theme, flags);
+    ui_add_widget(widget);
     return widget;
 }
 
@@ -260,6 +272,13 @@ UI_Widget *ui_push_widget(char *id_string_ptr, uint32 flags = 0) {
 }
 
 UI_Widget *ui_add_and_push_widget(UI_Widget *widget) {
+    ui_add_widget(widget);
+    ui_push_existing_widget(widget);
+    return widget;
+}
+
+UI_Widget *ui_add_and_push_widget(char *id_string_ptr, UI_Theme theme, uint32 flags = 0) {
+    UI_Widget *widget = make_widget(id_string_ptr, theme, flags);
     ui_add_widget(widget);
     ui_push_existing_widget(widget);
     return widget;
@@ -712,6 +731,12 @@ void calculate_child_dependent_size(UI_Widget *widget, UI_Widget_Axis axis) {
              parent->layout_type == UI_LAYOUT_HORIZONTAL)) {
             parent->computed_child_size_sum[axis] += widget->computed_size[axis];
         }
+
+        if (axis == UI_WIDGET_Y_AXIS &&
+            (widget->size_type[axis] != UI_SIZE_FILL_REMAINING) &&
+            parent->layout_type == UI_LAYOUT_VERTICAL) {
+            parent->computed_child_size_sum[axis] += widget->computed_size[axis];
+        }
     }
 }
 
@@ -764,21 +789,18 @@ void calculate_ancestor_dependent_sizes_part_2(UI_Widget *widget, UI_Widget_Axis
     } else if (widget->size_type[axis] == UI_SIZE_FILL_REMAINING) {
         assert(widget->position_type != UI_POSITION_FLOAT);
         assert(parent);
-        if (axis == UI_WIDGET_X_AXIS) {
-            widget->computed_size[axis] = ((parent->computed_size[axis] - parent->computed_child_size_sum[axis]) /
-                                           parent->num_fill_children);
-            parent->computed_child_size_sum[axis] += widget->computed_size[axis];
-        } else {
-            assert(!"UI_SIZE_FIT_REMAINING only supported for x-axis.");
-        }
-        
+        widget->computed_size[axis] = ((parent->computed_size[axis] - parent->computed_child_size_sum[axis]) /
+                                       parent->num_fill_children[axis]);
+        parent->computed_child_size_sum[axis] += widget->computed_size[axis];
     }
 }
 
 // this is to resolve percentage widths that are children of components that have child-dependent sizes
 // for example, if the parent of a percentage width widget is a FIT_CHILDREN widget, then we have to wait
-// until the parent widget has a computed width, then we can set the computed width of the percantage
+// until the parent widget has a computed width, then we can set the computed width of the percentage
 // based widget.
+
+// FIXME: this is broken
 void ui_calculate_ancestor_dependent_sizes_part_2() {
     UI_Widget *current = ui_manager->root;
 
@@ -1133,6 +1155,13 @@ void do_text(char *text, char *id, uint32 flags = 0, int32 index = 0) {
     ui_pop_size_type();
 }
 
+void do_text(char *text) {
+    ui_push_size_type({ UI_SIZE_FIT_TEXT, UI_SIZE_FIT_TEXT });
+    UI_Widget *text_widget = ui_add_widget("", UI_WIDGET_DRAW_TEXT);
+    text_widget->text = text;
+    ui_pop_size_type();
+}
+
 bool32 do_button(UI_id id) {
     UI_Widget *widget = ui_add_widget(id, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
     UI_Interact_Result interact_result = ui_interact(widget);
@@ -1221,46 +1250,53 @@ void ui_y_pad(real32 height) {
     ui_pop_size_type();
 }
 
-void ui_push_container(real32 top_padding, real32 right_padding, real32 bottom_padding, real32 left_padding) {
-    ui_push_size_type({ UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN });
-    ui_push_size({ 1.0f, 1.0f });
-    ui_push_layout_type(UI_LAYOUT_VERTICAL);
+struct UI_Container_Theme {
+    real32 top_padding;
+    real32 right_padding;
+    real32 bottom_padding;
+    real32 left_padding;
+
+    Vec2_UI_Size_Type size_type;
+    Vec2 size;
+    UI_Layout_Type layout_type;
+};
+
+void ui_push_container(UI_Container_Theme theme) {
+    UI_Theme column_theme = {};
+    column_theme.size_type = theme.size_type;
+    column_theme.semantic_size = theme.size;
+    column_theme.layout_type = UI_LAYOUT_VERTICAL;
 
     // vertical
-    UI_Widget *inner;
-    ui_push_widget("");
-    {
-        ui_y_pad(top_padding);
+    UI_Widget *column = ui_add_and_push_widget("", column_theme, 0);
 
-        ui_push_layout_type(UI_LAYOUT_HORIZONTAL);
-        
-        // horizontal
-        ui_push_widget("");
+    UI_Widget *inner;
+    
+    {
+        ui_y_pad(theme.top_padding);
+
+        UI_Theme row_theme = {};
+        row_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
+        row_theme.semantic_size = {0.0f, 1.0f};
+        row_theme.layout_type = UI_LAYOUT_HORIZONTAL;
+
+        ui_add_and_push_widget("", row_theme, 0);
         {
-            ui_x_pad(left_padding);
-            ui_push_size_type({ UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN });
-            //ui_push_background_color({ 1.0f, 0.0f, 0.0f, 1.0f });
-            inner = ui_add_widget("", 0);
-            //ui_pop_background_color();
-            ui_pop_size_type();
-            ui_x_pad(right_padding);
+            ui_x_pad(theme.left_padding);
+
+            UI_Theme inner_theme = {};
+            inner_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
+            inner_theme.layout_type = theme.layout_type;
+            inner = ui_add_widget("", inner_theme);
+
+            ui_x_pad(theme.right_padding);
         }
         ui_pop_widget();
-        ui_pop_layout_type();
-        
-        ui_y_pad(bottom_padding);
-    }
-    ui_pop_widget();
 
-    ui_pop_layout_type();
-    ui_pop_size();
-    ui_pop_size_type();
+        ui_y_pad(theme.bottom_padding);
+    }
 
     ui_push_existing_widget(inner);
-}
-
-void ui_push_container(real32 x_padding, real32 y_padding) {
-    ui_push_container(y_padding, x_padding, y_padding, x_padding);
 }
 
 void ui_add_slider_bar(real32 value, real32 min, real32 max) {
@@ -1275,6 +1311,227 @@ void ui_add_slider_bar(real32 value, real32 min, real32 max) {
     ui_pop_position();
     ui_pop_position_type();
     ui_pop_size_type();
+}
+
+struct UI_Slider_Theme {
+    Vec4 background_color;
+};
+
+void ui_add_slider_bar(UI_Slider_Theme theme, real32 value, real32 min, real32 max) {
+    UI_Theme slider_theme = {};
+    slider_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_PERCENTAGE };
+    slider_theme.position_type = UI_POSITION_FLOAT;
+    slider_theme.background_color = theme.background_color;
+    slider_theme.semantic_size = { clamp((value - min) / (max - min), 0.0f, 1.0f), 1.0f };
+    
+    ui_add_widget("", slider_theme, UI_WIDGET_DRAW_BACKGROUND);
+}
+
+struct UI_Text_Field_Slider_Theme {
+    Vec4 field_background_color;
+    Vec4 slider_background_color;
+    bool32 show_slider;
+    
+    Vec2_UI_Size_Type size_type;
+    Vec2 size;
+};
+
+real32 do_text_field_slider(Asset_Manager *asset, real32 value,
+                            real32 min_value, real32 max_value,
+                            UI_Text_Field_Slider_Theme theme,
+                            char *id_string, int32 index = 0) {
+    UI_id id = make_ui_id(id_string, index);
+    UI_Widget_State *state_variant = ui_get_state(id);
+    UI_Text_Field_Slider_State *state;
+    if (!state_variant) {
+        state = ui_add_text_field_slider_state(id, value);
+    } else {
+        state = &state_variant->text_field_slider;
+    }
+
+    UI_Theme textbox_theme = {};
+    textbox_theme.layout_type             = UI_LAYOUT_CENTER;
+    textbox_theme.size_type               = theme.size_type;
+    textbox_theme.semantic_size           = theme.size;
+    textbox_theme.background_color        = theme.field_background_color;
+    textbox_theme.hot_background_color    = theme.field_background_color;
+    textbox_theme.active_background_color = theme.field_background_color;
+    
+    UI_Widget *textbox = ui_add_and_push_widget(id_string, textbox_theme,
+                                                UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE | UI_WIDGET_IS_FOCUSABLE);
+    UI_Interact_Result interact = ui_interact(textbox);
+
+    real32 x_delta = fabsf((get_mouse_delta()).x);
+    real32 deadzone = 1.0f;
+
+    if (!state->is_using) {
+        state->is_sliding = is_active(textbox) && (x_delta > deadzone);
+
+        if (state->is_sliding) {
+            state->is_using = true;
+        } else if (interact.clicked) {
+            state->is_using = true;
+
+            char *value_text = string_format((Allocator *) &ui_manager->frame_arena, "%f", value);
+            set_string_buffer_text(&state->buffer, value_text);
+            state->cursor_index = state->buffer.current_length;
+        }
+    }
+
+    if (state->is_using) {
+        if (state->is_sliding) {
+            if (!is_active(textbox)) {
+                state->is_using = false;
+            }
+        } else {
+            if (!is_focus(textbox)) {
+                state->is_using = false;
+
+                real32 result;
+                bool32 conversion_result = string_to_real32(make_string(state->buffer), &result);
+                if (conversion_result) {
+                    value = result;
+                    //return result;
+                }
+            }
+        }
+    }
+    
+    if (state->is_using && state->is_sliding) {
+        value = interact.relative_mouse_percentage.x * (max_value - min_value);
+        value = clamp(value, min_value, max_value);
+    }
+    
+    if (state->is_using && !state->is_sliding) {
+        Controller_State *controller_state = Context::controller_state;
+        int32 original_cursor_index = state->cursor_index;
+        
+        if (just_pressed_or_repeated(controller_state->key_left)) {
+            state->cursor_index--;
+            state->cursor_index = max(state->cursor_index, 0);
+        }
+
+        if (just_pressed_or_repeated(controller_state->key_right)) {
+            state->cursor_index++;
+            state->cursor_index = min(state->cursor_index, state->buffer.current_length);
+            state->cursor_index = min(state->cursor_index, state->buffer.size);
+        }
+
+        String_Buffer *buffer = &state->buffer;
+        for (int32 i = 0; i < controller_state->num_pressed_chars; i++) {
+            char c = controller_state->pressed_chars[i];
+            if (c == '\b') { // backspace key
+                splice(&state->buffer, state->cursor_index - 1);
+                state->cursor_index--;
+                state->cursor_index = max(state->cursor_index, 0);
+            } else if ((buffer->current_length < buffer->size) && (state->cursor_index < buffer->size)) {
+                if (c >= 32 && c <= 126) {
+                    splice_insert(&state->buffer, state->cursor_index, c);
+                    state->cursor_index++;
+                }
+            }
+        }
+
+        if (state->cursor_index != original_cursor_index) {
+            ui_manager->focus_t = 0.0f;
+        }
+    }
+
+    UI_Slider_Theme slider_theme = {};
+    slider_theme.background_color = theme.slider_background_color;
+    
+    if (theme.show_slider) {
+        if (!state->is_using || state->is_sliding) {
+            ui_add_slider_bar(slider_theme, value, min_value, max_value);
+            #if 0
+            ui_push_background_color({ 0.0f, 0.0f, 1.0f, 1.0f });
+            ui_add_slider_bar(value, min_value, max_value);
+            ui_pop_background_color();
+            #endif
+        }
+    }
+    
+    {
+        UI_Theme inner_field_theme = {};
+        inner_field_theme.size_type     = { UI_SIZE_PERCENTAGE, UI_SIZE_PERCENTAGE };
+        inner_field_theme.layout_type   = UI_LAYOUT_HORIZONTAL;
+        inner_field_theme.semantic_size = { 1.0f, 1.0f };
+
+        ui_add_and_push_widget("", inner_field_theme);
+        {
+            ui_x_pad(5.0f);
+
+            UI_Theme text_theme = {};
+            text_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
+            text_theme.layout_type = UI_LAYOUT_HORIZONTAL;
+
+            ui_add_and_push_widget("", text_theme);
+            {
+                do_text("hello");
+            }
+            ui_pop_widget();
+
+
+            #if 0
+            ui_push_size_type({ UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN });
+            ui_push_layout_type(UI_LAYOUT_HORIZONTAL);
+            ui_push_background_color({ 0.0f, 1.0f, 0.0f, 1.0f });
+            ui_push_widget("");
+            {
+                if (state->is_using && !state->is_sliding) {
+                    char *str = to_char_array((Allocator *) &ui_manager->frame_arena, state->buffer);
+                    do_text(str, "");
+
+                    // draw cursor
+
+                    ui_push_size_type({ UI_SIZE_ABSOLUTE, UI_SIZE_PERCENTAGE });
+                    ui_push_size({ 1.0f, 1.0f });
+                    ui_push_position_type(UI_POSITION_FLOAT);
+
+                    Font font = get_font(asset, textbox->font);
+                    real32 width_to_index = get_width(font, str, state->cursor_index);
+                    ui_push_position({ floorf(width_to_index), 0.0f });
+
+                    ui_push_background_color({ 0.0f, 0.0f, 0.0f, 1.0f });
+                    real32 time_to_switch = 0.5f; // time spent in either state
+                    bool32 show_background = ((int32) (ui_manager->focus_t*(1.0f / time_to_switch)) + 1) % 2;
+                    
+                    UI_Widget *cursor = ui_add_widget("", show_background ? UI_WIDGET_DRAW_BACKGROUND : 0);
+                    ui_pop_background_color();
+                    
+                    ui_pop_position();
+                    ui_pop_position_type();
+                    ui_pop_size();
+                    ui_pop_size_type();    
+                } else {
+                    char *buf = string_format((Allocator *) &ui_manager->frame_arena, "%f", value);
+                    do_text(buf, "");
+                }
+            }
+            ui_pop_widget();
+            ui_pop_background_color();
+            ui_pop_layout_type();
+            ui_pop_size_type();
+            #endif
+            
+            ui_x_pad(5.0f);
+        }
+        ui_pop_widget();
+    }
+    ui_pop_widget();
+
+    // we do validation that it's a number, but any putting value into bounds should be done by the caller
+#if 0
+    if (interact.lost_focus) {
+        real32 result;
+        bool32 conversion_result = string_to_real32(make_string(state->buffer), &result);
+        if (conversion_result) {
+            return result;
+        }
+    }
+#endif
+    
+    return value;
 }
 
 real32 do_text_field_slider(Asset_Manager *asset, real32 value,
@@ -1382,9 +1639,9 @@ real32 do_text_field_slider(Asset_Manager *asset, real32 value,
     }
     
     {
-        ui_push_size_type({ UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN });
+        ui_push_size_type({ UI_SIZE_PERCENTAGE, UI_SIZE_PERCENTAGE });
         ui_push_layout_type(UI_LAYOUT_HORIZONTAL);
-        ui_push_size({ 1.0f, 0.0f });
+        ui_push_size({ 1.0f, 1.0f });
 
         ui_push_widget("");
         {
@@ -1395,7 +1652,6 @@ real32 do_text_field_slider(Asset_Manager *asset, real32 value,
             ui_push_widget("");
             {
                 if (state->is_using && !state->is_sliding) {
-                    //if (false) {
                     char *str = to_char_array((Allocator *) &ui_manager->frame_arena, state->buffer);
                     do_text(str, "");
 

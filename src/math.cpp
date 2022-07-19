@@ -97,6 +97,77 @@ inline real32& Vec2::operator[](int32 index) {
     return (*this).values[index];
 }
 
+inline Vec2_int32 make_vec2(int32 x, int32 y) {
+    Vec2_int32 vec2;
+    vec2.x = x;
+    vec2.y = y;
+
+    return vec2;
+};
+
+inline Vec2_int32 operator+(Vec2_int32 v1, Vec2_int32 v2) {
+    Vec2_int32 result = v1;
+    result.x += v2.x;
+    result.y += v2.y;
+    return result;
+}
+
+inline Vec2_int32 operator-(Vec2_int32 v) {
+    Vec2_int32 result;
+    result.x = -v.x;
+    result.y = -v.y;
+    return result;
+}
+
+inline Vec2_int32 operator-(Vec2_int32 v1, Vec2_int32 v2) {
+    Vec2_int32 result = v1;
+    result.x -= v2.x;
+    result.y -= v2.y;
+    return result;
+}
+
+inline Vec2_int32 operator*(int32 factor, Vec2_int32 v) {
+    Vec2_int32 result = v;
+    result.x *= factor;
+    result.y *= factor;
+    return result;
+}
+
+inline Vec2_int32 operator*(Vec2_int32 v, int32 factor) {
+    return factor * v;
+}
+
+inline Vec2_int32 operator/(Vec2_int32 v, int32 factor) {
+    Vec2_int32 result = v;
+    result.x /= factor;
+    result.y /= factor;
+    return result;
+}
+
+inline Vec2_int32& Vec2_int32::operator+=(Vec2_int32 v) {
+    *this = *this + v;
+    return *this;
+}
+
+inline Vec2_int32& Vec2_int32::operator-=(Vec2_int32 v) {
+    *this = *this - v;
+    return *this;
+}
+
+inline Vec2_int32& Vec2_int32::operator*=(int32 factor) {
+    *this = *this * factor;
+    return *this;
+}
+
+inline Vec2_int32& Vec2_int32::operator/=(int32 factor) {
+    *this = *this / factor;
+    return *this;
+}
+
+inline int32& Vec2_int32::operator[](int32 index) {
+    return (*this).values[index];
+}
+
 inline Vec3 operator+(Vec3 v1, Vec3 v2) {
     Vec3 result = v1;
     result.x += v2.x;

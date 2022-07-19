@@ -1086,17 +1086,71 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     push_window("Entity Transform", window_theme, "window-test");
     
     UI_Theme content_theme = {};
-    ui_push_size_type({ UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN });
-    ui_push_size({});
-    ui_push_layout_type(UI_LAYOUT_VERTICAL);
+    content_theme.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN };
+    content_theme.layout_type = UI_LAYOUT_VERTICAL;
+    content_theme.text_color = { 1.0f, 1.0f, 1.0f, 1.0f };
+
+    UI_Widget *content = make_widget("transform-window-content", content_theme, 0);
+    //ui_add_and_push_widget("transform-window-content");
+
+    UI_Container_Theme inner_theme = {};
+    real32 container_padding = 8.0f;
+    inner_theme.top_padding    = container_padding;
+    inner_theme.right_padding  = container_padding;
+    inner_theme.bottom_padding = container_padding;
+    inner_theme.left_padding   = container_padding;
+
+    // FIXME: this is broken, the container does not expand to fit the row below
+    //        think it has to do with push_container and UI_SIZE_FILL_REMAINING
+    inner_theme.size_type      = { UI_SIZE_ABSOLUTE, UI_SIZE_FIT_CHILDREN };
+    inner_theme.size           = { 200.0f, 0.0f };
+    inner_theme.layout_type    = UI_LAYOUT_VERTICAL;
+
+    UI_Container_Theme row_theme = {};
+    row_theme.size_type      = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
+    row_theme.size           = { 0.0f, 100.0f };
+    row_theme.layout_type    = UI_LAYOUT_HORIZONTAL;
+    
+    // horizontal box with border
+    //
+    /*
+      horizontal box with border {
+          box with centered text
+          horizontal box with text
+      }
+     */
+
+    UI_Text_Field_Slider_Theme text_field_theme;
+    text_field_theme.field_background_color = rgb_to_vec4(255, 0, 0);
+    text_field_theme.slider_background_color = rgb_to_vec4(0, 0, 255);
+    text_field_theme.show_slider = true;
+    text_field_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_PERCENTAGE };
+    text_field_theme.size      = { 0.0f, 1.0f };
+
+    ui_push_container(inner_theme);
     ui_push_text_color({ 1.0f, 1.0f, 1.0f, 1.0f });
-    //content_theme.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN };
-    //content_theme.layout_type = UI_LAYOUT_VERTICAL;
-    //content_theme.text_color = { 1.0f, 1.0f, 1.0f, 1.0f };
+    {
+        do_text("Position");
+        ui_push_container(row_theme);
+        {
+            #if 0
+            static real32 x_val = 5.0f;
+            x_val = do_text_field_slider(asset, x_val, 0.0f, 100.0f, text_field_theme, "transform-x-slider");
+            //x_val = do_text_field_slider(asset, x_val, 0.0f, 100.0f, true, "transform-x-slider");
+            #endif
+        }
+        ui_pop_widget();
+    }
+    ui_pop_text_color();
+    ui_pop_widget();
+    
+    #if 0
+    UI_Theme inner_theme = {};
+    inner_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_FIT_CHILDREN };
+    inner_theme.
 
-    //UI_Widget *content = make_widget("transform-window-content", content_theme, 0);
-    ui_push_widget("transform-window-content");
-
+    ui_y_pad(5.0f);
+    
     {
         UI_Theme row_theme = {};
         row_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_FIT_CHILDREN };
@@ -1220,6 +1274,7 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     }
 
     ui_pop_widget();
+#endif
     
     #if 0
     ui_push_size_type({ UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN });
