@@ -151,7 +151,9 @@ void main() {
     
     // take negative so that it grows as you move further inwards (do this so that we can just clamp to get it to be 0/1
     // for outside/inside)
-    box_d = -box_d + 0.5; // add 0.5 so that edges are crisper
+    // adding 0.5 here, makes it so the box grows. this basically just clips off the edges a bit, making the edges
+    // crisper
+    box_d = -box_d + 0.5;
     
     //float factor = clamp(0.0, 1.0, box_d);
     // for some reason, clamp doesn't work with negative numbers on my laptop's intel integrated graphics,
@@ -160,14 +162,20 @@ void main() {
     float factor = min(max(0.0, box_d), 1.0);
 
     if (is_alpha_pass) {
-        // for some reason, the alpha mask framebuffer still has alpha even though its format is GL_RED, so we keep
-        // alpha 1.0 here even though it should ignore it. and technically, we can, since we only use the red
-        // channel, but when we draw the texture for debugging purposes using the alpha mask framebuffer, if we set
-        // alpha to 0.0, you won't see anything.
-        // this might have something to do with premultiplied alpha? i forget how that works.
+        // make sure to turn off GL_BLEND when drawing to the alpha mask or else the alpha value here will
+        // affect the output
         FragColor = vec4(factor * alpha, 0.0, 0.0, 0.0);
     } else {
-        float border_factor = smoothstep(side_border_width, side_border_width + 1.0, box_d);
+        // box_d is in pixels. border_factor is between 0 and 1 from the inner edge of the border to the inner edge
+        // of the border + some small threshold. then we use this border_factor to figure out what to color the border.
+        // if it's zero, meaning it's between the inner edge of the border and the outside border of the window, then
+        // it's the border color. if it's one, then it's the window color. the threshold amount changes how wide the
+        // change is between border color and the window color.
+        
+        // we add 0.5 to where the inner edge starts to push it in a bit. this is just so that if we have a one pixel
+        // wide border, we don't get half the transparency of the border since the border ends up on the exact
+        // edge of the quad. this way if we have a 1 pixel border, the color will be exactly the border color passed in.
+        float border_factor = smoothstep(side_border_width + 0.5, side_border_width + 1.0, box_d);
         FragColor = vec4(mix(vec3(border_color), vec3(frag_color), border_factor), factor * alpha);
     }
 }

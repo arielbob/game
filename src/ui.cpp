@@ -477,9 +477,11 @@ void set_hot_if_above_current_hot(UI_Widget *widget) {
     if (hot_widget) {
         if (widget->rendering_index > hot_widget->rendering_index) {
             ui_manager->hot = widget->id;
+            ui_manager->hot_t = 0.0f;
         }
     } else {
         ui_manager->hot = widget->id;
+        ui_manager->hot_t = 0.0f;
     }
 }
 
@@ -945,6 +947,7 @@ void ui_frame_init(Display_Output *display_output, real32 dt) {
     
     ui_table_add(ui_manager->widget_table, widget);
 
+    ui_manager->hot_t += dt;
     ui_manager->focus_t += dt;
     ui_manager->active_t += dt;
 }
@@ -1218,8 +1221,8 @@ void ui_y_pad(real32 height) {
     ui_pop_size_type();
 }
 
-void ui_push_container(real32 x_padding, real32 y_padding) {
-    ui_push_size_type({ UI_SIZE_PERCENTAGE, UI_SIZE_PERCENTAGE });
+void ui_push_container(real32 top_padding, real32 right_padding, real32 bottom_padding, real32 left_padding) {
+    ui_push_size_type({ UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN });
     ui_push_size({ 1.0f, 1.0f });
     ui_push_layout_type(UI_LAYOUT_VERTICAL);
 
@@ -1227,25 +1230,25 @@ void ui_push_container(real32 x_padding, real32 y_padding) {
     UI_Widget *inner;
     ui_push_widget("");
     {
-        ui_y_pad(y_padding);
+        ui_y_pad(top_padding);
 
         ui_push_layout_type(UI_LAYOUT_HORIZONTAL);
         
         // horizontal
         ui_push_widget("");
         {
-            ui_x_pad(x_padding);
+            ui_x_pad(left_padding);
             ui_push_size_type({ UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN });
             //ui_push_background_color({ 1.0f, 0.0f, 0.0f, 1.0f });
             inner = ui_add_widget("", 0);
             //ui_pop_background_color();
             ui_pop_size_type();
-            ui_x_pad(x_padding);
+            ui_x_pad(right_padding);
         }
         ui_pop_widget();
         ui_pop_layout_type();
         
-        ui_y_pad(y_padding);
+        ui_y_pad(bottom_padding);
     }
     ui_pop_widget();
 
@@ -1254,6 +1257,10 @@ void ui_push_container(real32 x_padding, real32 y_padding) {
     ui_pop_size_type();
 
     ui_push_existing_widget(inner);
+}
+
+void ui_push_container(real32 x_padding, real32 y_padding) {
+    ui_push_container(y_padding, x_padding, y_padding, x_padding);
 }
 
 void ui_add_slider_bar(real32 value, real32 min, real32 max) {
@@ -1447,57 +1454,70 @@ real32 do_text_field_slider(Asset_Manager *asset, real32 value,
     return value;
 }
 
-void push_window(char *text, char *id_string, int32 index = 0) {
+struct UI_Window_Theme {
+    Vec2 initial_position;
+    Vec4 background_color;
+    Vec4 title_text_color;
+    Vec4 title_bgc;
+    Vec4 title_hot_bgc;
+    Vec4 title_active_bgc;
+    uint32 corner_flags;
+    real32 corner_radius;
+    uint32 border_flags;
+    Vec4 border_color;
+    real32 border_width;
+};
+
+void push_window(char *title, UI_Window_Theme theme, char *id_string, int32 index = 0) {
     UI_id id = make_ui_id(id_string, index);
     UI_Widget_State *state_variant = ui_get_state(id);
     UI_Window_State *state;
     if (!state_variant) {
-        state = ui_add_window_state(id, { 100.0f, 250.0f });
+        state = ui_add_window_state(id, theme.initial_position);
     } else {
         state = &state_variant->window;
     }
 
+    // we might want to assert that parent is root?
     //ui_push_existing_widget(ui_manager->root);
 
     UI_Theme window_theme = {};
-    window_theme.semantic_position = state->position;
-    window_theme.layout_type = UI_LAYOUT_VERTICAL;
-    window_theme.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN };
-    window_theme.background_color = ui_manager->background_color_stack->background_color;
-    window_theme.hot_background_color = window_theme.background_color;
-    window_theme.active_background_color = window_theme.background_color;
-    window_theme.text_color = ui_manager->text_color_stack->color;
-    window_theme.corner_flags = ui_manager->corner_flags_stack->corner_flags;
-    window_theme.corner_radius = ui_manager->corner_radius_stack->radius;
-    window_theme.border_flags = ui_manager->border_flags_stack->border_flags;
-    window_theme.border_color = ui_manager->border_color_stack->border_color;
-    window_theme.border_width = ui_manager->border_width_stack->border_width;
+    window_theme.semantic_position       = state->position;
+    window_theme.layout_type             = UI_LAYOUT_VERTICAL;
+    window_theme.size_type               = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN };
+    window_theme.background_color        = theme.background_color;
+    window_theme.hot_background_color    = theme.background_color;
+    window_theme.active_background_color = theme.background_color;
+    //window_theme.text_color              = theme.title_text_color;
+    window_theme.corner_flags            = theme.corner_flags;
+    window_theme.corner_radius           = theme.corner_radius;
+    window_theme.border_flags            = theme.border_flags;
+    window_theme.border_color            = theme.border_color;
+    window_theme.border_width            = theme.border_width;
     UI_Widget *window = make_widget(id, window_theme,
                                     UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE | UI_WIDGET_IS_FOCUSABLE |
                                     UI_WIDGET_DRAW_BORDER);
     ui_add_and_push_widget(window);
     ui_interact(window);
     
-    #if 1
     {
         UI_Theme title_bar_theme = {};
-        title_bar_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
-        title_bar_theme.semantic_size = { 1.0f, 20.0f };
-        title_bar_theme.layout_type = UI_LAYOUT_CENTER;
-        title_bar_theme.background_color = { 1.0f, 0.0f, 0.0f, 1.0f };
-        title_bar_theme.hot_background_color = { 1.0f, 0.3f, 0.3f, 1.0f };
-        title_bar_theme.active_background_color = { 0.8f, 0.0f, 0.0f, 1.0f };
-        title_bar_theme.text_color = { 0.0f, 0.0f, 0.0f, 1.0f };
+        title_bar_theme.size_type               = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
+        title_bar_theme.semantic_size           = { 1.0f, 20.0f };
+        title_bar_theme.layout_type             = UI_LAYOUT_CENTER;
+        title_bar_theme.background_color        = theme.title_bgc;
+        title_bar_theme.hot_background_color    = theme.title_hot_bgc;
+        title_bar_theme.active_background_color = theme.title_active_bgc;
+        title_bar_theme.text_color              = theme.title_text_color;
         UI_Widget *title_bar = make_widget("window-title-bar", title_bar_theme,
                                            UI_WIDGET_IS_CLICKABLE | UI_WIDGET_DRAW_BACKGROUND);
         ui_add_and_push_widget(title_bar);
         
-        // title bar
-        //UI_Widget *title_bar = ui_push_widget("window-title-bar",
-        //UI_WIDGET_IS_CLICKABLE | UI_WIDGET_DRAW_BACKGROUND);
         UI_Interact_Result title_bar_interact = ui_interact(title_bar);
         {
-            do_text(text, "");
+            ui_push_text_color(theme.title_text_color);
+            do_text(title, "");
+            ui_pop_text_color();
         }
         ui_pop_widget();
 
@@ -1506,7 +1526,6 @@ void push_window(char *text, char *id_string, int32 index = 0) {
             state->position += delta;
         }
     }
-    #endif
 }
 
 void pop_window() {

@@ -285,6 +285,7 @@ struct UI_Manager {
     UI_id last_frame_active;
     UI_id focus;
 
+    real32 hot_t;
     real32 active_t;
     real32 focus_t;
 

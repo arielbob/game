@@ -1066,34 +1066,24 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     ui_pop_widget();
     #endif
 
+    UI_Window_Theme window_theme = {};
+    window_theme.initial_position = { 200.0f, 200.0f };
+    window_theme.background_color = rgb_to_vec4(24, 24, 28);
+    window_theme.title_text_color = rgb_to_vec4(255, 255, 255);
+    window_theme.title_bgc        = rgb_to_vec4(50, 50, 60);
+    window_theme.title_hot_bgc    = rgb_to_vec4(60, 60, 72);
+    window_theme.title_active_bgc = rgb_to_vec4(9, 9, 10);
+    window_theme.corner_flags     = CORNER_ALL;
+    window_theme.corner_radius    = 5.0f;
+    window_theme.border_flags     = BORDER_ALL;
+    window_theme.border_color     = window_theme.title_bgc;
+    window_theme.border_width     = 1.0f;
+
+    // TODO: be able to specify size type and size in window_theme
+    // TODO: make rows just be 100% width and absolute height and horizontal layout
+    //       - draw text in box with center layout, then text field slider with fill remaining width and 100% height
     
-    ui_push_background_color(rgb_to_vec4(24, 24, 28));
-#if 0
-    ui_push_border_color({ 50.0f, 50.0f, 60.0f, 1.0f });
-    ui_push_border_width(1.0f);
-    ui_push_border_radius(5.0f);
-#endif
-    ui_push_corner_radius(5.0f);
-    ui_push_corner_flags(CORNER_ALL);
-    ui_push_border_flags(BORDER_ALL);
-    ui_push_border_width(1.0f);
-    ui_push_border_color(rgb_to_vec4(50, 50, 60));
-
-
-    // TODO: just create specific theme structs for windows, text field sliders, etc.
-    //       it's too annoying to have to constantly keep track of the style stacks.
-    //       but still just use the main Theme struct and use the specific theme structs to pass in
-    //       all the styles.
-    {
-        push_window("Entity Transform", "window-test");
-    }
-
-    ui_pop_border_color();
-    ui_pop_border_width();
-    ui_pop_border_flags();
-    ui_pop_corner_flags();
-    ui_pop_corner_radius();
-    ui_pop_background_color();
+    push_window("Entity Transform", window_theme, "window-test");
     
     UI_Theme content_theme = {};
     ui_push_size_type({ UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN });
@@ -1128,23 +1118,26 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
         inner_row_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_PERCENTAGE };
         inner_row_theme.layout_type = UI_LAYOUT_HORIZONTAL;
         inner_row_theme.semantic_size = { 1.0f, 1.0f };
-        
-        ui_add_and_push_widget(make_widget("", row_theme, 0));
+
+        //ui_add_and_push_widget(make_widget("", row_theme, 0));
         {
-            ui_push_container(5.0f, 5.0f);
+            ui_push_container(10.0f, 10.0f, 5.0f, 10.0f);
+            do_text("Position", "");
+            #if 0
             ui_add_and_push_widget(make_widget("", inner_row_theme, 0));
             {
                 do_text("Position", "");
             }
             ui_pop_widget();
+            #endif
             ui_pop_widget();
         }
-        ui_pop_widget();
+        //ui_pop_widget();
 
         ui_push_background_color(rgb_to_vec4(9, 9, 10));
         ui_push_hot_background_color(rgb_to_vec4(9, 9, 10));
         ui_push_active_background_color(rgb_to_vec4(9, 9, 10));
-        // TODO: factor this stuff out into separate procedurex
+        // TODO: factor this stuff out into separate procedure
         ui_add_and_push_widget(make_widget("", row_theme, 0));
         {
             ui_push_container(5.0f, 0.0f);

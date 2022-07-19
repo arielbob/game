@@ -1860,6 +1860,10 @@ Vec3 mix(Vec3 a, Vec3 b, real32 t) {
     return a*(1.0f - t) + b*t;
 }
 
+Vec4 mix(Vec4 a, Vec4 b, real32 t) {
+    return a*(1.0f - t) + b*t;
+}
+
 RGB_Color vec3_to_rgb(Vec3 v) {
     RGB_Color result;
     real32 min = 0.0f;

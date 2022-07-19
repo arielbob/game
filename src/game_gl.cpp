@@ -2607,12 +2607,21 @@ void gl_draw_ui_widget(GL_State *gl_state, Render_State *render_state,
     if (widget->flags & UI_WIDGET_DRAW_BACKGROUND) {
         Vec4 color = widget->background_color;
         if (widget->flags & UI_WIDGET_IS_CLICKABLE) {
+            real32 transition_time = 0.1f;
+            
             if (is_hot(widget)) {
-                color = widget->hot_background_color;
+                real32 t = min(ui_manager->hot_t / transition_time, 1.0f);
+                t = 1.0f-(1.0f-t)*(1.0f-t);
+                color = mix(color, widget->hot_background_color, t);
             }
+
             if (is_active(widget)) {
-                color = widget->active_background_color;
+                real32 t = min(ui_manager->active_t / transition_time, 1.0f);
+                t = 1.0f-(1.0f-t)*(1.0f-t);
+                color = mix(color, widget->active_background_color, t);
+                //color = widget->active_background_color;
             }
+            
         }
 
         // this flag is for both border drawing and corner rounding
