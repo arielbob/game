@@ -1100,16 +1100,15 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     inner_theme.bottom_padding = container_padding;
     inner_theme.left_padding   = container_padding;
 
-    // FIXME: this is broken, the container does not expand to fit the row below
-    //        think it has to do with push_container and UI_SIZE_FILL_REMAINING
     inner_theme.size_type      = { UI_SIZE_ABSOLUTE, UI_SIZE_FIT_CHILDREN };
     inner_theme.size           = { 200.0f, 0.0f };
     inner_theme.layout_type    = UI_LAYOUT_VERTICAL;
 
-    UI_Container_Theme row_theme = {};
+    UI_Theme row_theme = {};
     row_theme.size_type      = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
-    row_theme.size           = { 0.0f, 100.0f };
+    row_theme.semantic_size           = { 0.0f, 20.0f };
     row_theme.layout_type    = UI_LAYOUT_HORIZONTAL;
+    row_theme.background_color = rgb_to_vec4(255, 0, 0);
     
     // horizontal box with border
     //
@@ -1124,19 +1123,30 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     text_field_theme.field_background_color = rgb_to_vec4(255, 0, 0);
     text_field_theme.slider_background_color = rgb_to_vec4(0, 0, 255);
     text_field_theme.show_slider = true;
-    text_field_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_PERCENTAGE };
+    text_field_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
     text_field_theme.size      = { 0.0f, 1.0f };
 
     ui_push_container(inner_theme);
     ui_push_text_color({ 1.0f, 1.0f, 1.0f, 1.0f });
     {
         do_text("Position");
-        ui_push_container(row_theme);
+        ui_y_pad(5.0f);
+        ui_add_and_push_widget("position-slider-row", row_theme, UI_WIDGET_DRAW_BACKGROUND);
         {
             #if 0
+            UI_Theme test_slider_theme = {};
+            test_slider_theme.background_color = { 1.0f, 0.0f, 0.0f, 1.0f };
+            // FIXME: UI_SIZE_PERCENTAGE isn't filling full width of UI_SIZE_FILL_REMAINING
+            test_slider_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_PERCENTAGE };
+            test_slider_theme.semantic_size = { 1.0f, 1.0f };
+
+            ui_add_widget("test-slider", test_slider_theme, UI_WIDGET_DRAW_BACKGROUND);
+            #endif
+
+            // TODO: finish do_text_field_slider
+            #if 1
             static real32 x_val = 5.0f;
             x_val = do_text_field_slider(asset, x_val, 0.0f, 100.0f, text_field_theme, "transform-x-slider");
-            //x_val = do_text_field_slider(asset, x_val, 0.0f, 100.0f, true, "transform-x-slider");
             #endif
         }
         ui_pop_widget();

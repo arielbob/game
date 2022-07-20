@@ -725,18 +725,25 @@ void calculate_child_dependent_size(UI_Widget *widget, UI_Widget_Axis axis) {
             }
         }
 
+        #if 1
+        // TODO: do we actually need this layout type check here?
         if (axis == UI_WIDGET_X_AXIS &&
             (widget->size_type[axis] != UI_SIZE_FILL_REMAINING) &&
             (parent->layout_type == UI_LAYOUT_HORIZONTAL_SPACE_BETWEEN ||
              parent->layout_type == UI_LAYOUT_HORIZONTAL)) {
             parent->computed_child_size_sum[axis] += widget->computed_size[axis];
-        }
-
-        if (axis == UI_WIDGET_Y_AXIS &&
+        } else if (axis == UI_WIDGET_Y_AXIS &&
             (widget->size_type[axis] != UI_SIZE_FILL_REMAINING) &&
             parent->layout_type == UI_LAYOUT_VERTICAL) {
             parent->computed_child_size_sum[axis] += widget->computed_size[axis];
         }
+#endif
+
+        #if 0
+        if (widget->size_type[axis] != UI_SIZE_FILL_REMAINING) {
+            parent->computed_child_size_sum[axis] += widget->computed_size[axis];
+        }
+        #endif
     }
 }
 
@@ -785,10 +792,20 @@ void calculate_ancestor_dependent_sizes_part_2(UI_Widget *widget, UI_Widget_Axis
     
     if (widget->size_type[axis] == UI_SIZE_PERCENTAGE) {
         assert(parent); // root node cannot be percentage based
+
+        // NOTE: you can have a UI_SIZE_PERCENTAGE inside a UI_SIZE_FIT_CHILDREN, it's just that the percentage will be taken of
+        //       the computed size of the parent using its sized children.
+        
         widget->computed_size[axis] = parent->computed_size[axis] * widget->semantic_size[axis];
     } else if (widget->size_type[axis] == UI_SIZE_FILL_REMAINING) {
         assert(widget->position_type != UI_POSITION_FLOAT);
         assert(parent);
+        if (widget->parent->size_type[axis] == UI_SIZE_FIT_CHILDREN) {
+            // since the parent only expands to fit the sized children, there will be no space left for the child.
+            // the child will attempt to fill a space of size 0, which can be unexpected, so we assert.
+            assert(!"Cannot have widget with axis size type FILL_REMAINING inside a widget who's size type on the same axis is FIT_CHILDREN.");
+        }
+        
         widget->computed_size[axis] = ((parent->computed_size[axis] - parent->computed_child_size_sum[axis]) /
                                        parent->num_fill_children[axis]);
         parent->computed_child_size_sum[axis] += widget->computed_size[axis];
@@ -1235,19 +1252,17 @@ inline bool32 do_text_button(char *text, real32 padding, char *id, int32 index =
 }
 
 void ui_x_pad(real32 width) {
-    ui_push_size_type({ UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE });
-    ui_push_size({ width, 0.0f });
-    ui_add_widget("");
-    ui_pop_size();
-    ui_pop_size_type();
+    UI_Theme theme;
+    theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
+    theme.semantic_size = { width, 0.0f };
+    ui_add_widget("", theme);
 }
 
 void ui_y_pad(real32 height) {
-    ui_push_size_type({ UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE });
-    ui_push_size({ 0.0f, height });
-    ui_add_widget("");
-    ui_pop_size();
-    ui_pop_size_type();
+    UI_Theme theme;
+    theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
+    theme.semantic_size = { 0.0f, height };
+    ui_add_widget("", theme);
 }
 
 struct UI_Container_Theme {
@@ -1276,18 +1291,20 @@ void ui_push_container(UI_Container_Theme theme) {
         ui_y_pad(theme.top_padding);
 
         UI_Theme row_theme = {};
-        row_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
-        row_theme.semantic_size = {0.0f, 1.0f};
+        row_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
+        row_theme.semantic_size = { 1.0f, 1.0f };
         row_theme.layout_type = UI_LAYOUT_HORIZONTAL;
 
-        ui_add_and_push_widget("", row_theme, 0);
+        ui_add_and_push_widget("container-row", row_theme, 0);
         {
             ui_x_pad(theme.left_padding);
 
             UI_Theme inner_theme = {};
-            inner_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
+            inner_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
+            inner_theme.semantic_size = { 0.0f, 0.0f };
             inner_theme.layout_type = theme.layout_type;
-            inner = ui_add_widget("", inner_theme);
+            inner_theme.background_color = rgb_to_vec4(0, 255, 0);
+            inner = ui_add_widget("inner", inner_theme, UI_WIDGET_DRAW_BACKGROUND);
 
             ui_x_pad(theme.right_padding);
         }
@@ -1437,6 +1454,7 @@ real32 do_text_field_slider(Asset_Manager *asset, real32 value,
         }
     }
 
+    #if 1
     UI_Slider_Theme slider_theme = {};
     slider_theme.background_color = theme.slider_background_color;
     
@@ -1518,6 +1536,7 @@ real32 do_text_field_slider(Asset_Manager *asset, real32 value,
         }
         ui_pop_widget();
     }
+    #endif
     ui_pop_widget();
 
     // we do validation that it's a number, but any putting value into bounds should be done by the caller
