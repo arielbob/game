@@ -599,6 +599,7 @@ void calculate_standalone_size(Asset_Manager *asset, UI_Widget *widget, UI_Widge
     UI_Size_Type size_type = widget->size_type[axis];
     real32 axis_semantic_size = widget->semantic_size[axis];
     real32 *axis_computed_size = &widget->computed_size[axis];
+
     
     if (size_type == UI_SIZE_ABSOLUTE) {
         *axis_computed_size = axis_semantic_size;
@@ -611,6 +612,29 @@ void calculate_standalone_size(Asset_Manager *asset, UI_Widget *widget, UI_Widge
         }
     } else if (size_type == UI_SIZE_FIT_CHILDREN) {
         *axis_computed_size = axis_semantic_size;
+
+        // add an extra pixel for the border if we're size type FIT_CHILDREN.
+        // this is fine since it's expected that the parent size will change. it's nice because the child widgets
+        // will be sized accordingly and there won't be a missing pixel on any side due to the fact that we draw
+        // borders on the inside of widgets.
+        // TODO: move this to calculate_positions actually, and just move the first or last child on that axis?
+        //       actually, you have to move all of them by one, then also expand it by one. at least that's the
+        //       case when you have top and bottom borders. the bottom one doesn't really matter in that case.
+        //       when there's two, you offset the position by one, and expand the size by two.
+        //       when there's one, you offset only if it's at the start, and expand by one
+        //       - so we should expand the size in calculate_child_dependent sizes, checking if it's the first
+        //         element, then offset in calculate_positions.
+        #if 0
+        if (widget->flags & UI_WIDGET_DRAW_BORDER) {
+            if (axis == UI_WIDGET_X_AXIS) {
+                if (widget->border_flags & BORDER_LEFT) widget->computed_size[axis] += 1.0f;
+                if (widget->border_flags & BORDER_RIGHT) widget->computed_size[axis] += 1.0f;
+            } else {
+                if (widget->border_flags & BORDER_TOP) widget->computed_size[axis] += 1.0f;
+                if (widget->border_flags & BORDER_BOTTOM) widget->computed_size[axis] += 1.0f;
+            }
+        }
+        #endif
     }
 }
 
@@ -626,7 +650,7 @@ void ui_calculate_standalone_sizes(Asset_Manager *asset) {
         num_visited++;
         
         UI_Widget *parent = current->parent;
-
+        
         calculate_standalone_size(asset, current, UI_WIDGET_X_AXIS);
         calculate_standalone_size(asset, current, UI_WIDGET_Y_AXIS);
                 
@@ -716,17 +740,21 @@ void calculate_child_dependent_size(UI_Widget *widget, UI_Widget_Axis axis) {
         if (parent->size_type[axis] == UI_SIZE_FIT_CHILDREN || parent->size_type[axis] == UI_SIZE_PERCENTAGE) {
             // if the current axis matches with the parent's layout axis, then increase the parent's
             // size on that axis.
-            bool32 axis_matches_with_parent_layout = ((axis == UI_WIDGET_X_AXIS && parent->layout_type == UI_LAYOUT_HORIZONTAL) ||
-                                                      (axis == UI_WIDGET_Y_AXIS && parent->layout_type == UI_LAYOUT_VERTICAL));
-            if (axis_matches_with_parent_layout) {
+            bool32 axis_matches_parent_layout = ((axis == UI_WIDGET_X_AXIS && parent->layout_type == UI_LAYOUT_HORIZONTAL) ||
+                                                 (axis == UI_WIDGET_Y_AXIS && parent->layout_type == UI_LAYOUT_VERTICAL));
+            if (axis_matches_parent_layout) {
                 parent->computed_size[axis] += widget->computed_size[axis];
             } else {
                 parent->computed_size[axis] = max(parent->computed_size[axis], widget->computed_size[axis]);
             }
+
+            
         }
 
         #if 1
-        // TODO: do we actually need this layout type check here?
+        // we need need this layout type check here because we only add to the child size sum if the axis
+        // and the layout axis match. because when we use the child size sum later for FILL_REMAINING, we only
+        // want the child sizes that took up space on that axis.
         if (axis == UI_WIDGET_X_AXIS &&
             (widget->size_type[axis] != UI_SIZE_FILL_REMAINING) &&
             (parent->layout_type == UI_LAYOUT_HORIZONTAL_SPACE_BETWEEN ||
@@ -805,10 +833,22 @@ void calculate_ancestor_dependent_sizes_part_2(UI_Widget *widget, UI_Widget_Axis
             // the child will attempt to fill a space of size 0, which can be unexpected, so we assert.
             assert(!"Cannot have widget with axis size type FILL_REMAINING inside a widget who's size type on the same axis is FIT_CHILDREN.");
         }
-        
-        widget->computed_size[axis] = ((parent->computed_size[axis] - parent->computed_child_size_sum[axis]) /
-                                       parent->num_fill_children[axis]);
-        parent->computed_child_size_sum[axis] += widget->computed_size[axis];
+
+
+        // we only need to use the computed sizes when we're on the same axis as the layout axis.
+        // for example, if we're laying out on x and the layout is horizontal, then we use the computed child size
+        // sum on that axis to calculate how we want to fill on that axis. otherwise, for example, if we're on y,
+        // then fill_remaining on that axis with a horizontal layout would just fill the entire height.
+        bool32 axis_matches_parent_layout = ((axis == UI_WIDGET_X_AXIS && parent->layout_type == UI_LAYOUT_HORIZONTAL) ||
+                                             (axis == UI_WIDGET_Y_AXIS && parent->layout_type == UI_LAYOUT_VERTICAL));
+
+        if (axis_matches_parent_layout) {
+            widget->computed_size[axis] = ((parent->computed_size[axis] - parent->computed_child_size_sum[axis]) /
+                                           parent->num_fill_children[axis]);
+            parent->computed_child_size_sum[axis] += widget->computed_size[axis];
+        } else {
+            widget->computed_size[axis] = parent->computed_size[axis];
+        }
     }
 }
 
@@ -858,19 +898,12 @@ void calculate_position(UI_Widget *widget, UI_Widget_Axis axis) {
                                                widget->semantic_position[axis]);
             return;
         }
+
+        bool32 axis_matches_parent_layout = ((axis == UI_WIDGET_X_AXIS && parent->layout_type == UI_LAYOUT_HORIZONTAL) ||
+                                             (axis == UI_WIDGET_Y_AXIS && parent->layout_type == UI_LAYOUT_VERTICAL));
         
-        if (parent->layout_type == UI_LAYOUT_HORIZONTAL) {
-            if (axis == UI_WIDGET_X_AXIS) {
-                if (!prev) {
-                    widget->computed_position[axis] = parent->computed_position[axis];
-                } else {
-                    widget->computed_position[axis] = prev->computed_position[axis] + prev->computed_size[axis];
-                }
-            } else {
-                widget->computed_position[axis] = parent->computed_position[axis];
-            }
-        } else if (parent->layout_type == UI_LAYOUT_VERTICAL) {
-            if (axis == UI_WIDGET_Y_AXIS) {
+        if (parent->layout_type == UI_LAYOUT_HORIZONTAL || parent->layout_type == UI_LAYOUT_VERTICAL) {
+            if (axis_matches_parent_layout) {
                 if (!prev) {
                     widget->computed_position[axis] = parent->computed_position[axis];
                 } else {
@@ -1303,8 +1336,8 @@ void ui_push_container(UI_Container_Theme theme) {
             inner_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
             inner_theme.semantic_size = { 0.0f, 0.0f };
             inner_theme.layout_type = theme.layout_type;
-            inner_theme.background_color = rgb_to_vec4(0, 255, 0);
-            inner = ui_add_widget("inner", inner_theme, UI_WIDGET_DRAW_BACKGROUND);
+            //inner_theme.background_color = rgb_to_vec4(0, 255, 0);
+            inner = ui_add_widget("inner", inner_theme, 0);
 
             ui_x_pad(theme.right_padding);
         }
@@ -1347,7 +1380,16 @@ void ui_add_slider_bar(UI_Slider_Theme theme, real32 value, real32 min, real32 m
 struct UI_Text_Field_Slider_Theme {
     Vec4 field_background_color;
     Vec4 slider_background_color;
+    Vec4 cursor_color;
     bool32 show_slider;
+
+    real32 corner_radius;
+    uint32 corner_flags;
+    uint32 border_flags;
+    Vec4 border_color;
+    real32 border_width;
+    
+    char *font;
     
     Vec2_UI_Size_Type size_type;
     Vec2 size;
@@ -1367,15 +1409,21 @@ real32 do_text_field_slider(Asset_Manager *asset, real32 value,
     }
 
     UI_Theme textbox_theme = {};
-    textbox_theme.layout_type             = UI_LAYOUT_CENTER;
+    textbox_theme.layout_type             = UI_LAYOUT_HORIZONTAL;
     textbox_theme.size_type               = theme.size_type;
     textbox_theme.semantic_size           = theme.size;
     textbox_theme.background_color        = theme.field_background_color;
     textbox_theme.hot_background_color    = theme.field_background_color;
     textbox_theme.active_background_color = theme.field_background_color;
+    textbox_theme.font                    = theme.font;
+    textbox_theme.corner_radius           = theme.corner_radius;
+    textbox_theme.corner_flags            = theme.corner_flags;
+    textbox_theme.border_flags            = theme.border_flags;
+    textbox_theme.border_color            = theme.border_color;
+    textbox_theme.border_width            = theme.border_width;
     
     UI_Widget *textbox = ui_add_and_push_widget(id_string, textbox_theme,
-                                                UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE | UI_WIDGET_IS_FOCUSABLE);
+                                                UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE | UI_WIDGET_IS_FOCUSABLE | UI_WIDGET_DRAW_BORDER);
     UI_Interact_Result interact = ui_interact(textbox);
 
     real32 x_delta = fabsf((get_mouse_delta()).x);
@@ -1470,9 +1518,10 @@ real32 do_text_field_slider(Asset_Manager *asset, real32 value,
     }
     
     {
+        ui_x_pad(5.0f);
         UI_Theme inner_field_theme = {};
-        inner_field_theme.size_type     = { UI_SIZE_PERCENTAGE, UI_SIZE_PERCENTAGE };
-        inner_field_theme.layout_type   = UI_LAYOUT_HORIZONTAL;
+        inner_field_theme.size_type     = { UI_SIZE_FILL_REMAINING, UI_SIZE_PERCENTAGE };
+        inner_field_theme.layout_type   = UI_LAYOUT_CENTER;
         inner_field_theme.semantic_size = { 1.0f, 1.0f };
 
         ui_add_and_push_widget("", inner_field_theme);
@@ -1485,7 +1534,32 @@ real32 do_text_field_slider(Asset_Manager *asset, real32 value,
 
             ui_add_and_push_widget("", text_theme);
             {
-                do_text("hello");
+                if (state->is_using && !state->is_sliding) {
+                    char *str = to_char_array((Allocator *) &ui_manager->frame_arena, state->buffer);
+                    do_text(str, "");
+
+                    // draw cursor
+
+                    UI_Theme cursor_theme = {};
+                    cursor_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_PERCENTAGE };
+                    cursor_theme.semantic_size = { 1.0f, 1.0f };
+                    cursor_theme.position_type = UI_POSITION_FLOAT;
+                    cursor_theme.background_color = theme.cursor_color;
+                    
+                    Font font = get_font(asset, textbox->font);
+                    real32 width_to_index = get_width(font, str, state->cursor_index);
+                    cursor_theme.semantic_position = { floorf(width_to_index), 0.0f };
+                    
+                    real32 time_to_switch = 0.5f; // time spent in either state
+                    bool32 show_background = ((int32) (ui_manager->focus_t*(1.0f / time_to_switch)) + 1) % 2;
+                    
+                    UI_Widget *cursor = ui_add_widget("", cursor_theme,
+                                                      show_background ? UI_WIDGET_DRAW_BACKGROUND : 0);
+                } else {
+                    char *buf = string_format((Allocator *) &ui_manager->frame_arena, "%f", value);
+                    do_text(buf, "");
+                }
+                //do_text("hello");
             }
             ui_pop_widget();
 

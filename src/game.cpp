@@ -946,9 +946,18 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     ui_pop_position();
     ui_pop_text_color();
     #endif
+    
+    ui_push_text_color({ 1.0f, 1.0f, 1.0f, 1.0f });
+    ui_push_position({ 5.0f, 5.0f });
+    char *fps_text = string_format((Allocator *) &ui_manager->frame_arena, "FPS: %d / dt %.3f",
+                                   (int32) round(Context::game_state->last_second_fps), dt);
+    do_text(fps_text, "");
+    ui_pop_position();
+    ui_pop_text_color();
+    
 
     // test border drawing
-    #if 0
+#if 0
     ui_push_background_color({ 1.0f, 1.0f, 1.0f, 1.0f });
     ui_push_hot_background_color({ 0.7f, 0.7f, 0.7f, 1.0f });
     ui_push_active_background_color({ 0.5f, 0.5f, 0.5f, 1.0f });
@@ -1125,189 +1134,107 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     text_field_theme.show_slider = true;
     text_field_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
     text_field_theme.size      = { 0.0f, 1.0f };
+    text_field_theme.cursor_color = rgb_to_vec4(0, 0, 0);
+    text_field_theme.font = "calibri14";
+    text_field_theme.border_flags = BORDER_BOTTOM;
+    text_field_theme.border_color = rgb_to_vec4(255, 255, 255);
+    text_field_theme.border_width = 1.0f;
 
+    UI_Theme label_theme = {};
+    label_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_FILL_REMAINING };
+    label_theme.layout_type = UI_LAYOUT_CENTER;
+    label_theme.semantic_size = { 15.0f, 0.0f };
+    label_theme.background_color = rgb_to_vec4(255, 0, 255);
+    label_theme.border_flags = BORDER_RIGHT | BORDER_BOTTOM;
+    label_theme.border_color = rgb_to_vec4(255, 255, 255);
+    label_theme.border_width = 1.0f;
+    
     ui_push_container(inner_theme);
     ui_push_text_color({ 1.0f, 1.0f, 1.0f, 1.0f });
     {
+        UI_Theme group_theme = {};
+        group_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
+        group_theme.semantic_size = { 0.0f, 0.0f };
+        group_theme.corner_radius = 5.0f;
+        group_theme.corner_flags = CORNER_ALL;
+        group_theme.border_flags = BORDER_ALL;
+        group_theme.border_color = rgb_to_vec4(255, 255, 255);
+        group_theme.border_width = 1.0f;
+        group_theme.background_color = rgb_to_vec4(255, 0, 0);
+        group_theme.layout_type = UI_LAYOUT_VERTICAL;
+
         do_text("Position");
         ui_y_pad(5.0f);
-        ui_add_and_push_widget("position-slider-row", row_theme, UI_WIDGET_DRAW_BACKGROUND);
+        ui_add_and_push_widget("", group_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_DRAW_BORDER);
         {
-            #if 0
-            UI_Theme test_slider_theme = {};
-            test_slider_theme.background_color = { 1.0f, 0.0f, 0.0f, 1.0f };
-            // FIXME: UI_SIZE_PERCENTAGE isn't filling full width of UI_SIZE_FILL_REMAINING
-            test_slider_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_PERCENTAGE };
-            test_slider_theme.semantic_size = { 1.0f, 1.0f };
+            // draw group
+            ui_add_and_push_widget("", row_theme, 0);
+            {
+                ui_add_and_push_widget("", label_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_DRAW_BORDER);
+                do_text("X");
+                ui_pop_widget();
 
-            ui_add_widget("test-slider", test_slider_theme, UI_WIDGET_DRAW_BACKGROUND);
-            #endif
+                static real32 x_val = 5.0f;
+                x_val = do_text_field_slider(asset, x_val, 0.0f, 100.0f, text_field_theme, "position-x-slider");
+            }
+            ui_pop_widget();
 
-            // TODO: finish do_text_field_slider
-            #if 1
-            static real32 x_val = 5.0f;
-            x_val = do_text_field_slider(asset, x_val, 0.0f, 100.0f, text_field_theme, "transform-x-slider");
+            ui_add_and_push_widget("", row_theme, 0);
+            {
+                ui_add_and_push_widget("", label_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_DRAW_BORDER);
+                do_text("Y");
+                ui_pop_widget();
+
+                static real32 y_val = 5.0f;
+                y_val = do_text_field_slider(asset, y_val, 0.0f, 100.0f, text_field_theme, "position-y-slider");
+            }
+            ui_pop_widget();
+
+            ui_add_and_push_widget("", row_theme, 0);
+            {
+                ui_add_and_push_widget("", label_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_DRAW_BORDER);
+                do_text("Z");
+                ui_pop_widget();
+
+                static real32 z_val = 5.0f;
+                z_val = do_text_field_slider(asset, z_val, 0.0f, 100.0f, text_field_theme, "position-z-slider");
+            }
+            ui_pop_widget();
+
+#if 0
+            ui_add_and_push_widget("", row_theme, 0);
+            {
+                text_field_theme.corner_flags = 0;
+                text_field_theme.border_flags = BORDER_LEFT | BORDER_RIGHT;
+                label_theme.corner_flags = 0;
+                label_theme.border_flags = BORDER_LEFT | BORDER_BOTTOM;
+                ui_add_and_push_widget("", label_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_DRAW_BORDER);
+                do_text("Y");
+                ui_pop_widget();
+
+                static real32 y_val = 5.0f;
+                y_val = do_text_field_slider(asset, y_val, 0.0f, 100.0f, text_field_theme, "position-y-slider");
+            } ui_pop_widget();
+
+            ui_add_and_push_widget("", row_theme, 0);
+            {
+                text_field_theme.corner_flags = CORNER_BOTTOM_RIGHT;
+                text_field_theme.border_flags = BORDER_LEFT | BORDER_RIGHT | BORDER_BOTTOM | BORDER_TOP;
+                label_theme.corner_flags = CORNER_BOTTOM_LEFT;
+                label_theme.border_flags = BORDER_LEFT | BORDER_BOTTOM;
+                ui_add_and_push_widget("", label_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_DRAW_BORDER);
+                do_text("Z");
+                ui_pop_widget();
+
+                static real32 z_val = 5.0f;
+                z_val = do_text_field_slider(asset, z_val, 0.0f, 100.0f, text_field_theme, "position-z-slider");
+            } ui_pop_widget();
             #endif
-        }
-        ui_pop_widget();
+        } ui_pop_widget();
     }
     ui_pop_text_color();
     ui_pop_widget();
     
-    #if 0
-    UI_Theme inner_theme = {};
-    inner_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_FIT_CHILDREN };
-    inner_theme.
-
-    ui_y_pad(5.0f);
-    
-    {
-        UI_Theme row_theme = {};
-        row_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_FIT_CHILDREN };
-        row_theme.layout_type = UI_LAYOUT_HORIZONTAL;
-        row_theme.semantic_size = { 200.0f, 0.0f };
-
-        UI_Theme left_col_theme = {};
-        left_col_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
-        left_col_theme.semantic_size = { 0.3f, 0.0f };
-        left_col_theme.layout_type = UI_LAYOUT_HORIZONTAL;
-
-        UI_Theme right_col_theme = left_col_theme;
-        right_col_theme.semantic_size = { 1.0f, 0.0f };
-        right_col_theme.background_color = { 1.0f, 0.0f, 0.0f, 1.0f };
-        right_col_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_PERCENTAGE };
-        right_col_theme.semantic_size = { 1.0f, 1.0f };
-
-        UI_Theme inner_row_theme = {};
-        inner_row_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_PERCENTAGE };
-        inner_row_theme.layout_type = UI_LAYOUT_HORIZONTAL;
-        inner_row_theme.semantic_size = { 1.0f, 1.0f };
-
-        //ui_add_and_push_widget(make_widget("", row_theme, 0));
-        {
-            ui_push_container(10.0f, 10.0f, 5.0f, 10.0f);
-            do_text("Position", "");
-            #if 0
-            ui_add_and_push_widget(make_widget("", inner_row_theme, 0));
-            {
-                do_text("Position", "");
-            }
-            ui_pop_widget();
-            #endif
-            ui_pop_widget();
-        }
-        //ui_pop_widget();
-
-        ui_push_background_color(rgb_to_vec4(9, 9, 10));
-        ui_push_hot_background_color(rgb_to_vec4(9, 9, 10));
-        ui_push_active_background_color(rgb_to_vec4(9, 9, 10));
-        // TODO: factor this stuff out into separate procedure
-        ui_add_and_push_widget(make_widget("", row_theme, 0));
-        {
-            ui_push_container(5.0f, 0.0f);
-            ui_add_and_push_widget(make_widget("", inner_row_theme, 0));
-            {
-                do_text("X", "");
-
-                ui_x_pad(5.0f);
-                ui_push_size_type({ UI_SIZE_FILL_REMAINING, UI_SIZE_PERCENTAGE });
-                ui_push_size({ 1.0f, 1.0f });
-
-                static real32 x_val = 5.0f;
-                x_val = do_text_field_slider(asset, x_val, 0.0f, 100.0f, true, "transform-x-slider");
-                
-                ui_pop_size();
-                ui_pop_size_type();
-            }
-            ui_pop_widget();
-            ui_pop_widget();
-        }
-        ui_pop_widget();
-        ui_y_pad(1.0f);
-        
-        ui_add_and_push_widget(make_widget("", row_theme, 0));
-        {
-            ui_push_container(5.0f, 0.0f);
-            ui_add_and_push_widget(make_widget("", inner_row_theme, 0));
-            {
-                do_text("Y", "");
-
-                ui_x_pad(5.0f);
-                ui_push_size_type({ UI_SIZE_FILL_REMAINING, UI_SIZE_PERCENTAGE });
-                ui_push_size({ 1.0f, 1.0f });
-
-                static real32 y_val = 5.0f;
-                y_val = do_text_field_slider(asset, y_val, 0.0f, 100.0f, true, "transform-y-slider");
-                
-                ui_pop_size();
-                ui_pop_size_type();
-            }
-            ui_pop_widget();
-            ui_pop_widget();
-        }
-        ui_pop_widget();
-        ui_y_pad(1.0f);
-        
-        ui_add_and_push_widget(make_widget("", row_theme, 0));
-        {
-            ui_push_container(5.0f, 0.0f);
-            ui_add_and_push_widget(make_widget("", inner_row_theme, 0));
-            {
-                do_text("Z", "");
-
-                ui_x_pad(5.0f);
-                ui_push_size_type({ UI_SIZE_FILL_REMAINING, UI_SIZE_PERCENTAGE });
-                ui_push_size({ 1.0f, 1.0f });
-                
-                static real32 z_val = 5.0f;
-                z_val = do_text_field_slider(asset, z_val, 0.0f, 100.0f, true, "transform-z-slider");
-                
-                ui_pop_size();
-                ui_pop_size_type();
-            }
-            ui_pop_widget();
-            ui_pop_widget();
-        }
-        ui_pop_widget();
-        ui_y_pad(1.0f);
-        
-        ui_y_pad(5.0f);
-        
-        #if 0
-        ui_add_and_push_widget(make_widget("", row_theme, UI_WIDGET_DRAW_BACKGROUND));
-        {
-            do_text("hello", "");
-            do_text("hello2", "");
-        }
-        ui_pop_widget();
-        #endif
-    }
-
-    ui_pop_widget();
-#endif
-    
-    #if 0
-    ui_push_size_type({ UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN });
-    ui_push_size({});
-    ui_push_layout_type(UI_LAYOUT_VERTICAL);
-    ui_pop_size
-    
-    ui_push_size_type({ UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE });
-    ui_push_layout_type(UI_LAYOUT_CENTER);
-    ui_push_size()
-    ui_add_widget();
-    #endif
-    
-    #if 0
-    ui_push_background_color({ 1.0f, 1.0f, 0.0f, 1.0f });
-    ui_push_size_type({ UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE });
-    ui_push_size({ 200.0f, 200.0f });
-    ui_add_widget("window-content", UI_WIDGET_DRAW_BACKGROUND);
-    ui_pop_size_type();
-    ui_pop_background_color();
-    ui_pop_size();
-    #endif
-
     pop_window();
 
 
