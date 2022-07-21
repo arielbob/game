@@ -544,7 +544,7 @@
 // TODO (done): fix crash with undoing/redoing add material
 // TODO (done): string_format procedure that calculates necessary allocation size
 
-// TODO: for some reason compiling with -O2 makes it so the text in the slider gets pushed by the slider
+// TODO (done): for some reason compiling with -O2 makes it so the text in the slider gets pushed by the slider
 
 // TODO: add collider controls to entities, like have collider be the mesh, or an OBB, or a sphere, etc.
 

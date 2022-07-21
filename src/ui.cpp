@@ -643,7 +643,7 @@ void ui_calculate_standalone_sizes(Asset_Manager *asset) {
 
     int32 num_visited = 0;
     
-    while (true) {
+    while (current) {
         // pre-order
 
         current->rendering_index = num_visited;
@@ -660,11 +660,11 @@ void ui_calculate_standalone_sizes(Asset_Manager *asset) {
             if (current->next) {
                 current = current->next;
             } else {
-                if (!parent) return;
+                if (!parent) break;
 
                 UI_Widget *current_ancestor = parent;
                 while (!current_ancestor->next) {
-                    if (!current_ancestor->parent) return; // root
+                    if (!current_ancestor->parent) break; // root
                     current_ancestor = current_ancestor->parent;
                 }
 
@@ -701,7 +701,7 @@ void calculate_ancestor_dependent_size(UI_Widget *widget, UI_Widget_Axis axis) {
 void ui_calculate_ancestor_dependent_sizes() {
     UI_Widget *current = ui_manager->root;
 
-    while (true) {
+    while (current) {
         UI_Widget *parent = current->parent;
 
         calculate_ancestor_dependent_size(current, UI_WIDGET_X_AXIS);
@@ -713,11 +713,11 @@ void ui_calculate_ancestor_dependent_sizes() {
             if (current->next) {
                 current = current->next;
             } else {
-                if (!parent) return;
+                if (!parent) break;
 
                 UI_Widget *current_ancestor = parent;
                 while (!current_ancestor->next) {
-                    if (!current_ancestor->parent) return; // root
+                    if (!current_ancestor->parent) break; // root
                     current_ancestor = current_ancestor->parent;
                 }
 
@@ -856,12 +856,10 @@ void calculate_ancestor_dependent_sizes_part_2(UI_Widget *widget, UI_Widget_Axis
 // for example, if the parent of a percentage width widget is a FIT_CHILDREN widget, then we have to wait
 // until the parent widget has a computed width, then we can set the computed width of the percentage
 // based widget.
-
-// FIXME: this is broken
 void ui_calculate_ancestor_dependent_sizes_part_2() {
     UI_Widget *current = ui_manager->root;
 
-    while (true) {
+    while (current) {
         UI_Widget *parent = current->parent;
 
         calculate_ancestor_dependent_sizes_part_2(current, UI_WIDGET_X_AXIS);
@@ -873,11 +871,11 @@ void ui_calculate_ancestor_dependent_sizes_part_2() {
             if (current->next) {
                 current = current->next;
             } else {
-                if (!parent) return;
+                if (!parent) break;
 
                 UI_Widget *current_ancestor = parent;
                 while (!current_ancestor->next) {
-                    if (!current_ancestor->parent) return; // root
+                    if (!current_ancestor->parent) break; // root (has no next, so breaks outer loop as well)
                     current_ancestor = current_ancestor->parent;
                 }
 
@@ -942,7 +940,7 @@ void ui_calculate_positions() {
 
     // pre-order traversal
     
-    while (true) {
+    while (current) {
         UI_Widget *parent = current->parent;
         
         calculate_position(current, UI_WIDGET_X_AXIS);
@@ -954,11 +952,11 @@ void ui_calculate_positions() {
             if (current->next) {
                 current = current->next;
             } else {
-                if (!parent) return;
+                if (!parent) break;
 
                 UI_Widget *current_ancestor = parent;
                 while (!current_ancestor->next) {
-                    if (!current_ancestor->parent) return; // root
+                    if (!current_ancestor->parent) break; // root
                     current_ancestor = current_ancestor->parent;
                 }
 
@@ -1349,7 +1347,9 @@ void ui_push_container(UI_Container_Theme theme) {
     ui_push_existing_widget(inner);
 }
 
+#if 0
 void ui_add_slider_bar(real32 value, real32 min, real32 max) {
+    
     ui_push_size_type({ UI_SIZE_PERCENTAGE, UI_SIZE_PERCENTAGE });
     ui_push_position_type(UI_POSITION_FLOAT);
     ui_push_position({});
@@ -1362,6 +1362,7 @@ void ui_add_slider_bar(real32 value, real32 min, real32 max) {
     ui_pop_position_type();
     ui_pop_size_type();
 }
+#endif
 
 struct UI_Slider_Theme {
     Vec4 background_color;
@@ -1723,11 +1724,12 @@ real32 do_text_field_slider(Asset_Manager *asset, real32 value,
         }
     }
 
+    UI_Slider_Theme slider_theme = {};
+    slider_theme.background_color = rgb_to_vec4(0, 0, 255);
+    
     if (show_slider) {
         if (!state->is_using || state->is_sliding) {
-            ui_push_background_color({ 0.0f, 0.0f, 1.0f, 1.0f });
-            ui_add_slider_bar(value, min_value, max_value);
-            ui_pop_background_color();
+            ui_add_slider_bar(slider_theme, value, min_value, max_value);
         }
     }
     
