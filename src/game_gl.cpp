@@ -544,9 +544,9 @@
 // TODO (done): fix crash with undoing/redoing add material
 // TODO (done): string_format procedure that calculates necessary allocation size
 
+// TODO: for some reason compiling with -O2 makes it so the text in the slider gets pushed by the slider
+
 // TODO: add collider controls to entities, like have collider be the mesh, or an OBB, or a sphere, etc.
-// TODO: add control for specular strength, basically just be able to multiply intensity of spec
-//       - also probably add control for spec color for both light and entity
 
 // TODO: fix extreme lag when walking into house and when pushing against one of the walls
 //                   - seems to have to do with when we don't solidify a mesh, or when the mesh's normals are backwards
