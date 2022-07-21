@@ -121,6 +121,7 @@ typedef void GL_DRAW_ELEMENTS_INSTANCED (GLenum mode, GLsizei count, GLenum type
 typedef void GL_TEX_IMAGE_2D_MULTISAMPLE (GLenum target, GLsizei samples, GLenum internalformat, GLsizei width, GLsizei height, GLboolean fixedsamplelocations);
 typedef void GL_RENDER_BUFFER_STORAGE_MULTISAMPLE (GLenum target, GLsizei samples, GLenum internalformat, GLsizei width, GLsizei height);
 typedef void GL_BLIT_FRAMEBUFFER (GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1, GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1, GLbitfield mask, GLenum filter);
+typedef void GL_VERTEX_ATTRIB_DIVISOR (GLuint index, GLuint divisor);
 
 GL_GEN_VERTEX_ARRAYS *glGenVertexArrays;
 GL_GEN_BUFFERS *glGenBuffers;
@@ -170,6 +171,7 @@ GL_DRAW_ELEMENTS_INSTANCED *glDrawElementsInstanced;
 GL_TEX_IMAGE_2D_MULTISAMPLE *glTexImage2DMultisample;
 GL_RENDER_BUFFER_STORAGE_MULTISAMPLE *glRenderbufferStorageMultisample;
 GL_BLIT_FRAMEBUFFER *glBlitFramebuffer;
+GL_VERTEX_ATTRIB_DIVISOR *glVertexAttribDivisor;
 
 #include "game_gl.cpp"
 
@@ -419,6 +421,7 @@ internal bool32 win32_init_opengl(HDC hdc) {
                     glTexImage2DMultisample = (GL_TEX_IMAGE_2D_MULTISAMPLE *) wglGetProcAddress("glTexImage2DMultisample");
                     glRenderbufferStorageMultisample = (GL_RENDER_BUFFER_STORAGE_MULTISAMPLE *) wglGetProcAddress("glRenderbufferStorageMultisample");
                     glBlitFramebuffer = (GL_BLIT_FRAMEBUFFER *) wglGetProcAddress("glBlitFramebuffer");
+                    glVertexAttribDivisor = (GL_VERTEX_ATTRIB_DIVISOR *) wglGetProcAddress("glVertexAttribDivisor");
                     
                     return true;
                 } else {

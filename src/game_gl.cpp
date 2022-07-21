@@ -1420,26 +1420,6 @@ void gl_draw_collider(GL_State *gl_state, Render_State *render_state, Collider_V
     }
 }
 
-void copy_aligned_quad_to_arrays(stbtt_aligned_quad q, real32 *vertices, real32 *uvs) {
-    vertices[0] = q.x0;
-    vertices[1] = q.y0;
-    vertices[2] = q.x1;
-    vertices[3] = q.y0;
-    vertices[4] = q.x1;
-    vertices[5] = q.y1;
-    vertices[6] = q.x0;
-    vertices[7] = q.y1;
-
-    uvs[0] = q.s0;
-    uvs[1] = q.t0;
-    uvs[2] = q.s1;
-    uvs[3] = q.t0;
-    uvs[4] = q.s1;
-    uvs[5] = q.t1;
-    uvs[6] = q.s0;
-    uvs[7] = q.t1;
-}
-
 void gl_draw_text(GL_State *gl_state, Render_State *render_state,
                   int32 font_id, Font *font,
                   real32 x_pos_pixels, real32 y_pos_pixels,
@@ -1460,11 +1440,11 @@ void gl_draw_text(GL_State *gl_state, Render_State *render_state,
 
     gl_set_uniform_mat4(text_shader_id, "cpv_matrix", &render_state->ortho_clip_matrix);
     gl_set_uniform_vec4(text_shader_id, "color", &color);
-    gl_set_uniform_int(text_shader_id, "has_shadow", has_shadow);
+    //gl_set_uniform_int(text_shader_id, "has_shadow", has_shadow);
 
     if (has_shadow) {
-        gl_set_uniform_vec4(text_shader_id, "shadow_color", &shadow_color);
-        gl_set_uniform_float(text_shader_id, "shadow_offset", shadow_offset);
+        //gl_set_uniform_vec4(text_shader_id, "shadow_color", &shadow_color);
+        //gl_set_uniform_float(text_shader_id, "shadow_offset", shadow_offset);
     }
 
     // NOTE: we disable depth test so that overlapping characters such as the "o" in "fo" doesn't cover the
@@ -1477,27 +1457,39 @@ void gl_draw_text(GL_State *gl_state, Render_State *render_state,
     glBindTexture(GL_TEXTURE_2D, font_texture_id);
     glBindBuffer(GL_ARRAY_BUFFER, glyph_mesh.vbo);
 
-    real32 quad_vertices[8];
-    real32 quad_uvs[8];
     real32 line_advance = font->scale_for_pixel_height * (font->ascent - font->descent + font->line_gap);
     real32 start_x_pos_pixels = x_pos_pixels;
 
+    Marker m = begin_region();
+
+    uint32 text_buffer_size = sizeof(Vec2)*GL_MAX_TEXT_CHARACTERS;
+    Vec2 *glyph_positions = (Vec2 *) allocate(temp_region, text_buffer_size);
+    Vec2 *glyph_sizes     = (Vec2 *) allocate(temp_region, text_buffer_size);
+    Vec2 *uv_positions    = (Vec2 *) allocate(temp_region, text_buffer_size);
+    Vec2 *uv_sizes        = (Vec2 *) allocate(temp_region, text_buffer_size);
+
     int32 i = 0;
     while (*text && (is_null_terminated || (i < num_chars))) {
+        assert(i < GL_MAX_TEXT_CHARACTERS);
+        
         if (*text >= 32 && *text < 128 || *text == '-') {
             stbtt_aligned_quad q;
             stbtt_GetBakedQuad(font->cdata, 512, 512, *text - 32, &x_pos_pixels, &y_pos_pixels, &q, 1);
 
-            copy_aligned_quad_to_arrays(q, quad_vertices, quad_uvs);
+            Vec2 glyph_position = { q.x0, q.y0 };
+            Vec2 glyph_size     = { q.x1 - q.x0, q.y1 - q.y0 };
 
-            glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(quad_vertices), quad_vertices);
-            glBufferSubData(GL_ARRAY_BUFFER, (int *) sizeof(quad_vertices), sizeof(quad_uvs), quad_uvs);
+            // our UVs are have 0,0 in the bottom left, so to make the 0,0 UV equal to the bottom left UV
+            // returned by stb, we need to flip them. kinda confusing, but if you plug in values, you'll
+            // see that it works.
+            Vec2 uv_position    = { q.s0, q.t1 };
+            Vec2 uv_size        = { q.s1 - q.s0, q.t0 - q.t1 };
 
-            if (has_shadow) {
-                glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, 2);
-            } else {
-                glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, 1);
-            }
+            glyph_positions[i] = glyph_position;
+            glyph_sizes[i]     = glyph_size;
+
+            uv_positions[i]    = uv_position;
+            uv_sizes[i]        = uv_size;
         } else if (*text == '\n') {
             x_pos_pixels = start_x_pos_pixels;
             y_pos_pixels += line_advance;
@@ -1506,6 +1498,26 @@ void gl_draw_text(GL_State *gl_state, Render_State *render_state,
         text++;
         i++;
     }
+
+    int32 num_chars_added = i;
+    GLsizeiptr data_size = (GLsizeiptr) (num_chars_added*sizeof(Vec2));
+    // TODO: maybe try different data layout where instance data is grouped together instead of spread out in different arrays?
+    //       like xyzxyzxyz instead of xxxyyyzzz
+    #if 1
+    glBufferSubData(GL_ARRAY_BUFFER, 0,                                    data_size, glyph_positions);
+    glBufferSubData(GL_ARRAY_BUFFER, (int *) (int64) (text_buffer_size),   data_size, glyph_sizes);
+    glBufferSubData(GL_ARRAY_BUFFER, (int *) (int64) (text_buffer_size*2), data_size, uv_positions);
+    glBufferSubData(GL_ARRAY_BUFFER, (int *) (int64) (text_buffer_size*3), data_size, uv_sizes);
+    
+    glVertexAttribDivisor(2, 1);
+    glVertexAttribDivisor(3, 1);
+    glVertexAttribDivisor(4, 1);
+    glVertexAttribDivisor(5, 1);
+    #endif
+
+    glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, num_chars_added);
+    
+    end_region(m);
     
     //glEnable(GL_DEPTH_TEST);
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -1831,23 +1843,29 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
     glBindVertexArray(0);
     gl_state->triangle_mesh_id = gl_add_rendering_mesh(gl_state, make_gl_mesh(Mesh_Type::RENDERING, vao, vbo, 1));
 
-    // NOTE: quad mesh
+    // NOTE: 3D quad mesh
     // we store them separately like this because we use glBufferSubData to send the vertex positions
     // directly to the shader, and i don't think there's a way to easily modify interleaved data, unless
     // you're modifying all of the data, but when we modify the data we only modify the positions and not the uvs.
     // the values in these arrays don't matter; we're just filling these arrays up with enough values such that
     // sizeof() gives the correct values
+
+    // the numbers in the vertices array don't matter since we end up replacing them in the vbo. for the glyph quad however,
+    // they do matter since they are used as a base for calculating instance vertex positions.
+    // NOTE: the numbers in the UVs array does matter though, since we don't ever really change those. and they shouldn't
+    //       be changed. as a consequence of this, the vertices that we update the buffer with should correspond with the
+    //       correct UV in the UVs array.
     real32 quad_vertices[] = {
         0.0f, 0.0f,
-        0.0f, 1.0f,
+        1.0f, 0.0f,
         1.0f, 1.0f,
-        1.0f, 0.0f
+        0.0f, 1.0f
     };
     real32 quad_uvs[] = {
-        0.0f, 0.0f,
-        0.0f, 1.0f,
-        1.0f, 1.0f,
-        1.0f, 0.0f
+        0.0f, 1.0f, // top left
+        1.0f, 1.0f, // top right
+        1.0f, 0.0f, // bottom right
+        0.0f, 0.0f  // bottom left
     };
     uint32 quad_indices[] = {
         0, 1, 2,
@@ -1908,31 +1926,82 @@ void gl_init(GL_State *gl_state, Display_Output display_output) {
     glBindVertexArray(0);
     gl_state->framebuffer_quad_mesh_id = gl_add_rendering_mesh(gl_state, make_gl_mesh(Mesh_Type::RENDERING,
                                                                                       vao, vbo, 2));
-
+    
     // NOTE: glyph quad
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
     glGenBuffers(1, &ebo);
 
+    // these are in window-space, so x increases from left to right and y increases from top to bottom
+    real32 glyph_quad_vertices[] = {
+        0.0f, 0.0f, // top left
+        1.0f, 0.0f, // top right
+        1.0f, 1.0f, // bottom right
+        0.0f, 1.0f  // bottom left
+    };
+    real32 glyph_quad_uvs[] = {
+        0.0f, 1.0f,
+        1.0f, 1.0f,
+        1.0f, 0.0f,
+        0.0f, 0.0f,
+    };
+    uint32 glyph_quad_indices[] = {
+        0, 1, 2,
+        0, 2, 3
+    };
+    
     glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vertices) + sizeof(quad_uvs), 0, GL_DYNAMIC_DRAW);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(quad_vertices), quad_vertices);
-    glBufferSubData(GL_ARRAY_BUFFER, (int *) sizeof(quad_vertices), sizeof(quad_uvs), quad_uvs);
+    // UV position, UV size, glyph position, glyph size = 4 Vec2's
+    // also store space for the basic quad vertices and UVs that we use as a base
+    uint32 buffer_size = (sizeof(glyph_quad_vertices) + sizeof(glyph_quad_uvs)) + (sizeof(Vec2)*4*GL_MAX_TEXT_CHARACTERS);
+    glBufferData(GL_ARRAY_BUFFER, buffer_size, 0, GL_DYNAMIC_DRAW);
+
+    int64 text_buffer_size = sizeof(Vec2)*GL_MAX_TEXT_CHARACTERS;
+    // we put these at the end so that we don't have to offset by them when we set the instance data arrays
+    glBufferSubData(GL_ARRAY_BUFFER, (int *) (text_buffer_size*4),
+                    sizeof(glyph_quad_vertices), glyph_quad_vertices);
+    glBufferSubData(GL_ARRAY_BUFFER, (int *) (text_buffer_size*4 + sizeof(glyph_quad_vertices)),
+                    sizeof(glyph_quad_uvs), glyph_quad_uvs);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(quad_indices), quad_indices, GL_STATIC_DRAW); 
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(glyph_quad_indices), glyph_quad_indices, GL_STATIC_DRAW); 
 
+    // positions
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE,
-                          2 * sizeof(real32), (void *) 0);
+                          sizeof(real32)*2, (void *) (text_buffer_size*4));
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE,
-                          2 * sizeof(real32), (void *) sizeof(quad_vertices));
-    glEnableVertexAttribArray(1);
     
+    // uvs
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE,
+                          sizeof(real32)*2, (void *) (text_buffer_size*4+sizeof(glyph_quad_vertices)));
+    glEnableVertexAttribArray(1);
+
+    // glyph positions
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE,
+                          sizeof(real32)*2, (void *) 0);
+    glEnableVertexAttribArray(2);
+    
+    // glyph sizes
+    glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE,
+                          sizeof(real32)*2, (void *) (text_buffer_size));
+    glEnableVertexAttribArray(3);
+
+    // uv positions
+    glVertexAttribPointer(4, 2, GL_FLOAT, GL_FALSE,
+                          sizeof(real32)*2, (void *) (text_buffer_size*2));
+    glEnableVertexAttribArray(4);
+    
+    // uv sizes
+    glVertexAttribPointer(5, 2, GL_FLOAT, GL_FALSE,
+                          sizeof(real32)*2, (void *) (text_buffer_size*3));
+    glEnableVertexAttribArray(5);
+
     glBindVertexArray(0);
     gl_state->glyph_quad_mesh_id = gl_add_rendering_mesh(gl_state, make_gl_mesh(Mesh_Type::RENDERING, vao, vbo, 2));
 
+
+    
     // line mesh
     real32 line_vertices[] = {
         0.0f, 0.0f, 0.0f,
@@ -2303,20 +2372,15 @@ void gl_draw_constant_facing_quad_view_space(GL_State *gl_state,
         gl_use_texture(gl_state, texture_id);
     }
 
+    // these positions are in view space, i.e., same coordinate system as world-space
     real32 quad_vertices[8] = {
-        -0.5f, -0.5f, // bottom left
-        -0.5f, 0.5f,  // top left
-        0.5f, 0.5f,   // top right
-        0.5f, -0.5f   // bottom right
+        -0.5f, 0.5f, // top left
+        0.5f, 0.5f,  // top right
+        0.5f, -0.5f, // bottom right
+        -0.5f, -0.5f // bottom left
     };
     glBindBuffer(GL_ARRAY_BUFFER, quad_mesh.vbo);
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(quad_vertices), quad_vertices);
-
-    //Transform transform = make_transform();
-    //transform.position = view_space_center_position;
-    //Mat4 model = get_model_matrix(transform);
-    //gl_set_uniform_mat4(basic_shader_id, "model_matrix", &model);
-    //gl_set_uniform_mat4(basic_shader_id, "view_matrix", &render_state->view_matrix);
 
     gl_set_uniform_vec3(basic_shader_id, "view_space_center", &view_space_center_position);
     gl_set_uniform_mat4(basic_shader_id, "perspective_clip_matrix", &render_state->perspective_clip_matrix);
@@ -2342,10 +2406,10 @@ void gl_draw_quad(GL_State *gl_state,
     }
 
     real32 quad_vertices[8] = {
-        x_pos_pixels, y_pos_pixels + height_pixels,               // bottom left
-        x_pos_pixels, y_pos_pixels,                               // top left
-        x_pos_pixels + width_pixels, y_pos_pixels,                // top right
-        x_pos_pixels + width_pixels, y_pos_pixels + height_pixels // bottom right
+        x_pos_pixels, y_pos_pixels,                                // top left
+        x_pos_pixels + width_pixels, y_pos_pixels,                 // top right
+        x_pos_pixels + width_pixels, y_pos_pixels + height_pixels, // bottom right
+        x_pos_pixels, y_pos_pixels + height_pixels                 // bottom left
     };
     glBindBuffer(GL_ARRAY_BUFFER, quad_mesh.vbo);
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(quad_vertices), quad_vertices);
@@ -2366,10 +2430,10 @@ void gl_draw_quad(GL_State *gl_state,
     GL_Mesh quad_mesh = gl_use_rendering_mesh(gl_state, gl_state->quad_mesh_id);
     
     real32 quad_vertices[8] = {
-        x_pos_pixels, y_pos_pixels + height_pixels,               // bottom left
-        x_pos_pixels, y_pos_pixels,                               // top left
-        x_pos_pixels + width_pixels, y_pos_pixels,                // top right
-        x_pos_pixels + width_pixels, y_pos_pixels + height_pixels // bottom right
+        x_pos_pixels, y_pos_pixels,                                // top left
+        x_pos_pixels + width_pixels, y_pos_pixels,                 // top right
+        x_pos_pixels + width_pixels, y_pos_pixels + height_pixels, // bottom right
+        x_pos_pixels, y_pos_pixels + height_pixels                 // bottom left
     };
     //real32 quad_uvs[8];
     glBindBuffer(GL_ARRAY_BUFFER, quad_mesh.vbo);
@@ -2593,7 +2657,7 @@ void draw_sound_buffer(GL_State *gl_state, Render_State *render_state,
 }
 
 void gl_draw_ui_widget(GL_State *gl_state, Render_State *render_state,
-                       Asset_Manager *asset, UI_Manager *manager, UI_Widget *widget) {
+                       Asset_Manager *asset, UI_Manager *manager, UI_Widget *widget) {    
     Vec2 computed_position = widget->computed_position;
     Vec2 computed_size = widget->computed_size;
 

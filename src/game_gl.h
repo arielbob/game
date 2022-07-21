@@ -118,6 +118,7 @@
 #define NUM_CIRCLE_VERTICES 64
 #define NUM_MSAA_SAMPLES 1
 #define MAX_ALPHA_MASKS 16
+#define GL_MAX_TEXT_CHARACTERS 1024
 
 #define FRAMEBUFFER_IS_HDR   (1 << 0)
 #define FRAMEBUFFER_HAS_ALPHA (1 << 1)
@@ -172,9 +173,6 @@ struct GL_Point_Light {
     real32 d_max;
 };
 
-// TODO: just have a single framebuffer with alpha, see gl_make_framebuffer(), generate all the textures at once.
-//       we don't need to free them at all, just change the index. will have to free and re-init textures if the
-//       window dimensions change.
 struct GL_Alpha_Mask_Stack {
     uint32 texture_ids[MAX_ALPHA_MASKS];
     int32 index = -1;
