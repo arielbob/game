@@ -1089,8 +1089,6 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     window_theme.border_width     = 1.0f;
 
     // TODO: be able to specify size type and size in window_theme
-    // TODO: make rows just be 100% width and absolute height and horizontal layout
-    //       - draw text in box with center layout, then text field slider with fill remaining width and 100% height
     
     push_window("Entity Transform", window_theme, "window-test");
     
@@ -1119,50 +1117,40 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     row_theme.layout_type    = UI_LAYOUT_HORIZONTAL;
     row_theme.background_color = rgb_to_vec4(255, 0, 0);
     
-    // horizontal box with border
-    //
-    /*
-      horizontal box with border {
-          box with centered text
-          horizontal box with text
-      }
-     */
-
-    UI_Text_Field_Slider_Theme text_field_theme;
-    text_field_theme.field_background_color = rgb_to_vec4(255, 0, 0);
-    text_field_theme.slider_background_color = rgb_to_vec4(0, 0, 255);
-    text_field_theme.show_slider = true;
-    text_field_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
-    text_field_theme.size      = { 0.0f, 1.0f };
-    text_field_theme.cursor_color = rgb_to_vec4(0, 0, 0);
-    text_field_theme.font = "calibri14";
-    text_field_theme.border_flags = BORDER_BOTTOM;
-    text_field_theme.border_color = rgb_to_vec4(255, 255, 255);
-    text_field_theme.border_width = 1.0f;
+    UI_Text_Field_Slider_Theme text_field_theme = {};
+    text_field_theme.slider_background_color = rgb_to_vec4(61, 73, 60);//rgb_to_vec4(0, 0, 255);
+    text_field_theme.show_slider             = false;
+    text_field_theme.size_type               = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
+    text_field_theme.size                    = { 0.0f, 1.0f };
+    text_field_theme.cursor_color            = rgb_to_vec4(255, 255, 255);
+    text_field_theme.font                    = "calibri14";
+    text_field_theme.border_flags            = BORDER_BOTTOM;
+    text_field_theme.border_color            = rgb_to_vec4(50, 50, 60);
+    text_field_theme.border_width            = 1.0f;
 
     UI_Theme label_theme = {};
     label_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_FILL_REMAINING };
     label_theme.layout_type = UI_LAYOUT_CENTER;
     label_theme.semantic_size = { 15.0f, 0.0f };
-    label_theme.background_color = rgb_to_vec4(255, 0, 255);
-    label_theme.border_flags = BORDER_RIGHT | BORDER_BOTTOM;
-    label_theme.border_color = rgb_to_vec4(255, 255, 255);
+    label_theme.background_color = rgb_to_vec4(50, 50, 60);
+    label_theme.border_flags = BORDER_BOTTOM;
+    label_theme.border_color = rgb_to_vec4(24, 24, 28);
     label_theme.border_width = 1.0f;
+
+    UI_Theme group_theme = {};
+    group_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
+    group_theme.semantic_size = { 0.0f, 0.0f };
+    group_theme.corner_radius = 5.0f;
+    group_theme.corner_flags = CORNER_ALL;
+    group_theme.border_flags = BORDER_ALL;
+    group_theme.border_color = rgb_to_vec4(50, 50, 60);
+    group_theme.border_width = 1.0f;
+    group_theme.background_color = rgb_to_vec4(61, 73, 60);
+    group_theme.layout_type = UI_LAYOUT_VERTICAL;
     
     ui_push_container(inner_theme);
     ui_push_text_color({ 1.0f, 1.0f, 1.0f, 1.0f });
     {
-        UI_Theme group_theme = {};
-        group_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
-        group_theme.semantic_size = { 0.0f, 0.0f };
-        group_theme.corner_radius = 5.0f;
-        group_theme.corner_flags = CORNER_ALL;
-        group_theme.border_flags = BORDER_ALL;
-        group_theme.border_color = rgb_to_vec4(255, 255, 255);
-        group_theme.border_width = 1.0f;
-        group_theme.background_color = rgb_to_vec4(255, 0, 0);
-        group_theme.layout_type = UI_LAYOUT_VERTICAL;
-
         do_text("Position");
         ui_y_pad(5.0f);
         ui_add_and_push_widget("", group_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_DRAW_BORDER);
@@ -1198,38 +1186,85 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
 
                 static real32 z_val = 5.0f;
                 z_val = do_text_field_slider(asset, z_val, 0.0f, 100.0f, text_field_theme, "position-z-slider");
+            } ui_pop_widget();
+        } ui_pop_widget();
+
+        ui_y_pad(10.0f);
+        do_text("Rotation");
+        ui_y_pad(5.0f);
+        ui_add_and_push_widget("", group_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_DRAW_BORDER);
+        {
+            // draw group
+            ui_add_and_push_widget("", row_theme, 0);
+            {
+                ui_add_and_push_widget("", label_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_DRAW_BORDER);
+                do_text("X");
+                ui_pop_widget();
+
+                static real32 x_rot = 5.0f;
+                x_rot = do_text_field_slider(asset, x_rot, 0.0f, 100.0f, text_field_theme, "rotation-x-slider");
             }
             ui_pop_widget();
 
-#if 0
             ui_add_and_push_widget("", row_theme, 0);
             {
-                text_field_theme.corner_flags = 0;
-                text_field_theme.border_flags = BORDER_LEFT | BORDER_RIGHT;
-                label_theme.corner_flags = 0;
-                label_theme.border_flags = BORDER_LEFT | BORDER_BOTTOM;
                 ui_add_and_push_widget("", label_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_DRAW_BORDER);
                 do_text("Y");
                 ui_pop_widget();
 
-                static real32 y_val = 5.0f;
-                y_val = do_text_field_slider(asset, y_val, 0.0f, 100.0f, text_field_theme, "position-y-slider");
-            } ui_pop_widget();
+                static real32 y_rot = 5.0f;
+                y_rot = do_text_field_slider(asset, y_rot, 0.0f, 100.0f, text_field_theme, "rotation-y-slider");
+            }
+            ui_pop_widget();
 
             ui_add_and_push_widget("", row_theme, 0);
             {
-                text_field_theme.corner_flags = CORNER_BOTTOM_RIGHT;
-                text_field_theme.border_flags = BORDER_LEFT | BORDER_RIGHT | BORDER_BOTTOM | BORDER_TOP;
-                label_theme.corner_flags = CORNER_BOTTOM_LEFT;
-                label_theme.border_flags = BORDER_LEFT | BORDER_BOTTOM;
                 ui_add_and_push_widget("", label_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_DRAW_BORDER);
                 do_text("Z");
                 ui_pop_widget();
 
-                static real32 z_val = 5.0f;
-                z_val = do_text_field_slider(asset, z_val, 0.0f, 100.0f, text_field_theme, "position-z-slider");
+                static real32 z_rot = 5.0f;
+                z_rot = do_text_field_slider(asset, z_rot, 0.0f, 100.0f, text_field_theme, "rotation-z-slider");
             } ui_pop_widget();
-            #endif
+        } ui_pop_widget();
+
+        ui_y_pad(10.0f);
+        do_text("Scale");
+        ui_y_pad(5.0f);
+        ui_add_and_push_widget("", group_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_DRAW_BORDER);
+        {
+            // draw group
+            ui_add_and_push_widget("", row_theme, 0);
+            {
+                ui_add_and_push_widget("", label_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_DRAW_BORDER);
+                do_text("X");
+                ui_pop_widget();
+
+                static real32 x_scale = 5.0f;
+                x_scale = do_text_field_slider(asset, x_scale, 0.0f, 100.0f, text_field_theme, "scale-x-slider");
+            }
+            ui_pop_widget();
+
+            ui_add_and_push_widget("", row_theme, 0);
+            {
+                ui_add_and_push_widget("", label_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_DRAW_BORDER);
+                do_text("Y");
+                ui_pop_widget();
+
+                static real32 y_scale = 5.0f;
+                y_scale = do_text_field_slider(asset, y_scale, 0.0f, 100.0f, text_field_theme, "scale-y-slider");
+            }
+            ui_pop_widget();
+
+            ui_add_and_push_widget("", row_theme, 0);
+            {
+                ui_add_and_push_widget("", label_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_DRAW_BORDER);
+                do_text("Z");
+                ui_pop_widget();
+
+                static real32 z_scale = 5.0f;
+                z_scale = do_text_field_slider(asset, z_scale, 0.0f, 100.0f, text_field_theme, "scale-z-slider");
+            } ui_pop_widget();
         } ui_pop_widget();
     }
     ui_pop_text_color();

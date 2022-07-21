@@ -1383,7 +1383,8 @@ struct UI_Text_Field_Slider_Theme {
     Vec4 slider_background_color;
     Vec4 cursor_color;
     bool32 show_slider;
-
+    bool32 show_field_background;
+    
     real32 corner_radius;
     uint32 corner_flags;
     uint32 border_flags;
@@ -1422,9 +1423,12 @@ real32 do_text_field_slider(Asset_Manager *asset, real32 value,
     textbox_theme.border_flags            = theme.border_flags;
     textbox_theme.border_color            = theme.border_color;
     textbox_theme.border_width            = theme.border_width;
+
+    uint32 textbox_flags = UI_WIDGET_IS_CLICKABLE | UI_WIDGET_IS_FOCUSABLE | UI_WIDGET_DRAW_BORDER;
+    if (theme.show_field_background) textbox_flags |= UI_WIDGET_DRAW_BACKGROUND;
     
-    UI_Widget *textbox = ui_add_and_push_widget(id_string, textbox_theme,
-                                                UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE | UI_WIDGET_IS_FOCUSABLE | UI_WIDGET_DRAW_BORDER);
+    UI_Widget *textbox = ui_add_and_push_widget(id_string, textbox_theme, textbox_flags);
+                                                
     UI_Interact_Result interact = ui_interact(textbox);
 
     real32 x_delta = fabsf((get_mouse_delta()).x);
@@ -1564,49 +1568,6 @@ real32 do_text_field_slider(Asset_Manager *asset, real32 value,
             }
             ui_pop_widget();
 
-
-            #if 0
-            ui_push_size_type({ UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN });
-            ui_push_layout_type(UI_LAYOUT_HORIZONTAL);
-            ui_push_background_color({ 0.0f, 1.0f, 0.0f, 1.0f });
-            ui_push_widget("");
-            {
-                if (state->is_using && !state->is_sliding) {
-                    char *str = to_char_array((Allocator *) &ui_manager->frame_arena, state->buffer);
-                    do_text(str, "");
-
-                    // draw cursor
-
-                    ui_push_size_type({ UI_SIZE_ABSOLUTE, UI_SIZE_PERCENTAGE });
-                    ui_push_size({ 1.0f, 1.0f });
-                    ui_push_position_type(UI_POSITION_FLOAT);
-
-                    Font font = get_font(asset, textbox->font);
-                    real32 width_to_index = get_width(font, str, state->cursor_index);
-                    ui_push_position({ floorf(width_to_index), 0.0f });
-
-                    ui_push_background_color({ 0.0f, 0.0f, 0.0f, 1.0f });
-                    real32 time_to_switch = 0.5f; // time spent in either state
-                    bool32 show_background = ((int32) (ui_manager->focus_t*(1.0f / time_to_switch)) + 1) % 2;
-                    
-                    UI_Widget *cursor = ui_add_widget("", show_background ? UI_WIDGET_DRAW_BACKGROUND : 0);
-                    ui_pop_background_color();
-                    
-                    ui_pop_position();
-                    ui_pop_position_type();
-                    ui_pop_size();
-                    ui_pop_size_type();    
-                } else {
-                    char *buf = string_format((Allocator *) &ui_manager->frame_arena, "%f", value);
-                    do_text(buf, "");
-                }
-            }
-            ui_pop_widget();
-            ui_pop_background_color();
-            ui_pop_layout_type();
-            ui_pop_size_type();
-            #endif
-            
             ui_x_pad(5.0f);
         }
         ui_pop_widget();
@@ -1624,183 +1585,6 @@ real32 do_text_field_slider(Asset_Manager *asset, real32 value,
         }
     }
 #endif
-    
-    return value;
-}
-
-real32 do_text_field_slider(Asset_Manager *asset, real32 value,
-                            real32 min_value, real32 max_value,
-                            bool32 show_slider,
-                            char *id_string, int32 index = 0) {
-    UI_id id = make_ui_id(id_string, index);
-    UI_Widget_State *state_variant = ui_get_state(id);
-    UI_Text_Field_Slider_State *state;
-    if (!state_variant) {
-        state = ui_add_text_field_slider_state(id, value);
-    } else {
-        state = &state_variant->text_field_slider;
-    }
-    
-    // size, position, background color, text color should be set before this is called
-    ui_push_layout_type(UI_LAYOUT_CENTER);
-    UI_Widget *textbox = ui_push_widget(id_string,
-                                        UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE | UI_WIDGET_IS_FOCUSABLE);
-    ui_pop_layout_type();
-    UI_Interact_Result interact = ui_interact(textbox);
-
-    real32 x_delta = fabsf((get_mouse_delta()).x);
-    real32 deadzone = 1.0f;
-
-    if (!state->is_using) {
-        state->is_sliding = is_active(textbox) && (x_delta > deadzone);
-
-        if (state->is_sliding) {
-            state->is_using = true;
-        } else if (interact.clicked) {
-            state->is_using = true;
-
-            char *value_text = string_format((Allocator *) &ui_manager->frame_arena, "%f", value);
-            set_string_buffer_text(&state->buffer, value_text);
-            state->cursor_index = state->buffer.current_length;
-        }
-    }
-
-    if (state->is_using) {
-        if (state->is_sliding) {
-            if (!is_active(textbox)) {
-                state->is_using = false;
-            }
-        } else {
-            if (!is_focus(textbox)) {
-                state->is_using = false;
-
-                real32 result;
-                bool32 conversion_result = string_to_real32(make_string(state->buffer), &result);
-                if (conversion_result) {
-                    value = result;
-                    //return result;
-                }
-            }
-        }
-    }
-    
-    if (state->is_using && state->is_sliding) {
-        value = interact.relative_mouse_percentage.x * (max_value - min_value);
-        value = clamp(value, min_value, max_value);
-    }
-    
-    if (state->is_using && !state->is_sliding) {
-        Controller_State *controller_state = Context::controller_state;
-        int32 original_cursor_index = state->cursor_index;
-        
-        if (just_pressed_or_repeated(controller_state->key_left)) {
-            state->cursor_index--;
-            state->cursor_index = max(state->cursor_index, 0);
-        }
-
-        if (just_pressed_or_repeated(controller_state->key_right)) {
-            state->cursor_index++;
-            state->cursor_index = min(state->cursor_index, state->buffer.current_length);
-            state->cursor_index = min(state->cursor_index, state->buffer.size);
-        }
-
-        String_Buffer *buffer = &state->buffer;
-        for (int32 i = 0; i < controller_state->num_pressed_chars; i++) {
-            char c = controller_state->pressed_chars[i];
-            if (c == '\b') { // backspace key
-                splice(&state->buffer, state->cursor_index - 1);
-                state->cursor_index--;
-                state->cursor_index = max(state->cursor_index, 0);
-            } else if ((buffer->current_length < buffer->size) && (state->cursor_index < buffer->size)) {
-                if (c >= 32 && c <= 126) {
-                    splice_insert(&state->buffer, state->cursor_index, c);
-                    state->cursor_index++;
-                }
-            }
-        }
-
-        if (state->cursor_index != original_cursor_index) {
-            ui_manager->focus_t = 0.0f;
-        }
-    }
-
-    UI_Slider_Theme slider_theme = {};
-    slider_theme.background_color = rgb_to_vec4(0, 0, 255);
-    
-    if (show_slider) {
-        if (!state->is_using || state->is_sliding) {
-            ui_add_slider_bar(slider_theme, value, min_value, max_value);
-        }
-    }
-    
-    {
-        ui_push_size_type({ UI_SIZE_PERCENTAGE, UI_SIZE_PERCENTAGE });
-        ui_push_layout_type(UI_LAYOUT_HORIZONTAL);
-        ui_push_size({ 1.0f, 1.0f });
-
-        ui_push_widget("");
-        {
-            ui_x_pad(5.0f);
-            ui_push_size_type({ UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN });
-            ui_push_layout_type(UI_LAYOUT_HORIZONTAL);
-            ui_push_background_color({ 0.0f, 1.0f, 0.0f, 1.0f });
-            ui_push_widget("");
-            {
-                if (state->is_using && !state->is_sliding) {
-                    char *str = to_char_array((Allocator *) &ui_manager->frame_arena, state->buffer);
-                    do_text(str, "");
-
-                    // draw cursor
-
-                    ui_push_size_type({ UI_SIZE_ABSOLUTE, UI_SIZE_PERCENTAGE });
-                    ui_push_size({ 1.0f, 1.0f });
-                    ui_push_position_type(UI_POSITION_FLOAT);
-
-                    Font font = get_font(asset, textbox->font);
-                    real32 width_to_index = get_width(font, str, state->cursor_index);
-                    ui_push_position({ floorf(width_to_index), 0.0f });
-
-                    ui_push_background_color({ 0.0f, 0.0f, 0.0f, 1.0f });
-                    real32 time_to_switch = 0.5f; // time spent in either state
-                    bool32 show_background = ((int32) (ui_manager->focus_t*(1.0f / time_to_switch)) + 1) % 2;
-                    
-                    UI_Widget *cursor = ui_add_widget("", show_background ? UI_WIDGET_DRAW_BACKGROUND : 0);
-                    ui_pop_background_color();
-                    
-                    ui_pop_position();
-                    ui_pop_position_type();
-                    ui_pop_size();
-                    ui_pop_size_type();    
-                } else {
-                    char *buf = string_format((Allocator *) &ui_manager->frame_arena, "%f", value);
-                    do_text(buf, "");
-                }
-            }
-            ui_pop_widget();
-            ui_pop_background_color();
-            ui_pop_layout_type();
-            ui_pop_size_type();
-            
-            ui_x_pad(5.0f);
-        }
-        ui_pop_widget();
-
-        ui_pop_size();
-        ui_pop_layout_type();
-        ui_pop_size_type();
-    }
-    ui_pop_widget();
-
-    // we do validation that it's a number, but any putting value into bounds should be done by the caller
-    #if 0
-    if (interact.lost_focus) {
-        real32 result;
-        bool32 conversion_result = string_to_real32(make_string(state->buffer), &result);
-        if (conversion_result) {
-            return result;
-        }
-    }
-    #endif
     
     return value;
 }
