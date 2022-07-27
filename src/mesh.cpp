@@ -1,5 +1,5 @@
 #include "memory.h"
-#include "mesh.h"
+#include "asset.h"
 #include "platform.h"
 #include "parse.h"
 
@@ -410,9 +410,9 @@ inline void get_triangle(Mesh *mesh, int32 triangle_index, Vec3 triangle[3]) {
 
 void deallocate(Mesh mesh) {
     deallocate(mesh.name);
-    deallocate(mesh.filename);
-    deallocate(mesh.allocator, mesh.data);
-    deallocate(mesh.allocator, mesh.indices);
+    //deallocate(mesh.filename);
+    //deallocate(mesh.allocator, mesh.data);
+    //deallocate(mesh.allocator, mesh.indices);
 }
 
 // this uses the same allocator for everything
@@ -420,8 +420,8 @@ void copy(Allocator *allocator, Mesh *mesh_dest, Mesh *mesh_source) {
     *mesh_dest = *mesh_source;
 
     mesh_dest->name = copy(allocator, mesh_source->name);
-    mesh_dest->filename = copy(allocator, mesh_source->filename);
-    mesh_dest->allocator = allocator;
+    //mesh_dest->filename = copy(allocator, mesh_source->filename);
+    //mesh_dest->allocator = allocator;
 
     mesh_dest->data = (real32 *) allocate(allocator, mesh_source->data_size);
     memcpy(mesh_dest->data, mesh_source->data, mesh_source->data_size);

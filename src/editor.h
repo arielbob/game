@@ -1,7 +1,7 @@
 #ifndef EDITOR_H
 #define EDITOR_H
 
-#include "editor_actions.h"
+//#include "editor_actions.h"
 
 // for some reason putting these defines after the includes breaks emacs indenting
 #define LEVEL_FILE_FILTER_TITLE "Levels (*.level)"
@@ -22,10 +22,6 @@ struct Editor_State {
     Heap_Allocator history_heap;
     Heap_Allocator general_heap;
 
-    Asset_Manager asset_manager;
-
-    Editor_History history;
-
     Editor_Level level;
     String level_filename;
     bool32 is_startup;
@@ -44,18 +40,6 @@ struct Editor_State {
     UI_id color_picker_parent;
     
     Gizmo_State gizmo_state;
-
-    // TODO: maybe use flags for these instead
-    bool32 editing_selected_entity_mesh;
-    bool32 editing_selected_entity_material;
-    bool32 editing_selected_entity_texture;
-    
-    // for modification history
-    Entity *old_entity;
-    Material *old_material;
-    Texture old_texture;
-
-    Mesh_Type mesh_library_filter;
 };
 
 namespace Editor_Constants {

@@ -46,6 +46,7 @@ global_variable Allocator *temp_region;
 
 global_variable Memory memory;
 global_variable UI_Manager *ui_manager;
+global_variable Asset_Manager *asset_manager;
 
 #include "memory.cpp"
 #include "math.cpp"
@@ -57,7 +58,7 @@ global_variable UI_Manager *ui_manager;
 #include "level.cpp"
 #include "entity.cpp"
 #include "gizmo.cpp"
-#include "editor_actions.cpp"
+//#include "editor_actions.cpp"
 //#include "editor_ui.cpp"
 #include "editor.cpp"
 #include "game.cpp"
@@ -346,6 +347,14 @@ File_Data platform_open_and_read_file(Allocator *allocator, char *filename) {
     platform_close_file(platform_file);
 
     return file_data;
+}
+
+File_Data platform_open_and_read_file(Allocator *allocator, String filename) {
+    Marker m = begin_region();
+    char *filename_c_string = to_char_array(temp_region, filename);
+    File_Data result = platform_open_and_read_file(allocator, filename_c_string);
+    end_region(m);
+    return result;
 }
 
 internal bool32 win32_init_opengl(HDC hdc) {
@@ -736,7 +745,7 @@ void fill_sound_buffer(Win32_Sound_Output *win32_sound_output,
 
 bool32 win32_init_memory() {
     uint32 global_stack_size = MEGABYTES(64);
-    uint32 hash_table_stack_size = MEGABYTES(8);
+    uint32 hash_table_stack_size = MEGABYTES(8); // TODO: we should remove this
     uint32 game_data_arena_size = GIGABYTES(1);
     uint32 font_arena_size = MEGABYTES(64);
     uint32 frame_arena_size = MEGABYTES(64);

@@ -4,7 +4,7 @@
 #include "platform.h"
 #include "math.h"
 #include "string.h"
-#include "mesh.h"
+#include "asset.h"
 #include "collider.h"
 
 enum Entity_Type {

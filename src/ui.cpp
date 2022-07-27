@@ -604,11 +604,11 @@ void calculate_standalone_size(Asset_Manager *asset, UI_Widget *widget, UI_Widge
     if (size_type == UI_SIZE_ABSOLUTE) {
         *axis_computed_size = axis_semantic_size;
     } else if (size_type == UI_SIZE_FIT_TEXT) {
-        Font font = get_font(asset, widget->font);
+        Font *font = get_font(widget->font);
         if (axis == UI_WIDGET_X_AXIS) {
             *axis_computed_size = get_width(font, widget->text);
         } else {
-            *axis_computed_size = font.height_pixels;
+            *axis_computed_size = font->height_pixels;
         }
     } else if (size_type == UI_SIZE_FIT_CHILDREN) {
         *axis_computed_size = axis_semantic_size;
@@ -1551,7 +1551,7 @@ real32 do_text_field_slider(Asset_Manager *asset, real32 value,
                     cursor_theme.position_type = UI_POSITION_FLOAT;
                     cursor_theme.background_color = theme.cursor_color;
                     
-                    Font font = get_font(asset, textbox->font);
+                    Font *font = get_font(textbox->font);
                     real32 width_to_index = get_width(font, str, state->cursor_index);
                     cursor_theme.semantic_position = { floorf(width_to_index), 0.0f };
                     

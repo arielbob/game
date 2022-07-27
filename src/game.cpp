@@ -110,8 +110,8 @@ Vec3 cursor_pos_to_world_space(Vec2 cursor_pos, Render_State *render_state) {
     Mat4 cpv_matrix_inverse = inverse(render_state->cpv_matrix);
 
     Vec4 clip_space_coordinates = { 2.0f * (cursor_pos.x / display_output.width) - 1.0f,
-                                    -2.0f * (cursor_pos.y / display_output.height) + 1.0f,
-                                    -1.0f, 1.0f };
+        -2.0f * (cursor_pos.y / display_output.height) + 1.0f,
+        -1.0f, 1.0f };
 
     Vec4 cursor_world_space_homogeneous = cpv_matrix_inverse * clip_space_coordinates;
     Vec3 cursor_world_space = homogeneous_divide(cursor_world_space_homogeneous);
@@ -269,7 +269,7 @@ bool32 capsule_intersects_mesh(Capsule capsule, Mesh mesh, Transform transform,
             // we check for smallest penetration depth since that's what will lead to the largest push out
             // vector (since the penetration vector is from the point on the triangle to the center of the sphere).
             if (!intersected || (dot_result > 0.0f && depth_result < smallest_penetration_depth)) {
-            //if (!intersected || depth_result > largest_penetration_depth) {
+                //if (!intersected || depth_result > largest_penetration_depth) {
                 intersected = true;
                 smallest_penetration_normal = normal_result;
                 smallest_penetration_depth = depth_result;
@@ -463,7 +463,12 @@ void init_game(Game_State *game_state,
     Context::message_manager = &game_state->message_manager;
 
     // init asset manager
-    Asset_Manager asset_manager = make_asset_manager((Allocator *) &memory.game_data);
+    // TODO: just make this a heap allocator. when we remove the editor, it can change to an arena
+    uint32 asset_heap_size = MEGABYTES(128);
+    void *asset_heap_base = arena_push(&memory.game_data, asset_heap_size);
+    asset_heap = make_heap_allocator(asset_heap_base, asset_heap_size);
+    
+    Asset_Manager asset_manager = make_asset_manager((Allocator *) &asset_heap);
     game_state->asset_manager = asset_manager;
     //Context::asset_manager = &game_state->asset_manager;
 
@@ -498,7 +503,7 @@ void init_game(Game_State *game_state,
     // init ui state
     ui_manager = &game_state->ui_manager;
     ui_init(&memory.ui_arena);
-    #if 0
+#if 0
     UI_Push_Buffer ui_push_buffer = {};
     ui_push_buffer.size = MEGABYTES(1);
     ui_push_buffer.base = allocate((Allocator *) game_data_arena, ui_push_buffer.size);
@@ -508,7 +513,7 @@ void init_game(Game_State *game_state,
     ui_manager->heap_pointer = &memory.ui_state_heap;
     ui_manager->state_table = make_hash_table<UI_id, UI_Element_State *>((Allocator *) &memory.hash_table_stack,
                                                                          HASH_TABLE_SIZE, &ui_id_equals);
-    #endif
+#endif
     game_state->is_initted = true;
 
     Normal_Entity test_entity = {};
@@ -518,6 +523,12 @@ void init_game(Game_State *game_state,
     Marker m = begin_region();
     Buffer serialized_entity = serialize(temp_region, test_entity);
     end_region(m);
+
+    add_mesh("ground", "blender/ground3.mesh");
+    Mesh *car_mesh = add_mesh(Mesh_Type::LEVEL, "car", "blender/car.mesh");
+    Mesh *ground_mesh = get_mesh("ground");
+    delete_mesh("car");
+    clear_level_meshes();
 }
 
 Entity *get_entity(Game_State *game_state, int32 id) {
@@ -536,19 +547,19 @@ Entity *get_entity(Game_State *game_state, int32 id) {
 
 Entity *allocate_and_copy_entity(Allocator *allocator, Entity *entity) {
     switch (entity->type) {
-        case ENTITY_NORMAL: {
-            Normal_Entity *e = (Normal_Entity *) allocate(allocator, sizeof(Normal_Entity));
-            *e = copy(allocator, *((Normal_Entity *) entity));
-            return (Entity *) e;
-        } break;
-        case ENTITY_POINT_LIGHT: {
-            Point_Light_Entity *e = (Point_Light_Entity *) allocate(allocator, sizeof(Point_Light_Entity));
-            *e = copy(allocator, *((Point_Light_Entity *) entity));
-            return (Entity *) e;
-        } break;
-        default: {
-            assert(!"Unhandled entity type.");
-        }
+    case ENTITY_NORMAL: {
+        Normal_Entity *e = (Normal_Entity *) allocate(allocator, sizeof(Normal_Entity));
+        *e = copy(allocator, *((Normal_Entity *) entity));
+        return (Entity *) e;
+    } break;
+    case ENTITY_POINT_LIGHT: {
+        Point_Light_Entity *e = (Point_Light_Entity *) allocate(allocator, sizeof(Point_Light_Entity));
+        *e = copy(allocator, *((Point_Light_Entity *) entity));
+        return (Entity *) e;
+    } break;
+    default: {
+        assert(!"Unhandled entity type.");
+    }
     }
 
     return NULL;
@@ -935,7 +946,7 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     ui_push_text_color({ 0.0f, 0.0f, 0.0f, 1.0f });
     ui_push_font("calibri14");
 
-    #if 0
+#if 0
     ui_push_text_color({ 1.0f, 1.0f, 1.0f, 1.0f });
     ui_push_position({ 5.0f, 5.0f });
     char *focus_text = string_format((Allocator *) &ui_manager->frame_arena, "focus: %s\nhot: %s\nactive: %s",
@@ -945,7 +956,7 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     do_text(focus_text, "");
     ui_pop_position();
     ui_pop_text_color();
-    #endif
+#endif
     
     ui_push_text_color({ 1.0f, 1.0f, 1.0f, 1.0f });
     ui_push_position({ 5.0f, 5.0f });
@@ -972,18 +983,18 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     ui_push_layout_type(UI_LAYOUT_VERTICAL);
     ui_push_widget("", UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_DRAW_BORDER);
 
-    #if 1
+#if 1
     UI_Theme inner_box_theme = {};
     inner_box_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_ABSOLUTE };
     inner_box_theme.semantic_size = { 1.0f, 30.0f };
     inner_box_theme.background_color = { 0.0f, 0.0f, 1.0f, 1.0f };
     ui_add_widget(make_widget("", inner_box_theme, UI_WIDGET_DRAW_BACKGROUND));
-    #endif
+#endif
 
     ui_pop_widget();
-    #endif
+#endif
     
-    #if 0
+#if 0
     ui_push_background_color({ 1.0f, 1.0f, 1.0f, 1.0f });
     ui_push_hot_background_color({ 0.7f, 0.7f, 0.7f, 1.0f });
     ui_push_active_background_color({ 0.5f, 0.5f, 0.5f, 1.0f });
@@ -998,15 +1009,15 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     ui_pop_size();
     ui_pop_size_type();
     ui_pop_background_color();
-    #if 0
+#if 0
     if (do_text_button("Transform", 5.0f, "transform-button")) {
         debug_print("open transform window clicked\n");
     }
-    #endif
-    #endif
+#endif
+#endif
 
     // debugging fill_remaining
-    #if 0
+#if 0
     UI_Theme test_theme1 = {};
     test_theme1.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
     test_theme1.semantic_size = { 200.0f, 30.0f };
@@ -1024,9 +1035,9 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
         ui_add_widget(make_widget("", test_theme2, UI_WIDGET_DRAW_BACKGROUND));
     }
     ui_pop_widget();
-    #endif
+#endif
     
-    #if 1
+#if 1
     ui_push_size_type({ UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN });
     ui_push_layout_type(UI_LAYOUT_VERTICAL);
     ui_push_background_color({ 0.0f, 0.0f, 1.0f, 1.0f });
@@ -1034,7 +1045,7 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     ui_push_size({ 300.0f, 0.0f });
     ui_push_position({ 10.0f, 10.0f });
 
-    #if 0
+#if 0
     ui_push_widget("", UI_WIDGET_DRAW_BACKGROUND);
     {
         ui_push_size({ 300.0f, 50.0f });
@@ -1073,7 +1084,7 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
         ui_pop_widget();
     }
     ui_pop_widget();
-    #endif
+#endif
 
     UI_Window_Theme window_theme = {};
     window_theme.initial_position = { 200.0f, 200.0f };
@@ -1273,11 +1284,11 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     pop_window();
 
 
-    #endif
+#endif
 
     
 
-    #if 0
+#if 0
     ui_push_size_type(UI_SIZE_ABSOLUTE);
     ui_push_size({ 200.0f, 20.0f });
     ui_push_background_color({ 1.0f, 0.0f, 0.0f, 1.0f });
@@ -1313,7 +1324,7 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     do_text_button(make_ui_id("3"), "button 3");
 
     ui_pop_widget();
-    #endif
+#endif
 
     ui_calculate_standalone_sizes(asset);
     ui_calculate_ancestor_dependent_sizes();
@@ -1357,6 +1368,7 @@ void update(Game_State *game_state,
             }
 
             // debug
+            #if 0
             FOR_LIST_NODES(Entity *, game_state->editor_state.level.entities) {
                 Entity *entity = current_node->value;
                 if (entity->type == ENTITY_NORMAL) {
@@ -1366,6 +1378,7 @@ void update(Game_State *game_state,
                     }
                 }
             }
+            #endif
         }
     }
 
@@ -1375,16 +1388,14 @@ void update(Game_State *game_state,
 
     //update_render_state(render_state);
     
-    Asset_Manager *asset_manager;
-
     if (game_state->mode == Game_Mode::EDITING) {
-        asset_manager = &game_state->editor_state.asset_manager;
+        //asset_manager = &game_state->editor_state.asset_manager;
         update_editor(game_state, controller_state, dt);
         //draw_editor(game_state, controller_state);
         game_state->editor_state.is_startup = false;
     } else {
-        asset_manager = &game_state->asset_manager;
-        update_game(game_state, controller_state, sound_output, dt);
+        //asset_manager = &game_state->asset_manager;
+        //update_game(game_state, controller_state, sound_output, dt);
     }
 
     // TODO: walk through this in the debugger
@@ -1392,22 +1403,22 @@ void update(Game_State *game_state,
     
     Player *player = &game_state->player;
 
-    #if 0
+#if 0
     int32 font_id;
     Font font = get_font(asset_manager, "calibri14", &font_id);
 
     char *dt_string = string_format((Allocator *) &memory.frame_arena, "FPS %d / dt %.3f", 
                                     (int32) round(game_state->last_second_fps), dt);
     do_text(ui_manager, 5.0f, 14.0f, dt_string, font_id, "dt_string");
-    #endif
+#endif
 
     fill_sound_buffer_with_audio(sound_output, game_state->is_playing_music, &game_state->music, num_samples);
 
-    #if 0
+#if 0
     update_messages(&game_state->message_manager, dt);
     draw_messages(asset_manager, &game_state->message_manager,
                   display_output->width / 2.0f, display_output->height / 2.0f);
-    #endif
+#endif
     
     //clear_hot_if_gone(ui_manager);
     //clear_active_if_gone(ui_manager);

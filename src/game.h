@@ -18,9 +18,8 @@
 #include "platform.h"
 #include "hash_table.h"
 #include "asset.h"
-#include "font.h"
 #include "ui.h"
-#include "mesh.h"
+#include "asset.h"
 #include "render.h"
 #include "editor.h"
 //#include "level.h"
@@ -219,7 +218,6 @@ struct Game_State {
     char current_char; // debugging
 
     bool32 should_clear_gpu;
-    Asset_Manager asset_manager;
 
     char text_buffer[256] = {}; // debugging
 };

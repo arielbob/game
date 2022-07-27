@@ -2,7 +2,7 @@
 #include "math.h"
 #include "hash_table.h"
 #include "game_gl.h"
-#include "mesh.h"
+#include "asset.h"
 
 // TODO (done): draw other 2D primitives: boxes, lines, etc
 // TODO (done): 2D drawing functions using pixel position instead of percentages

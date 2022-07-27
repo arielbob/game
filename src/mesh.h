@@ -14,11 +14,7 @@ enum class Mesh_Type { NONE, LEVEL, PRIMITIVE, ENGINE, RENDERING };
 //       our mesh loading filetype and loading to acommodate these different types.
 struct Mesh {
     Mesh_Type type;
-
-    String name;
-    String filename;
-
-    Allocator *allocator;
+    char *name;
 
     real32 *data;
     uint32 num_vertices;

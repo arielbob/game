@@ -407,6 +407,21 @@ char *to_char_array(Allocator *allocator, String_Buffer string) {
     return buf;
 }
 
+uint32 get_hash(char *name, uint32 bucket_size) {
+    char *at = name;
+    uint32 sum = 0;
+
+    char c = *at;
+    while (c != '\0') {
+        sum += c;
+        c = *(++at);
+    }
+
+    uint32 hash = sum % bucket_size;
+    
+    return hash;
+}
+
 uint32 get_hash(String name, uint32 bucket_size) {
     String_Iterator it = make_string_iterator(name);
     uint32 sum = 0;

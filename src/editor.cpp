@@ -706,7 +706,6 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
     Gizmo_State *gizmo_state = &editor_state->gizmo_state;
     Render_State *render_state = &game_state->render_state;
     Display_Output *display_output = &game_state->render_state.display_output;
-    Asset_Manager *asset_manager = &editor_state->asset_manager;
 
     if (just_pressed(controller_state->key_tab) && !ui_has_focus()) {
         editor_state->use_freecam = !editor_state->use_freecam;
