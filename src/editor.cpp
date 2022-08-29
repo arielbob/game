@@ -1,100 +1,71 @@
 #include "linked_list.h"
 #include "editor.h"
 
-int32 add_entity(Editor_Level *level, Entity *entity, int32 existing_id) {
-    int32 id;
-    if (existing_id >= 0) {
-        id = existing_id;
-    } else {
-        id = level->entities.total_added_ever;
-    }
+int32 add_entity(Editor_Level *level, Entity *entity) {
+    int32 id = level->total_entities_added_ever++;
 
     entity->id = id;
-    add(&level->entities, entity);
 
+    entity->next = level->entities;
+    level->entities = entity;
+    
     return id;
 }
 
-void delete_entity(Editor_State *editor_state, int32 id) {
-    Editor_Level *level = &editor_state->level;
+void delete_entity(Editor_Level *level, int32 id) {
+    Entity *current = level->entities;
+    while (current) {
+        if (current->id == id) {
+            if (current->prev) {
+                current->prev->next = current->next;
+            }
+            if (current->next) {
+                current->next->prev = current->prev;
+            }
 
-    Node <Entity *> *node_to_remove = NULL;
-    FOR_LIST_NODES(Entity *, level->entities) {
-        if (current_node->value->id == id) {
-            node_to_remove = current_node;
+            // TODO: we might want to store allocators with entities if they end up being different, but for now,
+            //       all editor entities are stored in the editor heap
+            deallocate((Allocator *) &level->heap, current);
             break;
         }
     }
-
-    assert(node_to_remove);
-    deallocate((Allocator *) &editor_state->entity_heap, node_to_remove->value);
-    remove(&level->entities, node_to_remove);
 }
 
 Entity *get_entity(Editor_State *editor_state, int32 id) {
     Editor_Level *level = &editor_state->level;
 
-    FOR_LIST_NODES(Entity *, level->entities) {
-        Entity *entity = current_node->value;
-        if (entity->id == id) {
-            return entity;
+    Entity *current = level->entities;
+    while (current) {
+        if (current->id == id) {
+            return current;
         }
     }
-
+    
     assert(!"Entity not found.");
     return NULL;
 }
 
-Entity *copy_cast_entity(Allocator *allocator, Entity *uncast_entity) {
-    Entity *copied_entity = NULL;
-
-    switch (uncast_entity->type) {
-        case ENTITY_NORMAL: {
-            Normal_Entity *entity = (Normal_Entity *) uncast_entity;
-            Normal_Entity *allocated = (Normal_Entity *) allocate(allocator, sizeof(Normal_Entity));
-
-            *allocated = copy(allocator, *entity);
-            copied_entity = (Entity *) allocated;
-        } break;
-        case ENTITY_POINT_LIGHT: {
-            Point_Light_Entity *entity = (Point_Light_Entity *) uncast_entity;
-            Point_Light_Entity *allocated = (Point_Light_Entity *) allocate(allocator, sizeof(Point_Light_Entity));
-            *allocated = copy(allocator, *entity);
-            copied_entity = (Entity *) allocated;
-        } break;
-        default: {
-            assert(!"Unhandled entity type.");
-        }
-    }
-
-    assert(copied_entity);
-    return copied_entity;
-}
-
-void init_editor_level(Editor_State *editor_state, Editor_Level *editor_level) {
-    *editor_level = {};
-    editor_level->name = make_string("");
-    make_and_init_linked_list(Entity *, &editor_level->entities, (Allocator *) &editor_state->entity_heap);
-}
-
-void unload_level(Editor_State *editor_state) {
-    unload_level_assets(&editor_state->asset_manager);
-
+void init_editor_level(Editor_State *editor_state) {
     Editor_Level *level = &editor_state->level;
+    *level = {};
+    level->name = make_string("");
+    level->filename = make_string("");
 
-    // deallocate the entity structs. this is different from what happens when we deallocate the linked list.
-    // the linked list holds Entity pointers. it does not follow the pointers and delete those. so we have to
-    // delete the entity data ourselves.
-    FOR_LIST_NODES(Entity *, level->entities) {
-        deallocate((Allocator *) &editor_state->entity_heap, current_node->value);
-    }
+    // we can't fill up the arena completely, i.e. if the arena is 2 megabytes, we can't just do two 1 MB
+    // allocations since the arena needs space for alignment padding.
+    uint32 level_heap_size = MEGABYTES(128) - 8*1;
+    void *level_heap_base = arena_push(editor_state->arena, level_heap_size, false);
+    level->heap = make_heap_allocator(level_heap_base, level_heap_size);
+}
 
-    deallocate(level);
-    editor_state->should_unload_level_gpu_data = true;
+void unload_level(Editor_Level *level) {
+    level->entities = NULL;
+    unload_level_assets();
+
+    clear_heap(&level->heap);
 }
 
 void load_level(Editor_State *editor_state, Level_Info *level_info) {
-    Asset_Manager *asset_manager = &editor_state->asset_manager;
     load_level_assets(asset_manager, level_info);
 
     Editor_Level *level = &editor_state->level;
@@ -148,31 +119,26 @@ void load_level(Editor_State *editor_state, Level_Info *level_info) {
 }
 
 bool32 read_and_load_level(Editor_State *editor_state, char *filename) {
+    // TODO: read level file
+    // TODO: load assets from level info
+    // TODO: load entities from level info
+    
     Marker m = begin_region();
-    Level_Info level_info;
-    init_level_info(temp_region, &level_info);
-            
-    File_Data level_file = platform_open_and_read_file(temp_region, filename);
-    bool32 result = Level_Loader::parse_level_info(temp_region, level_file, &level_info);
 
-    if (result) {
-        if (!editor_state->is_startup) {
-            unload_level(editor_state);
-        }
-        reset_editor(editor_state);
-        load_level(editor_state, &level_info);
-        
-        replace_with_copy((Allocator *) &editor_state->general_heap,
-                          &editor_state->level_filename, make_string(filename));
-     }
+    Level_Info *level_info = (Level_Info *) allocate(temp_region, sizeof(Level_Info), true);
+    File_Data level_file = platform_open_and_read_file(temp_region, filename);
+    Level_Loader::parse_level(temp_region, level_file, level_info);
+
     end_region(m);
 
-    return result;
+    return true;
 }
 
 void init_editor(Arena_Allocator *editor_arena, Editor_State *editor_state, Display_Output display_output) {
     *editor_state = {};
 
+    editor_state->arena = editor_arena;
+    
     editor_state->selected_entity_id = -1;
     editor_state->last_selected_entity_id = -1;
     editor_state->show_wireframe = true;
@@ -180,27 +146,10 @@ void init_editor(Arena_Allocator *editor_arena, Editor_State *editor_state, Disp
     editor_state->is_startup = true;
     editor_state->level_filename = make_string("");
 
-    // we can't fill up the arena completely, i.e. if the arena is 2 megabytes, we can't just do two 1 MB
-    // allocations since the arena needs space for alignment padding.
-    uint32 entity_heap_size = MEGABYTES(64);
-    uint32 history_heap_size = MEGABYTES(64);
-    uint32 general_heap_size = MEGABYTES(128) - 8*3; // padding will be at most 8 bytes * 3
-
-    void *entity_heap_base = arena_push(editor_arena, entity_heap_size, false);
-    editor_state->entity_heap = make_heap_allocator(entity_heap_base, entity_heap_size);
-
-    void *history_heap_base = arena_push(editor_arena, history_heap_size, false);
-    editor_state->history_heap = make_heap_allocator(history_heap_base, entity_heap_size);
-
-    void *general_heap_base = arena_push(editor_arena, general_heap_size, false);
-    editor_state->general_heap = make_heap_allocator(general_heap_base, entity_heap_size);
-
     init_camera(&editor_state->camera, &display_output, CAMERA_FOV);
-    init_editor_level(editor_state, &editor_state->level);
+    init_editor_level(editor_state);
 
-    editor_state->asset_manager = make_asset_manager((Allocator *) &editor_state->general_heap);
-    Asset_Manager *asset_manager = &editor_state->asset_manager;
-    load_default_assets(asset_manager);
+    load_default_assets();
 
     // init gizmo
     Gizmo_State *gizmo_state = &editor_state->gizmo_state;
@@ -209,18 +158,6 @@ void init_editor(Arena_Allocator *editor_arena, Editor_State *editor_state, Disp
     gizmo_state->sphere_mesh_id = get_mesh_id_by_name(asset_manager, "gizmo_sphere");
     gizmo_state->cube_mesh_id   = get_mesh_id_by_name(asset_manager, "gizmo_cube");;
 
-#if 0
-    // load default level
-    Marker m = begin_region();
-    Level_Info level_info;
-    init_level_info(temp_region, &level_info);
-            
-    //File_Data level_file = platform_open_and_read_file(temp_region, "src/levels/startup.level");
-    File_Data level_file = platform_open_and_read_file(temp_region, "src/levels/monkey_twins_empty_mesh_test.level");
-    bool32 result = Level_Loader::parse_level_info(temp_region, level_file, &level_info);
-    read_and_load_level(editor_state, &level_info);
-    end_region(m);
-#endif
     // load default level
     read_and_load_level(editor_state, "src/levels/pbr_test.level");
 }

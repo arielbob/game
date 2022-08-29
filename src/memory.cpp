@@ -56,7 +56,8 @@ Arena_Allocator make_arena_allocator(void *base, uint32 size) {
 
  */
 
-void *arena_push(Arena_Allocator *arena, uint32 size, bool32 zero_memory = true, uint32 alignment_bytes = 8) {
+void *arena_push(Arena_Allocator *arena, uint32 size,
+                 bool32 zero_memory = true, uint32 alignment_bytes = 8) {
     assert(((alignment_bytes) & (alignment_bytes - 1)) == 0); // ensure that alignment_bytes is a power of 2
 
     uint32 align_mask = alignment_bytes - 1;

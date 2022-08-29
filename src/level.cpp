@@ -1,6 +1,7 @@
 #include "linked_list.h"
 #include "level.h"
 
+#if 0
 void init_level_info(Allocator *temp_allocator, Level_Info *level_info) {
     *level_info = {};
 
@@ -10,6 +11,7 @@ void init_level_info(Allocator *temp_allocator, Level_Info *level_info) {
     make_and_init_linked_list(Texture_Info,            &level_info->textures,             temp_allocator);
     make_and_init_linked_list(Material_Info,           &level_info->materials,            temp_allocator);
 }
+#endif
 
 // gather entities by type
 void gather_entities_by_type(Allocator *allocator,
@@ -66,6 +68,32 @@ bool32 material_name_exists(Level_Info *level_info, String material_name) {
     return false;
 }
 
+void level_info_add_mesh(Level_Info *level_info, String mesh_name, String mesh_filename) {
+    assert(level_info->num_meshes < MAX_LEVEL_INFO_ARRAY_SIZE);
+    level_info->meshes[level_info->num_meshes++] = { mesh_name, mesh_filename };
+}
+
+void level_info_add_texture(Level_Info *level_info, String texture_name, String texture_filename) {
+    assert(level_info->num_textures < MAX_LEVEL_INFO_ARRAY_SIZE);
+    level_info->textures[level_info->num_textures++] = { texture_name, texture_filename };
+}
+
+void level_info_add_material(Level_Info *level_info, Material_Info material) {
+    assert(level_info->num_materials < MAX_LEVEL_INFO_ARRAY_SIZE);
+    level_info->materials[level_info->num_materials++] = material;
+}
+
+Level_Loader::Token Level_Loader::parse_mesh(Tokenizer *tokenizer, Level_Info *level_info) {
+    Token token = get_token(tokenizer);
+    if (token.type == KEYWORD &&
+        string_equals(token.string, "mesh")) {
+    } else if (token.type == CLOSE_BRACKET) {
+        state = WAIT_FOR_TEXTURES_BLOCK_NAME;
+    } else {
+        assert(!"Expected mesh keyword or closing bracket.");
+    }
+}
+
 inline Level_Loader::Token Level_Loader::make_token(Token_Type type, char *contents, int32 length) {
     Token token = {
         type,
@@ -74,135 +102,515 @@ inline Level_Loader::Token Level_Loader::make_token(Token_Type type, char *conte
     return token;
 }
 
-Level_Loader::Token Level_Loader::get_token(Tokenizer *tokenizer, char *file_contents) {
+Level_Loader::Token Level_Loader::get_token(Tokenizer *tokenizer) {
     Token token = {};
 
-    consume_leading_whitespace(tokenizer);
+    do {
+        consume_leading_whitespace(tokenizer);
 
-    if (is_end(tokenizer)) {
-        token = make_token(END, NULL, 0);
-        return token;
-    }
-
-    char c = *tokenizer->current;
-
-    // it's fine to not use tokenizer_equals here since we've already checked for is_end and we're only
-    // comparing against single characters
-    if (is_digit(c) || (c == '-') || (c == '.')) {
-        uint32 start = tokenizer->index;
-        
-        bool32 has_period = false;
-        bool32 is_negative = false;
-        if (c == '.') {
-            has_period = true;
-        } else if (c == '-') {
-            is_negative = true;
+        if (is_end(tokenizer)) {
+            token = make_token(END, NULL, 0);
+            return token;
         }
 
-        increment_tokenizer(tokenizer);
+        char c = *tokenizer->current;
+
+        // it's fine to not use tokenizer_equals here since we've already checked for is_end and we're only
+        // comparing against single characters
+        if (is_digit(c) || (c == '-') || (c == '.')) {
+            uint32 start = tokenizer->index;
         
-        while (!is_end(tokenizer) && !is_whitespace(tokenizer)) {
-            if (!is_digit(*tokenizer->current) &&
-                *tokenizer->current != '.') {
-                assert(!"Expected digit or period");
+            bool32 has_period = false;
+            bool32 is_negative = false;
+            if (c == '.') {
+                has_period = true;
+            } else if (c == '-') {
+                is_negative = true;
             }
-            
-            if (*tokenizer->current == '.') {
-                if (!has_period) {
-                    has_period = true;
-                } else {
-                    assert(!"More than one period in number");
+
+            increment_tokenizer(tokenizer);
+        
+            while (!is_end(tokenizer) && !is_whitespace(tokenizer)) {
+                if (!is_digit(*tokenizer->current) &&
+                    *tokenizer->current != '.') {
+                    assert(!"Expected digit or period");
                 }
+            
+                if (*tokenizer->current == '.') {
+                    if (!has_period) {
+                        has_period = true;
+                    } else {
+                        assert(!"More than one period in number");
+                    }
+                }
+
+                if (*tokenizer->current == '-') {
+                    assert(!"Negatives can only be at the start of a number");
+                }
+
+                increment_tokenizer(tokenizer);
+            }
+        
+            uint32 length = tokenizer->index - start;
+
+            Token_Type type;
+            if (has_period) {
+                type = REAL;
+            } else {
+                type = INTEGER;
             }
 
-            if (*tokenizer->current == '-') {
-                assert(!"Negatives can only be at the start of a number");
+            token = make_token(type, &tokenizer->contents[start], length);
+        } else if (tokenizer_equals(tokenizer, ";;")) {
+            increment_tokenizer(tokenizer, 2);
+            int32 start = tokenizer->index;
+        
+            // it is necessary that we check both is_end and is_line_end, since is_line_end will return false
+            // if we hit the end, and so we'll be stuck in an infinite loop.
+            while (!is_end(tokenizer) &&
+                   !is_line_end(tokenizer)) {
+                increment_tokenizer(tokenizer);
             }
 
-            increment_tokenizer(tokenizer);
-        }
-        
-        uint32 length = tokenizer->index - start;
-
-        Token_Type type;
-        if (has_period) {
-            type = REAL;
-        } else {
-            type = INTEGER;
-        }
-
-        token = make_token(type, &file_contents[start], length);
-    } else if (tokenizer_equals(tokenizer, ";;")) {
-        increment_tokenizer(tokenizer, 2);
-        int32 start = tokenizer->index;
-        
-        // it is necessary that we check both is_end and is_line_end, since is_line_end will return false
-        // if we hit the end, and so we'll be stuck in an infinite loop.
-        while (!is_end(tokenizer) &&
-               !is_line_end(tokenizer)) {
-            increment_tokenizer(tokenizer);
-        }
-
-        int32 length = tokenizer->index - start;
-        token = make_token(COMMENT, &file_contents[start], length);
-    } else if (is_letter(*tokenizer->current)) {
-        uint32 start = tokenizer->index;
-
-        increment_tokenizer(tokenizer);
-        
-        while (!is_end(tokenizer) &&
-               !is_whitespace(*tokenizer->current)) {
-
-            char current_char = *tokenizer->current;
-            if (!(is_letter(current_char) || current_char == '_')) {
-                assert(!"Keywords can only contain letters and underscores.");
-            }
-
-            increment_tokenizer(tokenizer);
-        }
-
-        int32 length = tokenizer->index - start;
-        token = make_token(KEYWORD, &file_contents[start], length);
-    } else if (*tokenizer->current == '"') {
-        increment_tokenizer(tokenizer);
-        // set start after we increment tokenizer so that we don't include the quote in the token string.
-        int32 start = tokenizer->index;
-
-        while (!is_end(tokenizer) &&
-               !(*tokenizer->current == '"')) {
-            increment_tokenizer(tokenizer);
-        }
-
-        if (*tokenizer->current != '"') {
-            assert(!"Expected a closing quote.");
-        } else {
             int32 length = tokenizer->index - start;
+            token = make_token(COMMENT, &tokenizer->contents[start], length);
+        } else if (is_letter(*tokenizer->current)) {
+            uint32 start = tokenizer->index;
+
             increment_tokenizer(tokenizer);
-            token = make_token(STRING, &file_contents[start], length);
+        
+            while (!is_end(tokenizer) &&
+                   !is_whitespace(*tokenizer->current)) {
+
+                char current_char = *tokenizer->current;
+                if (!(is_letter(current_char) || current_char == '_')) {
+                    assert(!"Keywords can only contain letters and underscores.");
+                }
+
+                increment_tokenizer(tokenizer);
+            }
+
+            int32 length = tokenizer->index - start;
+            token = make_token(KEYWORD, &tokenizer->contents[start], length);
+        } else if (*tokenizer->current == '"') {
+            increment_tokenizer(tokenizer);
+            // set start after we increment tokenizer so that we don't include the quote in the token string.
+            int32 start = tokenizer->index;
+
+            while (!is_end(tokenizer) &&
+                   !(*tokenizer->current == '"')) {
+                increment_tokenizer(tokenizer);
+            }
+
+            if (*tokenizer->current != '"') {
+                assert(!"Expected a closing quote.");
+            } else {
+                int32 length = tokenizer->index - start;
+                increment_tokenizer(tokenizer);
+                token = make_token(STRING, &tokenizer->contents[start], length);
+            }
+        } else if (*tokenizer->current == '{') {
+            int32 start = tokenizer->index;
+            increment_tokenizer(tokenizer);
+            int32 length = tokenizer->index - start;
+            token = make_token(OPEN_BRACKET, &tokenizer->contents[start], length);
+        } else if (*tokenizer->current == '}') {
+            int32 start = tokenizer->index;
+            increment_tokenizer(tokenizer);
+            int32 length = tokenizer->index - start;
+            token = make_token(CLOSE_BRACKET, &tokenizer->contents[start], length);
+        } else {
+            assert(!"Token type not recognized.");
         }
-    } else if (*tokenizer->current == '{') {
-        int32 start = tokenizer->index;
-        increment_tokenizer(tokenizer);
-        int32 length = tokenizer->index - start;
-        token = make_token(OPEN_BRACKET, &file_contents[start], length);
-    } else if (*tokenizer->current == '}') {
-        int32 start = tokenizer->index;
-        increment_tokenizer(tokenizer);
-        int32 length = tokenizer->index - start;
-        token = make_token(CLOSE_BRACKET, &file_contents[start], length);
-    } else {
-        assert(!"Token type not recognized.");
-    }
+    } while (token.type != COMMENT);
 
     return token;
 }
 
-bool32 Level_Loader::parse_level_info(Allocator *temp_allocator, File_Data file_data, Level_Info *level_info) {
+inline bool32 level_parse_error(char **error_out, char *error_string) {
+    *error_out = error_string;
+    return false;
+}
+
+bool32 level_parse_vec3(Tokenizer *tokenizer, Vec3 *result, char **error) {
+    Token token;
+
+    for (int i = 0; i < 3; i++) {
+        token = get_token(tokenizer);
+        if (token.type != REAL || token.type != INTEGER) {
+            return level_parse_error(error, "Expected number.");
+        } else {
+            real32 num;
+            bool32 real32_parse_result = string_to_real32(token.string, &num);
+
+            if (real32_parse_result) {
+                (*result)[i] = num;
+            } else {
+                return level_parse_error(error, "Invalid number in Vec3.");
+            }
+        }
+    }
+
+    return true;
+}
+
+bool32 parse_level_info_block(Allocator *temp_allocator, Tokenizer *tokenizer,
+                              Level_Info *level_info, char **error) {
+    Token token = get_token(tokenizer);
+
+    if (!(token.type == KEYWORD && string_equals(token.string, "level_info"))) {
+        return level_parse_error(error, "Expected level_info keyword.");
+    }
+
+    token = get_token(tokenizer);
+    
+    if (token.type != OPEN_BRACKET) {
+        return level_parse_error(error, "Expected open bracket for level_info block.");
+    }
+
+    token = get_token(tokenizer);
+
+    if (!(token.type == KEYWORD && string_equals(token.string, "level_name"))) {
+        return level_parse_error(error, "Expected level_name keyword.");
+    }
+
+    token = get_token(tokenizer);
+
+    if (token.type != STRING) {
+        return level_parse_error(error, "Expected level name to be a string.");
+    }
+
+    if (token.string.length == 0) {
+        return level_parse_error(error, "Level name cannot be empty.");
+    }
+
+    level_info.level_name = token.string;
+
+    if (token.type != CLOSE_BRACKET) {
+        return level_parse_error(error, "Expected close bracket for level_info_block");
+    }
+
+    return true;    
+}
+
+bool32 parse_meshes_block(Allocator *temp_allocator, Tokenizer *tokenizer,
+                             Level_Info *level_info, char **error) {
+    Token token = get_token(tokenizer);
+
+    if (!(token.type == KEYWORD && string_equals(token.string, "meshes"))) {
+        return level_parse_error(error, "Expected meshes keyword.");
+    }
+
+    token = get_token(tokenizer);
+    
+    if (token.type != OPEN_BRACKET) {
+        return level_parse_error(error, "Expected open bracket for meshes block.");
+    }
+
+    token = get_token(tokenizer);
+
+    while (token.type == KEYWORD && token.string == "mesh") {
+        String mesh_name, mesh_filename;
+        
+        if (token.type != STRING) {
+            return level_parse_error(error, "Expected string for mesh name.");
+        }
+
+        mesh_name = token.string;
+        token = get_token(tokenizer);
+        
+        if (token.type != STRING) {
+            return level_parse_error(error, "Expected string for mesh filename.");
+        }
+
+        mesh_filename = token.string;
+        token = get_token(tokenizer);
+
+        level_info_add_mesh(level_info, mesh_name, mesh_filename);
+    }
+
+    if (token.type != CLOSE_BRACKET) {
+        return level_parse_error(error, "Expected close bracket for meshes block.");
+    }
+    
+    return true;
+    
+}
+
+bool32 parse_textures_block(Allocator *temp_allocator, Tokenizer *tokenizer,
+                            Level_Info *level_info, char **error) {
+    Token token = get_token(tokenizer);
+
+    if (!(token.type == KEYWORD && string_equals(token.string, "textures"))) {
+        return level_parse_error(error, "Expected textures keyword.");
+    }
+
+    token = get_token(tokenizer);
+    
+    if (token.type != OPEN_BRACKET) {
+        return level_parse_error(error, "Expected open bracket for textures block.");
+    }
+
+    token = get_token(tokenizer);
+
+    while (token.type == KEYWORD && token.string == "texture") {
+        String texture_name, texture_filename;
+        
+        if (token.type != STRING) {
+            return level_parse_error(error, "Expected string for texture name.");
+        }
+
+        texture_name = token.string;
+        token = get_token(tokenizer);
+        
+        if (token.type != STRING) {
+            return level_parse_error(error, "Expected string for texture filename.");
+        }
+
+        texture_filename = token.string;
+        token = get_token(tokenizer);
+
+        level_info_add_texture(level_info, texture_name, texture_filename);
+    }
+
+    if (token.type != CLOSE_BRACKET) {
+        return level_parse_error(error, "Expected close bracket for textures block.");
+    }
+    
+    return true;
+    
+}
+
+// this should return false when it hits the closing bracket of the materials block
+bool32 parse_material(Allocator *temp_allocator, Tokenizer *tokenizer,
+                      Material_Info *material_info_out, char **error) {
+    Token token = get_token(tokenizer);
+
+    if (token.type == CLOSE_BRACKET) {
+        return true;
+    }
+    
+    if (!(token.type == KEYWORD && string_equals(token.string, "material"))) {
+        return level_parse_error(error, "Expected material keyword or close bracket.");
+    }
+
+    token = get_token(tokenizer);
+    
+    if (token.type != OPEN_BRACKET) {
+        return level_parse_error(error, "Expected open bracket for material block.");
+    }
+
+    token = get_token(tokenizer);
+
+    Material_Info material_info;
+
+    // set defaults
+    material_info.flags = 0;
+    material_info.albedo_color = make_vec3(1.0f, 0.0f, 0.0f);
+    material_info.metalness = 0.5f;
+    material_info.roughness = 0.5f;
+    
+    if (token.type == KEYWORD) {
+        if (string_equals(token.string, "name")) {
+            token = get_token(tokenizer);
+
+            if (token.type == STRING) {
+                if (!is_empty(token.string)) {
+                    material_info.name = token.string;
+                } else {
+                    return level_parse_error(error, "Material name cannot be empty.");
+                }
+            } else {
+                return level_parse_error(error, "Expected string for material name.");
+            }
+        } else {
+            return level_parse_error(error, "Expected name keyword.");
+        }
+    } else {
+        return level_parse_error(error, "Expected name keyword.");
+    }
+
+    // we accept duplicates of parameters and just set the material's parameter to the last one read
+    // (except for the name parameter)
+    do {
+        token = get_token(tokenizer);
+        if (string_equals(token.string, "name")) {
+            return level_parse_error(error, "Material name already set.");
+        } else if (string_equals(token.string, "use_albedo_texture")) {
+            token = get_token(tokenizer);
+            
+            if (token.type == INTEGER) {
+                uint32 result;
+                bool32 parse_result = ascii_to_uint32(token.string, &result);
+                if (parse_result) {
+                    material_info.use_albedo_texture = result;
+                } else {
+                    return level_parse_error(error, "Expected unsigned integer for use_albedo_texture.");
+                }
+            } else {
+                return level_parse_error(error, "Expected unsigned integer for use_albedo_texture.");
+            }
+        } else if (string_equals(token.string, "albedo_texture")) {
+            token = get_token(tokenizer);
+            
+            String result;
+
+            if (token.type == STRING) {
+                if (!is_empty(token.string)) {
+                    material_info.albedo_texture_name = token.string;
+                } else {
+                    return level_parse_error(error, "Albedo texture name cannot be empty.");
+                }
+            } else {
+                return level_parse_error(error, "Expected string for albedo texture name.");
+            }
+        } else if (string_equals(token.string, "albedo_color")) {
+            Vec3 result;
+
+            bool32 parse_result = level_parse_vec3(tokenizer, &result, error);
+            if (parse_result) {
+                material_info.albedo_color = result;
+            } else {
+                // error message gets set by level_parse_vec3()
+                return false;
+            }
+        } else if (string_equals(token.string, "use_metalness_texture")) {
+            token = get_token(tokenizer);
+            
+            if (token.type == INTEGER) {
+                uint32 result;
+                bool32 parse_result = ascii_to_uint32(token.string, &result);
+                if (parse_result) {
+                    material_info.use_metalness_texture = result;
+                } else {
+                    return level_parse_error(error, "Expected unsigned integer for use_metalness_texture.");
+                }
+            } else {
+                return level_parse_error(error, "Expected unsigned integer for use_metalness_texture.");
+            }
+        } else if (string_equals(token.string, "metalness_texture")) {
+            token = get_token(tokenizer);
+            
+            String result;
+
+            if (token.type == STRING) {
+                if (!is_empty(token.string)) {
+                    material_info.metalness_texture_name = token.string;
+                } else {
+                    return level_parse_error(error, "Metalness texture name cannot be empty.");
+                }
+            } else {
+                return level_parse_error(error, "Expected string for metalness texture name.");
+            }
+        } else if (string_equals(token.string, "metalness")) {
+            token = get_token(tokenizer);
+
+            if (token.type == REAL || token.type == INTEGER) {
+                real32 result;
+                bool32 parse_result = string_to_real32(token.string, &result);
+
+                if (parse_result) {
+                    material_info.metalness = result;
+                } else {
+                    return level_parse_error("Invalid number for metalness value.");
+                }
+            } else {
+                return level_parse_error("Expected number for metalness value.");
+            }
+        } else if (string_equals(token.string, "use_roughness_texture")) {
+            token = get_token(tokenizer);
+            
+            if (token.type == INTEGER) {
+                uint32 result;
+                bool32 parse_result = ascii_to_uint32(token.string, &result);
+                if (parse_result) {
+                    material_info.use_roughness_texture = result;
+                } else {
+                    return level_parse_error(error, "Expected unsigned integer for use_roughness_texture.");
+                }
+            } else {
+                return level_parse_error(error, "Expected unsigned integer for use_roughness_texture.");
+            }
+        } else if (string_equals(token.string, "roughness_texture")) {
+            token = get_token(tokenizer);
+            
+            String result;
+
+            if (token.type == STRING) {
+                if (!is_empty(token.string)) {
+                    material_info.roughness_texture_name = token.string;
+                } else {
+                    return level_parse_error(error, "Roughness texture name cannot be empty.");
+                }
+            } else {
+                return level_parse_error(error, "Expected string for roughness texture name.");
+            }
+        } else if (string_equals(token.string, "roughness")) {
+            token = get_token(tokenizer);
+
+            if (token.type == REAL || token.type == INTEGER) {
+                real32 result;
+                bool32 parse_result = string_to_real32(token.string, &result);
+
+                if (parse_result) {
+                    material_info.roughness = result;
+                } else {
+                    return level_parse_error("Invalid number for roughness value.");
+                }
+            } else {
+                return level_parse_error("Expected number for roughness value.");
+            }
+        } else {
+            *error = "Unrecognized material property "
+        }
+    } while (token.type == KEYWORD);
+
+    *material_info_out = material_info;
+    return true;
+}
+
+bool32 parse_materials_block(Allocator *temp_allocator, Tokenizer *tokenizer,
+                             Level_Info *level_info, char **error) {
+    Token token = get_token(tokenizer);
+
+    if (!(token.type == KEYWORD && string_equals(token.string, "materials"))) {
+        return level_parse_error(error, "Expected materials keyword.");
+    }
+
+    token = get_token(tokenizer);
+    
+    if (token.type != OPEN_BRACKET) {
+        return level_parse_error(error, "Expected open bracket for materials block.");
+    }
+
+    bool32 parse_material_result;
+    do {
+        Material_Info material_info;
+        parse_material_result = parse_material(temp_allocator, tokenizer,
+                                               &material_info, error);
+
+        if (parse_material_result) {
+            if (token.type == CLOSE_BRACKET) {
+                break;
+            }
+
+            level_info_add_material(level_info, material_info);
+        } else {
+            // parse_material() sets error message
+            return false;
+        }
+    } while (parse_material_result);
+
+    return true;
+}
+
+bool32 Level_Loader::parse_level(Allocator *temp_allocator, File_Data file_data, Level_Info *level_info,
+                                 char **error_out) {
     Tokenizer tokenizer = make_tokenizer(file_data);
 
-    Token token;
-    Parser_State state = WAIT_FOR_LEVEL_INFO_BLOCK_NAME;
-
+    // TODO: implement/refactor this
+    
+    #if 0
     Normal_Entity_Info temp_normal_entity_info = {};
     Point_Light_Entity_Info temp_point_light_entity_info = {};
     Mesh_Info temp_mesh_info = {};
@@ -220,12 +628,49 @@ bool32 Level_Loader::parse_level_info(Allocator *temp_allocator, File_Data file_
     bool32 should_add_new_temp_material = false;
 
     init_level_info(temp_allocator, level_info);
+#endif
 
+    bool32 result;
+    
+    result = parse_level_info_block(temp_allocator, &tokenizer, level_info, error_out);
+    if (!result) return false;
+
+    result = parse_meshes_block(temp_allocator, &tokenizer, level_info, error_out);
+    if (!result) return false;
+
+    result = parse_textures_block(temp_allocator, &tokenizer, level_info, error_out);
+    if (!result) return false;
+
+    result = parse_materials_block(temp_allocator, &tokenizer, level_info, error_out);
+    if (!result) return false;
+    
+    // TODO: implement this
+    result = parse_entities_block(temp_allocator, &tokenizer, level_info, error_out);
+    if (!result) return false;
+
+
+
+
+
+    // TODO: remove all this below
     do {
-        token = get_token(&tokenizer, (char *) file_data.contents);
+        token = get_token(&tokenizer);
 
         if (token.type == COMMENT) continue;
 
+        switch (state) {
+            case PARSE_LEVEL_INFO: {
+                bool32 result = parse_level_info_block(temp_allocator, token, &tokenizer,
+                                                       level_info, error_out);
+                if (!result) return false;
+
+                state = PARSE_MESH_INFO;
+            } break;
+            case PARSE_MESH_INFO: {
+                
+            } break;
+        }
+        
         switch (state) {
             case WAIT_FOR_LEVEL_INFO_BLOCK_NAME: {
                 if (token.type == KEYWORD &&
@@ -274,13 +719,24 @@ bool32 Level_Loader::parse_level_info(Allocator *temp_allocator, File_Data file_
                 }
             } break;
             case WAIT_FOR_MESHES_BLOCK_OPEN: {
-                if (token.type == OPEN_BRACKET) {
-                    state = WAIT_FOR_MESH_KEYWORD_OR_MESHES_BLOCK_CLOSE;
-                } else {
+                if (token.type != OPEN_BRACKET) {
                     assert(!"Expected open bracket.");
+                    // TODO: don't use assert, use error strings and return
+                } else {
+                    while (token.type != CLOSE_BRACKET) {
+                        // TODO: finish this
+                        token = parse_mesh(tokenizer, level_info);
+                    }
                 }
             } break;
-            case WAIT_FOR_MESH_KEYWORD_OR_MESHES_BLOCK_CLOSE: {
+            case PARSE_MESHES: {
+                while (token.type 
+                if (token.type == CLOSE_BRACKET) {
+
+                }
+                parse_mesh(&tokenizer, level_info);
+
+                #if 0
                 if (token.type == KEYWORD &&
                     string_equals(token.string, "mesh")) {
                     state = WAIT_FOR_MESH_NAME_STRING;
@@ -289,6 +745,7 @@ bool32 Level_Loader::parse_level_info(Allocator *temp_allocator, File_Data file_
                 } else {
                     assert(!"Expected mesh keyword or closing bracket.");
                 }
+                #endif
             } break;
             case WAIT_FOR_MESH_NAME_STRING: {
                 if (token.type == STRING) {

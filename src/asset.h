@@ -6,8 +6,13 @@
 
 #define MAX_TOKEN_TEXT_SIZE 1024
 #define NUM_MESH_BUCKETS 128
+#define NUM_MATERIAL_BUCKETS 128
 #define NUM_FONT_BUCKETS 128
 #define NUM_FONT_FILE_BUCKETS 128
+
+#define MATERIAL_USE_ALBEDO_TEXTURE    (1 << 0)
+#define MATERIAL_USE_METALNESS_TEXTURE (1 << 1)
+#define MATERIAL_USE_ROUGHNESS_TEXTURE (1 << 2)
 
 // NOTE: RENDERING type is only for OpenGL meshes (added in OpenGL code)
 enum class Mesh_Type { NONE, LEVEL, PRIMITIVE, ENGINE, RENDERING };
@@ -18,6 +23,8 @@ enum class Mesh_Type { NONE, LEVEL, PRIMITIVE, ENGINE, RENDERING };
 struct Mesh {
     Mesh_Type type;
     String name;
+
+    Allocator *allocator;
     
     Mesh *table_prev;
     Mesh *table_next;
@@ -45,6 +52,12 @@ struct Mesh {
     bool32 should_unload;
     bool32 is_double_sided;
 };
+
+void deallocate(Mesh *mesh) {
+    deallocate(mesh->name);
+    deallocate(mesh->allocator, mesh->data);
+    deallocate(mesh->allocator, mesh->indices);
+}
 
 struct Font_File {
     char *filename;
@@ -76,9 +89,24 @@ struct Font {
 struct Material {
     String name;
 
+    uint32 flags;
+    
+    String albedo_texture_name;
+    Vec3 albedo_color;
+
+    String metalness_texture_name;
+    real32 metalness;
+
+    String roughness_texture_name;
+    real32 roughness;
+    
     Material *table_prev;
     Material *table_next;
 };
+
+void deallocate(Material *material) {
+    deallocate(material->name);
+}
 
 // this is just so we can store a pointer to it later
 Heap_Allocator asset_heap;
@@ -95,8 +123,11 @@ struct Asset_Manager {
     #endif
 
     Mesh *mesh_table[NUM_MESH_BUCKETS];
+    Material *material_table[NUM_MATERIAL_BUCKETS];
     Font *font_table[NUM_FONT_BUCKETS];
     Font_File *font_file_table[NUM_FONT_FILE_BUCKETS]; // for caching font files
+
+    bool32 gpu_should_unload_level_assets;
 };
 
 real32 get_width(Font font, char *text);

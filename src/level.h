@@ -3,45 +3,21 @@
 
 #include "parse.h"
 
-#define HAS_MESH     1
-#define HAS_MATERIAL 1 << 1
-#define HAS_TEXTURE  1 << 2
-
 struct Editor_Level {
-    String name;
+    Heap_Allocator heap;
     
-    Linked_List<Entity *> entities;
+    String name;
+    String filename;
+
+    Entity *entities;
+    int32 total_entities_added_ever;
+    
+    //Linked_List<Entity *> entities;
 };
 
 struct Game_Level {
-    Linked_List<Entity *> entities;
-};
-
-void deallocate(Editor_Level *level) {
-    deallocate(level->name);
-    deallocate(&level->entities);
-}
-
-// we use info structs to store string identifiers to assets. since the actual entity structs use integer
-// identifiers, we need to resolve them, but the integer identifiers for assets are not set until after the
-// assets have been loaded. we may want to just add UUIDs for assets in the future, although those would take
-// up a lot more space.
-
-// we also need to resolve texture IDs for materials, so we store texture names in Material_Info.
-
-// the reason why we use this intermediate structure for loading levels is so that we can choose where we store
-// the data. if we're in the game, then a lot of times we can just dump things into an arena and clear it when
-// the level is no longer needed. but if we're in the editor, then level data needs to be able to be modified, and
-// thus we often need to use different data structures and allocators to hold the level data.
-struct Normal_Entity_Info {
-    Normal_Entity entity;
-    uint32 flags;
-    String mesh_name;
-    String material_name;
-};
-
-struct Point_Light_Entity_Info {
-    Point_Light_Entity entity;
+    Entity *entities;
+    //Linked_List<Entity *> entities;
 };
 
 struct Mesh_Info {
@@ -54,25 +30,40 @@ struct Texture_Info {
     String filename;
 };
 
-// we store the Material struct in Material_Info because some fields can be set with the level file data.
-// since we don't store any mesh/texture info other than their names and filenames, we just store those and
-// when we load them is when we fill in their structs.
 struct Material_Info {
-    uint32 flags;
-    Material material;
     String name;
-    String texture_name;
+
+    uint32 flags;
+    
+    String albedo_texture_name;
+    Vec3 albedo_color;
+
+    String metalness_texture_name;
+    real32 metalness;
+
+    String roughness_texture_name;
+    real32 roughness;
 };
 
-struct Level_Info {
-    String name;
-    
-    Linked_List<Normal_Entity_Info> normal_entities;
-    Linked_List<Point_Light_Entity_Info> point_light_entities;
+struct Entity_Info {
 
-    Linked_List<Mesh_Info> meshes;
-    Linked_List<Texture_Info> textures;
-    Linked_List<Material_Info> materials;
+};
+
+#define MAX_LEVEL_INFO_ARRAY_SIZE 128
+struct Level_Info {
+    String level_name;
+    
+    int32 num_entities;
+    Entity_Info entities[MAX_LEVEL_INFO_ARRAY_SIZE];
+
+    int32 num_meshes;
+    Mesh_Info meshes[MAX_LEVEL_INFO_ARRAY_SIZE];
+
+    int32 num_textures;
+    Texture_Info textures[MAX_LEVEL_INFO_ARRAY_SIZE];
+
+    int32 num_materials;
+    Material_Info materials[MAX_LEVEL_INFO_ARRAY_SIZE];
 };
 
 namespace Level_Loader {
@@ -88,6 +79,14 @@ namespace Level_Loader {
     };
 
     enum Parser_State {
+        PARSE_LEVEL_INFO,
+        PARSE_MESH_INFO,
+
+
+
+
+
+        // TODO: remove these
         WAIT_FOR_LEVEL_INFO_BLOCK_NAME,
         WAIT_FOR_LEVEL_INFO_BLOCK_OPEN,
         WAIT_FOR_LEVEL_NAME_KEYWORD,
@@ -144,7 +143,7 @@ namespace Level_Loader {
     };
 
     Token make_token(Token_Type type, char *contents, int32 length);
-    Token get_token(Tokenizer *tokenizer, char *file_contents);
+    Token get_token(Tokenizer *tokenizer);
     bool32 parse_level_info(Allocator *temp_allocator, File_Data file_data, Level_Info *level_info);
 }
 

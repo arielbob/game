@@ -415,6 +415,11 @@ void load_default_assets(Asset_Manager *asset_manager) {
 }
 
 void unload_level_assets(Asset_Manager *asset_manager) {
+    // we deallocate the assets
+    // then in opengl code, we just unload all the level assets from the GPU, we don't need
+    // the asset data at that point since we know which resources are for levels and which are not
+    // TODO: delete level meshes, materials, textures, with new format
+    
     Hash_Table<int32, Mesh> *mesh_table = &asset_manager->mesh_table;
     int32 num_reset = 0;
     FOR_ENTRY_POINTERS(int32, Mesh, *mesh_table) {

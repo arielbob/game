@@ -5,6 +5,7 @@
 
 struct Tokenizer {
     char *current;
+    char *contents; // start pointer of the contents we're tokenizing
     int32 index;
     int32 size;
 };
@@ -12,6 +13,7 @@ struct Tokenizer {
 Tokenizer make_tokenizer(File_Data file_data) {
     Tokenizer tokenizer = {};
     tokenizer.current = (char *) file_data.contents;
+    tokenizer.contents = (char *) file_data.contents;
     tokenizer.index = 0;
     tokenizer.size = file_data.size;
     return tokenizer;
@@ -26,7 +28,31 @@ inline uint32 ascii_to_uint32(char c) {
     return c - 48;
 }
 
-uint32 string_to_uint32(char *str, uint32 length) {
+// TODO: test this
+int32 string_to_int32(char *str, uint32 length) {
+    int32 result = 0;
+    uint32 place_value = 1;
+
+    int32 i = (int32) length - 1;
+    for (; i > 0; i--) {
+        result += place_value * ascii_to_uint32(str[i]);
+        place_value *= 10;
+    }
+
+    if (length > 0) {
+        // guaranteed i = 0 here
+        if (str[i] == '-') {
+            result *= -1;
+        } else {
+            result += place_value * ascii_to_uint32(str[i]);
+            place_value *= 10;
+        }
+    }
+
+    return result;
+}
+
+int32 string_to_uint32(char *str, uint32 length) {
     uint32 result = 0;
     uint32 place_value = 1;
 
@@ -40,6 +66,27 @@ uint32 string_to_uint32(char *str, uint32 length) {
 
 inline uint32 string_to_uint32(String string) {
     return string_to_uint32(string.contents, string.length);
+}
+
+bool32 string_to_uint32(char *str, uint32 length, uint32 *result_out) {
+    uint32 result = 0;
+    uint32 place_value = 1;
+
+    for (int32 i = (int32) length - 1; i >= 0; i--) {
+        char c = str[i];
+        if (!is_digit(c)) {
+            return false;
+        }
+        result += place_value * ascii_to_uint32(str[i]);
+        place_value *= 10;
+    }
+
+    *result_out = result;
+    return true;
+}
+
+inline bool32 string_to_uint32(String string, uint32 *result) {
+    return string_to_uint32(string.contents, string.length, result);
 }
 
 real32 string_to_real32(char *str, uint32 length) {
@@ -83,7 +130,7 @@ inline real32 string_to_real32(String string) {
     return string_to_real32(string.contents, string.length);
 }
 
-bool32 string_to_real32(char *str, uint32 length, real32 *real32_result) {
+bool32 string_to_real32(char *str, uint32 length, real32 *result_out) {
     real32 result = 0;
     bool32 has_decimal = false;
     real32 decimal_denom = 10.0f;
@@ -119,13 +166,13 @@ bool32 string_to_real32(char *str, uint32 length, real32 *real32_result) {
         result = -result;
     }
 
-    *real32_result = result;
+    *result_out = result;
 
     return true;
 }
 
-inline bool32 string_to_real32(String string, real32 *real32_result) {
-    return string_to_real32(string.contents, string.length, real32_result);
+inline bool32 string_to_real32(String string, real32 *result_out) {
+    return string_to_real32(string.contents, string.length, result_out);
 }
 
 // NOTE: we have these tokenizer_equals procedures since the tokenizer contents does not guarantee a

@@ -71,7 +71,7 @@ bool32 mesh_exists(String name) {
     return false;
 }
 
-Mesh *add_mesh(Mesh_Type type, String name, String filename) {
+Mesh *add_mesh(String name, String filename, Mesh_Type type) {
     Mesh *mesh = (Mesh *) allocate(asset_manager->allocator, sizeof(Mesh));
     *mesh = load_mesh(asset_manager->allocator, type, name, filename);
 
@@ -91,6 +91,25 @@ Mesh *add_mesh(Mesh_Type type, String name, String filename) {
     asset_manager->mesh_table[hash] = mesh;
 
     return mesh;
+}
+
+inline Mesh *add_mesh(char *name, char *filename, Mesh_Type type) {
+    return add_mesh(make_string(name), make_string(filename), type);
+}
+
+Material *get_material(String name) {
+    uint32 hash = get_hash(name, NUM_MATERIAL_BUCKETS);
+
+    Material *current = asset_manager->material_table[hash];
+    while (current) {
+        if (string_equals(current->name, name)) {
+            return current;
+        }
+
+        current = current->table_next;
+    }
+
+    return NULL;
 }
 
 Font_File *get_font_file(char *filename) {
@@ -147,8 +166,8 @@ bool32 font_exists(char *font_name) {
 }
 
 Font *add_font(char *font_name, char *font_filename,
-              real32 font_height_pixels,
-              int32 font_texture_width = 512, int32 font_texture_height = 512) {
+               real32 font_height_pixels,
+               int32 font_texture_width = 512, int32 font_texture_height = 512) {
     if (font_exists(font_name)) {
         assert(!"Font with name already exists.");
         return NULL;
@@ -220,4 +239,92 @@ Font *get_font(char *name) {
     }
 
     return NULL;
+}
+
+void unload_level_meshes() {
+    Mesh **mesh_table = asset_manager->mesh_table;
+    
+    for (int32 i = 0; i < NUM_MESH_BUCKETS; i++) {
+        Mesh *current = mesh_table[i];
+        while (current) {
+            Mesh *next = current->table_next;
+
+            if (current->type == Mesh_Type::LEVEL) {
+                if (current->table_prev) {
+                    current->table_prev->table_next = next;
+                }
+                if (current->table_next) {
+                    current->table_next->table_prev = current->table_prev;
+                }
+                
+                deallocate(current);
+                deallocate(asset_manager->allocator, current);
+
+                if (current == mesh_table[i]) {
+                    // if it's first in the list, then we need to update mesh table when we delete it
+                    mesh_table[i] = next;
+                }
+            }
+            
+            current = next;
+        }
+    }
+}
+
+void unload_materials() {
+    Material **material_table = asset_manager->material_table;
+    
+    for (int32 i = 0; i < NUM_MATERIAL_BUCKETS; i++) {
+        Material *current = material_table[i];
+        while (current) {
+            Material *next = current->table_next;
+
+            if (current->table_prev) {
+                current->table_prev->table_next = next;
+            }
+            if (current->table_next) {
+                current->table_next->table_prev = current->table_prev;
+            }
+            
+            deallocate(current);
+            deallocate(asset_manager->allocator, current);
+
+            if (current == material_table[i]) {
+                // if it's first in the list, then we need to update mesh table when we delete it
+                material_table[i] = next;
+            }
+
+            current = next;
+        }
+    }
+}
+
+// maybe a better word is delete, since we're just deleting the level assets from their tables
+// but then we also unload them on the GPU
+void unload_level_assets() {
+    // we deallocate the assets
+    // then in opengl code, we just unload all the level assets from the GPU, we don't need
+    // the asset data at that point since we know which resources are for levels and which are not
+
+    unload_level_meshes();
+    unload_materials();
+    // TODO: unload texture table when we add it
+    
+    asset_manager->gpu_should_unload_level_assets = true;
+}
+
+void load_default_assets() {
+    add_mesh("gizmo_arrow",  "blender/gizmo_arrow.mesh",  Mesh_Type::ENGINE);
+    add_mesh("gizmo_ring",   "blender/gizmo_ring.mesh",   Mesh_Type::ENGINE);
+    add_mesh("gizmo_sphere", "blender/gizmo_sphere.mesh", Mesh_Type::ENGINE);
+    add_mesh("gizmo_cube",   "blender/gizmo_cube.mesh",   Mesh_Type::ENGINE);
+    add_mesh("cube",         "blender/cube.mesh",         Mesh_Type::PRIMITIVE);
+
+    add_font("times32",    "c:/windows/fonts/times.ttf", 32.0f);
+    add_font("times24",    "c:/windows/fonts/times.ttf", 24.0f);
+    add_font("courier24b", "c:/windows/fonts/courbd.ttf", 24.0f);
+    add_font("calibri14",  "c:/windows/fonts/calibri.ttf", 14.0f);
+    add_font("calibri14b", "c:/windows/fonts/calibrib.ttf", 14.0f);
+    add_font("calibri24b", "c:/windows/fonts/calibrib.ttf", 24.0f);
+    add_font("lucidaconsole18", "c:/windows/fonts/lucon.ttf", 18.0f);
 }

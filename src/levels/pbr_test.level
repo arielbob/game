@@ -24,6 +24,7 @@ use_color_override 1
 }
 
 entities {
+entity {
 type normal
 position 0.481942 0.659598 0.000000
 rotation 0.921624 0.255085 0.281875 -0.078017
@@ -31,7 +32,9 @@ scale 1.000000 1.000000 1.000000
 mesh "suzanne2"
 material "red"
 is_walkable 0
+}
 
+entity {
 type point_light
 position 0.137951 2.731141 -2.520771
 rotation 0.919117 0.000000 -0.393984 0.000000
@@ -39,7 +42,9 @@ scale 1.000000 1.000000 1.000000
 light_color 1.000000 1.000000 1.000000
 falloff_start 0.000000
 falloff_end 0.000000
+}
 
+entity {
 type point_light
 position -2.071458 2.134163 2.876131
 rotation 1.000000 0.000000 0.000000 0.000000
@@ -47,4 +52,5 @@ scale 1.000000 1.000000 1.000000
 light_color 0.220000 0.220000 0.220000
 falloff_start 0.000000
 falloff_end 5.000000
+}
 }

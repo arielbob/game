@@ -8,11 +8,11 @@ bool32 has_material_field(Entity *entity) {
     return (entity->type == ENTITY_NORMAL);
 }
 
-void update_entity_aabb(Asset_Manager *asset_manager, Entity *entity) {
+void update_entity_aabb(Entity *entity) {
     switch (entity->type) {
         case ENTITY_NORMAL: {
             Normal_Entity *normal_entity = (Normal_Entity *) entity;
-            Mesh *mesh = get_mesh_pointer(asset_manager, normal_entity->mesh_id);
+            Mesh *mesh = get_mesh(normal_entity->mesh_name);
             normal_entity->transformed_aabb = transform_aabb(mesh->aabb, get_model_matrix(entity->transform));
         } break;
         case ENTITY_POINT_LIGHT: {
@@ -24,9 +24,9 @@ void update_entity_aabb(Asset_Manager *asset_manager, Entity *entity) {
     }
 }
 
-void set_entity_transform(Asset_Manager *asset_manager, Entity *entity, Transform transform) {
+void set_entity_transform(Entity *entity, Transform transform) {
     entity->transform = transform;
-    update_entity_aabb(asset_manager, entity);
+    update_entity_aabb(entity);
 }
 
 
@@ -34,10 +34,10 @@ void set_entity_transform(Asset_Manager *asset_manager, Entity *entity, Transfor
 //       outside of the editor, but that's the only place we're using them right now. although, it is convenient
 //       that as long as we use these procedures when transforming entities, the entities will always have an
 //       up to date AABB.
-void update_entity_position(Asset_Manager *asset_manager, Entity *entity, Vec3 new_position) {
+void update_entity_position(Entity *entity, Vec3 new_position) {
     entity->transform.position = new_position;
 
-    update_entity_aabb(asset_manager, entity);
+    update_entity_aabb(entity);
 
     if (entity->type == ENTITY_NORMAL) {
         Normal_Entity *normal_entity = (Normal_Entity *) entity;
@@ -60,16 +60,16 @@ void update_entity_position(Asset_Manager *asset_manager, Entity *entity, Vec3 n
     }
 }
 
-void update_entity_rotation(Asset_Manager *asset_manager, Entity *entity, Quaternion new_rotation) {
+void update_entity_rotation(Entity *entity, Quaternion new_rotation) {
     entity->transform.rotation = new_rotation;
-    update_entity_aabb(asset_manager, entity);
+    update_entity_aabb(entity);
 
     // TODO: modify colliders when rotating
 }
 
-void update_entity_scale(Asset_Manager *asset_manager, Entity *entity, Vec3 new_scale) {
+void update_entity_scale(Entity *entity, Vec3 new_scale) {
     entity->transform.scale = new_scale;
-    update_entity_aabb(asset_manager, entity);
+    update_entity_aabb(entity);
 
     // TODO: modify colliders when scaling
 #if 0
@@ -89,16 +89,16 @@ void update_entity_scale(Asset_Manager *asset_manager, Entity *entity, Vec3 new_
 #endif
 }
 
-void set_material(Entity *entity, int32 material_id, int32 *original_material_id = NULL) {
+void set_material(Entity *entity, String name) {
     assert(has_material_field(entity));
 
+    Material *material = get_material(name);
+    assert(material);
+    
     switch (entity->type) {
         case ENTITY_NORMAL: {
             Normal_Entity *e = (Normal_Entity *) entity;
-            if (original_material_id) {
-                *original_material_id = e->material_id;
-            }
-            e->material_id = material_id;
+            e->material_name = material->name;
         } break;
         default: {
             assert(!"Unhandled entity with material field.");
@@ -106,54 +106,20 @@ void set_material(Entity *entity, int32 material_id, int32 *original_material_id
     }
 }
 
-void set_mesh(Asset_Manager *asset_manager, Entity *entity, int32 mesh_id, int32 *original_mesh_id = NULL) {
+void set_mesh(Entity *entity, String name) {
     assert(has_mesh_field(entity));
 
-    Mesh *mesh = get_mesh_pointer(asset_manager, mesh_id);
+    Mesh *mesh = get_mesh(name);
+    assert(mesh);
 
     switch (entity->type) {
         case ENTITY_NORMAL: {
             Normal_Entity *e = (Normal_Entity *) entity;
-            if (original_mesh_id) {
-                *original_mesh_id = e->mesh_id;
-            }
-            e->mesh_id = mesh_id;
+            e->mesh_name = mesh->name;
             e->transformed_aabb = transform_aabb(mesh->aabb, e->transform);
         } break;
         default: {
             assert(!"Unhandled entity with mesh field.");
         }
     }
-}
-
-int32 get_mesh_id(Entity *entity) {
-    assert(has_mesh_field(entity));
-
-    switch (entity->type) {
-        case ENTITY_NORMAL: {
-            Normal_Entity *e = (Normal_Entity *) entity;
-            return e->mesh_id;
-        } break;
-        default: {
-            assert(!"Unhandled entity with mesh field.");
-        }
-    }
-
-    return -1;
-}
-
-int32 get_material_id(Entity *entity) {
-    assert(has_material_field(entity));
-
-    switch (entity->type) {
-        case ENTITY_NORMAL: {
-            Normal_Entity *e = (Normal_Entity *) entity;
-            return e->material_id;
-        } break;
-        default: {
-            assert(!"Unhandled entity with mesh field.");
-        }
-    }
-
-    return -1;
 }

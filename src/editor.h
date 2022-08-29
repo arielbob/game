@@ -18,15 +18,11 @@
 #define MESH_LIBRARY_WINDOW     1 << 3
 
 struct Editor_State {
-    Heap_Allocator entity_heap;
-    Heap_Allocator history_heap;
-    Heap_Allocator general_heap;
-
+    Arena_Allocator *arena;
     Editor_Level level;
-    String level_filename;
+    
     bool32 is_startup;
     bool32 is_new_level;
-    bool32 should_unload_level_gpu_data;
 
     bool32 use_freecam;
     Camera camera;
@@ -82,7 +78,7 @@ void delete_entity(Editor_State *editor_state, int32 id);
 Entity *get_entity(Editor_State *editor_state, int32 id);
 Entity *copy_cast_entity(Allocator *allocator, Entity *uncast_entity);
 void unload_level(Editor_State *editor_state);
-void load_level(Editor_State *editor_state, Level_Info *level_info);
+//void load_level(Editor_State *editor_state, Level_Info *level_info);
 bool32 read_and_load_level(Editor_State *editor_state, char *filename);
 void reset_editor(Editor_State *editor_state);
 void init_editor_level(Editor_State *editor_state, Editor_Level *editor_level);

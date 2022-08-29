@@ -55,7 +55,7 @@ global_variable Asset_Manager *asset_manager;
 #include "font.cpp"
 #include "asset.cpp"
 #include "ui.cpp"
-#include "level.cpp"
+//#include "level.cpp"
 #include "entity.cpp"
 #include "gizmo.cpp"
 //#include "editor_actions.cpp"
