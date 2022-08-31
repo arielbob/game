@@ -1,26 +1,12 @@
 #include "entity.h"
 
-bool32 has_mesh_field(Entity *entity) {
-    return (entity->type == ENTITY_NORMAL);
-}
-
-bool32 has_material_field(Entity *entity) {
-    return (entity->type == ENTITY_NORMAL);
-}
-
 void update_entity_aabb(Entity *entity) {
-    switch (entity->type) {
-        case ENTITY_NORMAL: {
-            Normal_Entity *normal_entity = (Normal_Entity *) entity;
-            Mesh *mesh = get_mesh(normal_entity->mesh_name);
-            normal_entity->transformed_aabb = transform_aabb(mesh->aabb, get_model_matrix(entity->transform));
-        } break;
-        case ENTITY_POINT_LIGHT: {
-            // no aabb
-        } break;
-        default: {
-            assert(!"Unhandled entity type with mesh and AABB");
-        }
+    // TODO: not sure if all entities with AABBs necessarily need a mesh
+    if (entity->flags & ENTITY_MESH) {
+        Mesh *mesh = get_mesh(entity->mesh_name);
+        entity->transformed_aabb = transform_aabb(mesh->aabb, get_model_matrix(entity->transform));
+    } else {
+        assert(!"Entity does not have an AABB.");
     }
 }
 
@@ -28,7 +14,6 @@ void set_entity_transform(Entity *entity, Transform transform) {
     entity->transform = transform;
     update_entity_aabb(entity);
 }
-
 
 // TODO: we probably don't always need to update the AABB in some cases; well, idk, there might be uses for AABBs
 //       outside of the editor, but that's the only place we're using them right now. although, it is convenient
@@ -39,9 +24,8 @@ void update_entity_position(Entity *entity, Vec3 new_position) {
 
     update_entity_aabb(entity);
 
-    if (entity->type == ENTITY_NORMAL) {
-        Normal_Entity *normal_entity = (Normal_Entity *) entity;
-        Collider_Variant *collider = &normal_entity->collider;
+    if (entity->flags & ENTITY_COLLIDER) {
+        Collider_Variant *collider = &entity->collider;
         switch (collider->type) {
             case Collider_Type::NONE: break;
             case Collider_Type::CIRCLE: {
@@ -90,36 +74,20 @@ void update_entity_scale(Entity *entity, Vec3 new_scale) {
 }
 
 void set_material(Entity *entity, String name) {
-    assert(has_material_field(entity));
+    assert(entity->flags & ENTITY_MATERIAL);
 
     Material *material = get_material(name);
     assert(material);
-    
-    switch (entity->type) {
-        case ENTITY_NORMAL: {
-            Normal_Entity *e = (Normal_Entity *) entity;
-            e->material_name = material->name;
-        } break;
-        default: {
-            assert(!"Unhandled entity with material field.");
-        }
-    }
+
+    entity->material_name = material->name;
 }
 
 void set_mesh(Entity *entity, String name) {
-    assert(has_mesh_field(entity));
+    assert(entity->flags & ENTITY_MESH);
 
     Mesh *mesh = get_mesh(name);
     assert(mesh);
 
-    switch (entity->type) {
-        case ENTITY_NORMAL: {
-            Normal_Entity *e = (Normal_Entity *) entity;
-            e->mesh_name = mesh->name;
-            e->transformed_aabb = transform_aabb(mesh->aabb, e->transform);
-        } break;
-        default: {
-            assert(!"Unhandled entity with mesh field.");
-        }
-    }
+    entity->mesh_name = mesh->name;
+    entity->transformed_aabb = transform_aabb(mesh->aabb, entity->transform);
 }

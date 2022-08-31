@@ -57,7 +57,7 @@ Mesh load_mesh(Allocator *allocator, Mesh_Type type, String name, String filenam
 }
 
 bool32 mesh_exists(String name) {
-    uint32 hash = get_hash(name, NUM_FONT_BUCKETS);
+    uint32 hash = get_hash(name, NUM_MESH_BUCKETS);
 
     Mesh *current = asset_manager->mesh_table[hash];
     while (current) {
@@ -72,13 +72,13 @@ bool32 mesh_exists(String name) {
 }
 
 Mesh *add_mesh(String name, String filename, Mesh_Type type) {
-    Mesh *mesh = (Mesh *) allocate(asset_manager->allocator, sizeof(Mesh));
-    *mesh = load_mesh(asset_manager->allocator, type, name, filename);
-
     if (mesh_exists(name)) {
         assert(!"Mesh with name already exists.");
         return NULL;
     }
+
+    Mesh *mesh = (Mesh *) allocate(asset_manager->allocator, sizeof(Mesh));
+    *mesh = load_mesh(asset_manager->allocator, type, name, filename);
     
     uint32 hash = get_hash(name, NUM_MESH_BUCKETS);
 
@@ -95,6 +95,43 @@ Mesh *add_mesh(String name, String filename, Mesh_Type type) {
 
 inline Mesh *add_mesh(char *name, char *filename, Mesh_Type type) {
     return add_mesh(make_string(name), make_string(filename), type);
+}
+
+bool32 material_exists(String name) {
+    uint32 hash = get_hash(name, NUM_MATERIAL_BUCKETS);
+
+    Material *current = asset_manager->material_table[hash];
+    while (current) {
+        if (string_equals(current->name, name)) {
+            return true;
+        }
+
+        current = current->table_next;
+    }
+
+    return false;
+}
+
+Material *add_material(Material material) {
+    if (material_exists(name)) {
+        assert(!"Material with name already exists.");
+        return NULL;
+    }
+
+    Material *material = (Material *) allocate(asset_manager->allocator, sizeof(Material));
+    *material = material;
+    
+    uint32 hash = get_hash(name, NUM_MATERIAL_BUCKETS);
+
+    Material *current = asset_manager->material_table[hash];
+    material->table_next = current;
+    material->table_prev = NULL;
+    if (current) {
+        current->table_prev = material;
+    }
+    asset_manager->material_table[hash] = material;
+
+    return material;
 }
 
 Material *get_material(String name) {

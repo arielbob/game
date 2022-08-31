@@ -31,22 +31,11 @@ struct Texture_Info {
 };
 
 struct Material_Info {
-    String name;
-
-    uint32 flags;
-    
-    String albedo_texture_name;
-    Vec3 albedo_color;
-
-    String metalness_texture_name;
-    real32 metalness;
-
-    String roughness_texture_name;
-    real32 roughness;
+    MATERIAL_FIELDS
 };
 
 struct Entity_Info {
-
+    ENTITY_FIELDS
 };
 
 #define MAX_LEVEL_INFO_ARRAY_SIZE 128

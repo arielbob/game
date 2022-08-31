@@ -86,19 +86,22 @@ struct Font {
     bool32 is_baked;
 };
 
+#define MATERIAL_FIELDS                         \
+    String name;                                \
+                                                \
+    uint32 flags;                               \
+                                                \
+    String albedo_texture_name;                 \
+    Vec3 albedo_color;                          \
+                                                \
+    String metalness_texture_name;              \
+    real32 metalness;                           \
+                                                \
+    String roughness_texture_name;              \
+    real32 roughness;                           \
+
 struct Material {
-    String name;
-
-    uint32 flags;
-    
-    String albedo_texture_name;
-    Vec3 albedo_color;
-
-    String metalness_texture_name;
-    real32 metalness;
-
-    String roughness_texture_name;
-    real32 roughness;
+    MATERIAL_FIELDS
     
     Material *table_prev;
     Material *table_next;

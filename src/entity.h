@@ -7,61 +7,49 @@
 #include "asset.h"
 #include "collider.h"
 
-enum Entity_Type {
-    ENTITY_NONE,
-    ENTITY_NORMAL,
-    ENTITY_POINT_LIGHT
+#define ENTITY_MESH           (1 << 0)
+#define ENTITY_MATERIAL       (1 << 1)
+#define ENTITY_COLLIDER       (1 << 2)
+#define ENTITY_LIGHT          (1 << 3) // this is used to say that an entity is a light
+
+// this basically decides which of the light fields to use
+// for example, LIGHT_POINT will use falloff_start and falloff_end, and ignore
+// all the other light properties. the light_color field is shared across all
+// light types.
+enum Light_Type {
+    LIGHT_POINT
 };
 
-struct Normal_Entity {
-    Transform transform;
-    String mesh_name;     // owned by asset manager
-    String material_name; // owned by asset manager
-    AABB transformed_aabb;
-    Collider_Variant collider;
-};
-
-void deallocate(Normal_Entity *entity) {
-    // nothing to deallocate
-}
-
-struct Point_Light_Entity {
-    Vec3 light_color;
-    real32 falloff_start;
-    real32 falloff_end;
-};
-
-void deallocate(Point_Light_Entity *entity) {
-    // nothing to deallocate
-}
+#define ENTITY_FIELDS                           \
+    uint32 flags;                               \
+    Transform transform;                        \
+                                                \
+    String mesh_name;                           \
+    String material_name;                       \
+    AABB transformed_aabb;                      \
+                                                \
+    Collider_Variant collider;                  \
+    Light_Type light_type;                      \
+    Vec3 light_color;                           \
+    real32 falloff_start;                       \
+    real32 falloff_end;                         \     
 
 struct Entity {
     int32 id;
-    Entity_Type type;
-    Transform transform;
-    union {
-        Normal_Entity normal;
-        Point_Light_Entity point_light;
-    };
 
+    ENTITY_FIELDS
+    
     Entity *prev;
     Entity *next;
 };
 
 void deallocate(Entity *entity) {
-    switch (entity->type) {
-    case ENTITY_NORMAL: {
-        deallocate(&entity->normal);
-    } break;
-    case ENTITY_POINT_LIGHT: {
-        deallocate(&entity->point_light);
-    } break;
-    case ENTITY_NONE: {
-        assert(!"Entity has no type");
-    } break;
-    default: {
-        assert(!"Unhandled entity type");
+    if (entity->flags & ENTITY_MESH) {
+        deallocate(entity->mesh_name);
     }
+
+    if (entity->flags & ENTITY_MATERIAL) {
+        deallocate(entity->material_name);
     }
 }
 
