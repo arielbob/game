@@ -112,16 +112,16 @@ bool32 material_exists(String name) {
     return false;
 }
 
-Material *add_material(Material material) {
-    if (material_exists(name)) {
+Material *add_material(Material material_to_add) {
+    if (material_exists(material_to_add.name)) {
         assert(!"Material with name already exists.");
         return NULL;
     }
 
     Material *material = (Material *) allocate(asset_manager->allocator, sizeof(Material));
-    *material = material;
+    *material = material_to_add;
     
-    uint32 hash = get_hash(name, NUM_MATERIAL_BUCKETS);
+    uint32 hash = get_hash(material_to_add.name, NUM_MATERIAL_BUCKETS);
 
     Material *current = asset_manager->material_table[hash];
     material->table_next = current;

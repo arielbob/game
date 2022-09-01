@@ -133,6 +133,7 @@ namespace Level_Loader {
 
     Token make_token(Token_Type type, char *contents, int32 length);
     Token get_token(Tokenizer *tokenizer);
+    Token peek_token(Tokenizer *tokenizer);
     bool32 parse_level_info(Allocator *temp_allocator, File_Data file_data, Level_Info *level_info);
 }
 

@@ -83,6 +83,11 @@ void level_info_add_material(Level_Info *level_info, Material_Info material) {
     level_info->materials[level_info->num_materials++] = material;
 }
 
+void level_info_add_entity(Level_Info *level_info, Entity_Info entity) {
+    assert(level_info->num_entities < MAX_LEVEL_INFO_ARRAY_SIZE);
+    level_info->entities[level_info->num_entities++] = entity;
+}
+
 Level_Loader::Token Level_Loader::parse_mesh(Tokenizer *tokenizer, Level_Info *level_info) {
     Token token = get_token(tokenizer);
     if (token.type == KEYWORD &&
@@ -227,64 +232,72 @@ Level_Loader::Token Level_Loader::get_token(Tokenizer *tokenizer) {
     return token;
 }
 
+Level_Loader::Token Level_Loader::peek_token(Tokenizer *tokenizer) {
+    Tokenizer original = *tokenizer;
+
+    Token peeked = get_token(tokenizer);
+    
+    *tokenizer = original;
+    
+    return peeked;
+}
+
 inline bool32 level_parse_error(char **error_out, char *error_string) {
     *error_out = error_string;
     return false;
 }
 
+bool32 level_parse_real(Tokenizer *tokenizer, real32 *result, char **error) {
+    Token token = get_token(tokenizer);
+    real32 num;
+    
+    if (token.type == REAL || token.type == INTEGER) {
+        bool32 parse_result = string_to_real32(token.string, &num);
+
+        if (!parse_result) {
+            return level_parse_error("Invalid number value.");
+        }
+    } else {
+        return level_parse_error("Expected number.");
+    }
+
+    *result = num;
+}
+
 bool32 level_parse_vec3(Tokenizer *tokenizer, Vec3 *result, char **error) {
     Token token;
 
+    // don't set vec using result pointer since we may fail in the middle of parsing
+    // and don't want to set result to a partially done vector
+    Vec3 v;
+    
     for (int i = 0; i < 3; i++) {
-        token = get_token(tokenizer);
-        if (token.type != REAL || token.type != INTEGER) {
-            return level_parse_error(error, "Expected number.");
-        } else {
-            real32 num;
-            bool32 real32_parse_result = string_to_real32(token.string, &num);
-
-            if (real32_parse_result) {
-                (*result)[i] = num;
-            } else {
-                return level_parse_error(error, "Invalid number in Vec3.");
-            }
+        if (!level_parse_real(tokenizer, &v[i], error)) {
+            // we do lose some specificity in the error message here, but it's better in that
+            // we know that it's an error in setting a vec3 value instead of just saying
+            // "Expected number."
+            return level_parse_error(error, "Invalid number in Vec3.");
         }
     }
 
+    *result = v;
     return true;
 }
 
 bool32 level_parse_quaternion(Tokenizer *tokenizer, Quaternion *result, char **error) {
-    Token token = get_token(tokenizer);
-
-    if (token.type != REAL || token.type != INTEGER) {
-        return level_parse_error(error, "Expected number for w value (first value) of quaternion.");
-    }
-
-    real32 num;
-    bool32 real32_parse_result = string_to_real32(token.string, &num);
-    if (real32_parse_result) {
-        result->w = num;
-    } else {
-        return level_parse_error(error, "Invalid number for q value (first value) of quaternion.");
+    Quaternion quat;
+    
+    if (!level_parse_real(tokenizer, &quat.w)) {
+        return false;
     }
     
     for (int i = 0; i < 3; i++) {
-        token = get_token(tokenizer);
-        if (token.type != REAL || token.type != INTEGER) {
-            return level_parse_error(error, "Expected number in quaternion vector portion.");
-        } else {
-            real32 num;
-            bool32 real32_parse_result = string_to_real32(token.string, &num);
-
-            if (real32_parse_result) {
-                result->v[i] = num;
-            } else {
-                return level_parse_error(error, "Invalid number in quaternion vector portion.");
-            }
+        if (!level_parse_real(tokenizer, &(quat.v[i]))) {
+            return false;
         }
     }
 
+    *result = quat;
     return true;
 }
 
@@ -464,11 +477,19 @@ bool32 parse_material(Allocator *temp_allocator, Tokenizer *tokenizer,
         return level_parse_error(error, "Expected name keyword.");
     }
 
-    token = get_token(tokenizer);
-    
     // we accept duplicates of parameters and just set the material's parameter to the last one read
     // (except for the name parameter)
-    do {
+    while (true) {
+        token = get_token(tokenizer);
+
+        if (token.type == CLOSE_BRACKET) {
+            break;
+        }
+
+        if (token.type != KEYWORD) {
+            return level_parse_error(erorr, "Expected either keyword for material property or close bracket for material block.");
+        }
+
         if (string_equals(token.string, "name")) {
             return level_parse_error(error, "Material name already set.");
         } else if (string_equals(token.string, "use_albedo_texture")) {
@@ -538,19 +559,8 @@ bool32 parse_material(Allocator *temp_allocator, Tokenizer *tokenizer,
                 return level_parse_error(error, "Expected string for metalness texture name.");
             }
         } else if (string_equals(token.string, "metalness")) {
-            token = get_token(tokenizer);
-
-            if (token.type == REAL || token.type == INTEGER) {
-                real32 result;
-                bool32 parse_result = string_to_real32(token.string, &result);
-
-                if (parse_result) {
-                    material_info.metalness = result;
-                } else {
-                    return level_parse_error("Invalid number for metalness value.");
-                }
-            } else {
-                return level_parse_error("Expected number for metalness value.");
+            if (!level_parse_real(tokenizer, &entity_info.falloff_start, error)) {
+                return false;
             }
         } else if (string_equals(token.string, "use_roughness_texture")) {
             token = get_token(tokenizer);
@@ -581,29 +591,12 @@ bool32 parse_material(Allocator *temp_allocator, Tokenizer *tokenizer,
                 return level_parse_error(error, "Expected string for roughness texture name.");
             }
         } else if (string_equals(token.string, "roughness")) {
-            token = get_token(tokenizer);
-
-            if (token.type == REAL || token.type == INTEGER) {
-                real32 result;
-                bool32 parse_result = string_to_real32(token.string, &result);
-
-                if (parse_result) {
-                    material_info.roughness = result;
-                } else {
-                    return level_parse_error("Invalid number for roughness value.");
-                }
-            } else {
-                return level_parse_error("Expected number for roughness value.");
+            if (!level_parse_real(tokenizer, &entity_info.falloff_start, error)) {
+                return false;
             }
         } else {
-            *error = "Unrecognized material property."
+            return level_parse_error(error, "Unrecognized material property.");
         }
-
-        token = get_token(tokenizer);
-    } while (token.type == KEYWORD);
-
-    if (token.type != KEYWORD && token.type != CLOSE_BRACKET) {
-        return level_parse_error(error, "Expected keyword for a material property or close bracket for material.");
     }
     
     *material_info_out = material_info;
@@ -624,24 +617,21 @@ bool32 parse_materials_block(Allocator *temp_allocator, Tokenizer *tokenizer,
         return level_parse_error(error, "Expected open bracket for materials block.");
     }
 
-    bool32 parse_material_result;
-    do {
-        Material_Info material_info;
-        parse_material_result = parse_material(temp_allocator, tokenizer,
-                                               &material_info, error);
+    while (true) {
+        Token peeked = peek_token(tokenizer);
+        if (peeked.type == CLOSE_BRACKET) {
+            token = get_token(tokenizer);
+            break;
+        }
 
-        if (parse_material_result) {
-            level_info_add_material(level_info, material_info);
-            
-            if (token.type == CLOSE_BRACKET) {
-                break;
-            }
-        } else {
-            // parse_material() sets error message
+        Material_Info material_info;
+        if (!parse_material(temp_allocator, tokenizer, &material_info, error)) {
             return false;
         }
-    } while (parse_material_result);
 
+        level_info_add_material(level_info, material_info);
+    }
+    
     return true;
 }
 
@@ -721,27 +711,23 @@ bool32 parse_entity(Allocator *temp_allocator, Tokenizer *tokenizer,
         token = get_token(tokenizer);
 
         if (token.type == CLOSE_BRACKET) {
-            return true;
+            break;
         }
 
         if (token.type != KEYWORD) {
-            *error = "Expected either keyword for entity property or close bracket for entity block."
-            return false;
+            return level_parse_error(erorr, "Expected either keyword for entity property or close bracket for entity block.");
         }
 
         if (string_equals(token.string, "position")) {
-            bool parse_result = level_parse_vec3(tokenizer, &entity_info.transform.position, error);
-            if (!parse_result) {
+            if (!level_parse_vec3(tokenizer, &entity_info.transform.position, error)) {
                 return false;
             }
         } else if (string_equals(token.string, "rotation")) {
-            bool parse_result = level_parse_quaternion(tokenizer, &entity_info.transform.quaternion, error);
-            if (!parse_result) {
+            if (!level_parse_quaternion(tokenizer, &entity_info.transform.quaternion, error)) {
                 return false;
             }
         } else if (string_equals(token.string, "scale")) {
-            bool parse_result = level_parse_vec3(tokenizer, &entity_info.transform.position, error);
-            if (!parse_result) {
+            if (!level_parse_vec3(tokenizer, &entity_info.transform.position, error)) {
                 return false;
             }
         } else if (string_equals(token.string, "mesh")) {
@@ -786,187 +772,21 @@ bool32 parse_entity(Allocator *temp_allocator, Tokenizer *tokenizer,
                 return level_parse_error(error, "Invalid light_type property value. Expected \"point\".");
             }
         } else if (string_equals(token.string, "light_color")) {
-            // TODO: do this, falloff_start, and falloff_end
-            // TODO: maybe figure out a way to verify that all the correct light fields are set for the light type?
-        }
-    }
-
-    // TODO: remove this stuff below
-    do {
-        if (token.type == CLOSE_BRACKET) {
-            return true;
-        }
-
-        if (token.t
-        
-        token = get_token(tokenizer);
-    } while (token.type == KEYWORD);
-    
-    if (entity_info.type == ENTITY_NORMAL) {
-        
-    }
-    
-    // TODO: set defaults based on entity type
-    entity_info.transform = make_transform();
-
-    // TODO: replace these with entity parameters
-    //       - make sure to check for entity type
-    if (token.type == KEYWORD) {
-        if (string_equals(token.string, "name")) {
-            token = get_token(tokenizer);
-
-            if (token.type == STRING) {
-                if (!is_empty(token.string)) {
-                    material_info.name = token.string;
-                } else {
-                    return level_parse_error(error, "Material name cannot be empty.");
-                }
-            } else {
-                return level_parse_error(error, "Expected string for material name.");
-            }
-        } else {
-            return level_parse_error(error, "Expected name keyword.");
-        }
-    } else {
-        return level_parse_error(error, "Expected name keyword.");
-    }
-
-    // we accept duplicates of parameters and just set the material's parameter to the last one read
-    // (except for the name parameter)
-    do {
-        token = get_token(tokenizer);
-        if (string_equals(token.string, "name")) {
-            return level_parse_error(error, "Material name already set.");
-        } else if (string_equals(token.string, "use_albedo_texture")) {
-            token = get_token(tokenizer);
-            
-            if (token.type == INTEGER) {
-                uint32 result;
-                bool32 parse_result = ascii_to_uint32(token.string, &result);
-                if (parse_result) {
-                    material_info.use_albedo_texture = result;
-                } else {
-                    return level_parse_error(error, "Expected unsigned integer for use_albedo_texture.");
-                }
-            } else {
-                return level_parse_error(error, "Expected unsigned integer for use_albedo_texture.");
-            }
-        } else if (string_equals(token.string, "albedo_texture")) {
-            token = get_token(tokenizer);
-            
-            String result;
-
-            if (token.type == STRING) {
-                if (!is_empty(token.string)) {
-                    material_info.albedo_texture_name = token.string;
-                } else {
-                    return level_parse_error(error, "Albedo texture name cannot be empty.");
-                }
-            } else {
-                return level_parse_error(error, "Expected string for albedo texture name.");
-            }
-        } else if (string_equals(token.string, "albedo_color")) {
-            Vec3 result;
-
-            bool32 parse_result = level_parse_vec3(tokenizer, &result, error);
-            if (parse_result) {
-                material_info.albedo_color = result;
-            } else {
-                // error message gets set by level_parse_vec3()
+            if (!level_parse_vec3(tokenizer, &entity_info.light_color, error)) {
                 return false;
             }
-        } else if (string_equals(token.string, "use_metalness_texture")) {
-            token = get_token(tokenizer);
-            
-            if (token.type == INTEGER) {
-                uint32 result;
-                bool32 parse_result = ascii_to_uint32(token.string, &result);
-                if (parse_result) {
-                    material_info.use_metalness_texture = result;
-                } else {
-                    return level_parse_error(error, "Expected unsigned integer for use_metalness_texture.");
-                }
-            } else {
-                return level_parse_error(error, "Expected unsigned integer for use_metalness_texture.");
+        } else if (string_equals(token.string, "falloff_start")) {
+            if (!level_parse_real(tokenizer, &entity_info.falloff_start, error)) {
+                return false;
             }
-        } else if (string_equals(token.string, "metalness_texture")) {
-            token = get_token(tokenizer);
-            
-            String result;
-
-            if (token.type == STRING) {
-                if (!is_empty(token.string)) {
-                    material_info.metalness_texture_name = token.string;
-                } else {
-                    return level_parse_error(error, "Metalness texture name cannot be empty.");
-                }
-            } else {
-                return level_parse_error(error, "Expected string for metalness texture name.");
+        } else if (string_equals(token.string, "falloff_end")) {
+            if (!level_parse_real(tokenizer, &entity_info.falloff_end, error)) {
+                return false;
             }
-        } else if (string_equals(token.string, "metalness")) {
-            token = get_token(tokenizer);
+        }
+    }
 
-            if (token.type == REAL || token.type == INTEGER) {
-                real32 result;
-                bool32 parse_result = string_to_real32(token.string, &result);
-
-                if (parse_result) {
-                    material_info.metalness = result;
-                } else {
-                    return level_parse_error("Invalid number for metalness value.");
-                }
-            } else {
-                return level_parse_error("Expected number for metalness value.");
-            }
-        } else if (string_equals(token.string, "use_roughness_texture")) {
-            token = get_token(tokenizer);
-            
-            if (token.type == INTEGER) {
-                uint32 result;
-                bool32 parse_result = ascii_to_uint32(token.string, &result);
-                if (parse_result) {
-                    material_info.use_roughness_texture = result;
-                } else {
-                    return level_parse_error(error, "Expected unsigned integer for use_roughness_texture.");
-                }
-            } else {
-                return level_parse_error(error, "Expected unsigned integer for use_roughness_texture.");
-            }
-        } else if (string_equals(token.string, "roughness_texture")) {
-            token = get_token(tokenizer);
-            
-            String result;
-
-            if (token.type == STRING) {
-                if (!is_empty(token.string)) {
-                    material_info.roughness_texture_name = token.string;
-                } else {
-                    return level_parse_error(error, "Roughness texture name cannot be empty.");
-                }
-            } else {
-                return level_parse_error(error, "Expected string for roughness texture name.");
-            }
-        } else if (string_equals(token.string, "roughness")) {
-            token = get_token(tokenizer);
-
-            if (token.type == REAL || token.type == INTEGER) {
-                real32 result;
-                bool32 parse_result = string_to_real32(token.string, &result);
-
-                if (parse_result) {
-                    material_info.roughness = result;
-                } else {
-                    return level_parse_error("Invalid number for roughness value.");
-                }
-            } else {
-                return level_parse_error("Expected number for roughness value.");
-            }
-        } else {
-            *error = "Unrecognized material property "
-                }
-    } while (token.type == KEYWORD);
-
-    *material_info_out = material_info;
+    *entity_info_out = entity_info;
     return true;
 }
 
@@ -984,55 +804,34 @@ bool32 parse_entities_block(Allocator *temp_allocator, Tokenizer *tokenizer,
         return level_parse_error(error, "Expected open bracket for entities block.");
     }
 
-    bool32 parse_entity_result;
-    do {
+    while (true) {
+        Token peeked = peek_token(tokenizer);
+        if (peeked.type == CLOSE_BRACKET) {
+            token = get_token(tokenizer); // consume the close bracket
+            break;
+        }
+
         Entity_Info entity_info;
-        parse_material_result = parse_entity(temp_allocator, tokenizer,
-                                             &entity_info, error);
-
-        if (parse_entity_result) {
-            if (token.type == CLOSE_BRACKET) {
-                break;
-            }
-
-            level_info_add_entity(level_info, entity_info);
-        } else {
-            // parse_entity() sets error message
+        if (!parse_entity(temp_allocator, tokenizer, &entity_info, error)) {
             return false;
         }
-    } while (parse_entity_result);
 
+        level_info_add_entity(level_info, entity_info);
+    }
+    
     return true;
 }
 
-bool32 Level_Loader::parse_level(Allocator *temp_allocator, File_Data file_data, Level_Info *level_info,
-                                 char **error_out) {
+// TODO: modify load_level to use the new level_info format
+bool32 Level_Loader::parse_level(Allocator *temp_allocator, File_Data file_data,
+                                 Level_Info *level_info, char **error_out) {
     Tokenizer tokenizer = make_tokenizer(file_data);
 
-    // TODO: implement/refactor this
-    
-    #if 0
-    Normal_Entity_Info temp_normal_entity_info = {};
-    Point_Light_Entity_Info temp_point_light_entity_info = {};
-    Mesh_Info temp_mesh_info = {};
-    Texture_Info temp_texture_info = {};
-    Material_Info temp_material_info = {};
-
-    Entity *temp_entity = NULL;
-
-    Vec3 vec3_buffer = {};
-    Quaternion quaternion_buffer = {};
-    int32 num_values_read = 0;
-    bool32 *bool_to_edit = NULL;
-
-    bool32 should_add_new_temp_entity = true;
-    bool32 should_add_new_temp_material = false;
-
-    init_level_info(temp_allocator, level_info);
-#endif
-
     bool32 result;
-    
+
+    // it's fine to use the level_info pointer here since it's just in temp_region and we're just gonna clear it.
+    // honestly, we can make the same assumption for the parse functions, i.e. we don't need to store a temp
+    // variable then do a copy, but i mean, it's fine for now.
     result = parse_level_info_block(temp_allocator, &tokenizer, level_info, error_out);
     if (!result) return false;
 
@@ -1045,515 +844,13 @@ bool32 Level_Loader::parse_level(Allocator *temp_allocator, File_Data file_data,
     result = parse_materials_block(temp_allocator, &tokenizer, level_info, error_out);
     if (!result) return false;
     
-    // TODO: implement this
     result = parse_entities_block(temp_allocator, &tokenizer, level_info, error_out);
     if (!result) return false;
 
-
-
-
-
-    // TODO: remove all this below
-    do {
-        token = get_token(&tokenizer);
-
-        if (token.type == COMMENT) continue;
-
-        switch (state) {
-            case PARSE_LEVEL_INFO: {
-                bool32 result = parse_level_info_block(temp_allocator, token, &tokenizer,
-                                                       level_info, error_out);
-                if (!result) return false;
-
-                state = PARSE_MESH_INFO;
-            } break;
-            case PARSE_MESH_INFO: {
-                
-            } break;
-        }
-        
-        switch (state) {
-            case WAIT_FOR_LEVEL_INFO_BLOCK_NAME: {
-                if (token.type == KEYWORD &&
-                    string_equals(token.string, "level_info")) {
-                    state = WAIT_FOR_LEVEL_INFO_BLOCK_OPEN;
-                } else {
-                    assert(!"Expected level_info keyword to open block.");
-                }
-            } break;
-            case WAIT_FOR_LEVEL_INFO_BLOCK_OPEN: {
-                if (token.type == OPEN_BRACKET) {
-                    state = WAIT_FOR_LEVEL_NAME_KEYWORD;
-                } else {
-                    assert(!"Expected open bracket.");
-                }
-            } break;
-            case WAIT_FOR_LEVEL_NAME_KEYWORD: {
-                if (token.type == KEYWORD &&
-                    string_equals(token.string, "level_name")) {
-                    state = WAIT_FOR_LEVEL_NAME_STRING;
-                } else {
-                    assert(!"Expected level_name keyword.");
-                }
-            } break;
-            case WAIT_FOR_LEVEL_NAME_STRING: {
-                if (token.type == STRING) {
-                    level_info->name = token.string;
-                    state = WAIT_FOR_LEVEL_INFO_BLOCK_CLOSE;
-                } else {
-                    assert (!"Expected level name string.");
-                }
-            } break;
-            case WAIT_FOR_LEVEL_INFO_BLOCK_CLOSE: {
-                if (token.type == CLOSE_BRACKET) {
-                    state = WAIT_FOR_MESHES_BLOCK_NAME;
-                } else {
-                    assert(!"Expected closing bracket for level_info block.");
-                }
-            } break;
-            case WAIT_FOR_MESHES_BLOCK_NAME: {
-                if (token.type == KEYWORD &&
-                    string_equals(token.string, "meshes")) {
-                    state = WAIT_FOR_MESHES_BLOCK_OPEN;
-                } else {
-                    assert (!"Expected meshes keyword to open block.");
-                }
-            } break;
-            case WAIT_FOR_MESHES_BLOCK_OPEN: {
-                if (token.type != OPEN_BRACKET) {
-                    assert(!"Expected open bracket.");
-                    // TODO: don't use assert, use error strings and return
-                } else {
-                    while (token.type != CLOSE_BRACKET) {
-                        // TODO: finish this
-                        token = parse_mesh(tokenizer, level_info);
-                    }
-                }
-            } break;
-            case PARSE_MESHES: {
-                while (token.type 
-                if (token.type == CLOSE_BRACKET) {
-
-                }
-                parse_mesh(&tokenizer, level_info);
-
-                #if 0
-                if (token.type == KEYWORD &&
-                    string_equals(token.string, "mesh")) {
-                    state = WAIT_FOR_MESH_NAME_STRING;
-                } else if (token.type == CLOSE_BRACKET) {
-                    state = WAIT_FOR_TEXTURES_BLOCK_NAME;
-                } else {
-                    assert(!"Expected mesh keyword or closing bracket.");
-                }
-                #endif
-            } break;
-            case WAIT_FOR_MESH_NAME_STRING: {
-                if (token.type == STRING) {
-                    assert(token.string.length <= MESH_NAME_MAX_SIZE);
-                    assert(!mesh_name_exists(level_info, token.string));
-
-                    temp_mesh_info = {};
-                    temp_mesh_info.name = token.string;
-                    state = WAIT_FOR_MESH_FILENAME_STRING;
-                } else {
-                    assert(!"Expected mesh name string.");
-                }
-            } break;
-            case WAIT_FOR_MESH_FILENAME_STRING: {
-                if (token.type == STRING) {
-                    assert(token.string.length <= PLATFORM_MAX_PATH);
-
-                    temp_mesh_info.filename = token.string;
-                    add(&level_info->meshes, temp_mesh_info);
-
-                    state = WAIT_FOR_MESH_KEYWORD_OR_MESHES_BLOCK_CLOSE;
-                }
-            } break;
-            case WAIT_FOR_TEXTURES_BLOCK_NAME: {
-                if (token.type == KEYWORD &&
-                    string_equals(token.string, "textures")) {
-                    state = WAIT_FOR_TEXTURES_BLOCK_OPEN;
-                } else {
-                    assert (!"Expected textures keyword to open block.");
-                }
-            } break;
-            case WAIT_FOR_TEXTURES_BLOCK_OPEN: {
-                if (token.type == OPEN_BRACKET) {
-                    state = WAIT_FOR_TEXTURE_KEYWORD_OR_TEXTURES_BLOCK_CLOSE;
-                } else {
-                    assert(!"Expected open bracket.");
-                }
-            } break;
-            case WAIT_FOR_TEXTURE_KEYWORD_OR_TEXTURES_BLOCK_CLOSE: {
-                if (token.type == KEYWORD && string_equals(token.string, "texture")) {
-                    temp_texture_info = {};
-                    state = WAIT_FOR_TEXTURE_NAME_STRING;
-                } else if (token.type == CLOSE_BRACKET) {
-                    state = WAIT_FOR_MATERIALS_BLOCK_NAME;
-                } else {
-                    assert(!"Expected texture keyword or closing bracket.");
-                }
-            } break;
-            case WAIT_FOR_TEXTURE_NAME_STRING: {
-                if (token.type == STRING) {
-                    assert(token.string.length <= TEXTURE_NAME_MAX_SIZE);
-                    assert(!texture_name_exists(level_info, token.string));
-
-                    temp_texture_info.name = token.string;
-                    state = WAIT_FOR_TEXTURE_FILENAME_STRING;
-                } else {
-                    assert(!"Expected texture name string.");
-                }
-            } break;
-            case WAIT_FOR_TEXTURE_FILENAME_STRING: {
-                if (token.type == STRING) {
-                    assert(token.string.length <= PLATFORM_MAX_PATH);
-
-                    temp_texture_info.filename = token.string;
-                    add(&level_info->textures, temp_texture_info);
-
-                    state = WAIT_FOR_TEXTURE_KEYWORD_OR_TEXTURES_BLOCK_CLOSE;
-                }
-            } break;
-
-            // MATERIALS
-            case WAIT_FOR_MATERIALS_BLOCK_NAME: {
-                if (token.type == KEYWORD &&
-                    string_equals(token.string, "materials")) {
-                    state = WAIT_FOR_MATERIALS_BLOCK_OPEN;
-                } else {
-                    assert(!"Expected materials keyword to open block.");
-                }
-            } break;
-            case WAIT_FOR_MATERIALS_BLOCK_OPEN: {
-                if (token.type == OPEN_BRACKET) {
-                    state = WAIT_FOR_MATERIAL_KEYWORD_OR_MATERIALS_BLOCK_CLOSE;
-                } else {
-                    assert(!"Expected open bracket.");
-                }
-            } break;
-            case WAIT_FOR_MATERIAL_KEYWORD_OR_MATERIALS_BLOCK_CLOSE: {
-                if (token.type == KEYWORD && string_equals(token.string, "material")) {
-                    temp_material_info = {};
-                    temp_material_info.material = make_material();
-                    state = WAIT_FOR_MATERIAL_NAME_STRING;
-                } else if (token.type == CLOSE_BRACKET) {
-                    state = WAIT_FOR_ENTITIES_BLOCK_NAME;
-                } else {
-                    assert(!"Expected material keyword or closing bracket.");
-                }
-            } break;
-            case WAIT_FOR_MATERIAL_NAME_STRING: {
-                if (token.type == STRING) {
-                    assert(token.string.length <= MATERIAL_NAME_MAX_SIZE);
-                    assert(!material_name_exists(level_info, token.string));
-
-                    temp_material_info.name = token.string;
-                    should_add_new_temp_material = true;
-
-                    state = WAIT_FOR_MATERIAL_PROPERTY_NAME_OR_MATERIAL_KEYWORD_OR_MATERIALS_BLOCK_CLOSE;
-                } else {
-                    assert(!"Expected material name string.");
-                }
-            } break;
-            case WAIT_FOR_MATERIAL_PROPERTY_NAME_OR_MATERIAL_KEYWORD_OR_MATERIALS_BLOCK_CLOSE: {
-                if (token.type == KEYWORD) {
-                    if (string_equals(token.string, "material")) {
-                        if (should_add_new_temp_material) {
-                            add(&level_info->materials, temp_material_info);
-                        }
-                        state = WAIT_FOR_MATERIAL_NAME_STRING;
-                    } else if (string_equals(token.string, "texture")) {
-                        state = WAIT_FOR_MATERIAL_TEXTURE_NAME_STRING;
-                    } else if (string_equals(token.string, "gloss")) {
-                        state = WAIT_FOR_MATERIAL_GLOSS_NUMBER;
-                    } else if (string_equals(token.string, "color_override")) {
-                        state = WAIT_FOR_MATERIAL_COLOR_OVERRIDE_VEC3;
-                        num_values_read = 0;
-                    } else if (string_equals(token.string, "use_color_override")) {
-                        state = WAIT_FOR_MATERIAL_USE_COLOR_OVERRIDE_INTEGER;
-                    } else {
-                        assert(!"Unrecognized material property.");
-                    }
-                } else if (token.type == CLOSE_BRACKET) {
-                    if (should_add_new_temp_material) {
-                        add(&level_info->materials, temp_material_info);
-                    }
-                    state = WAIT_FOR_ENTITIES_BLOCK_NAME;
-                } else {
-                    assert(!"Expected a material property name keyword.");
-                }
-            } break;
-            case WAIT_FOR_MATERIAL_TEXTURE_NAME_STRING: {
-                if (token.type == STRING) {
-                    assert(token.string.length <= TEXTURE_NAME_MAX_SIZE);
-
-                    temp_material_info.flags |= HAS_TEXTURE;
-                    temp_material_info.texture_name = token.string;
-
-                    state = WAIT_FOR_MATERIAL_PROPERTY_NAME_OR_MATERIAL_KEYWORD_OR_MATERIALS_BLOCK_CLOSE;
-                } else {
-                    assert(!"Expected a string for material texture name.");
-                }
-            } break;
-            case WAIT_FOR_MATERIAL_GLOSS_NUMBER: {
-                if (token.type == REAL || token.type == INTEGER) {
-                    temp_material_info.material.gloss = string_to_real32(token.string);
-                    state = WAIT_FOR_MATERIAL_PROPERTY_NAME_OR_MATERIAL_KEYWORD_OR_MATERIALS_BLOCK_CLOSE;
-                } else {
-                    assert(!"Expected a number for material property gloss.");
-                }
-            } break;
-            case WAIT_FOR_MATERIAL_COLOR_OVERRIDE_VEC3: {
-                if (token.type == REAL || token.type == INTEGER) {
-                    vec3_buffer.values[num_values_read] = string_to_real32(token.string);
-                    num_values_read++;
-                    if (num_values_read == 3) {
-                        temp_material_info.material.color_override = make_vec4(vec3_buffer, 1.0f);
-                        state = WAIT_FOR_MATERIAL_PROPERTY_NAME_OR_MATERIAL_KEYWORD_OR_MATERIALS_BLOCK_CLOSE;
-                    }
-                } else {
-                    assert(!"Expected 3 numbers for material property color_override.");
-                }
-            } break;
-            case WAIT_FOR_MATERIAL_USE_COLOR_OVERRIDE_INTEGER: {
-                if (token.type == INTEGER) {
-                    temp_material_info.material.use_color_override = (int32) string_to_uint32(token.string);
-
-                    state = WAIT_FOR_MATERIAL_PROPERTY_NAME_OR_MATERIAL_KEYWORD_OR_MATERIALS_BLOCK_CLOSE;
-                } else {
-                    assert(!"Expected an integer for material property use_color_override.");
-                }
-            } break;
-            // ENTITIES
-            case WAIT_FOR_ENTITIES_BLOCK_NAME: {
-                if (token.type == KEYWORD &&
-                    string_equals(token.string, "entities")) {
-                    state = WAIT_FOR_ENTITIES_BLOCK_OPEN;
-                } else {
-                    assert(!"Expected entities keyword for entities block.");
-                }
-            } break;
-            case WAIT_FOR_ENTITIES_BLOCK_OPEN: {
-                if (token.type == OPEN_BRACKET) {
-                    state = WAIT_FOR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE;
-                } else {
-                    assert(!"Expected open bracket for entities block.");
-                }
-            } break;
-            case WAIT_FOR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE: {
-                if (token.type == KEYWORD &&
-                    string_equals(token.string, "type")) {
-                    state = WAIT_FOR_ENTITY_TYPE_VALUE;
-                } else if (token.type == CLOSE_BRACKET) {
-                    state = FINISHED;
-                } else {
-                    assert(!"Expected type keyword or closing bracket for entities block.");
-                }
-            } break;
-            case WAIT_FOR_ENTITY_TYPE_VALUE: {
-                if (token.type == KEYWORD) {
-                    if (string_equals(token.string, "normal")) {
-                        temp_normal_entity_info = {};
-                        temp_normal_entity_info.entity = make_normal_entity();
-                        temp_entity = (Entity *) &temp_normal_entity_info.entity;
-
-                        state = WAIT_FOR_ENTITY_PROPERTY_NAME_OR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE;
-                        should_add_new_temp_entity = true;
-                    } else if (string_equals(token.string, "point_light")) {
-                        temp_point_light_entity_info = {};
-                        temp_point_light_entity_info.entity = make_point_light_entity();
-
-                        temp_entity = (Entity *) &temp_point_light_entity_info.entity;
-
-                        state = WAIT_FOR_ENTITY_PROPERTY_NAME_OR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE;
-                        should_add_new_temp_entity = true;
-                    } else {
-                        assert(!"Unrecognized entity type.");
-                    }
-                } else {
-                    assert(!"Expected entity type value keyword.");
-                }
-            } break;
-
-            case WAIT_FOR_ENTITY_PROPERTY_NAME_OR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE: {
-                if ((token.type == KEYWORD && string_equals(token.string, "type")) ||
-                    (token.type == CLOSE_BRACKET)) {
-                    if (should_add_new_temp_entity) {
-                        if (temp_entity->type == ENTITY_NORMAL) {
-                            add(&level_info->normal_entities, temp_normal_entity_info);
-                        } else if (temp_entity->type == ENTITY_POINT_LIGHT) {
-                            add(&level_info->point_light_entities, temp_point_light_entity_info);
-                        } else {
-                            assert(!"Unhandled entity type.");
-                        }
-                    }
-
-                    if (token.type == CLOSE_BRACKET) {
-                        state = FINISHED;  
-                    } else {
-                        state = WAIT_FOR_ENTITY_TYPE_VALUE;
-                    }
-                } else if (token.type == KEYWORD) {
-                    if (string_equals(token.string, "position")) {
-                        num_values_read = 0;
-                        state = WAIT_FOR_ENTITY_POSITION_VEC3;
-                    } else if (string_equals(token.string, "rotation")) {
-                        num_values_read = 0;
-                        state = WAIT_FOR_ENTITY_ROTATION_QUATERNION;
-                    } else if (string_equals(token.string, "scale")) {
-                        num_values_read = 0;
-                        state = WAIT_FOR_ENTITY_SCALE_VEC3;
-                    } else if (temp_entity->type == ENTITY_NORMAL) {
-                        if (string_equals(token.string, "mesh")) {
-                            state = WAIT_FOR_NORMAL_ENTITY_MESH_NAME_STRING;
-                        } else if (string_equals(token.string, "mesh_primitive")) {
-                            state = WAIT_FOR_NORMAL_ENTITY_MESH_NAME_STRING;
-                        } else if (string_equals(token.string, "material")) {
-                            state = WAIT_FOR_NORMAL_ENTITY_MATERIAL_NAME_STRING;                        
-                        } else if (string_equals(token.string, "is_walkable")) {
-                            bool_to_edit = &temp_normal_entity_info.entity.is_walkable;
-                            state = WAIT_FOR_ENTITY_BOOL;
-                        } else {
-                            assert(!"Unexpected entity keyword.");
-                        }
-                    } else if (temp_entity->type == ENTITY_POINT_LIGHT) {
-                        if (string_equals(token.string, "light_color")) {
-                            num_values_read = 0;
-                            state = WAIT_FOR_POINT_LIGHT_ENTITY_LIGHT_COLOR_VEC3;
-                        } else if (string_equals(token.string, "falloff_start")) {
-                            num_values_read = 0;
-                            state = WAIT_FOR_POINT_LIGHT_ENTITY_FALLOFF_START_NUMBER;
-                        } else if (string_equals(token.string, "falloff_end")) {
-                            num_values_read = 0;
-                            state = WAIT_FOR_POINT_LIGHT_ENTITY_FALLOFF_END_NUMBER;
-                        } else {
-                            assert(!"Unrecognized entity property name.");
-                        }
-                    } else {
-                        assert(!"Unrecognized entity property name.");
-                    }
-                } else {
-                    assert(!"Expected an entity property name or a close bracket");
-                }
-            } break;
-            case WAIT_FOR_NORMAL_ENTITY_MESH_NAME_STRING: {
-                if (token.type == STRING) {
-                    assert(token.string.length <= MESH_NAME_MAX_SIZE);
-
-                    temp_normal_entity_info.flags |= HAS_MESH;
-                    temp_normal_entity_info.mesh_name = token.string;
-
-                    state = WAIT_FOR_ENTITY_PROPERTY_NAME_OR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE;
-                } else {
-                    assert(!"Expected string for entity mesh name.");
-                }
-            } break;
-            case WAIT_FOR_NORMAL_ENTITY_MATERIAL_NAME_STRING: {
-                if (token.type == STRING) {
-                    assert(token.string.length <= MATERIAL_NAME_MAX_SIZE);
-
-                    temp_normal_entity_info.flags |= HAS_MATERIAL;
-                    temp_normal_entity_info.material_name = token.string;
-
-                    state = WAIT_FOR_ENTITY_PROPERTY_NAME_OR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE;
-                } else {
-                    assert(!"Expected string for entity material name.");
-                }                
-            } break;
-            case WAIT_FOR_ENTITY_POSITION_VEC3: {
-                if (token.type == REAL || token.type == INTEGER) {
-                    vec3_buffer.values[num_values_read] = string_to_real32(token.string);
-                    num_values_read++;
-                    if (num_values_read == 3) {
-                        temp_entity->transform.position = vec3_buffer;
-                        state = WAIT_FOR_ENTITY_PROPERTY_NAME_OR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE;
-                    }
-                } else {
-                    assert(!"Expected 3 numbers for entity property position.");
-                }
-            } break;
-            case WAIT_FOR_ENTITY_ROTATION_QUATERNION: {
-                if (token.type == REAL || token.type == INTEGER) {
-                    if (num_values_read == 0) {
-                        quaternion_buffer.w = string_to_real32(token.string);
-                    } else if (num_values_read >= 1 && num_values_read <= 3) {
-                        int32 index = num_values_read - 1;
-                        quaternion_buffer.v[index] = string_to_real32(token.string);
-                    }
-
-                    num_values_read++;
-                    if (num_values_read == 4) {
-                        temp_entity->transform.rotation = quaternion_buffer;
-                        state = WAIT_FOR_ENTITY_PROPERTY_NAME_OR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE;
-                    }
-                } else {
-                    assert(!"Expected 4 numbers (w, x, y, z) for entity property rotation.");
-                }
-            } break;
-            case WAIT_FOR_ENTITY_SCALE_VEC3: {
-                if (token.type == REAL || token.type == INTEGER) {
-                    vec3_buffer.values[num_values_read] = string_to_real32(token.string);
-                    num_values_read++;
-                    if (num_values_read == 3) {
-                        temp_entity->transform.scale = vec3_buffer;
-                        state = WAIT_FOR_ENTITY_PROPERTY_NAME_OR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE;
-                    }
-                } else {
-                    assert(!"Expected 3 numbers for entity property scale.");
-                }
-            } break;
-            case WAIT_FOR_ENTITY_BOOL: {
-                if (token.type == INTEGER) {
-                    assert(bool_to_edit);
-                    *bool_to_edit = (int32) string_to_uint32(token.string);
-                    state = WAIT_FOR_ENTITY_PROPERTY_NAME_OR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE;
-                } else {
-                    // TODO: we could add a variable that saves the name of the property for better errors
-                    assert(!"Expected an integer for entity property");
-                }
-            } break;
-            case WAIT_FOR_POINT_LIGHT_ENTITY_LIGHT_COLOR_VEC3: {
-                assert(temp_entity->type == ENTITY_POINT_LIGHT);
-
-                if (token.type == REAL || token.type == INTEGER) {
-                    vec3_buffer.values[num_values_read] = string_to_real32(token.string);
-                    num_values_read++;
-                    if (num_values_read == 3) {
-                        temp_point_light_entity_info.entity.light_color = vec3_buffer;
-                        state = WAIT_FOR_ENTITY_PROPERTY_NAME_OR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE;
-                    }
-                } else {
-                    assert(!"Expected 3 numbers for point light entity property light_color.");
-                }
-            } break;
-            case WAIT_FOR_POINT_LIGHT_ENTITY_FALLOFF_START_NUMBER: {
-                assert(temp_entity->type == ENTITY_POINT_LIGHT);
-
-                if (token.type == REAL || token.type == INTEGER) {
-                    temp_point_light_entity_info.entity.falloff_start = string_to_real32(token.string);
-                    state = WAIT_FOR_ENTITY_PROPERTY_NAME_OR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE;
-                } else {
-                    assert(!"Expected a number for point light entity property falloff_start.");
-                }
-            } break;
-            case WAIT_FOR_POINT_LIGHT_ENTITY_FALLOFF_END_NUMBER: {
-                assert(temp_entity->type == ENTITY_POINT_LIGHT);
-
-                if (token.type == REAL || token.type == INTEGER) {
-                    temp_point_light_entity_info.entity.falloff_end = string_to_real32(token.string);
-                    state = WAIT_FOR_ENTITY_PROPERTY_NAME_OR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE;
-                } else {
-                    assert(!"Expected a number for point light entity property falloff_end.");
-                }
-            } break;
-            case FINISHED: {
-                if (token.type != END) assert(!"Unexpected extra tokens.");
-            }
-        }
-
-    } while (token.type != END);
+    Token token = get_token(tokenizer);
+    if (token.type != END) {
+        return level_parse_error(error, "Expected end of level file.");
+    }
 
     return true;
 }

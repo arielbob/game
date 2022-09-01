@@ -16,6 +16,9 @@
 // for example, LIGHT_POINT will use falloff_start and falloff_end, and ignore
 // all the other light properties. the light_color field is shared across all
 // light types.
+// NOTE: for now, we just assume that falloff_start and falloff_end are set when
+//       light_type is set. this is fine for now, but we may want to have flags
+//       for light fields if they need to be deallocated.
 enum Light_Type {
     LIGHT_POINT
 };
@@ -29,10 +32,11 @@ enum Light_Type {
     AABB transformed_aabb;                      \
                                                 \
     Collider_Variant collider;                  \
+                                                \
     Light_Type light_type;                      \
     Vec3 light_color;                           \
     real32 falloff_start;                       \
-    real32 falloff_end;                         \     
+    real32 falloff_end;                         \
 
 struct Entity {
     int32 id;
