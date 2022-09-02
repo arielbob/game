@@ -73,7 +73,7 @@ namespace Editor_Constants {
     //real32 row_height =  30.0f;
 };
 
-int32 add_entity(Editor_Level *level, Entity *entity, int32 existing_id = -1);
+int32 add_entity(Editor_Level *level, Entity *entity);
 void delete_entity(Editor_State *editor_state, int32 id);
 Entity *get_entity(Editor_State *editor_state, int32 id);
 Entity *copy_cast_entity(Allocator *allocator, Entity *uncast_entity);

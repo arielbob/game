@@ -453,6 +453,9 @@ bool32 parse_material(Allocator *temp_allocator, Tokenizer *tokenizer,
 
     // set defaults
     material_info.flags = 0;
+    material_info.albedo_texture_name = make_string("texture_default");
+    material_info.metalness_texture_name = make_string("texture_default");
+    material_info.roughness_texture_name = make_string("texture_default");
     material_info.albedo_color = make_vec3(1.0f, 0.0f, 0.0f);
     material_info.metalness = 0.5f;
     material_info.roughness = 0.5f;
@@ -499,7 +502,7 @@ bool32 parse_material(Allocator *temp_allocator, Tokenizer *tokenizer,
                 uint32 result;
                 bool32 parse_result = ascii_to_uint32(token.string, &result);
                 if (parse_result) {
-                    material_info.use_albedo_texture = result;
+                    material_info.flag |= MATERIAL_USE_ALBEDO_TEXTURE;
                 } else {
                     return level_parse_error(error, "Expected unsigned integer for use_albedo_texture.");
                 }
@@ -537,7 +540,7 @@ bool32 parse_material(Allocator *temp_allocator, Tokenizer *tokenizer,
                 uint32 result;
                 bool32 parse_result = ascii_to_uint32(token.string, &result);
                 if (parse_result) {
-                    material_info.use_metalness_texture = result;
+                    material_info.flags |= MATERIAL_USE_METALNESS_TEXTURE;
                 } else {
                     return level_parse_error(error, "Expected unsigned integer for use_metalness_texture.");
                 }
@@ -569,7 +572,7 @@ bool32 parse_material(Allocator *temp_allocator, Tokenizer *tokenizer,
                 uint32 result;
                 bool32 parse_result = ascii_to_uint32(token.string, &result);
                 if (parse_result) {
-                    material_info.use_roughness_texture = result;
+                    material_info.flags |= MATERIAL_USE_ROUGHNESS_TEXTURE;
                 } else {
                     return level_parse_error(error, "Expected unsigned integer for use_roughness_texture.");
                 }

@@ -40,7 +40,8 @@ struct Entity_Info {
 
 #define MAX_LEVEL_INFO_ARRAY_SIZE 128
 struct Level_Info {
-    String level_name;
+    String name;
+    String filename;
     
     int32 num_entities;
     Entity_Info entities[MAX_LEVEL_INFO_ARRAY_SIZE];
@@ -134,7 +135,8 @@ namespace Level_Loader {
     Token make_token(Token_Type type, char *contents, int32 length);
     Token get_token(Tokenizer *tokenizer);
     Token peek_token(Tokenizer *tokenizer);
-    bool32 parse_level_info(Allocator *temp_allocator, File_Data file_data, Level_Info *level_info);
+    bool32 parse_level(Allocator *temp_allocator, File_Data file_data,
+                       Level_Info *level_info, char **error_out);
 }
 
 #endif

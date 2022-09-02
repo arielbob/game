@@ -65,12 +65,29 @@ void unload_level(Editor_Level *level) {
     clear_heap(&level->heap);
 }
 
+void load_level_entities(Editor_Level *level, Level_Info *level_info) {
+    for (int32 i = 0; i < level_info->num_entities; i++) {
+        Entity *entity = (Entity *) allocate((Allocator *) &level->heap, sizeof(Entity));
+        // TODO: copy level_info entity's fields into entity
+        //       - we may want to make a function that converts level_info entities to game entities
+        //       - also functions for conversion of all the other game structs
+        
+        add_entity(level, entity);
+    }
+}
+
 void load_level(Editor_State *editor_state, Level_Info *level_info) {
-    load_level_assets(asset_manager, level_info);
+    load_level_assets(level_info);
 
     Editor_Level *level = &editor_state->level;
-    level->name = copy((Allocator *) &editor_state->general_heap, level_info->name);
+    level->name     = copy((Allocator *) &level->heap, level_info->name);
+    level->filename = copy((Allocator *) &level->heap, level_info->filename);
 
+    // TODO: implement this
+    load_level_entities(&editor_state->level, level_info);
+
+    // TODO: remove everything below
+    #if 0
     Allocator *entity_allocator = (Allocator *) &editor_state->entity_heap;
 
     // NOTE: if we ever add allocated members to entities, we have to change these to use a copy procedure
@@ -116,17 +133,21 @@ void load_level(Editor_State *editor_state, Level_Info *level_info) {
     
     add_entity(level, (Entity *) capsule_entity);
 #endif
+    #endif
 }
 
 bool32 read_and_load_level(Editor_State *editor_state, char *filename) {
-    // TODO: read level file
-    // TODO: load assets from level info
+    // TODO (done): read level file
+    // TODO (done): load assets from level info
     // TODO: load entities from level info
     
     Marker m = begin_region();
 
     Level_Info *level_info = (Level_Info *) allocate(temp_region, sizeof(Level_Info), true);
+    level_info->name = make_string(filename);
     File_Data level_file = platform_open_and_read_file(temp_region, filename);
+
+    // TODO: add error string and output error if this fails
     Level_Loader::parse_level(temp_region, level_file, level_info);
 
     end_region(m);

@@ -4,10 +4,11 @@
 #include "math.h"
 #include "string.h"
 
-#define MAX_TOKEN_TEXT_SIZE 1024
-#define NUM_MESH_BUCKETS 128
-#define NUM_MATERIAL_BUCKETS 128
-#define NUM_FONT_BUCKETS 128
+#define MAX_TOKEN_TEXT_SIZE   1024
+#define NUM_MESH_BUCKETS      128
+#define NUM_TEXTURE_BUCKETS   128
+#define NUM_MATERIAL_BUCKETS  128
+#define NUM_FONT_BUCKETS      128
 #define NUM_FONT_FILE_BUCKETS 128
 
 #define MATERIAL_USE_ALBEDO_TEXTURE    (1 << 0)
@@ -23,6 +24,7 @@ enum class Mesh_Type { NONE, LEVEL, PRIMITIVE, ENGINE, RENDERING };
 struct Mesh {
     Mesh_Type type;
     String name;
+    String filename;
 
     Allocator *allocator;
     
@@ -55,9 +57,21 @@ struct Mesh {
 
 void deallocate(Mesh *mesh) {
     deallocate(mesh->name);
+    deallocate(mesh->filename);
     deallocate(mesh->allocator, mesh->data);
     deallocate(mesh->allocator, mesh->indices);
 }
+
+struct Texture {
+    String name;
+    String filename;
+    
+    bool32 is_loaded;
+    bool32 should_unload;
+
+    Texture *table_next;
+    Texture *table_prev;
+};
 
 struct Font_File {
     char *filename;
@@ -86,6 +100,21 @@ struct Font {
     bool32 is_baked;
 };
 
+// we don't store whether or not a material has a certain texture. we just store a default texture.
+// this is because even when a user defined texture is set, that file can disappear. we don't want to
+// have to change some flag when a texture is no longer valid or have to maintain two states like
+// not having a texture at all or a texture being invalid.
+//
+// this decisions also makes it fine to not validate level_info after reading a level file. we just
+// set the textures to the given strings. if it doesn't exist, then we just put an ugly, conspicuous,
+// default texture.
+//
+// how do we store these strings then though? we shouldn't use pointers to strings that are already
+// allocated. we should allocate new strings. this makes sense. the strings should be used as
+// identifiers. if we're just using pointers, to strings already allocated, we wouldn't we just
+// store pointers to the entire material? if we delete a material, we need to also delete the pointers.
+// if we just keep a string, then even if we delete materials, we can keep that name, but then add a
+// new material with the same name and all the materials would be updated.
 #define MATERIAL_FIELDS                         \
     String name;                                \
                                                 \
@@ -126,6 +155,7 @@ struct Asset_Manager {
     #endif
 
     Mesh *mesh_table[NUM_MESH_BUCKETS];
+    Texture *texture_table[NUM_TEXTURE_BUCKETS];
     Material *material_table[NUM_MATERIAL_BUCKETS];
     Font *font_table[NUM_FONT_BUCKETS];
     Font_File *font_file_table[NUM_FONT_FILE_BUCKETS]; // for caching font files

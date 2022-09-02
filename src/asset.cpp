@@ -97,6 +97,88 @@ inline Mesh *add_mesh(char *name, char *filename, Mesh_Type type) {
     return add_mesh(make_string(name), make_string(filename), type);
 }
 
+Texture *get_texture(String name) {
+    uint32 hash = get_hash(name, NUM_TEXTURE_BUCKETS);
+
+    Texture *current = asset_manager->texture_table[hash];
+    while (current) {
+        if (string_equals(current->name, name)) {
+            return current;
+        }
+
+        current = current->table_next;
+    }
+
+    return NULL;
+}
+
+void delete_texture(String name) {
+    uint32 hash = get_hash(name, NUM_TEXTURE_BUCKETS);
+
+    Texture *current = asset_manager->texture_table[hash];
+    while (current) {
+        if (string_equals(current->name, name)) {
+            if (current->table_prev) {
+                current->table_prev->table_next = current->table_next;
+            }
+            if (current->table_next) {
+                current->table_next->table_prev = current->table_prev;
+            }
+
+            deallocate(current->name);
+            deallocate(current->filename);
+            
+            return;
+        }
+
+        current = current->table_next;
+    }
+
+    assert(!"Texture does not exist.");
+}
+
+bool32 texture_exists(String name) {
+    uint32 hash = get_hash(name, NUM_TEXTURE_BUCKETS);
+
+    Texture *current = asset_manager->texture_table[hash];
+    while (current) {
+        if (string_equals(current->name, name)) {
+            return true;
+        }
+
+        current = current->table_next;
+    }
+
+    return false;
+}
+
+Texture *add_texture(String name, String filename) {
+    if (texture_exists(name)) {
+        assert(!"Texture with name already exists.");
+        return NULL;
+    }
+
+    Texture *texture = (Texture *) allocate(asset_manager->allocator, sizeof(Texture), true);
+    texture->name     = name;
+    texture->filename = filename;
+    
+    uint32 hash = get_hash(name, NUM_TEXTURE_BUCKETS);
+
+    Texture *current = asset_manager->texture_table[hash];
+    texture->table_next = current;
+    texture->table_prev = NULL;
+    if (current) {
+        current->table_prev = texture;
+    }
+    asset_manager->texture_table[hash] = texture;
+
+    return texture;
+}
+
+inline Texture *add_texture(char *name, char *filename) {
+    return add_texture(make_string(name), make_string(filename));
+}
+
 bool32 material_exists(String name) {
     uint32 hash = get_hash(name, NUM_MATERIAL_BUCKETS);
 
@@ -336,6 +418,46 @@ void unload_materials() {
     }
 }
 
+void load_level_assets(Level_Info *level_info) {
+    // we always copy strings in here; i don't think functions that take strings should copy them.
+    // i think it's better to assume that functions never copy strings and the caller of those
+    // functions is responsible to copy them.
+    for (int32 i = 0; i < level_info->num_meshes; i++) {
+        Mesh_Info *mesh_info = &level_info->meshes[i];
+        String name     = copy(asset_manager->allocator, mesh_info->name);
+        String filename = copy(asset_manager->allocator, mesh_info->filename);
+        
+        add_mesh(name, filename, Mesh_Type::LEVEL);
+    }
+
+    for (int32 i = 0; i < level_info->num_textures; i++) {
+        Texture_Info *texture_info = &level_info->textures[i];
+        String name     = copy(asset_manager->allocator, texture_info->name);
+        String filename = copy(asset_manager->allocator, texture_info->filename);
+
+        add_texture(name, filename);
+    }
+
+    for (int32 i = 0; i < level_info->num_materials; i++) {
+        Material_Info *material_info = &level_info->materials[i];
+        Material material_to_add = {};
+        Allocator *allocator = asset_manager->allocator;
+        material_to_add.name                   = copy(allocator, material_info->name);
+        material_to_add.flags                  = material_info->flags;
+        
+        material_to_add.albedo_texture_name    = copy(allocator, material_info->albedo_texture_name);
+        material_to_add.albedo_color           = material_info->albedo_color;
+        
+        material_to_add.metalness_texture_name = copy(allocator, material_info->metalness_texture_name);
+        material_to_add.metalness              = material_info->metalness;
+
+        material_to_add.roughness_texture_name = copy(allocator, material_info->roughness_texture_name);
+        material_to_add.roughness              = material_info->roughness;
+        
+        add_material(material_to_add);
+    }
+}
+
 // maybe a better word is delete, since we're just deleting the level assets from their tables
 // but then we also unload them on the GPU
 void unload_level_assets() {
@@ -357,6 +479,8 @@ void load_default_assets() {
     add_mesh("gizmo_cube",   "blender/gizmo_cube.mesh",   Mesh_Type::ENGINE);
     add_mesh("cube",         "blender/cube.mesh",         Mesh_Type::PRIMITIVE);
 
+    // TODO: add add_texture() function
+    
     add_font("times32",    "c:/windows/fonts/times.ttf", 32.0f);
     add_font("times24",    "c:/windows/fonts/times.ttf", 24.0f);
     add_font("courier24b", "c:/windows/fonts/courbd.ttf", 24.0f);
