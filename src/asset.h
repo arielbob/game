@@ -16,7 +16,8 @@
 #define MATERIAL_USE_ROUGHNESS_TEXTURE (1 << 2)
 
 // NOTE: RENDERING type is only for OpenGL meshes (added in OpenGL code)
-enum class Mesh_Type { NONE, LEVEL, PRIMITIVE, ENGINE, RENDERING };
+enum class Mesh_Type     { NONE, LEVEL, PRIMITIVE, ENGINE, RENDERING };
+enum class Texture_Type  { NONE, LEVEL, DEFAULT };
 
 // TODO: we need more types of Mesh objects. since not all meshes require all the data. for example, a nav mesh
 //       doesn't need UVs. and something like a rock mesh won't need joint data. we will also need to modify
@@ -63,6 +64,8 @@ void deallocate(Mesh *mesh) {
 }
 
 struct Texture {
+    Texture_Type type;
+    
     String name;
     String filename;
     
@@ -72,6 +75,11 @@ struct Texture {
     Texture *table_next;
     Texture *table_prev;
 };
+
+void deallocate(Texture *texture) {
+    deallocate(texture->name);
+    deallocate(texture->filename);
+}
 
 struct Font_File {
     char *filename;
@@ -140,9 +148,6 @@ void deallocate(Material *material) {
     deallocate(material->name);
 }
 
-// this is just so we can store a pointer to it later
-Heap_Allocator asset_heap;
-
 struct Asset_Manager {
     Allocator *allocator;
 
@@ -154,10 +159,10 @@ struct Asset_Manager {
     Hash_Table<int32, Font> font_table;
     #endif
 
-    Mesh *mesh_table[NUM_MESH_BUCKETS];
-    Texture *texture_table[NUM_TEXTURE_BUCKETS];
-    Material *material_table[NUM_MATERIAL_BUCKETS];
-    Font *font_table[NUM_FONT_BUCKETS];
+    Mesh      *mesh_table[NUM_MESH_BUCKETS];
+    Texture   *texture_table[NUM_TEXTURE_BUCKETS];
+    Material  *material_table[NUM_MATERIAL_BUCKETS];
+    Font      *font_table[NUM_FONT_BUCKETS];
     Font_File *font_file_table[NUM_FONT_FILE_BUCKETS]; // for caching font files
 
     bool32 gpu_should_unload_level_assets;

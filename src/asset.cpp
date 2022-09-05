@@ -23,7 +23,11 @@ void delete_mesh(String name) {
         if (string_equals(current->name, name)) {
             if (current->table_prev) {
                 current->table_prev->table_next = current->table_next;
+            } else {
+                // if we're first in list, we need to update bucket array when we delete
+                asset_manager->mesh_table[hash] = current->table_next;
             }
+            
             if (current->table_next) {
                 current->table_next->table_prev = current->table_prev;
             }
@@ -32,6 +36,7 @@ void delete_mesh(String name) {
             deallocate(asset_manager->allocator, current->data);
             deallocate(asset_manager->allocator, current->indices);
             deallocate(asset_manager->allocator, current);
+            
             return;
         }
 
@@ -120,13 +125,18 @@ void delete_texture(String name) {
         if (string_equals(current->name, name)) {
             if (current->table_prev) {
                 current->table_prev->table_next = current->table_next;
+            } else {
+                // if we're first in list, we need to update bucket array when we delete
+                asset_manager->texture_table[hash] = current->table_next;
             }
+            
             if (current->table_next) {
                 current->table_next->table_prev = current->table_prev;
             }
 
             deallocate(current->name);
             deallocate(current->filename);
+            deallocate(asset_manager->allocator, current);
             
             return;
         }
@@ -152,15 +162,16 @@ bool32 texture_exists(String name) {
     return false;
 }
 
-Texture *add_texture(String name, String filename) {
+Texture *add_texture(String name, String filename, Texture_Type type) {
     if (texture_exists(name)) {
         assert(!"Texture with name already exists.");
         return NULL;
     }
 
-    Texture *texture = (Texture *) allocate(asset_manager->allocator, sizeof(Texture), true);
+    Texture *texture  = (Texture *) allocate(asset_manager->allocator, sizeof(Texture), true);
     texture->name     = name;
     texture->filename = filename;
+    texture->type     = type;
     
     uint32 hash = get_hash(name, NUM_TEXTURE_BUCKETS);
 
@@ -175,8 +186,8 @@ Texture *add_texture(String name, String filename) {
     return texture;
 }
 
-inline Texture *add_texture(char *name, char *filename) {
-    return add_texture(make_string(name), make_string(filename));
+inline Texture *add_texture(char *name, char *filename, Texture_Type type) {
+    return add_texture(make_string(name), make_string(filename), type);
 }
 
 bool32 material_exists(String name) {
@@ -371,7 +382,11 @@ void unload_level_meshes() {
             if (current->type == Mesh_Type::LEVEL) {
                 if (current->table_prev) {
                     current->table_prev->table_next = next;
+                } else {
+                    // if we're first in list, we need to update bucket array when we delete
+                    mesh_table[i] = current->table_next;
                 }
+                
                 if (current->table_next) {
                     current->table_next->table_prev = current->table_prev;
                 }
@@ -392,7 +407,7 @@ void unload_level_meshes() {
 
 void unload_materials() {
     Material **material_table = asset_manager->material_table;
-    
+
     for (int32 i = 0; i < NUM_MATERIAL_BUCKETS; i++) {
         Material *current = material_table[i];
         while (current) {
@@ -400,7 +415,10 @@ void unload_materials() {
 
             if (current->table_prev) {
                 current->table_prev->table_next = next;
+            } else {
+                material_table[i] = current->table_next;
             }
+            
             if (current->table_next) {
                 current->table_next->table_prev = current->table_prev;
             }
@@ -413,6 +431,40 @@ void unload_materials() {
                 material_table[i] = next;
             }
 
+            current = next;
+        }
+    }
+}
+
+void unload_level_textures() {
+    Texture **texture_table = asset_manager->texture_table;
+    
+    for (int32 i = 0; i < NUM_TEXTURE_BUCKETS; i++) {
+        Texture *current = texture_table[i];
+        while (current) {
+            Texture *next = current->table_next;
+
+            if (current->type == Texture_Type::LEVEL) {
+                if (current->table_prev) {
+                    current->table_prev->table_next = next;
+                } else {
+                    // if we're first in list, we need to update bucket array when we delete
+                    texture_table[i] = current->table_next;
+                }
+                
+                if (current->table_next) {
+                    current->table_next->table_prev = current->table_prev;
+                }
+                
+                deallocate(current);
+                deallocate(asset_manager->allocator, current);
+
+                if (current == texture_table[i]) {
+                    // if it's first in the list, then we need to update texture table when we delete it
+                    texture_table[i] = next;
+                }
+            }
+            
             current = next;
         }
     }
@@ -435,13 +487,14 @@ void load_level_assets(Level_Info *level_info) {
         String name     = copy(asset_manager->allocator, texture_info->name);
         String filename = copy(asset_manager->allocator, texture_info->filename);
 
-        add_texture(name, filename);
+        add_texture(name, filename, Texture_Type::LEVEL);
     }
 
     for (int32 i = 0; i < level_info->num_materials; i++) {
         Material_Info *material_info = &level_info->materials[i];
         Material material_to_add = {};
         Allocator *allocator = asset_manager->allocator;
+        
         material_to_add.name                   = copy(allocator, material_info->name);
         material_to_add.flags                  = material_info->flags;
         
@@ -467,25 +520,33 @@ void unload_level_assets() {
 
     unload_level_meshes();
     unload_materials();
-    // TODO: unload texture table when we add it
+    unload_level_textures();
     
     asset_manager->gpu_should_unload_level_assets = true;
 }
 
 void load_default_assets() {
+    // we need default assets for assets that are based on some file, for example meshes and textures.
+    // this is because if we create a new mesh or a new texture, we need some default asset to use/display.
+    // i guess we could just make a default texture just be no texture, but that's not ideal, since we would
+    // ideally want some type of conspicuous texture that makes it obvious that an entity does not have a
+    // texture.
+    //
+    // we don't need default materials. materials reference meshes and textures but materials themselves
+    // don't directly require any files.
     add_mesh("gizmo_arrow",  "blender/gizmo_arrow.mesh",  Mesh_Type::ENGINE);
     add_mesh("gizmo_ring",   "blender/gizmo_ring.mesh",   Mesh_Type::ENGINE);
     add_mesh("gizmo_sphere", "blender/gizmo_sphere.mesh", Mesh_Type::ENGINE);
     add_mesh("gizmo_cube",   "blender/gizmo_cube.mesh",   Mesh_Type::ENGINE);
     add_mesh("cube",         "blender/cube.mesh",         Mesh_Type::PRIMITIVE);
 
-    // TODO: add add_texture() function
-    
-    add_font("times32",    "c:/windows/fonts/times.ttf", 32.0f);
-    add_font("times24",    "c:/windows/fonts/times.ttf", 24.0f);
-    add_font("courier24b", "c:/windows/fonts/courbd.ttf", 24.0f);
-    add_font("calibri14",  "c:/windows/fonts/calibri.ttf", 14.0f);
-    add_font("calibri14b", "c:/windows/fonts/calibrib.ttf", 14.0f);
-    add_font("calibri24b", "c:/windows/fonts/calibrib.ttf", 24.0f);
-    add_font("lucidaconsole18", "c:/windows/fonts/lucon.ttf", 18.0f);
+    add_texture("texture_default", "blender/debug-texture.jpg", Texture_Type::DEFAULT);
+
+    add_font("times32",         "c:/windows/fonts/times.ttf",    32.0f);
+    add_font("times24",         "c:/windows/fonts/times.ttf",    24.0f);
+    add_font("courier24b",      "c:/windows/fonts/courbd.ttf",   24.0f);
+    add_font("calibri14",       "c:/windows/fonts/calibri.ttf",  14.0f);
+    add_font("calibri14b",      "c:/windows/fonts/calibrib.ttf", 14.0f);
+    add_font("calibri24b",      "c:/windows/fonts/calibrib.ttf", 24.0f);
+    add_font("lucidaconsole18", "c:/windows/fonts/lucon.ttf",    18.0f);
 }

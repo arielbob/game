@@ -2,8 +2,9 @@
 #define LEVEL_H
 
 #include "parse.h"
+#include "entity.h"
 
-struct Editor_Level {
+struct Level {
     Heap_Allocator heap;
     
     String name;
@@ -11,13 +12,8 @@ struct Editor_Level {
 
     Entity *entities;
     int32 total_entities_added_ever;
-    
-    //Linked_List<Entity *> entities;
-};
 
-struct Game_Level {
-    Entity *entities;
-    //Linked_List<Entity *> entities;
+    bool32 is_loaded;
 };
 
 struct Mesh_Info {
@@ -68,65 +64,6 @@ namespace Level_Loader {
         CLOSE_BRACKET
     };
 
-    enum Parser_State {
-        PARSE_LEVEL_INFO,
-        PARSE_MESH_INFO,
-
-
-
-
-
-        // TODO: remove these
-        WAIT_FOR_LEVEL_INFO_BLOCK_NAME,
-        WAIT_FOR_LEVEL_INFO_BLOCK_OPEN,
-        WAIT_FOR_LEVEL_NAME_KEYWORD,
-        WAIT_FOR_LEVEL_NAME_STRING,
-        WAIT_FOR_LEVEL_INFO_BLOCK_CLOSE,
-
-        WAIT_FOR_MESHES_BLOCK_NAME,
-        WAIT_FOR_MESHES_BLOCK_OPEN,
-        WAIT_FOR_MESH_KEYWORD_OR_MESHES_BLOCK_CLOSE,
-        WAIT_FOR_MESH_NAME_STRING,
-        WAIT_FOR_MESH_FILENAME_STRING,
-
-        WAIT_FOR_TEXTURES_BLOCK_NAME,
-        WAIT_FOR_TEXTURES_BLOCK_OPEN,
-        WAIT_FOR_TEXTURE_KEYWORD_OR_TEXTURES_BLOCK_CLOSE,
-        WAIT_FOR_TEXTURE_NAME_STRING,
-        WAIT_FOR_TEXTURE_FILENAME_STRING,
-
-        WAIT_FOR_MATERIALS_BLOCK_NAME,
-        WAIT_FOR_MATERIALS_BLOCK_OPEN,
-        WAIT_FOR_MATERIAL_KEYWORD_OR_MATERIALS_BLOCK_CLOSE,
-        WAIT_FOR_MATERIAL_NAME_STRING,
-        WAIT_FOR_MATERIAL_PROPERTY_NAME_OR_MATERIAL_KEYWORD_OR_MATERIALS_BLOCK_CLOSE,
-
-        WAIT_FOR_MATERIAL_TEXTURE_NAME_STRING,
-        WAIT_FOR_MATERIAL_GLOSS_NUMBER,
-        WAIT_FOR_MATERIAL_COLOR_OVERRIDE_VEC3,
-        WAIT_FOR_MATERIAL_USE_COLOR_OVERRIDE_INTEGER,
-
-        WAIT_FOR_ENTITIES_BLOCK_NAME,
-        WAIT_FOR_ENTITIES_BLOCK_OPEN,
-        WAIT_FOR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE,
-        WAIT_FOR_ENTITY_TYPE_VALUE,
-
-        WAIT_FOR_ENTITY_PROPERTY_NAME_OR_ENTITY_TYPE_KEYWORD_OR_ENTITIES_BLOCK_CLOSE,
-        WAIT_FOR_ENTITY_POSITION_VEC3,
-        WAIT_FOR_ENTITY_ROTATION_QUATERNION,
-        WAIT_FOR_ENTITY_SCALE_VEC3,
-        WAIT_FOR_ENTITY_BOOL,
-
-        WAIT_FOR_NORMAL_ENTITY_MESH_NAME_STRING,
-        WAIT_FOR_NORMAL_ENTITY_MATERIAL_NAME_STRING,
-        
-        WAIT_FOR_POINT_LIGHT_ENTITY_LIGHT_COLOR_VEC3,
-        WAIT_FOR_POINT_LIGHT_ENTITY_FALLOFF_START_NUMBER,
-        WAIT_FOR_POINT_LIGHT_ENTITY_FALLOFF_END_NUMBER,
-
-        FINISHED
-    };
-
     struct Token {
         Token_Type type;
         String string;
@@ -135,8 +72,32 @@ namespace Level_Loader {
     Token make_token(Token_Type type, char *contents, int32 length);
     Token get_token(Tokenizer *tokenizer);
     Token peek_token(Tokenizer *tokenizer);
+    
     bool32 parse_level(Allocator *temp_allocator, File_Data file_data,
                        Level_Info *level_info, char **error_out);
+    bool32 parse_level_info_block(Allocator *temp_allocator, Tokenizer *tokenizer,
+                                  Level_Info *level_info, char **error);
+    bool32 parse_meshes_block(Allocator *temp_allocator, Tokenizer *tokenizer,
+                              Level_Info *level_info, char **error);
+    bool32 parse_material(Allocator *temp_allocator, Tokenizer *tokenizer,
+                          Material_Info *material_info_out, char **error);
+    bool32 parse_materials_block(Allocator *temp_allocator, Tokenizer *tokenizer,
+                                 Level_Info *level_info, char **error);
+    bool32 parse_entity(Allocator *temp_allocator, Tokenizer *tokenizer,
+                        Entity_Info *entity_info_out, char **error);
+    bool32 parse_entities_block(Allocator *temp_allocator, Tokenizer *tokenizer,
+                                Level_Info *level_info, char **error);
+    
+    bool32 parse_real(Tokenizer *tokenizer, real32 *result, char **error);
+    bool32 parse_vec3(Tokenizer *tokenizer, Vec3 *result, char **error);
+    bool32 parse_quaternion(Tokenizer *tokenizer, Quaternion *result, char **error);
+    bool32 parse_textures_block(Allocator *temp_allocator, Tokenizer *tokenizer,
+                                Level_Info *level_info, char **error);
+    bool32 parse_keyword(Allocator *temp_allocator, Tokenizer *tokenizer,
+                         char *token_string, char **error);
+    bool32 parse_vec3_property(Allocator *temp_allocator, Tokenizer *tokenizer,
+                               char *property_name, Vec3 *result,
+                               char **error);
 }
 
 #endif

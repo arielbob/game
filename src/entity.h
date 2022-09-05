@@ -6,6 +6,7 @@
 #include "string.h"
 #include "asset.h"
 #include "collider.h"
+#include "level.h"
 
 #define ENTITY_MESH           (1 << 0)
 #define ENTITY_MATERIAL       (1 << 1)

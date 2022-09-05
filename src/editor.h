@@ -19,7 +19,6 @@
 
 struct Editor_State {
     Arena_Allocator *arena;
-    Editor_Level level;
     
     bool32 is_startup;
     bool32 is_new_level;
@@ -73,14 +72,15 @@ namespace Editor_Constants {
     //real32 row_height =  30.0f;
 };
 
-int32 add_entity(Editor_Level *level, Entity *entity);
+#if 0
+int32 add_entity(Level *level, Entity *entity);
 void delete_entity(Editor_State *editor_state, int32 id);
 Entity *get_entity(Editor_State *editor_state, int32 id);
+#endif
 Entity *copy_cast_entity(Allocator *allocator, Entity *uncast_entity);
 void unload_level(Editor_State *editor_state);
 //void load_level(Editor_State *editor_state, Level_Info *level_info);
 bool32 read_and_load_level(Editor_State *editor_state, char *filename);
 void reset_editor(Editor_State *editor_state);
-void init_editor_level(Editor_State *editor_state, Editor_Level *editor_level);
 
 #endif

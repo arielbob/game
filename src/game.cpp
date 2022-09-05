@@ -1,10 +1,48 @@
 #include "platform.h"
 #include "memory.h"
-#include "entity.h"
 #include "game.h"
 #include "level.h"
 
 global_variable int32 samples_written_2;
+
+void init_asset_manager(Arena *game_data) {
+    // TODO: just make this a heap allocator. when we remove the editor, it can change to an arena
+    uint32 heap_size = ASSET_HEAP_SIZE;
+    void *heap_base = arena_push(game_data, heap_size);
+
+    // TODO: i don't think this needs to be a pointer, really - we can just store the object like we do
+    //       with the level heap in the function below
+    Heap_Allocator *heap = (Heap_Allocator *) arena_push(game_data, sizeof(Heap_Allocator));
+    *heap = make_heap_allocator(heap_base, heap_size);
+    
+    *asset_manager = {};
+    asset_manager->allocator = (Allocator *) heap;
+}
+
+void init_level(Game_State *game_state, Arena *game_data) {
+    uint32 heap_size = LEVEL_HEAP_SIZE;
+    void *heap_base = arena_push(game_data, heap_size);
+    
+    Level level = {};
+    level.heap = make_heap_allocator(heap_base, heap_size);
+    game_state->level = level;
+}
+
+bool32 read_and_load_level(Level *level, char *filename) {
+    Marker m = begin_region();
+
+    Level_Info *level_info = (Level_Info *) allocate(temp_region, sizeof(Level_Info), true);
+    level_info->name = make_string(filename);
+    File_Data level_file = platform_open_and_read_file(temp_region, filename);
+
+    // TODO: add error string and output error if this fails
+    Level_Loader::parse_level(temp_region, level_file, level_info);
+    load_level(level, level_info);
+    
+    end_region(m);
+
+    return true;
+}
 
 void fill_sound_buffer_with_sine_wave(Sound_Output *sound_output, uint32 num_samples) {
     assert(num_samples < sound_output->max_samples); 
@@ -463,36 +501,16 @@ void init_game(Game_State *game_state,
     Context::message_manager = &game_state->message_manager;
 
     // init asset manager
-    // TODO: just make this a heap allocator. when we remove the editor, it can change to an arena
-    uint32 asset_heap_size = MEGABYTES(128);
-    void *asset_heap_base = arena_push(&memory.game_data, asset_heap_size);
-    asset_heap = make_heap_allocator(asset_heap_base, asset_heap_size);
+    init_asset_manager(&memory.game_data);
+
+    // init level
+    init_level(game_state, &memory.game_data);
     
-    Asset_Manager asset_manager = make_asset_manager((Allocator *) &asset_heap);
-    game_state->asset_manager = asset_manager;
-    //Context::asset_manager = &game_state->asset_manager;
-
-    // init memory
-    uint32 level_arena_size = MEGABYTES(256);
-    void *level_arena_base = arena_push(&memory.game_data, level_arena_size, false);
-    game_state->level_arena = make_arena_allocator(level_arena_base, level_arena_size);
-
+    // load default level
+    read_and_load_level(&game_state->level, "src/levels/pbr_test.level");
+    
     // init camera
     init_camera(&game_state->camera, display_output, CAMERA_FOV);
-
-#if 0
-    // init fonts
-    load_font(asset_manager, "c:/windows/fonts/times.ttf", "times32", 32.0f, 512, 512);
-    load_font(asset_manager, "c:/windows/fonts/times.ttf", "times24", 24.0f, 512, 512);
-
-    load_font(asset_manager, "c:/windows/fonts/courbd.ttf", "courier24b", 24.0f, 512, 512);
-
-    load_font(asset_manager, "c:/windows/fonts/calibri.ttf", "calibri14", 14.0f, 512, 512);
-    load_font(asset_manager, "c:/windows/fonts/calibrib.ttf", "calibri14b", 14.0f, 512, 512);
-    load_font(asset_manager, "c:/windows/fonts/calibrib.ttf", "calibri24b", 24.0f, 512, 512);
-
-    load_font(asset_manager, "c:/windows/fonts/lucon.ttf", "lucidaconsole18", 18.0f, 512, 512);
-#endif
 
     Vec3 origin = make_vec3(0.0f, 10.0f, 0.0f);
     Vec3 direction = make_vec3(0.0f, -1.0f, 0.0f);
@@ -516,6 +534,7 @@ void init_game(Game_State *game_state,
 #endif
     game_state->is_initted = true;
 
+    #if 0
     Normal_Entity test_entity = {};
     test_entity.mesh_name = make_string("mesh");
     test_entity.material_name = make_string("material");
@@ -529,6 +548,7 @@ void init_game(Game_State *game_state,
     Mesh *ground_mesh = get_mesh("ground");
     delete_mesh("car");
     clear_level_meshes();
+    #endif
 }
 
 Entity *get_entity(Game_State *game_state, int32 id) {

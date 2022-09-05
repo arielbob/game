@@ -1,4 +1,25 @@
 #include "entity.h"
+#include "level.h"
+
+Entity make_entity_from_info(Entity_Info *info) {
+    Entity result = {};
+
+    result.flags            = info->flags;
+    result.transform        = info->transform;
+
+    result.mesh_name        = info->mesh_name;
+    result.material_name    = info->material_name;
+    result.transformed_aabb = info->transformed_aabb;
+
+    result.collider_variant = info->collider_variant;
+
+    result.light_type       = info->light_type;
+    result.light_color      = info->light_color;
+    result.falloff_start    = info->falloff_start;
+    result.falloff_end      = info->falloff_end;
+
+    return result;
+}
 
 void update_entity_aabb(Entity *entity) {
     // TODO: not sure if all entities with AABBs necessarily need a mesh

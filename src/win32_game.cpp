@@ -40,7 +40,7 @@ global_variable Allocator *temp_region;
 #include "string.h"
 
 #include "math.h"
-#include "entity.h"
+//#include "entity.h"
 #include "game.h"
 #include "platform.h"
 
@@ -56,6 +56,8 @@ global_variable Asset_Manager *asset_manager;
 #include "asset.cpp"
 #include "ui.cpp"
 //#include "level.cpp"
+#include "level_import.cpp"
+#include "level_export.cpp"
 #include "entity.cpp"
 #include "gizmo.cpp"
 //#include "editor_actions.cpp"

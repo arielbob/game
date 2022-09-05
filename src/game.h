@@ -1,6 +1,9 @@
 #ifndef GAME_H
 #define GAME_H
 
+#define ASSET_HEAP_SIZE MEGABYTES(128)
+#define LEVEL_HEAP_SIZE MEGABYTES(256)
+
 #define MAX_MATERIALS 64
 #define MAX_TEXTURES 64
 #define MAX_ENTITIES 64
@@ -195,8 +198,7 @@ struct Game_State {
     bool32 is_initted;
     Game_Mode mode;
 
-    Arena_Allocator level_arena;
-    Game_Level level;
+    Level level;
     Player player;
     Camera camera;
 
