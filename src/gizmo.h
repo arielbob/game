@@ -35,10 +35,10 @@ namespace Gizmo_Constants {
 struct Gizmo_State {
     Transform_Mode transform_mode;
     Transform transform;
-    int32 arrow_mesh_id;
-    int32 ring_mesh_id;
-    int32 sphere_mesh_id;
-    int32 cube_mesh_id;
+    String arrow_mesh_name;
+    String ring_mesh_name;
+    String sphere_mesh_name;
+    String cube_mesh_name;
 
     Gizmo_Handle hovered_gizmo_handle;
     Gizmo_Handle selected_gizmo_handle;

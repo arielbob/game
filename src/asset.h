@@ -151,14 +151,6 @@ void deallocate(Material *material) {
 struct Asset_Manager {
     Allocator *allocator;
 
-    #if 0
-    Hash_Table<int32, Material> material_table;
-    Hash_Table<int32, Texture> texture_table;
-
-    Hash_Table<String, File_Data> font_file_table;
-    Hash_Table<int32, Font> font_table;
-    #endif
-
     Mesh      *mesh_table[NUM_MESH_BUCKETS];
     Texture   *texture_table[NUM_TEXTURE_BUCKETS];
     Material  *material_table[NUM_MATERIAL_BUCKETS];

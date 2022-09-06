@@ -11,7 +11,7 @@ Entity make_entity_from_info(Entity_Info *info) {
     result.material_name    = info->material_name;
     result.transformed_aabb = info->transformed_aabb;
 
-    result.collider_variant = info->collider_variant;
+    result.collider = info->collider;
 
     result.light_type       = info->light_type;
     result.light_color      = info->light_color;

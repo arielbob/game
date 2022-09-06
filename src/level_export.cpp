@@ -12,6 +12,24 @@ void append_string_add_quotes(String_Buffer *buffer, char *string) {
     append_string(buffer, "\"");
 }
 
+void append_string_property(String_Buffer *buffer, char *label, String string) {
+    append_string(buffer, "%s ", label);
+    append_string_add_quotes(buffer, string);
+    append_string(buffer, "\n");
+}
+
+void append_vec3_property(String_Buffer *buffer, char *label, Vec3 v) {
+    append_string(buffer, "%s ", label);
+    append_string(buffer, "%f %f %f\n",
+                  v.x, v.y, v.z);
+}
+
+void append_quaternion_property(String_Buffer *buffer, char *label, Quaternion q) {
+    append_string(buffer, "%s ", label);
+    append_string(buffer, "%f %f %f %f\n",
+                  q.w, q.v.x, q.v.y, q.v.z);
+}
+
 void append_default_entity_info(Level *level, String_Buffer *buffer, Entity *entity) {
     int32 temp_buffer_size = 128;
 
@@ -57,13 +75,20 @@ void export_level(Level *level, char *filename) {
 
     append_string(&working_buffer, "meshes {\n");
     {
-        FOR_VALUE_POINTERS(int32, Mesh, asset_manager->mesh_table) {
-            if (value->type == Mesh_Type::LEVEL) {
-                append_string(&working_buffer, "mesh ");
-                append_string_add_quotes(&working_buffer, value->name);
-                append_string(&working_buffer, " ");
-                append_string_add_quotes(&working_buffer, value->filename);
-                append_string(&working_buffer, "\n");
+        Mesh **mesh_table = asset_manager->mesh_table;
+        for (int32 i = 0; i < NUM_MESH_BUCKETS; i++) {
+            Mesh *current = mesh_table[i];
+            
+            while (current) {
+                if (current->type == Mesh_Type::LEVEL) {
+                    append_string(&working_buffer, "mesh ");
+                    append_string_add_quotes(&working_buffer, current->name);
+                    append_string(&working_buffer, " ");
+                    append_string_add_quotes(&working_buffer, current->filename);
+                    append_string(&working_buffer, "\n");
+                }
+                
+                current = current->table_next;
             }
         }
     }
@@ -71,12 +96,21 @@ void export_level(Level *level, char *filename) {
 
     append_string(&working_buffer, "textures {\n");
     {
-        FOR_VALUE_POINTERS(int32, Texture, asset_manager->texture_table) {
-            append_string(&working_buffer, "texture ");
-            append_string_add_quotes(&working_buffer, value->name);
-            append_string(&working_buffer, " ");
-            append_string_add_quotes(&working_buffer, value->filename);
-            append_string(&working_buffer, "\n");
+        Texture **texture_table = asset_manager->texture_table;
+        for (int32 i = 0; i < NUM_TEXTURE_BUCKETS; i++) {
+            Texture *current = texture_table[i];
+            
+            while (current) {
+                if (current->type == Texture_Type::LEVEL) {
+                    append_string(&working_buffer, "texture ");
+                    append_string_add_quotes(&working_buffer, current->name);
+                    append_string(&working_buffer, " ");
+                    append_string_add_quotes(&working_buffer, current->filename);
+                    append_string(&working_buffer, "\n");
+                }
+                
+                current = current->table_next;
+            }
         }
     }
     append_string(&working_buffer, "}\n\n");
@@ -85,126 +119,75 @@ void export_level(Level *level, char *filename) {
 
     append_string(&working_buffer, "materials {\n");
     {
-        int32 num_materials_added = 0;
-        FOR_VALUE_POINTERS(int32, Material, asset_manager->material_table) {
-            Material *material = value;
-            append_string(&working_buffer, "material ");
-            append_string_add_quotes(&working_buffer, material->name);
-            append_string(&working_buffer, "\n");
+        Material **material_table = asset_manager->material_table;
+        for (int32 i = 0; i < NUM_MATERIAL_BUCKETS; i++) {
+            Material *current = material_table[i];
             
-            if (material->texture_id >= 0) {
-                append_string(&working_buffer, "texture ");
-                Texture material_texture = get_texture(asset_manager, material->texture_id);
-                append_string_add_quotes(&working_buffer, material_texture.name);
-                append_string(&working_buffer, "\n");
+            while (current) {
+                append_string(&working_buffer, "material {\n");
+                append_string(&working_buffer, "name \"%s\"\n", current->name);
+
+                if (current->flags & MATERIAL_USE_ALBEDO_TEXTURE) {
+                    append_string(&working_buffer, "use_albedo_texture \"%d\"\n", 1);
+                    append_string_property(&working_buffer, "albedo_texture", current->albedo_texture_name);
+                }
+                append_vec3_property(&working_buffer, "albedo_color", current->albedo_color);
+
+                if (current->flags & MATERIAL_USE_METALNESS_TEXTURE) {
+                    append_string(&working_buffer, "use_metalness_texture \"%d\"\n", 1);
+                    append_string_property(&working_buffer, "metalness_texture", current->metalness_texture_name);
+                }
+                append_string(&working_buffer, "metalness %f\n", current->metalness);
+
+                if (current->flags & MATERIAL_USE_ROUGHNESS_TEXTURE) {
+                    append_string(&working_buffer, "use_roughness_texture \"%d\"\n", 1);
+                    append_string_property(&working_buffer, "roughness_texture", current->roughness_texture_name);
+                }
+                append_string(&working_buffer, "roughness %f\n", current->roughness);
+                append_string(&working_buffer, "}\n\n");
+                
+                current = current->table_next;
             }
-
-            Marker m2 = begin_region();
-
-            append_string(&working_buffer, "gloss ");
-            char *gloss_string = (char *) region_push(temp_buffer_size);
-            string_format(gloss_string, temp_buffer_size, "%f", material->gloss);
-            append_string(&working_buffer, gloss_string);
-            append_string(&working_buffer, "\n");
-
-            append_string(&working_buffer, "color_override ");
-            char *color_override_string = (char *) region_push(temp_buffer_size);
-            string_format(color_override_string, temp_buffer_size, "%f %f %f",
-                          material->color_override.x, material->color_override.y, material->color_override.z);
-            append_string(&working_buffer, color_override_string);
-            append_string(&working_buffer, "\n");
-
-            append_string(&working_buffer, "use_color_override ");
-            append_string(&working_buffer, material->use_color_override ? "1" : "0");
-            append_string(&working_buffer, "\n");
-
-            end_region(m2);
-
-            num_materials_added++;
-
-            if (num_materials_added < asset_manager->material_table.num_entries) append_string(&working_buffer, "\n");
         }
     }
     append_string(&working_buffer, "}\n\n");
 
     append_string(&working_buffer, "entities {\n");
+    {
+        Entity *current = level->entities;
+        while(current) {
+            append_string(&working_buffer, "entity {\n");
+            append_vec3_property(&working_buffer, "position", current->transform.position);
+            append_quaternion_property(&working_buffer, "rotation", current->transform.rotation);
+            append_vec3_property(&working_buffer, "scale", current->transform.scale);
 
+            if (current->flags & ENTITY_MESH) {
+                append_string_property(&working_buffer, "mesh", current->mesh_name);
+            }
 
-    Linked_List<Normal_Entity *> normal_entities;
-    Linked_List<Point_Light_Entity *> point_light_entities;
+            if (current->flags & ENTITY_MATERIAL) {
+                append_string_property(&working_buffer, "material", current->material_name);
+            }
 
-    gather_entities_by_type(temp_region, level,
-                            &normal_entities, &point_light_entities);
-    
-    // NORMAL ENTITIES
-    FOR_LIST_NODES(Normal_Entity *, normal_entities) {
-        Normal_Entity *entity = current_node->value;
-
-        append_string(&working_buffer, "type normal\n");
-        append_default_entity_info(level, &working_buffer, (Entity *) entity);
-
-        Mesh mesh = get_mesh(asset_manager, entity->mesh_id);
-
-        if (mesh.type == Mesh_Type::PRIMITIVE) {
-            append_string(&working_buffer, "mesh_primitive ");
-        } else {
-            append_string(&working_buffer, "mesh ");
-        }
-        append_string_add_quotes(&working_buffer, mesh.name);
-        append_string(&working_buffer, "\n");
-
-        if (entity->material_id >= 0) {
-            append_string(&working_buffer, "material ");
-            Material material = get_material(asset_manager, entity->material_id);
-            append_string_add_quotes(&working_buffer, material.name);
-            append_string(&working_buffer, "\n");
-        }
+            if (current->flags & ENTITY_LIGHT) {
+                if (current->light_type == LIGHT_POINT) {
+                    append_string(&working_buffer, "light_type point\n");
+                    append_vec3_property(&working_buffer, "light_color", current->light_color);
+                    append_string(&working_buffer, "falloff_start %f\n", current->falloff_start);
+                    append_string(&working_buffer, "falloff_end %f\n", current->falloff_end);
+                } else {
+                    assert(!"Unhandled light type.");
+                }
+            }
             
-        append_string(&working_buffer, "is_walkable ");
-        append_string(&working_buffer, entity->is_walkable ? "1" : "0");
-        append_string(&working_buffer, "\n");
-
-        if (!is_last(&normal_entities, current_node)) append_string(&working_buffer, "\n");
+            // TODO: export collider info
+            
+            append_string(&working_buffer, "}\n");
+            
+            current = current->next;
+        }
     }
-
-    if (normal_entities.num_entries > 0) append_string(&working_buffer, "\n");
-
-    // POINT LIGHT ENTITIES
-    FOR_LIST_NODES(Point_Light_Entity *, point_light_entities) {
-        Point_Light_Entity *entity = current_node->value;
-
-        append_string(&working_buffer, "type point_light\n");
-        append_default_entity_info(level, &working_buffer, (Entity *) entity);
-
-        Marker m2 = begin_region();
-
-        append_string(&working_buffer, "light_color ");
-        char *light_color_string = (char *) region_push(temp_buffer_size);
-        string_format(light_color_string, temp_buffer_size, "%f %f %f",
-                      entity->light_color.x, entity->light_color.y, entity->light_color.z);
-        append_string(&working_buffer, light_color_string);
-        append_string(&working_buffer, "\n");
-
-        append_string(&working_buffer, "falloff_start ");
-        char *falloff_start_string = (char *) region_push(temp_buffer_size);
-        string_format(falloff_start_string, temp_buffer_size, "%f",
-                      entity->falloff_start);
-        append_string(&working_buffer, falloff_start_string);
-        append_string(&working_buffer, "\n");
-
-        append_string(&working_buffer, "falloff_end ");
-        char *falloff_end_string = (char *) region_push(temp_buffer_size);
-        string_format(falloff_end_string, temp_buffer_size, "%f",
-                      entity->falloff_end);
-        append_string(&working_buffer, falloff_end_string);
-        append_string(&working_buffer, "\n");
-
-        end_region(m2);
-
-        if (!is_last(&point_light_entities, current_node)) append_string(&working_buffer, "\n");
-    }
-
-    append_string(&working_buffer, "}\n");
+    append_string(&working_buffer, "}\n\n");
 
     bool32 write_result = platform_write_file(filename, working_buffer.contents, working_buffer.current_length, true);
     assert(write_result);

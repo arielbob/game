@@ -5,7 +5,7 @@
 
 global_variable int32 samples_written_2;
 
-void init_asset_manager(Arena *game_data) {
+void init_asset_manager(Arena_Allocator *game_data) {
     // TODO: just make this a heap allocator. when we remove the editor, it can change to an arena
     uint32 heap_size = ASSET_HEAP_SIZE;
     void *heap_base = arena_push(game_data, heap_size);
@@ -19,13 +19,15 @@ void init_asset_manager(Arena *game_data) {
     asset_manager->allocator = (Allocator *) heap;
 }
 
-void init_level(Game_State *game_state, Arena *game_data) {
+void init_level(Level *level, Arena_Allocator *game_data) {
+    // this should only be called when we're initting the game
+    assert(!game_state->is_initted);
+    
     uint32 heap_size = LEVEL_HEAP_SIZE;
     void *heap_base = arena_push(game_data, heap_size);
-    
-    Level level = {};
-    level.heap = make_heap_allocator(heap_base, heap_size);
-    game_state->level = level;
+
+    *level = {};
+    level->heap = make_heap_allocator(heap_base, heap_size);
 }
 
 bool32 read_and_load_level(Level *level, char *filename) {
@@ -36,7 +38,16 @@ bool32 read_and_load_level(Level *level, char *filename) {
     File_Data level_file = platform_open_and_read_file(temp_region, filename);
 
     // TODO: add error string and output error if this fails
-    Level_Loader::parse_level(temp_region, level_file, level_info);
+    char *error;
+    bool32 parse_result = Level_Loader::parse_level(temp_region, level_file, level_info, &error);
+
+    if (!parse_result) {
+        // TODO: don't assert here and handle the error instead somehow
+        debug_print(error);
+        assert(!"Level parsing failed.");
+        return false;
+    }
+    
     load_level(level, level_info);
     
     end_region(m);
@@ -157,7 +168,7 @@ Vec3 cursor_pos_to_world_space(Vec2 cursor_pos, Render_State *render_state) {
     return cursor_world_space;
 }
 
-bool32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, bool32 include_backside,
+bool32 ray_intersects_mesh(Ray ray, Mesh *mesh, Transform transform, bool32 include_backside,
                            Ray_Intersects_Mesh_Result *result) {
     Mat4 object_to_world = get_model_matrix(transform);
     Mat4 world_to_object = inverse(object_to_world);
@@ -175,7 +186,7 @@ bool32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, bool32 inclu
                                                         make_vec4(ray.direction, 0.0f));
     Ray object_space_ray = { object_space_ray_origin, object_space_ray_direction };
 
-    uint32 *indices = mesh.indices;
+    uint32 *indices = mesh->indices;
 
     // this might be very slow - this is very cache unfriendly since we're constantly jumping around the
     // vertices array, which in some cases is large.
@@ -186,11 +197,11 @@ bool32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, bool32 inclu
     real32 t_min = FLT_MAX;
     bool32 hit = false;
     int32 hit_triangle_index = -1;
-    for (int32 i = 0; i < (int32) mesh.num_triangles; i++) {
+    for (int32 i = 0; i < (int32) mesh->num_triangles; i++) {
         Vec3 triangle[3];
-        triangle[0] = get_vertex_from_index(&mesh, indices[i * 3]);
-        triangle[1] = get_vertex_from_index(&mesh, indices[i * 3 + 1]);
-        triangle[2] = get_vertex_from_index(&mesh, indices[i * 3 + 2]);
+        triangle[0] = get_vertex_from_index(mesh, indices[i * 3]);
+        triangle[1] = get_vertex_from_index(mesh, indices[i * 3 + 1]);
+        triangle[2] = get_vertex_from_index(mesh, indices[i * 3 + 2]);
         real32 t;
 
         // TODO: we might be able to pass t_min into this test to early-out before we check if a hit point
@@ -207,9 +218,9 @@ bool32 ray_intersects_mesh(Ray ray, Mesh mesh, Transform transform, bool32 inclu
 
     if (hit) {
         Vec3 triangle[3];
-        Vec3 v1 = get_vertex_from_index(&mesh, indices[hit_triangle_index * 3]);
-        Vec3 v2 = get_vertex_from_index(&mesh, indices[hit_triangle_index * 3 + 1]);
-        Vec3 v3 = get_vertex_from_index(&mesh, indices[hit_triangle_index * 3 + 2]);
+        Vec3 v1 = get_vertex_from_index(mesh, indices[hit_triangle_index * 3]);
+        Vec3 v2 = get_vertex_from_index(mesh, indices[hit_triangle_index * 3 + 1]);
+        Vec3 v3 = get_vertex_from_index(mesh, indices[hit_triangle_index * 3 + 2]);
 
         triangle[0] = transform_point(&object_to_world, &v1);
         triangle[1] = transform_point(&object_to_world, &v2);
@@ -472,21 +483,21 @@ void draw_messages(Asset_Manager *asset_manager, Message_Manager *manager, real3
 }
 #endif
 
-void init_game(Game_State *game_state,
-               Sound_Output *sound_output, uint32 num_samples) {
+void init_game(Sound_Output *sound_output, uint32 num_samples) {
     game_state->mode = Game_Mode::EDITING;
-
-    Display_Output *display_output = &game_state->render_state.display_output;
-    init_editor(&memory.editor_arena, &game_state->editor_state, *display_output);
-    Context::editor_state = &game_state->editor_state;
-
-    game_state->player.height = Player_Constants::player_height;
-
+    
+    Arena_Allocator *game_data_arena = &memory.game_data;
+    
+    // init fps counters
     real64 current_time = platform_get_wall_clock_time();
     game_state->last_update_time = current_time;
     game_state->last_fps_update_time = current_time;
+    
+    Display_Output *display_output = &game_state->render_state.display_output;
 
-    Arena_Allocator *game_data_arena = &memory.game_data;
+    game_state->player.height = Player_Constants::player_height;
+
+    // music file testing
     File_Data music_file_data = platform_open_and_read_file((Allocator *) game_data_arena,
                                                             "../drive my car.wav");
     Wav_Data *wav_data = (Wav_Data *) music_file_data.contents;
@@ -502,9 +513,10 @@ void init_game(Game_State *game_state,
 
     // init asset manager
     init_asset_manager(&memory.game_data);
+    load_default_assets();
 
     // init level
-    init_level(game_state, &memory.game_data);
+    init_level(&game_state->level, &memory.game_data);
     
     // load default level
     read_and_load_level(&game_state->level, "src/levels/pbr_test.level");
@@ -532,6 +544,11 @@ void init_game(Game_State *game_state,
     ui_manager->state_table = make_hash_table<UI_id, UI_Element_State *>((Allocator *) &memory.hash_table_stack,
                                                                          HASH_TABLE_SIZE, &ui_id_equals);
 #endif
+
+    // init editor
+    init_editor(&memory.editor_arena, &game_state->editor_state, *display_output);
+    Context::editor_state = &game_state->editor_state;
+    
     game_state->is_initted = true;
 
     #if 0
@@ -551,20 +568,21 @@ void init_game(Game_State *game_state,
     #endif
 }
 
-Entity *get_entity(Game_State *game_state, int32 id) {
-    Game_Level *level = &game_state->level;
-
-    FOR_LIST_NODES(Entity *, level->entities) {
-        Entity *entity = current_node->value;
-        if (entity->id == id) {
-            return entity;
+Entity *get_entity(Level *level, int32 id) {
+    Entity *current = level->entities;
+    while (current) {
+        if (current->id == id) {
+            return current;
         }
+        
+        current = current->next;
     }
 
     assert(!"Entity not found.");
     return NULL;
 }
 
+#if 0
 Entity *allocate_and_copy_entity(Allocator *allocator, Entity *entity) {
     switch (entity->type) {
     case ENTITY_NORMAL: {
@@ -584,7 +602,9 @@ Entity *allocate_and_copy_entity(Allocator *allocator, Entity *entity) {
 
     return NULL;
 }
+#endif
 
+#if 0
 void load_game_from_editor(Game_State *game_state) {
     Editor_State *editor_state = &game_state->editor_state;
     Editor_Level *editor_level = &editor_state->level;
@@ -613,6 +633,7 @@ void load_game_from_editor(Game_State *game_state) {
     player->velocity = make_vec3();
     player->is_grounded = false;
 }
+#endif
 
 inline void get_transformed_triangle(Mesh *mesh, int32 triangle_index, Mat4 *object_to_world,
                                      Vec3 transformed_triangle[3]) {
@@ -620,11 +641,8 @@ inline void get_transformed_triangle(Mesh *mesh, int32 triangle_index, Mat4 *obj
     transform_triangle(transformed_triangle, object_to_world);
 }
 
-bool32 move_player_to_closest_ground(Game_State *game_state, real32 max_drop_distance) {
-    Game_Level *level = &game_state->level;
-    Asset_Manager *asset_manager = &game_state->asset_manager;
-
-    Player *player = &game_state->player;
+bool32 move_player_to_closest_ground(Player *player, real32 max_drop_distance) {
+    Level *level = &game_state->level;
 
     // NOTE: since we're using a ray to find the ground, it is possible that we can get stuck if our level
     //       has some type of chasm that doesn't fit the player, but has ground that was close enough that
@@ -633,25 +651,28 @@ bool32 move_player_to_closest_ground(Game_State *game_state, real32 max_drop_dis
     Ray ray = make_ray(player->position, -y_axis);
     real32 t_min = FLT_MAX;
     bool32 found_ground = false;
-    
-    FOR_LIST_NODES(Entity *, level->entities) {
-        Entity *uncast_entity = current_node->value;
-        if (uncast_entity->type != ENTITY_NORMAL) continue;
 
-        Normal_Entity *entity = (Normal_Entity *) current_node->value;
-        Mat4 object_to_world = get_model_matrix(entity->transform);
-        Mesh mesh = get_mesh(asset_manager, entity->mesh_id);
+    {
+        Entity *current = level->entities;
+        while (current) {
+            if (current->flags & ENTITY_MESH) {
+                Mat4 object_to_world = get_model_matrix(current->transform);
+                Mesh *mesh = get_mesh(current->mesh_name);
 
-        // TODO: check against AABB first?
-        Ray_Intersects_Mesh_Result result;
-        if (ray_intersects_mesh(ray, mesh, entity->transform, false, &result)) {
-            if (result.t < t_min && result.t <= max_drop_distance) {
-                t_min = result.t;
-                found_ground = true;
+                // TODO: check against AABB first?
+                Ray_Intersects_Mesh_Result result;
+                if (ray_intersects_mesh(ray, mesh, current->transform, false, &result)) {
+                    if (result.t < t_min && result.t <= max_drop_distance) {
+                        t_min = result.t;
+                        found_ground = true;
+                    }
+                }
             }
+            
+            current = current->next;
         }
     }
-
+    
     if (found_ground) {
         player->position = ray.origin + ray.direction*t_min;
         player->is_grounded = true;
@@ -667,12 +688,8 @@ inline bool32 hit_bottom_player_capsule_sphere(Capsule *capsule, Vec3 *point_on_
     return relative_height_from_base < (capsule->radius - 0.1f);
 }
 
-void do_collisions(Game_State *game_state, Vec3 initial_move) {
-    Game_Level *level = &game_state->level;
-    Asset_Manager *asset_manager = &game_state->asset_manager;
-
-    Player *player = &game_state->player;
-
+void do_collisions(Player *player, Vec3 initial_move) {
+    Level *level = &game_state->level;
     player->position += initial_move;
 
     bool32 found_ground = false;
@@ -691,13 +708,16 @@ void do_collisions(Game_State *game_state, Vec3 initial_move) {
                                               player->position + make_vec3(0.0f, player->height, 0.0f),
                                               Player_Constants::capsule_radius);
 
-        FOR_LIST_NODES(Entity *, level->entities) {
-            Entity *uncast_entity = current_node->value;
-            if (uncast_entity->type != ENTITY_NORMAL) continue;
+        Entity *entity = level->entities;
 
-            Normal_Entity *entity = (Normal_Entity *) current_node->value;
+        while (entity) {
+            // TODO: should add flag COLLIDABLE and test that as well
+            if (!(entity->flags & ENTITY_MESH)) {
+                continue;
+            }
+
             Mat4 object_to_world = get_model_matrix(entity->transform);
-            Mesh *mesh = get_mesh_pointer(asset_manager, entity->mesh_id);
+            Mesh *mesh = get_mesh(entity->mesh_name);
 
             for (int32 triangle_index = 0; triangle_index < (int32) mesh->num_triangles; triangle_index++) {
                 Vec3 triangle[3];
@@ -782,8 +802,10 @@ void do_collisions(Game_State *game_state, Vec3 initial_move) {
 
             // TODO: not sure if we should keep this early-out
             if (intersected) break;
+                
+            entity = entity->next;
         }
-
+        
         if (!intersected) break;
     }
 
@@ -792,11 +814,8 @@ void do_collisions(Game_State *game_state, Vec3 initial_move) {
     player->is_grounded = found_ground;
 }
 
-void update_player(Game_State *game_state, Controller_State *controller_state,
-                   real32 dt) {
+void update_player(Player *player ,Controller_State *controller_state, real32 dt) {
     Debug_State *debug_state = &game_state->debug_state;
-    Asset_Manager *asset_manager = &game_state->asset_manager;
-    Player *player = &game_state->player;
 
     dt = min(1.0f / TARGET_FRAMERATE, dt);
 
@@ -881,7 +900,7 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
         
         if (distance(displacement_vector) > EPSILON) {
             // TODO: rename do_collisions - do_collisions actually does the move given by displacement_vector
-            do_collisions(game_state, displacement_vector);
+            do_collisions(player, displacement_vector);
             if (!player->is_grounded) {
                 // since collisions push out the player capsule so that they aren't colliding anymore, if we base
                 // is_grounded simply on whether we're colliding with an eligible ground triangle (i.e. a triangle
@@ -898,7 +917,7 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
                 // don't use player velocity in displacement here, since we already moved by that in the previous
                 // do_collisions() call
                 displacement_vector = make_vec3(0.0f, -0.001f, 0.0f);
-                do_collisions(game_state, displacement_vector);
+                do_collisions(player, displacement_vector);
             }
         }
 
@@ -906,7 +925,7 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
 
         if (was_grounded) {
             Vec3 before_drop_move_position = player->position;
-            bool32 moved = move_player_to_closest_ground(game_state, MAX_DROP_DISTANCE);
+            bool32 moved = move_player_to_closest_ground(player, MAX_DROP_DISTANCE);
             if (moved) {
                 Vec3 drop_move_delta = player->position - before_drop_move_position;
                 Vec3 drop_move_direction = normalize(drop_move_delta);
@@ -919,7 +938,7 @@ void update_player(Game_State *game_state, Controller_State *controller_state,
         player->velocity += player->acceleration * dt;
 
         if (distance(displacement_vector) > EPSILON) {
-            do_collisions(game_state, displacement_vector);
+            do_collisions(player, displacement_vector);
         }
     }
 }
@@ -947,12 +966,12 @@ void update_camera(Camera *camera, Vec3 position, real32 heading, real32 pitch, 
     camera->current_basis = current_basis;
 }
 
-void update_game(Game_State *game_state, Controller_State *controller_state, Sound_Output *sound_output,
-                 real32 dt) {
-    // NOTE: we assume that game_state has already been initted
-    update_player(game_state, controller_state, dt);
-
+void update_game(Controller_State *controller_state, Sound_Output *sound_output, real32 dt) {
+    assert(game_state->is_initted);
+    
     Player *player = &game_state->player;
+    update_player(player, controller_state, dt);
+
     update_camera(&game_state->camera, &game_state->render_state.display_output,
                   player->position + make_vec3(0.0f, player->height, 0.0f),
                   player->heading, player->pitch, player->roll);
@@ -1353,13 +1372,12 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     ui_calculate_positions();
 }
 
-void update(Game_State *game_state,
-            Controller_State *controller_state,
+void update(Controller_State *controller_state,
             Sound_Output *sound_output, uint32 num_samples) {
     Display_Output *display_output = &game_state->render_state.display_output;
     if (!game_state->is_initted) {
         debug_print("initting game %d!\n", 123);
-        init_game(game_state, sound_output, num_samples);
+        init_game(sound_output, num_samples);
         //return;
     }
 
@@ -1378,7 +1396,6 @@ void update(Game_State *game_state,
 
     if (platform_window_has_focus() && was_clicked(controller_state->key_f5)) {
         if (game_state->mode == Game_Mode::EDITING) {
-            load_game_from_editor(game_state);
             game_state->mode = Game_Mode::PLAYING;
         } else {
             game_state->mode = Game_Mode::EDITING;
@@ -1410,7 +1427,7 @@ void update(Game_State *game_state,
     
     if (game_state->mode == Game_Mode::EDITING) {
         //asset_manager = &game_state->editor_state.asset_manager;
-        update_editor(game_state, controller_state, dt);
+        update_editor(controller_state, dt);
         //draw_editor(game_state, controller_state);
         game_state->editor_state.is_startup = false;
     } else {

@@ -11,31 +11,29 @@ void init_editor(Arena_Allocator *editor_arena, Editor_State *editor_state, Disp
     editor_state->show_wireframe = true;
     editor_state->show_colliders = true;
     editor_state->is_startup = true;
-    editor_state->level_filename = make_string("");
 
     init_camera(&editor_state->camera, &display_output, CAMERA_FOV);
-    init_editor_level(editor_state);
-
-    load_default_assets();
 
     // init gizmo
     Gizmo_State *gizmo_state = &editor_state->gizmo_state;
-    gizmo_state->arrow_mesh_id  = get_mesh_id_by_name(asset_manager, "gizmo_arrow");
-    gizmo_state->ring_mesh_id   = get_mesh_id_by_name(asset_manager, "gizmo_ring");
-    gizmo_state->sphere_mesh_id = get_mesh_id_by_name(asset_manager, "gizmo_sphere");
-    gizmo_state->cube_mesh_id   = get_mesh_id_by_name(asset_manager, "gizmo_cube");;
+    gizmo_state->arrow_mesh_name  = make_string("gizmo_arrow");
+    gizmo_state->ring_mesh_name   = make_string("gizmo_ring");
+    gizmo_state->sphere_mesh_name = make_string("gizmo_sphere");
+    gizmo_state->cube_mesh_name   = make_string("gizmo_cube");
 }
 
 Entity *get_selected_entity(Editor_State *editor_state) {
-    Editor_Level *level = &editor_state->level;
+    Level *level = &game_state->level;
     int32 selected_id = editor_state->selected_entity_id;
 
     if (selected_id < 0) return NULL;
 
-    FOR_LIST_NODES(Entity *, level->entities) {
-        Entity *entity = current_node->value;
-        if (entity->id == selected_id) {
-            return entity;
+    {
+        Entity *current = level->entities;
+        while (current) {
+            if (current->id == selected_id) {
+                return current;
+            }
         }
     }
 
@@ -104,8 +102,7 @@ void reset_entity_editors(Editor_State *editor_state) {
 }
 
 Entity *pick_entity(Editor_State *editor_state, Ray cursor_ray) {
-    Asset_Manager *asset_manager = &editor_state->asset_manager;
-    Editor_Level *level = &editor_state->level;
+    Level *level = &game_state->level;
 
     Entity *picked_entity = NULL;
     real32 t_min = FLT_MAX;
@@ -113,44 +110,39 @@ Entity *pick_entity(Editor_State *editor_state, Ray cursor_ray) {
     Basis camera_basis = editor_state->camera.current_basis;
     Vec3 plane_normal = -camera_basis.forward;
 
-    FOR_LIST_NODES(Entity *, level->entities) {
-        Entity *uncast_entity = current_node->value;
-        switch (uncast_entity->type) {
-            case ENTITY_NORMAL: {
-                real32 aabb_t;
-                Normal_Entity *entity = (Normal_Entity *) uncast_entity;
-                Mesh mesh = get_mesh(asset_manager, entity->mesh_id);
-                if (ray_intersects_aabb(cursor_ray, entity->transformed_aabb, &aabb_t) && (aabb_t < t_min)) {
-                    Ray_Intersects_Mesh_Result result;
-                    if (ray_intersects_mesh(cursor_ray, mesh, entity->transform, true, &result) &&
-                        (result.t < t_min)) {
-                        t_min = result.t;
-                        picked_entity = (Entity *) entity;
-                    }
-                }
-            } break;
-            case ENTITY_POINT_LIGHT: {
-                Point_Light_Entity *entity = (Point_Light_Entity *) uncast_entity;
-                real32 plane_d = dot(entity->transform.position, plane_normal);
-                real32 t;
-                if (ray_intersects_plane(cursor_ray, plane_normal, plane_d, &t)) {
-                    Vec3 hit_position = cursor_ray.origin + t*cursor_ray.direction;
-                    real32 plane_space_hit_x = dot(hit_position - entity->transform.position, camera_basis.right);
-                    real32 plane_space_hit_y = dot(hit_position - entity->transform.position, camera_basis.up);
+    Entity *current = level->entities;
+    while (current) {
+        // if we have an entity that is a light source and has a mesh, we don't pick against the mesh and instead
+        // we pick against the light icon. we may want to do this, but we just do it like this for now since
+        // we don't currently have entities that are lights and have a mesh.
+        if (current->flags & ENTITY_LIGHT) {
+            real32 plane_d = dot(current->transform.position, plane_normal);
+            real32 t;
+            if (ray_intersects_plane(cursor_ray, plane_normal, plane_d, &t)) {
+                Vec3 hit_position = cursor_ray.origin + t*cursor_ray.direction;
+                real32 plane_space_hit_x = dot(hit_position - current->transform.position, camera_basis.right);
+                real32 plane_space_hit_y = dot(hit_position - current->transform.position, camera_basis.up);
 
-                    real32 icon_side_length = Editor_Constants::point_light_side_length;
-                    real32 offset = 0.5f * icon_side_length;
-                    if (plane_space_hit_x > -offset && plane_space_hit_x < offset &&
-                        plane_space_hit_y > -offset && plane_space_hit_y < offset) {
-                        if (t < t_min) {
-                            t_min = t;
-                            picked_entity = (Entity *) entity;
-                        }
+                real32 icon_side_length = Editor_Constants::point_light_side_length;
+                real32 offset = 0.5f * icon_side_length;
+                if (plane_space_hit_x > -offset && plane_space_hit_x < offset &&
+                    plane_space_hit_y > -offset && plane_space_hit_y < offset) {
+                    if (t < t_min) {
+                        t_min = t;
+                        picked_entity = current;
                     }
                 }
-            } break;
-            default: {
-                assert(!"Unhandled entity type");
+            }
+        } else if (current->flags & ENTITY_MESH) {
+            real32 aabb_t;
+            Mesh *mesh = get_mesh(current->mesh_name);
+            if (ray_intersects_aabb(cursor_ray, current->transformed_aabb, &aabb_t) && (aabb_t < t_min)) {
+                Ray_Intersects_Mesh_Result result;
+                if (ray_intersects_mesh(cursor_ray, mesh, current->transform, true, &result) &&
+                    (result.t < t_min)) {
+                    t_min = result.t;
+                    picked_entity = current;
+                }
             }
         }
     }
@@ -173,7 +165,6 @@ void update_gizmo(Editor_State *editor_state) {
 }
 
 Gizmo_Handle pick_gizmo(Editor_State *editor_state, Ray cursor_ray, real32 *t_result) {
-    Asset_Manager *asset_manager = &editor_state->asset_manager;
     Gizmo_State *gizmo_state = &editor_state->gizmo_state;
     Transform_Mode transform_mode = gizmo_state->transform_mode;
 
@@ -203,8 +194,7 @@ Gizmo_Handle pick_gizmo(Editor_State *editor_state, Ray cursor_ray, real32 *t_re
 
     // check ray against translation arrows
     Gizmo_Handle gizmo_translation_handles[3] = { GIZMO_TRANSLATE_X, GIZMO_TRANSLATE_Y, GIZMO_TRANSLATE_Z };
-    assert(gizmo_state->arrow_mesh_id >= 0);
-    Mesh arrow_mesh = get_mesh(asset_manager, gizmo_state->arrow_mesh_id);
+    Mesh *arrow_mesh = get_mesh(gizmo_state->arrow_mesh_name);
 
     real32 t_min = FLT_MAX;
     for (int32 i = 0; i < 3; i++) {
@@ -219,8 +209,7 @@ Gizmo_Handle pick_gizmo(Editor_State *editor_state, Ray cursor_ray, real32 *t_re
 
     // check ray against scale cube handles
     Gizmo_Handle gizmo_scale_handles[3] = { GIZMO_SCALE_X, GIZMO_SCALE_Y, GIZMO_SCALE_Z };
-    assert(gizmo_state->cube_mesh_id >= 0);
-    Mesh gizmo_cube_mesh = get_mesh(asset_manager, gizmo_state->cube_mesh_id);
+    Mesh *gizmo_cube_mesh = get_mesh(gizmo_state->cube_mesh_name);
 
     for (int32 i = 0; i < 3; i++) {
         Transform gizmo_handle_transform = gizmo_handle_transforms[i];
@@ -234,8 +223,7 @@ Gizmo_Handle pick_gizmo(Editor_State *editor_state, Ray cursor_ray, real32 *t_re
 
     // check ray against rotation rings
     Gizmo_Handle gizmo_rotation_handles[3] = { GIZMO_ROTATE_X, GIZMO_ROTATE_Y, GIZMO_ROTATE_Z };
-    assert(gizmo_state->ring_mesh_id >= 0);
-    Mesh ring_mesh = get_mesh(asset_manager, gizmo_state->ring_mesh_id);
+    Mesh *ring_mesh = get_mesh(gizmo_state->ring_mesh_name);
 
     for (int32 i = 0; i < 3; i++) {
         Transform gizmo_handle_transform = gizmo_handle_transforms[i];
@@ -396,12 +384,13 @@ Quaternion do_gizmo_rotation(Editor_State *editor_state, Ray cursor_ray) {
 
 void reset_editor(Editor_State *editor_state) {
     reset_entity_editors(editor_state);
-    history_reset(editor_state);
+    //history_reset(editor_state);
     editor_state->selected_entity_id = -1;
     editor_state->last_selected_entity_id = -1;
 }
 
-void debug_check_collisions(Asset_Manager *asset_manager, Editor_Level *level, Normal_Entity *entity) {
+#if 0
+void debug_check_collisions(Level *level, Normal_Entity *entity) {
     FOR_LIST_NODES(Entity *, level->entities) {
 #if 0
         if (current_node->value->type != ENTITY_NORMAL || current_node->value->id == entity->id) continue;
@@ -500,8 +489,9 @@ void debug_check_collisions(Asset_Manager *asset_manager, Editor_Level *level, N
 
     //return false;
 }
+#endif
 
-void update_editor(Game_State *game_state, Controller_State *controller_state, real32 dt) {
+void update_editor(Controller_State *controller_state, real32 dt) {
     //UI_Manager *ui_manager = &game_state->ui_manager;
     Editor_State *editor_state = &game_state->editor_state;
     Gizmo_State *gizmo_state = &editor_state->gizmo_state;
@@ -544,7 +534,7 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
         if (gizmo_state->selected_gizmo_handle != GIZMO_HANDLE_NONE) {
             Entity *selected_entity = get_selected_entity(editor_state);
             assert(selected_entity);
-            set_entity_transform(asset_manager, selected_entity, gizmo_state->original_entity_transform);
+            set_entity_transform(selected_entity, gizmo_state->original_entity_transform);
         }
     }
 
@@ -586,7 +576,6 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
         if (controller_state->left_mouse.is_down && !controller_state->left_mouse.was_down) {
             if (picked_handle) {
                 Entity *selected_entity = get_selected_entity(editor_state);
-                //start_entity_change(editor_state, selected_entity);
 #if 0
                 editor_state->old_entity = allocate_and_copy_entity(editor_state->history.allocator_pointer,
                                                                     selected_entity);
@@ -605,7 +594,7 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
                                                                       cursor_ray, global_transform_axis);
                 gizmo_state->original_entity_transform = selected_entity->transform;
 
-                start_entity_change(editor_state, selected_entity);
+                //start_entity_change(editor_state, selected_entity);
             }
 
             gizmo_state->selected_gizmo_handle = picked_handle;
@@ -630,14 +619,14 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
 
             if (is_translation(gizmo_state->selected_gizmo_handle)) {
                 Vec3 new_position = do_gizmo_translation(editor_state, cursor_ray);
-                update_entity_position(asset_manager, entity, new_position);
+                update_entity_position(entity, new_position);
                 
             } else if (is_rotation(gizmo_state->selected_gizmo_handle)) {
                 Quaternion new_rotation = do_gizmo_rotation(editor_state, cursor_ray);
-                update_entity_rotation(asset_manager, entity, new_rotation);
+                update_entity_rotation(entity, new_rotation);
             } else if (is_scale(gizmo_state->selected_gizmo_handle)) {
                 Vec3 new_scale = do_gizmo_scale(editor_state, cursor_ray);
-                update_entity_scale(asset_manager, entity, new_scale);
+                update_entity_scale(entity, new_scale);
             } else {
                 assert(!"Should be unreachable.");
             }
@@ -646,15 +635,15 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
             gizmo_state->transform.rotation = entity->transform.rotation;
         } else {
             gizmo_state->selected_gizmo_handle = GIZMO_HANDLE_NONE;
-            end_entity_change(editor_state, entity);
-            //finalize_entity_change(editor_state, &game_state->current_level, entity);
+            //end_entity_change(editor_state, entity);
         }
     }
 
     update_gizmo(editor_state);
 
-    Editor_Level *level = &editor_state->level;
+    Level *level = &game_state->level;
     // debug
+    #if 0
     FOR_LIST_NODES(Entity *, level->entities) {
         Entity *uncast_entity = current_node->value;
         if (uncast_entity->type != ENTITY_NORMAL) continue;
@@ -665,9 +654,10 @@ void update_editor(Game_State *game_state, Controller_State *controller_state, r
             break;
         }
     }
+    #endif
 }
 
-void draw_editor(Game_State *game_state, Controller_State *controller_state) {
+void draw_editor(Controller_State *controller_state) {
     Editor_State *editor_state = &game_state->editor_state;
     Render_State *render_state = &game_state->render_state;
 

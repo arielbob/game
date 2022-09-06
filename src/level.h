@@ -100,4 +100,6 @@ namespace Level_Loader {
                                char **error);
 }
 
+void load_level(Level *level, Level_Info *level_info);
+
 #endif

@@ -21,6 +21,7 @@
 //       light_type is set. this is fine for now, but we may want to have flags
 //       for light fields if they need to be deallocated.
 enum Light_Type {
+    LIGHT_NONE,
     LIGHT_POINT
 };
 

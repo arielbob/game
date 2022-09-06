@@ -47,6 +47,7 @@ global_variable Allocator *temp_region;
 global_variable Memory memory;
 global_variable UI_Manager *ui_manager;
 global_variable Asset_Manager *asset_manager;
+global_variable Game_State *game_state;
 
 #include "memory.cpp"
 #include "math.cpp"
@@ -1150,13 +1151,13 @@ int WinMain(HINSTANCE hInstance,
                 game_sound_output.max_samples = game_sound_output.buffer_size / sound_output.bytes_per_sample;
                 game_sound_output.samples_per_second = 44100;
 
-                using namespace Context;
-
                 // TODO: we may want to store this in memory
                 Game_State init_game_state = {};
                 game_state = &init_game_state;
                 game_state->is_initted = false;
                 game_state->render_state.display_output = initial_display_output;
+
+                using namespace Context;
 
                 Controller_State init_controller_state = {};
                 controller_state = &init_controller_state;

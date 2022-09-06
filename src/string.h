@@ -197,6 +197,9 @@ void deallocate(String_Buffer string_buffer) {
     deallocate(string_buffer.allocator, string_buffer.contents);
 }
 
+// TODO: i don't think these functions that take a char pointer should set the string's allocator
+//       to read_only_allocator... for example if we call make_string with something made from
+//       string_format that uses a specific allocator
 String make_string(char *contents, uint32 length) {
     String result = {};
     result.allocator = read_only_allocator;
@@ -331,9 +334,27 @@ void append_string(String_Buffer *buffer, String to_append) {
     buffer->current_length += to_append.length;
 }
 
-inline void append_string(String_Buffer *buffer, char *to_append_c_str) {
-    String to_append = make_string(to_append_c_str);
-    append_string(buffer, to_append);
+void append_string(String_Buffer *buffer, char *format, ...) {
+    Marker m = begin_region();
+
+    va_list args;
+    va_start(args, format);
+    
+    int32 num_chars_no_null = vsnprintf(NULL, 0, format, args);
+    int32 n = num_chars_no_null + 1;
+    char *to_append = (char *) allocate(temp_region, n);
+
+    int32 num_chars_outputted = vsnprintf(to_append, n, format, args);
+    assert(num_chars_outputted > 0 && num_chars_outputted < n);
+
+    // append to buffer; don't use the append_string so we don't have to call make_string since it
+    // make_string with a char pointer has to loop over it to get its length. we already know
+    // the length of the string we're appending from vsnprintf().
+    assert(buffer->current_length + num_chars_no_null <= buffer->size);
+    memcpy(&buffer->contents[buffer->current_length], to_append, num_chars_no_null);
+    buffer->current_length += num_chars_no_null;
+    
+    end_region(m);
 }
 
 inline void append_string(String_Buffer *buffer, String_Buffer to_append_buffer) {
