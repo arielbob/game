@@ -1134,28 +1134,6 @@ GL_Mesh gl_use_rendering_mesh(GL_State *gl_state, int32 mesh_id) {
     return gl_mesh;
 }
 
-void gl_draw_solid_mesh(GL_State *gl_state, Render_State *render_state,
-                        int32 mesh_id,
-                        Material material,
-                        Transform transform) {
-    uint32 shader_id = gl_use_shader(gl_state, "solid");
-    GL_Mesh gl_mesh = gl_use_mesh(gl_state, mesh_id);
-
-    if (!material.use_color_override && (material.texture_id < 0)) assert(!"No texture name provided.");
-    if (!material.use_color_override) gl_use_texture(gl_state, material.texture_id);
-
-    Mat4 model_matrix = get_model_matrix(transform);
-    gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
-    gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->cpv_matrix);
-    gl_set_uniform_vec4(shader_id, "color", &material.color_override);
-    gl_set_uniform_int(shader_id, "use_color_override", material.use_color_override);
-    
-    glDrawElements(GL_TRIANGLES, gl_mesh.num_triangles * 3, GL_UNSIGNED_INT, 0);
-
-    glUseProgram(0);
-    glBindVertexArray(0);
-}
-
 void gl_draw_solid_color_mesh(GL_State *gl_state, Render_State *render_state,
                               int32 mesh_id, Vec4 color,
                               Transform transform) {
@@ -3327,30 +3305,26 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
     Render_State *render_state = &game_state->render_state;
     Display_Output display_output = render_state->display_output;
     
-    Asset_Manager *asset_manager;
-    if (game_state->mode == Game_Mode::PLAYING) {
-        asset_manager = &game_state->asset_manager;
-    } else {
-        asset_manager = &game_state->editor_state.asset_manager;
-    }
-    
     // load fonts
-    Hash_Table<int32, Font> *font_table = &asset_manager->font_table;
-    FOR_ENTRY_POINTERS(int32, Font, *font_table) {
-        Font *font = &entry->value;
+    Font **font_table = &asset_manager->font_table;
+    for (int32 i = 0; i < NUM_FONT_BUCKETS; i++) {
+        Font *font = font_table[i];
+        while (font) {
+            if (!font->is_baked) {
+                // NOTE: the font names are always in read-only memory
+                if (!hash_table_exists(gl_state->font_texture_table, entry->key)) {
+                    gl_init_font(gl_state, font);
+                } else {
+                    debug_print("%s already loaded.\n", font->name);
+                }
 
-        if (!font->is_baked) {
-            // NOTE: the font names are always in read-only memory
-            if (!hash_table_exists(gl_state->font_texture_table, entry->key)) {
-                gl_init_font(gl_state, font);
-            } else {
-                debug_print("%s already loaded.\n", font->name);
+                font->is_baked = true;
             }
-
-            font->is_baked = true;
+            
+            font = font->table_next;
         }
     }
-
+    
     glBindFramebuffer(GL_FRAMEBUFFER, gl_state->msaa_framebuffer.fbo);
     
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);

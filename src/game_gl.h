@@ -1,7 +1,7 @@
 #ifndef GAME_GL_H
 #define GAME_GL_H
 
-#include "hash_table.h"
+#include "string.h"
 
 // copy constants from here: https://www.khronos.org/registry/OpenGL/api/GL/glext.h
 #define GL_ARRAY_BUFFER                   0x8892
@@ -133,14 +133,22 @@ struct GL_Mesh {
     uint32 vao;
     uint32 vbo;
     uint32 num_triangles;
+
+    String name;
+    GL_Mesh *table_prev;
+    GL_Mesh *table_next;
 };
 
-void deallocate(GL_Mesh gl_mesh) {
-    // nothing to deallocate
+void deallocate(GL_Mesh *gl_mesh) {
+    deallocate(gl_mesh->name);
 }
 
 struct GL_Font {
     uint32 baked_texture_id;
+
+    String name;
+    GL_Font *table_prev;
+    GL_Font *table_next;
 };
 
 struct GL_Texture {
@@ -149,11 +157,14 @@ struct GL_Texture {
     int32 width;
     int32 height;
     int32 num_channels;
+
+    String name;
+    GL_Texture *table_prev;
+    GL_Texture *table_next;
 };
 
-void deallocate(GL_Texture gl_texture) {
-    // nothing to deallocate - we call gl_delete_texture separately, which unloads it from the GPU, which
-    // i don't think we should call "deallocation"
+void deallocate(GL_Texture *gl_texture) {
+    deallocate(gl_texture->name);
 }
 
 // TODO: there are different variations of this (like depth + stencil, instead of just depth).
@@ -173,11 +184,36 @@ struct GL_Point_Light {
     real32 d_max;
 };
 
+struct GL_Shader {
+    uint32 id;
+
+    GL_Shader *table_prev;
+    GL_Shader *table_next;
+};
+
 struct GL_Alpha_Mask_Stack {
     uint32 texture_ids[MAX_ALPHA_MASKS];
     int32 index = -1;
 };
 
+struct GL_State {
+    // we just use the same keys across GL and game code. GL rendering meshes should be added in game code
+    // with mesh type of Mesh_Type::RENDERING
+    GL_Mesh    *mesh_table[NUM_MESH_BUCKETS];
+    GL_Texture *texture_table[NUM_TEXTURE_BUCKETS];
+    GL_Font    *font_table[NUM_FONT_BUCKETS];
+    GL_Shader  *shader_table[NUM_TEXTURE_BUCKETS];
+
+    // TODO: will have to delete these and remake them on window resize
+    GL_Framebuffer gizmo_framebuffer;
+    GL_Framebuffer msaa_framebuffer;
+    uint32 global_ubo;
+    
+    //GL_Framebuffer alpha_mask_framebuffer;
+    //GL_Alpha_Mask_Stack alpha_mask_stack;
+}
+
+#if 0
 struct GL_State {
     Hash_Table<String, uint32> shader_ids_table;
 
@@ -229,5 +265,6 @@ struct GL_State {
 
     int32 light_icon_texture_id;
 };
+#endif
 
 #endif
