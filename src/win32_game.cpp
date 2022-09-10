@@ -36,6 +36,7 @@
 #include "memory.h"
 
 global_variable Allocator *temp_region;
+global_variable Allocator *frame_arena;
 
 #include "string.h"
 
@@ -48,6 +49,7 @@ global_variable Memory memory;
 global_variable UI_Manager *ui_manager;
 global_variable Asset_Manager *asset_manager;
 global_variable Game_State *game_state;
+global_variable Render_State *render_state;
 
 #include "memory.cpp"
 #include "math.cpp"
@@ -797,6 +799,7 @@ bool32 win32_init_memory() {
 
         memory.is_initted = true;
         temp_region = (Allocator *) &memory.global_stack;
+        frame_arena = (Allocator *) &memory.frame_arena;
 
         return true;
     }
@@ -1140,9 +1143,8 @@ int WinMain(HINSTANCE hInstance,
             //ShowCursor(0);
             
             if (memory_is_valid && opengl_is_valid && directsound_is_valid) {
-                GL_State gl_state = {};
                 Display_Output initial_display_output = { display_output.width, display_output.height };
-                gl_init(&gl_state, initial_display_output);
+                gl_init(&memory.game_data, initial_display_output);
 
                 Sound_Output game_sound_output = {};
                 int16 sound_buffer[SOUND_BUFFER_SAMPLE_COUNT * 2];
@@ -1156,6 +1158,7 @@ int WinMain(HINSTANCE hInstance,
                 game_state = &init_game_state;
                 game_state->is_initted = false;
                 game_state->render_state.display_output = initial_display_output;
+                render_state = &game_state->render_state;
 
                 using namespace Context;
 
@@ -1283,7 +1286,7 @@ int WinMain(HINSTANCE hInstance,
                         sound_output.is_playing = true;
                     }
 
-                    gl_render(&gl_state, game_state,
+                    gl_render(game_state,
                               controller_state,
                               &sound_output);
 

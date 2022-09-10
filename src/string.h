@@ -51,6 +51,7 @@ inline bool32 is_empty(String_Buffer string) {
 // NOTE: copies a null-terminated src string into a buffer, dest, of size max_size
 //       for example, if dest is 5 bytes, max_size = 5, and src is a null-terminated char array hello\0,
 //       this is fine. i.e. destination does NOT need to include space for the null-terminator.
+// TODO: should use memcpy
 void copy_string(char *dest, char *src, int32 max_size) {
     assert(string_length(src) <= max_size);
     while (*src) {

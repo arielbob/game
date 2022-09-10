@@ -52,7 +52,6 @@ struct Mesh {
     AABB aabb;
 
     bool32 is_loaded;
-    bool32 should_unload;
     bool32 is_double_sided;
 };
 

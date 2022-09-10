@@ -114,6 +114,8 @@
 #define GL_R8                             0x8229
 #define GL_R16                            0x822A
 
+#define GL_HEAP_SIZE MEGABYTES(128)
+
 #define TEXT_SHADOW_OFFSET 2.0f
 #define NUM_CIRCLE_VERTICES 64
 #define NUM_MSAA_SAMPLES 1
@@ -146,7 +148,7 @@ void deallocate(GL_Mesh *gl_mesh) {
 struct GL_Font {
     uint32 baked_texture_id;
 
-    String name;
+    String name; // read-only memory
     GL_Font *table_prev;
     GL_Font *table_next;
 };
@@ -197,6 +199,8 @@ struct GL_Alpha_Mask_Stack {
 };
 
 struct GL_State {
+    Heap_Allocator heap;
+    
     // we just use the same keys across GL and game code. GL rendering meshes should be added in game code
     // with mesh type of Mesh_Type::RENDERING
     GL_Mesh    *mesh_table[NUM_MESH_BUCKETS];
@@ -211,7 +215,7 @@ struct GL_State {
     
     //GL_Framebuffer alpha_mask_framebuffer;
     //GL_Alpha_Mask_Stack alpha_mask_stack;
-}
+};
 
 #if 0
 struct GL_State {

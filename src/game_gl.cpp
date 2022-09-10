@@ -800,6 +800,9 @@ Use your left hand to figure out the direction of the cross product of two vecto
 In 2D, (0, 0) is at the bottom left, positive x is right, positive y is up.
  */
 
+// TODO: just rename this to gl_state once we remove all the parameters named it
+global_variable GL_State *g_gl_state;
+
 #if 0
 int32 gl_get_mesh_id(GL_State *gl_state, char *mesh_name) {
     Hash_Table<int32, GL_Mesh> *mesh_table = &gl_state->level_mesh_table;
@@ -815,6 +818,23 @@ int32 gl_get_mesh_id(GL_State *gl_state, char *mesh_name) {
     }
 
     return -1;
+}
+#endif
+
+#if 0
+Mesh *gl_get_mesh(String name) {
+    uint32 hash = get_hash(name, NUM_MESH_BUCKETS);
+
+    GL_Mesh *current = g_gl_state->mesh_table[hash];
+    while (current) {
+        if (string_equals(current->name, name)) {
+            return current;
+        }
+
+        current = current->table_next;
+    }
+
+    return NULL;
 }
 #endif
 
@@ -986,10 +1006,10 @@ GL_Texture gl_load_texture(GL_State *gl_state, char *texture_filename, bool32 ha
     return gl_texture;
 }
 
-GL_Texture gl_load_texture(GL_State *gl_state, Texture texture, bool32 has_alpha=false) {
+GL_Texture gl_load_texture(GL_State *gl_state, Texture *texture, bool32 has_alpha=false) {
     Marker m = begin_region();
     Allocator *temp_allocator = (Allocator *) &memory.global_stack;
-    char *temp_texture_filename = to_char_array(temp_allocator, texture.filename);
+    char *temp_texture_filename = to_char_array(temp_allocator, texture->filename);
     File_Data texture_file_data = platform_open_and_read_file(temp_allocator,
                                                               temp_texture_filename);
 
@@ -1022,7 +1042,7 @@ GL_Texture gl_load_texture(GL_State *gl_state, Texture texture, bool32 has_alpha
 }
 
 // TODO: use the better stb_truetype packing procedures
-void gl_init_font(GL_State *gl_state, Font *font) {
+void gl_init_font(Font *font) {
     Marker m = begin_region();
     uint8 *temp_bitmap = (uint8 *) allocate(temp_region, font->texture_width*font->texture_height);
     // NOTE: no guarantee that the bitmap will fit the font, so choose temp_bitmap dimensions carefully
@@ -1043,11 +1063,36 @@ void gl_init_font(GL_State *gl_state, Font *font) {
 
     end_region(m);
 
-    int32 font_id = gl_state->font_texture_table.total_added_ever;
-    hash_table_add(&gl_state->font_texture_table, font_id, baked_texture_id);
+    // add baked font to the gl_font table
+    uint32 hash = get_hash(font->name, NUM_FONT_BUCKETS);
+    GL_Font *current = g_gl_state->font_table[hash];
+    GL_Font *last_visited = current;
+    while (current) {
+        if (string_equals(current->name, font->name)) {
+            assert(!"GL_Font with this name already exists!");
+            return;
+        }
+
+        last_visited = current;
+        current = table->next;
+    }
+
+    GL_Font *gl_font = (GL_Font *) allocate(&g_gl_state->heap, sizeof(GL_Font));
+    gl_font->name = font->name;
+    gl_font->baked_texture_id = baked_texture_id;
+    gl_font->table_prev = last_visited;
+    gl_font->table_next = NULL;
+    
+    if (!last_visited) {
+        g_gl_state->font_table[hash] = gl_font;
+    } else {
+        last_visited->table_next = gl_font;
+    }
+
+    font->is_baked = true;
 }
 
-GL_Mesh gl_load_mesh(GL_State *gl_state, Mesh mesh) {
+bool32 gl_load_mesh(GL_State *gl_state, Mesh *mesh) {
     uint32 vao, vbo, ebo;
     
     glGenVertexArrays(1, &vao);
@@ -1057,32 +1102,58 @@ GL_Mesh gl_load_mesh(GL_State *gl_state, Mesh mesh) {
     glBindVertexArray(vao);
     
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, mesh.data_size, mesh.data, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, mesh->data_size, mesh->data, GL_STATIC_DRAW);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh.indices_size, mesh.indices, GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh->indices_size, mesh->indices, GL_STATIC_DRAW);
 
     // vertices
-    glVertexAttribPointer(0, mesh.n_vertex, GL_FLOAT, GL_FALSE,
-                          mesh.vertex_stride * sizeof(real32), (void *) 0);
+    glVertexAttribPointer(0, mesh->n_vertex, GL_FLOAT, GL_FALSE,
+                          mesh->vertex_stride * sizeof(real32), (void *) 0);
     glEnableVertexAttribArray(0);
     
     // normals
-    glVertexAttribPointer(1, mesh.n_normal, GL_FLOAT, GL_FALSE,
-                          mesh.vertex_stride * sizeof(real32),
-                          (void *) (mesh.n_vertex * sizeof(real32)));
+    glVertexAttribPointer(1, mesh->n_normal, GL_FLOAT, GL_FALSE,
+                          mesh->vertex_stride * sizeof(real32),
+                          (void *) (mesh->n_vertex * sizeof(real32)));
     glEnableVertexAttribArray(1);
 
     // UVs
-    glVertexAttribPointer(2, mesh.n_uv, GL_FLOAT, GL_FALSE,
-                          mesh.vertex_stride * sizeof(real32),
-                          (void *) ((mesh.n_vertex + mesh.n_normal) * sizeof(real32)));
+    glVertexAttribPointer(2, mesh->n_uv, GL_FLOAT, GL_FALSE,
+                          mesh->vertex_stride * sizeof(real32),
+                          (void *) ((mesh->n_vertex + mesh->n_normal) * sizeof(real32)));
     glEnableVertexAttribArray(2);
 
     glBindVertexArray(0);
 
-    GL_Mesh gl_mesh = { mesh.type, vao, vbo, mesh.num_triangles };
+    // add gl_mesh to the gl mesh table
+    uint32 hash = get_hash(mesh->name, NUM_MESH_BUCKETS);
+    GL_Mesh *current = gl_state->mesh_table[hash];
+    GL_Mesh *last_visited = current;
+    while (current) {
+        if (string_equals(current->name, mesh->name)) {
+            assert(!"GL_Mesh with this name already exists!");
+            return false;
+        }
 
-    return gl_mesh;
+        last_visited = current;
+        current = current->table_next;
+    }
+
+    GL_Mesh *gl_mesh = (GL_Mesh *) allocate(&gl_state->heap, sizeof(GL_Mesh));
+    *gl_mesh = { mesh->type, vao, vbo, mesh->num_triangles };
+    gl_mesh->name = copy((Allocator *) g_gl_state->heap, mesh->name);
+    gl_mesh->table_prev = last_visited;
+    gl_mesh->table_next = NULL;
+    
+    if (!last_visited) {
+        gl_state->mesh_table[hash] = gl_mesh;
+    } else {
+        last_visited->table_next = gl_mesh;
+    }
+
+    mesh->is_loaded = true;
+
+    return true;
 }
 
 uint32 gl_use_shader(GL_State *gl_state, char *shader_name) {
@@ -1728,6 +1799,36 @@ void gl_delete_framebuffer(GL_Framebuffer framebuffer) {
     glDeleteRenderbuffers(1, &framebuffer.render_buffer);
 }
 
+void gl_unload_mesh(String name) {
+    uint32 hash = get_hash(name, NUM_MESH_BUCKETS);
+
+    GL_Mesh *current = g_gl_state->mesh_table[hash];
+    while (current) {
+        if (string_equals(current->name, name)) {
+            if (current->table_prev) {
+                current->table_prev->table_next = current->table_next;
+            } else {
+                // if we're first in list, we need to update bucket array when we delete
+                g_gl_state->mesh_table[hash] = current->table_next;
+            }
+            
+            if (current->table_next) {
+                current->table_next->table_prev = current->table_prev;
+            }
+
+            glDeleteBuffers(1, &gl_mesh->vbo);
+            glDeleteVertexArrays(1, &gl_mesh->vao);
+            
+            deallocate(current);
+            deallocate((Allocator *) &gl_state->heap, current);
+        }
+
+        current = current->table_next;
+    }
+    
+    assert(!"GL mesh does not exist!");
+}
+
 void gl_delete_mesh(GL_Mesh mesh) {
     glDeleteBuffers(1, &mesh.vbo);
     glDeleteVertexArrays(1, &mesh.vao);
@@ -1784,20 +1885,15 @@ int32 gl_add_rendering_texture(GL_State *gl_state, GL_Texture gl_texture) {
     return texture_id;
 }
 
-void gl_init(GL_State *gl_state, Display_Output display_output) {
-    gl_state->shader_ids_table = make_hash_table<String, uint32>((Allocator *) &memory.hash_table_stack,
-                                                                 HASH_TABLE_SIZE, &string_equals);
-    gl_state->rendering_mesh_table = make_hash_table<int32, GL_Mesh>((Allocator *) &memory.hash_table_stack,
-                                                                     HASH_TABLE_SIZE, &int32_equals);
-    gl_state->mesh_table = make_hash_table<int32, GL_Mesh>((Allocator *) &memory.hash_table_stack,
-                                                           MAX_MESHES, &int32_equals);
-    gl_state->rendering_texture_table = make_hash_table<int32, GL_Texture>((Allocator *) &memory.hash_table_stack,
-                                                                           HASH_TABLE_SIZE, &int32_equals);
-    gl_state->texture_table = make_hash_table<int32, GL_Texture>((Allocator *) &memory.hash_table_stack,
-                                                                 HASH_TABLE_SIZE, &int32_equals);
-    gl_state->font_texture_table = make_hash_table<int32, uint32>((Allocator *) &memory.hash_table_stack,
-                                                                  HASH_TABLE_SIZE, &int32_equals);
-    
+void gl_init(Arena_Allocator *game_data, Display_Output display_output) {
+    g_gl_state = (GL_State *) allocate((Allocator *) memory.game_data,
+                                       sizeof(GL_State), true);
+
+    uint32 heap_size = GL_HEAP_SIZE;
+    void *heap_base = arena_push(game_data, heap_size);
+    g_gl_state->heap = make_heap_allocator(heap_base, heap_size);
+
+    // TODO: move these to where we init the game, so we have a single place for all the mesh loading
     uint32 vbo, vao, ebo;
 
     // NOTE: triangle mesh
@@ -3302,29 +3398,38 @@ void gl_render_game(GL_State *gl_state, Render_State *render_state, GL_Framebuff
 void gl_render(GL_State *gl_state, Game_State *game_state,
                Controller_State *controller_state,
                Win32_Sound_Output *win32_sound_output) {
-    Render_State *render_state = &game_state->render_state;
-    Display_Output display_output = render_state->display_output;
-    
-    // load fonts
-    Font **font_table = &asset_manager->font_table;
-    for (int32 i = 0; i < NUM_FONT_BUCKETS; i++) {
-        Font *font = font_table[i];
-        while (font) {
-            if (!font->is_baked) {
-                // NOTE: the font names are always in read-only memory
-                if (!hash_table_exists(gl_state->font_texture_table, entry->key)) {
-                    gl_init_font(gl_state, font);
-                } else {
-                    debug_print("%s already loaded.\n", font->name);
-                }
+    Command_Queue *command_queue = &render_state->command_queue;
+    for (int32 i = 0; i < command_queue->num_commands; i++) {
+        Command *command = &command_queue->commands[i];
 
-                font->is_baked = true;
-            }
-            
-            font = font->table_next;
+        switch (command->type) {
+            case Command_Type::LOAD_FONT: {
+                Command_Load_Font c = command->load_font;
+                Font *font = get_font(c.font_name);
+                assert(!font->is_baked);
+                gl_init_font(font);
+            } break;
+            case Command_Type::LOAD_MESH: {
+                Command_Load_Mesh c = command->load_mesh;
+                Mesh *mesh = get_mesh(c.mesh_name);
+                gl_load_mesh(gl_state, mesh);
+            } break;
+            case Command_Type::UNLOAD_MESH: {
+                Command_Unload_Mesh c = command->unload_mesh;
+                gl_unload_mesh(c.mesh_name);
+            } break;
+            case Command_Type::LOAD_TEXTURE: {
+                // TODO: refactor gl_load_texture to use new GL_Texture struct format and finish this
+            } break;
+            case Command_Type::UNLOAD_TEXTURE: {
+                // TODO: finish this
+            } break;
+            default: {
+                assert(!"Unhandled command type.");
+            } break;
         }
     }
-    
+        
     glBindFramebuffer(GL_FRAMEBUFFER, gl_state->msaa_framebuffer.fbo);
     
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
