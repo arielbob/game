@@ -154,8 +154,10 @@ struct GL_Font {
 };
 
 struct GL_Texture {
-    // NOTE: this is the OpenGL id for the texture; it is NOT the same as the id used in game_state.texture_table
-    uint32 id; 
+    // TODO: not sure if we need to store texture type? same for type in gl_mesh
+    Texture_Type type;
+    uint32 id; // gl texture id
+
     int32 width;
     int32 height;
     int32 num_channels;

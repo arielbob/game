@@ -51,7 +51,6 @@ struct Mesh {
 
     AABB aabb;
 
-    bool32 is_loaded;
     bool32 is_double_sided;
 };
 
@@ -68,9 +67,6 @@ struct Texture {
     String name;
     String filename;
     
-    bool32 is_loaded;
-    bool32 should_unload;
-
     Texture *table_next;
     Texture *table_prev;
 };

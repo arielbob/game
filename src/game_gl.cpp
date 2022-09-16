@@ -973,6 +973,7 @@ void gl_load_shader(GL_State *gl_state,
     hash_table_add(&gl_state->shader_ids_table, make_string(shader_name), shader_id);
 }
 
+#if 0
 GL_Texture gl_load_texture(GL_State *gl_state, char *texture_filename, bool32 has_alpha=false) {
     Marker m = begin_region();
     File_Data texture_file_data = platform_open_and_read_file((Allocator *) &memory.global_stack,
@@ -1005,8 +1006,9 @@ GL_Texture gl_load_texture(GL_State *gl_state, char *texture_filename, bool32 ha
     GL_Texture gl_texture = { texture_id, width, height, num_channels };
     return gl_texture;
 }
+#endif
 
-GL_Texture gl_load_texture(GL_State *gl_state, Texture *texture, bool32 has_alpha=false) {
+bool32 gl_load_texture(Texture *texture, bool32 has_alpha=false) {
     Marker m = begin_region();
     Allocator *temp_allocator = (Allocator *) &memory.global_stack;
     char *temp_texture_filename = to_char_array(temp_allocator, texture->filename);
@@ -1037,8 +1039,33 @@ GL_Texture gl_load_texture(GL_State *gl_state, Texture *texture, bool32 has_alph
 
     end_region(m);
 
-    GL_Texture gl_texture = { texture_id, width, height, num_channels };
-    return gl_texture;
+    // add gl_texture to the gl texture table
+    uint32 hash = get_hash(texture->name, NUM_TEXTURE_BUCKETS);
+    GL_Texture *current = g_gl_state->texture_table[hash];
+    GL_Texture *last_visited = current;
+    while (current) {
+        if (string_equals(current->name, texture->name)) {
+            assert(!"GL_Texture with this name already exists!");
+            return false;
+        }
+
+        last_visited = current;
+        current = current->table_next;
+    }
+
+    GL_Texture *gl_texture = (GL_Texture *) allocate(&g_gl_state->heap, sizeof(GL_Texture));
+    *gl_texture = { texture->type, texture_id, width, height, num_channels };
+    gl_texture->name = copy((Allocator *) &g_gl_state->heap, texture->name);
+    gl_texture->table_prev = last_visited;
+    gl_texture->table_next = NULL;
+    
+    if (!last_visited) {
+        g_gl_state->texture_table[hash] = gl_texture;
+    } else {
+        last_visited->table_next = gl_texture;
+    }
+
+    return true;
 }
 
 // TODO: use the better stb_truetype packing procedures
@@ -1074,7 +1101,7 @@ void gl_init_font(Font *font) {
         }
 
         last_visited = current;
-        current = table->next;
+        current = current->table_next;
     }
 
     GL_Font *gl_font = (GL_Font *) allocate(&g_gl_state->heap, sizeof(GL_Font));
@@ -1141,7 +1168,7 @@ bool32 gl_load_mesh(GL_State *gl_state, Mesh *mesh) {
 
     GL_Mesh *gl_mesh = (GL_Mesh *) allocate(&gl_state->heap, sizeof(GL_Mesh));
     *gl_mesh = { mesh->type, vao, vbo, mesh->num_triangles };
-    gl_mesh->name = copy((Allocator *) g_gl_state->heap, mesh->name);
+    gl_mesh->name = copy((Allocator *) &g_gl_state->heap, mesh->name);
     gl_mesh->table_prev = last_visited;
     gl_mesh->table_next = NULL;
     
@@ -1150,8 +1177,6 @@ bool32 gl_load_mesh(GL_State *gl_state, Mesh *mesh) {
     } else {
         last_visited->table_next = gl_mesh;
     }
-
-    mesh->is_loaded = true;
 
     return true;
 }
@@ -1829,13 +1854,34 @@ void gl_unload_mesh(String name) {
     assert(!"GL mesh does not exist!");
 }
 
-void gl_delete_mesh(GL_Mesh mesh) {
-    glDeleteBuffers(1, &mesh.vbo);
-    glDeleteVertexArrays(1, &mesh.vao);
-}
+void gl_unload_texture(String name) {
+    uint32 hash = get_hash(name, NUM_TEXTURE_BUCKETS);
 
-void gl_delete_texture(GL_Texture texture) {
-    glDeleteTextures(1, &texture.id);
+    GL_Texture *current = g_gl_state->texture_table[hash];
+    while (current) {
+        if (string_equals(current->name, name)) {
+            if (current->table_prev) {
+                current->table_prev->table_next = current->table_next;
+            } else {
+                // if we're first in list, we need to update bucket array when we delete
+                g_gl_state->texture_table[hash] = current->table_next;
+            }
+            
+            if (current->table_next) {
+                current->table_next->table_prev = current->table_prev;
+            }
+
+            glDeleteTextures(1, &gl_texture->id);
+            glDeleteVertexArrays(1, &gl_texture->vao);
+            
+            deallocate(current);
+            deallocate((Allocator *) &gl_state->heap, current);
+        }
+
+        current = current->table_next;
+    }
+    
+    assert(!"GL texture does not exist!");
 }
 
 void generate_circle_vertices(real32 *buffer, int32 buffer_size,
@@ -3410,6 +3456,13 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
                 gl_init_font(font);
             } break;
             case Command_Type::LOAD_MESH: {
+                // we use the mesh object here, but not when we unload. when we unload, it's not
+                // guaranteed that the mesh object will be in the asset manager and it doesn't
+                // matter if it's there. we separate the game object and the gl object in this
+                // way so that we don't have to do any second pass things to unload assets
+                // from gl state that are deleted in the game. instead, if we want to delete
+                // a mesh, we delete it from the asset manager, then add a command to the
+                // command queue to unload the mesh from our gl state.
                 Command_Load_Mesh c = command->load_mesh;
                 Mesh *mesh = get_mesh(c.mesh_name);
                 gl_load_mesh(gl_state, mesh);
@@ -3419,10 +3472,13 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
                 gl_unload_mesh(c.mesh_name);
             } break;
             case Command_Type::LOAD_TEXTURE: {
-                // TODO: refactor gl_load_texture to use new GL_Texture struct format and finish this
+                Command_Load_Texture c = command->load_texture;
+                Texture *texture = get_texture(c.texture_name);
+                gl_load_texture(texture);
             } break;
             case Command_Type::UNLOAD_TEXTURE: {
-                // TODO: finish this
+                Command_Unload_Texture c = command->unload_texture;
+                gl_unload_texture(c.texture_name);
             } break;
             default: {
                 assert(!"Unhandled command type.");

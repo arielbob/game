@@ -29,3 +29,19 @@ void r_unload_mesh(String mesh_name) {
     command.unload_mesh = { mesh_name };
     r_add_command(command);
 }
+
+void r_load_texture(String texture_name) {
+    assert(texture_name.allocator == frame_arena);
+
+    Command command = { Command_Type::LOAD_TEXTURE };
+    command.load_texture = { texture_name };
+    r_add_command(command);
+}
+
+void r_unload_texture(String texture_name) {
+    assert(texture_name.allocator == frame_arena);
+
+    Command command = { Command_Type::UNLOAD_TEXTURE };
+    command.unload_texture = { texture_name };
+    r_add_command(command);
+}

@@ -38,11 +38,21 @@ struct Command_Unload_Mesh {
     String mesh_name;
 };
 
+struct Command_Load_Texture {
+    String texture_name;
+};
+
+struct Command_Unload_Texture {
+    String texture_name;
+};
+
 struct Command {
     Command_Type type;
     union {
         Command_Load_Mesh load_mesh;
         Command_Unload_Mesh unload_mesh;
+        Command_Load_Texture load_texture;
+        Command_Unload_Texture unload_texture;
     };
 };
 
