@@ -429,6 +429,7 @@ char *to_char_array(Allocator *allocator, String_Buffer string) {
     return buf;
 }
 
+// both these get_hash functions should return the same thing given the same input
 uint32 get_hash(char *name, uint32 bucket_size) {
     char *at = name;
     uint32 sum = 0;

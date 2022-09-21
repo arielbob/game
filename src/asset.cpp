@@ -534,13 +534,18 @@ void load_default_assets() {
     //
     // we don't need default materials. materials reference meshes and textures but materials themselves
     // don't directly require any files.
-    add_mesh("gizmo_arrow",  "blender/gizmo_arrow.mesh",  Mesh_Type::ENGINE);
-    add_mesh("gizmo_ring",   "blender/gizmo_ring.mesh",   Mesh_Type::ENGINE);
-    add_mesh("gizmo_sphere", "blender/gizmo_sphere.mesh", Mesh_Type::ENGINE);
-    add_mesh("gizmo_cube",   "blender/gizmo_cube.mesh",   Mesh_Type::ENGINE);
-    add_mesh("cube",         "blender/cube.mesh",         Mesh_Type::PRIMITIVE);
 
-    add_texture("texture_default", "blender/debug-texture.jpg", Texture_Type::DEFAULT);
+    add_mesh("gizmo_arrow",      "blender/gizmo_arrow.mesh",      Mesh_Type::ENGINE);
+    add_mesh("gizmo_ring",       "blender/gizmo_ring.mesh",       Mesh_Type::ENGINE);
+    add_mesh("gizmo_sphere",     "blender/gizmo_sphere.mesh",     Mesh_Type::ENGINE);
+    add_mesh("gizmo_cube",       "blender/gizmo_cube.mesh",       Mesh_Type::ENGINE);
+    add_mesh("capsule_cylinder", "blender/capsule_cylinder.mesh", Mesh_Type::ENGINE);
+    add_mesh("capsule_cap",      "blender/capsule_cap.mesh",      Mesh_Type::ENGINE);
+    add_mesh("cube",             "blender/cube.mesh",             Mesh_Type::PRIMITIVE);
+    add_mesh("sphere",           "blender/sphere.mesh",           Mesh_Type::PRIMITIVE);
+    
+    add_texture("texture_default", "blender/debug-texture.jpg",  Texture_Type::DEFAULT);
+    add_texture("lightbulb",       "src/textures/lightbulb.png", Texture_Type::ENGINE);
 
     add_font("times32",         "c:/windows/fonts/times.ttf",    32.0f);
     add_font("times24",         "c:/windows/fonts/times.ttf",    24.0f);

@@ -115,6 +115,7 @@
 #define GL_R16                            0x822A
 
 #define GL_HEAP_SIZE MEGABYTES(128)
+#define NUM_SHADER_BUCKETS 128
 
 #define TEXT_SHADOW_OFFSET 2.0f
 #define NUM_CIRCLE_VERTICES 64
@@ -189,8 +190,11 @@ struct GL_Point_Light {
 };
 
 struct GL_Shader {
+    // this struct includes entire shader program (i.e. vertex + fragment),
+    // so don't need to store type here
     uint32 id;
 
+    String name;
     GL_Shader *table_prev;
     GL_Shader *table_next;
 };
@@ -208,7 +212,7 @@ struct GL_State {
     GL_Mesh    *mesh_table[NUM_MESH_BUCKETS];
     GL_Texture *texture_table[NUM_TEXTURE_BUCKETS];
     GL_Font    *font_table[NUM_FONT_BUCKETS];
-    GL_Shader  *shader_table[NUM_TEXTURE_BUCKETS];
+    GL_Shader  *shader_table[NUM_SHADER_BUCKETS];
 
     // TODO: will have to delete these and remake them on window resize
     GL_Framebuffer gizmo_framebuffer;

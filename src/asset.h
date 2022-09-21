@@ -15,9 +15,12 @@
 #define MATERIAL_USE_METALNESS_TEXTURE (1 << 1)
 #define MATERIAL_USE_ROUGHNESS_TEXTURE (1 << 2)
 
-// NOTE: RENDERING type is only for OpenGL meshes (added in OpenGL code)
-enum class Mesh_Type     { NONE, LEVEL, PRIMITIVE, ENGINE, RENDERING };
-enum class Texture_Type  { NONE, LEVEL, DEFAULT };
+// LEVEL is for meshes specifically loaded in for a level by the user or by a level file.
+// PRIMITIVE is for meshes you can use in levels, but can't be deleted. also used for default meshes when a
+// mesh can't be found or an entity is just created in the editor.
+// ENGINE is for rendering code or for the editor, like glyph quads and gizmo arrows.
+enum class Mesh_Type     { NONE, LEVEL, PRIMITIVE, ENGINE };
+enum class Texture_Type  { NONE, LEVEL, DEFAULT, ENGINE };
 
 // TODO: we need more types of Mesh objects. since not all meshes require all the data. for example, a nav mesh
 //       doesn't need UVs. and something like a rock mesh won't need joint data. we will also need to modify
