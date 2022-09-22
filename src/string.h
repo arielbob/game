@@ -22,7 +22,7 @@ int32 string_length(char* str) {
 
 struct String {
     // allocator should be NULL when contents are in read-only memory
-    Allocator *allocator = NULL;
+    Allocator *allocator;
     char *contents;
     int32 length;
 };

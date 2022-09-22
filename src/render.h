@@ -25,9 +25,14 @@ struct Display_Output {
 };
 
 enum class Command_Type {
+    NONE,
     LOAD_FONT,
     LOAD_MESH, UNLOAD_MESH,
     LOAD_TEXTURE, UNLOAD_TEXTURE
+};
+
+struct Command_Load_Font {
+    char *font_name;
 };
 
 struct Command_Load_Mesh {
@@ -49,6 +54,7 @@ struct Command_Unload_Texture {
 struct Command {
     Command_Type type;
     union {
+        Command_Load_Font load_font;
         Command_Load_Mesh load_mesh;
         Command_Unload_Mesh unload_mesh;
         Command_Load_Texture load_texture;

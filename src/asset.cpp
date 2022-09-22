@@ -356,6 +356,21 @@ Font *add_font(char *font_name, char *font_filename,
     return font;
 }
 
+Font *get_font(String name) {
+    uint32 hash = get_hash(name, NUM_FONT_BUCKETS);
+
+    Font *current = asset_manager->font_table[hash];
+    while (current) {
+        if (string_equals(current->name, name)) {
+            return current;
+        }
+
+        current = current->table_next;
+    }
+
+    return NULL;
+}
+
 Font *get_font(char *name) {
     uint32 hash = get_hash(name, NUM_FONT_BUCKETS);
 

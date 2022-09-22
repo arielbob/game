@@ -57,6 +57,8 @@ Entity *get_entity(Level *level, int32 id) {
         if (current->id == id) {
             return current;
         }
+
+        current = current->next;
     }
     
     assert(!"Entity not found.");
@@ -82,7 +84,7 @@ void load_level(Level *level, Level_Info *level_info) {
     level->filename     = copy((Allocator *) &level->heap, level_info->filename);
     
     load_level_assets(level_info);
-    load_level_entities(&editor_state->level, level_info);
+    load_level_entities(&game_state->level, level_info);
 
     level->is_loaded = true;
 

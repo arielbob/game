@@ -980,7 +980,7 @@ GL_Font *gl_get_font(char *font_name) {
     return NULL;
 }
 
-GL_Mesh *gl_get_mesh(char *mesh_name) {
+GL_Mesh *gl_get_mesh(String mesh_name) {
     uint32 hash = get_hash(mesh_name, NUM_MESH_BUCKETS);
     GL_Mesh *current = g_gl_state->mesh_table[hash];
     while (current) {
@@ -992,6 +992,10 @@ GL_Mesh *gl_get_mesh(char *mesh_name) {
     }
 
     return NULL;
+}
+
+inline GL_Mesh *gl_get_mesh(char *mesh_name) {
+    return gl_get_mesh(make_string(mesh_name));
 }
 
 bool32 gl_load_shader(char *vertex_shader_filename, char *fragment_shader_filename, char *shader_name) {
@@ -1232,7 +1236,7 @@ bool32 gl_add_mesh(Mesh_Type type, String name, uint32 vao, uint32 vbo, uint32 n
     return true;
 }
 
-bool32 gl_load_mesh(GL_State *gl_state, Mesh *mesh) {
+bool32 gl_load_mesh(Mesh *mesh) {
     uint32 vao, vbo, ebo;
     
     glGenVertexArrays(1, &vao);
@@ -1309,7 +1313,20 @@ uint32 gl_use_font_texture(char *font_name) {
     return font->baked_texture_id;
 }
 
-GL_Mesh *gl_use_mesh(char *mesh_name) {
+GL_Mesh *gl_use_mesh(String mesh_name) {
+    GL_Mesh *mesh = gl_get_mesh(mesh_name);
+    
+    if (mesh) {
+        glBindVertexArray(mesh->vao);
+    } else {
+        assert(!"Mesh does not exist!");
+        return NULL;
+    }
+
+    return mesh;
+}
+
+inline GL_Mesh *gl_use_mesh(char *mesh_name) {
     GL_Mesh *mesh = gl_get_mesh(mesh_name);
     
     if (mesh) {
@@ -1394,8 +1411,8 @@ void gl_draw_mesh(GL_State *gl_state, Render_State *render_state,
 }
 #endif
 
-void gl_draw_mesh(char *mesh_name,
-                  Material material,
+void gl_draw_mesh(String mesh_name,
+                  Material *material,
                   Transform transform) {
     uint32 shader_id = gl_use_shader("pbr");
 
@@ -1407,7 +1424,7 @@ void gl_draw_mesh(char *mesh_name,
     gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
     gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->cpv_matrix);
     // TODO: we may need to think about this for transparent materials
-    gl_set_uniform_vec3(shader_id, "albedo_color", &material.albedo_color);
+    gl_set_uniform_vec3(shader_id, "albedo_color", &material->albedo_color);
     gl_set_uniform_float(shader_id, "metallic", 0.0f);
     gl_set_uniform_float(shader_id, "roughness", 0.5f);
     gl_set_uniform_float(shader_id, "ao", 1.0f);
@@ -2885,7 +2902,7 @@ void gl_draw_ui(Asset_Manager *asset, UI_Manager *manager) {
     }
 }
 
-void gl_draw_framebuffer(GL_State *gl_state, GL_Framebuffer framebuffer) {
+void gl_draw_framebuffer(GL_Framebuffer framebuffer) {
     // use premultiplied alpha to prevent dark edges when transitioning from opaque to transparent
     glEnable(GL_BLEND);
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
@@ -2907,7 +2924,7 @@ void gl_draw_framebuffer(GL_State *gl_state, GL_Framebuffer framebuffer) {
     glBindVertexArray(0);
 }
 
-void gl_draw_gizmo(GL_State *gl_state, Render_State *render_state, Gizmo_State *gizmo_state) {
+void gl_draw_gizmo(Gizmo_State *gizmo_state) {
     Transform_Mode transform_mode = gizmo_state->transform_mode;
 
     uint32 shader_id = gl_use_shader("basic_3d");
@@ -3003,96 +3020,7 @@ void gl_render_editor(GL_Framebuffer framebuffer,
     
     Marker m = begin_region();
 
-    // TODO: refactor this
-    if (editor_state->should_unload_level_gpu_data) {
-        // clear texture table
-        // we don't need to set is_occupied to false, since all the textures in this table belong to the level,
-        // so we just clear it all.
-        {
-            FOR_VALUE_POINTERS(int32, GL_Texture, gl_state->texture_table) {
-                gl_delete_texture(*value);
-            }
-        }
-        hash_table_reset(&gl_state->texture_table);
-
-        // delete level meshes
-        int32 num_reset = 0;
-        {
-            FOR_ENTRY_POINTERS(int32, GL_Mesh, gl_state->mesh_table) {
-                if (entry->value.type != Mesh_Type::LEVEL) continue;
-
-                GL_Mesh mesh = entry->value;
-                gl_delete_mesh(mesh);
-                entry->is_occupied = false;
-                num_reset++;
-            }
-        }
-        gl_state->mesh_table.num_entries -= num_reset;
-        assert(gl_state->mesh_table.num_entries >= 0);
-
-        editor_state->should_unload_level_gpu_data = false;
-    }
-
-    // load level meshes
-    {
-        FOR_ENTRY_POINTERS(int32, Mesh, asset_manager->mesh_table) {
-            int32 mesh_key = entry->key;
-            Mesh *mesh = &entry->value;
-            
-            if (!mesh->is_loaded) {
-                if (!hash_table_exists(gl_state->mesh_table, mesh_key)) {
-                    GL_Mesh gl_mesh = gl_load_mesh(gl_state, *mesh);
-                    hash_table_add(&gl_state->mesh_table, mesh_key, gl_mesh);
-                } else {
-                    debug_print("Mesh \"%s\" already loaded.\n", mesh->name);
-                }
-
-                mesh->is_loaded = true;
-            }
-        }
-    }
-
-    // load textures
-    {
-        FOR_ENTRY_POINTERS(int32, Texture, asset_manager->texture_table) {
-            int32 texture_key = entry->key;
-            Texture *texture = &entry->value;
-            
-            if (!texture->is_loaded) {
-                if (!hash_table_exists(gl_state->texture_table, texture_key)) {
-                    GL_Texture gl_texture = gl_load_texture(gl_state, *texture);
-                    hash_table_add(&gl_state->texture_table, texture_key, gl_texture);
-                } else {
-                    debug_print("Texture \"%s\" already loaded.\n", texture->name);
-                }
-
-                texture->is_loaded = true;
-            }
-        }
-    }
-
-    // delete GL mesh data for meshes that no longer exist in level
-    {
-        FOR_ENTRY_POINTERS(int32, GL_Mesh, gl_state->mesh_table) {
-            int32 mesh_key = entry->key;
-            if (!hash_table_exists(asset_manager->mesh_table, mesh_key)) {
-                hash_table_remove(&gl_state->mesh_table, mesh_key);
-                gl_delete_mesh(entry->value);
-            }
-        }
-    }
-
-    // delete GL texture data for textures that no longer exist in level
-    {
-        FOR_ENTRY_POINTERS(int32, GL_Texture, gl_state->texture_table) {
-            int32 texture_key = entry->key;
-            if (!hash_table_exists(asset_manager->texture_table, texture_key)) {
-                hash_table_remove(&gl_state->texture_table, texture_key);
-                gl_delete_texture(entry->value);
-            }
-        }
-    }
-
+    #if 0
     // gather entities by type
     Linked_List<Point_Light_Entity *> point_light_entities;
     make_and_init_linked_list(Point_Light_Entity *, &point_light_entities, temp_region);
@@ -3114,7 +3042,9 @@ void gl_render_editor(GL_Framebuffer framebuffer,
             }
         }
     }
+    #endif
 
+    #if 0
     glBindBuffer(GL_UNIFORM_BUFFER, gl_state->global_ubo);
     int64 ubo_offset = 0;
     glBufferSubData(GL_UNIFORM_BUFFER, (int32 *) ubo_offset, sizeof(int32),
@@ -3140,11 +3070,56 @@ void gl_render_editor(GL_Framebuffer framebuffer,
             ubo_offset += sizeof(GL_Point_Light) + 8; // add 8 bytes of padding so that it aligns to size of vec4
         }
     }
+    #endif
 
+    Level *level = &game_state->level;
+    
+    uint32 padded_point_light_struct_size = sizeof(GL_Point_Light) + 8;
+    uint32 ubo_buffer_size = 16 + padded_point_light_struct_size * 16;
+    uint32 ubo_offset = 16; // start at 16 because we set num_point_lights after adding the lights
+    uint8 *ubo_buffer = (uint8 *) allocate(temp_region, ubo_buffer_size, true);
+
+    int32 num_point_lights = 0;
+    Entity *current = level->entities;
+    while (current) {
+        current = current->next;
+        if (current->flags & ENTITY_LIGHT) {
+            if (current->light_type == LIGHT_POINT) {
+                num_point_lights++;
+                assert(num_point_lights <= MAX_POINT_LIGHTS);
+
+                GL_Point_Light gl_point_light = {
+                    make_vec4(current->transform.position, 1.0f),
+                    make_vec4(current->light_color, 1.0f),
+                    current->falloff_start,
+                    current->falloff_end
+                };
+                memcpy(ubo_buffer + ubo_offset, &gl_point_light, sizeof(GL_Point_Light));
+                ubo_offset += padded_point_light_struct_size;
+            }
+        }
+    }
+    *((int32 *) ubo_buffer) = num_point_lights;
+
+    glBindBuffer(GL_UNIFORM_BUFFER, g_gl_state->global_ubo);
+    glBufferSubData(GL_UNIFORM_BUFFER, 0, ubo_buffer_size, ubo_buffer);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
     Entity *selected_entity = get_selected_entity(editor_state);
+    current = level->entities;
 
+    // TODO: maybe just have one loop and do everything there?
+    while (current) {
+        bool32 has_mesh     = current->flags & ENTITY_MESH;
+        bool32 has_material = current->flags & ENTITY_MATERIAL;
+        if (has_mesh && has_material) {
+            Material *material = get_material(current->material_name);
+            gl_draw_mesh(current->mesh_name, material, current->transform);
+        }
+    }
+
+    // TODO: refactor this
+#if 0
     // entities
     {
         FOR_LIST_NODES(Normal_Entity *, normal_entities) {
@@ -3207,21 +3182,23 @@ void gl_render_editor(GL_Framebuffer framebuffer,
                                                 gl_state->light_icon_texture_id, true);
     }
     glDepthMask(GL_TRUE);
-
-    glBindFramebuffer(GL_FRAMEBUFFER, gl_state->gizmo_framebuffer.fbo);
+#endif
+    
+    glBindFramebuffer(GL_FRAMEBUFFER, g_gl_state->gizmo_framebuffer.fbo);
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     if (editor_state->selected_entity_id >= 0) {
-        gl_draw_gizmo(gl_state, render_state, &editor_state->gizmo_state);
+        gl_draw_gizmo(&editor_state->gizmo_state);
     }
     
     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.fbo);
-    gl_draw_framebuffer(gl_state, gl_state->gizmo_framebuffer);
+    gl_draw_framebuffer(g_gl_state->gizmo_framebuffer);
     
     end_region(m);
 }
 
+#if 0
 void gl_render_game(GL_State *gl_state, Render_State *render_state, GL_Framebuffer framebuffer,
                     Game_State *game_state) {
     Asset_Manager *asset_manager = &game_state->asset_manager;
@@ -3375,10 +3352,12 @@ void gl_render_game(GL_State *gl_state, Render_State *render_state, GL_Framebuff
 
     end_region(m);    
 }
+#endif
 
-void gl_render(GL_State *gl_state, Game_State *game_state,
-               Controller_State *controller_state,
+void gl_render(Controller_State *controller_state,
                Win32_Sound_Output *win32_sound_output) {
+    Display_Output display_output = render_state->display_output;
+    
     Command_Queue *command_queue = &render_state->command_queue;
     for (int32 i = 0; i < command_queue->num_commands; i++) {
         Command *command = &command_queue->commands[i];
@@ -3400,7 +3379,7 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
                 // command queue to unload the mesh from our gl state.
                 Command_Load_Mesh c = command->load_mesh;
                 Mesh *mesh = get_mesh(c.mesh_name);
-                gl_load_mesh(gl_state, mesh);
+                gl_load_mesh(mesh);
             } break;
             case Command_Type::UNLOAD_MESH: {
                 Command_Unload_Mesh c = command->unload_mesh;
@@ -3421,30 +3400,35 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
         }
     }
         
-    glBindFramebuffer(GL_FRAMEBUFFER, gl_state->msaa_framebuffer.fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, g_gl_state->msaa_framebuffer.fbo);
     
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLineWidth(1.0f);
 
     if (game_state->mode == Game_Mode::PLAYING) {
+        #if 0
         gl_render_game(gl_state, render_state, gl_state->msaa_framebuffer, game_state);
 
         glDisable(GL_DEPTH_TEST);
         //gl_draw_ui(gl_state, asset_manager, render_state, &game_state->ui_manager);
         glEnable(GL_DEPTH_TEST);
+        #endif
     } else {
-        gl_render_editor(gl_state, render_state, gl_state->msaa_framebuffer,
+        gl_render_editor(g_gl_state->msaa_framebuffer,
                          &game_state->editor_state);
 
+        #if 0
         glDisable(GL_DEPTH_TEST);
         // TODO: for some reason, if we comment out this line, nothing renders at all, other than the gizmos
         //       if we happen to click in an area where there is an entity
         //       - pretty sure it has to do with gl_draw_text(), since if we never call that, then nothing
         //         renders
+        //       - don't think this is true anymore
         //gl_draw_ui(gl_state, asset_manager, render_state, &game_state->ui_manager);
         gl_draw_ui(gl_state, render_state, asset_manager, &game_state->ui_manager);
         glEnable(GL_DEPTH_TEST);
+        #endif
     }
 
     // debug lines
@@ -3453,8 +3437,7 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
     Debug_State *debug_state = &game_state->debug_state;
     for (int32 i = 0; i < debug_state->num_debug_lines; i++) {
         Debug_Line *line = &debug_state->debug_lines[i];
-        gl_draw_line(gl_state, render_state,
-                     line->start, line->end, line->color);
+        gl_draw_line(line->start, line->end, line->color);
     }
     glLineWidth(1.0f);
     glEnable(GL_DEPTH_TEST);
@@ -3462,7 +3445,7 @@ void gl_render(GL_State *gl_state, Game_State *game_state,
 
     // draw msaa framebuffer
     #if 1
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, gl_state->msaa_framebuffer.fbo);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, g_gl_state->msaa_framebuffer.fbo);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
     glBlitFramebuffer(0, 0, display_output.width, display_output.height, 0, 0,
                       display_output.width, display_output.height,

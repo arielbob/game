@@ -40,7 +40,7 @@ Mat4 get_view_matrix(Camera camera) {
     return get_view_matrix(camera.position, basis.forward, basis.right, basis.up);
 }
 
-void update_render_state(Render_State *render_state, Camera camera) {
+void update_render_state(Camera camera) {
     Mat4 view_matrix = get_view_matrix(camera);
     Mat4 perspective_clip_matrix = make_perspective_clip_matrix(camera.fov_x_degrees, camera.aspect_ratio,
                                                                 camera.near, camera.far);

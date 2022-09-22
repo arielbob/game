@@ -58,10 +58,10 @@ global_variable Render_State *render_state;
 #include "font.cpp"
 #include "asset.cpp"
 #include "ui.cpp"
-//#include "level.cpp"
+#include "entity.cpp"
+#include "level.cpp"
 #include "level_import.cpp"
 #include "level_export.cpp"
-#include "entity.cpp"
 #include "gizmo.cpp"
 //#include "editor_actions.cpp"
 //#include "editor_ui.cpp"
@@ -785,8 +785,9 @@ bool32 win32_init_memory() {
         memory.font_arena = font_arena;
         base = (uint8 *) base + font_arena_size;
 
-        Arena_Allocator frame_arena = make_arena_allocator(base, frame_arena_size);
-        memory.frame_arena = frame_arena;
+        // underscore prefix so we don't shadow the global frame_arena variable
+        Arena_Allocator _frame_arena = make_arena_allocator(base, frame_arena_size);
+        memory.frame_arena = _frame_arena;
         base = (uint8 *) base + frame_arena_size;
 
         Arena_Allocator ui_arena = make_arena_allocator(base, ui_arena_size);
@@ -1276,8 +1277,7 @@ int WinMain(HINSTANCE hInstance,
                         
                     uint32 num_samples = bytes_delta / sound_output.bytes_per_sample;
                     
-                    update(game_state,
-                           controller_state,
+                    update(controller_state,
                            &game_sound_output, num_samples);
 
                     fill_sound_buffer(&sound_output, game_sound_output.sound_buffer, num_samples);
@@ -1286,8 +1286,7 @@ int WinMain(HINSTANCE hInstance,
                         sound_output.is_playing = true;
                     }
 
-                    gl_render(game_state,
-                              controller_state,
+                    gl_render(controller_state,
                               &sound_output);
 
                     reset_debug_state(&game_state->debug_state);

@@ -495,8 +495,7 @@ void update_editor(Controller_State *controller_state, real32 dt) {
     //UI_Manager *ui_manager = &game_state->ui_manager;
     Editor_State *editor_state = &game_state->editor_state;
     Gizmo_State *gizmo_state = &editor_state->gizmo_state;
-    Render_State *render_state = &game_state->render_state;
-    Display_Output *display_output = &game_state->render_state.display_output;
+    Display_Output *display_output = &render_state->display_output;
 
     if (just_pressed(controller_state->key_tab) && !ui_has_focus()) {
         editor_state->use_freecam = !editor_state->use_freecam;
@@ -506,7 +505,7 @@ void update_editor(Controller_State *controller_state, real32 dt) {
     bool32 camera_should_move = editor_state->use_freecam && !ui_has_focus();
     update_editor_camera(editor_state, controller_state,
                          platform_window_has_focus(), camera_should_move, dt);
-    update_render_state(render_state, editor_state->camera);
+    update_render_state(editor_state->camera);
 
     if (editor_state->use_freecam && platform_window_has_focus()) {
         Vec2 center = make_vec2(display_output->width / 2.0f, display_output->height / 2.0f);
@@ -539,8 +538,7 @@ void update_editor(Controller_State *controller_state, real32 dt) {
     }
 
     // mesh picking
-    Vec3 cursor_world_space = cursor_pos_to_world_space(controller_state->current_mouse,
-                                                        render_state);
+    Vec3 cursor_world_space = cursor_pos_to_world_space(controller_state->current_mouse);
     Ray cursor_ray = { cursor_world_space,
                        normalize(cursor_world_space - render_state->camera.position) };
     
@@ -659,7 +657,6 @@ void update_editor(Controller_State *controller_state, real32 dt) {
 
 void draw_editor(Controller_State *controller_state) {
     Editor_State *editor_state = &game_state->editor_state;
-    Render_State *render_state = &game_state->render_state;
 
     Entity *selected_entity = get_selected_entity(editor_state);
     #if 0

@@ -153,7 +153,7 @@ inline Vec2 get_mouse_delta() {
     return (Context::controller_state->current_mouse - Context::controller_state->last_mouse);
 }
 
-Vec3 cursor_pos_to_world_space(Vec2 cursor_pos, Render_State *render_state) {
+Vec3 cursor_pos_to_world_space(Vec2 cursor_pos) {
     Display_Output display_output = render_state->display_output;
     
     Mat4 cpv_matrix_inverse = inverse(render_state->cpv_matrix);
@@ -547,7 +547,6 @@ void init_game(Sound_Output *sound_output, uint32 num_samples) {
 
     // init editor
     init_editor(&memory.editor_arena, &game_state->editor_state, *display_output);
-    Context::editor_state = &game_state->editor_state;
     
     game_state->is_initted = true;
 
@@ -566,20 +565,6 @@ void init_game(Sound_Output *sound_output, uint32 num_samples) {
     delete_mesh("car");
     clear_level_meshes();
     #endif
-}
-
-Entity *get_entity(Level *level, int32 id) {
-    Entity *current = level->entities;
-    while (current) {
-        if (current->id == id) {
-            return current;
-        }
-        
-        current = current->next;
-    }
-
-    assert(!"Entity not found.");
-    return NULL;
 }
 
 #if 0
@@ -975,7 +960,7 @@ void update_game(Controller_State *controller_state, Sound_Output *sound_output,
     update_camera(&game_state->camera, &game_state->render_state.display_output,
                   player->position + make_vec3(0.0f, player->height, 0.0f),
                   player->heading, player->pitch, player->roll);
-    update_render_state(&game_state->render_state, game_state->camera);
+    update_render_state(game_state->camera);
 }
 
 // TODO: boxes with image backgrounds for icons
@@ -1000,7 +985,7 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     ui_push_text_color({ 1.0f, 1.0f, 1.0f, 1.0f });
     ui_push_position({ 5.0f, 5.0f });
     char *fps_text = string_format((Allocator *) &ui_manager->frame_arena, "FPS: %d / dt %.3f",
-                                   (int32) round(Context::game_state->last_second_fps), dt);
+                                   (int32) round(game_state->last_second_fps), dt);
     do_text(fps_text, "");
     ui_pop_position();
     ui_pop_text_color();
@@ -1418,8 +1403,6 @@ void update(Controller_State *controller_state,
             #endif
         }
     }
-
-    Render_State *render_state = &game_state->render_state;
 
     ui_manager->last_frame_active = ui_manager->active;
 

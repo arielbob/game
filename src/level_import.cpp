@@ -222,17 +222,16 @@ bool32 Level_Loader::parse_real(Tokenizer *tokenizer, real32 *result, char **err
 
         if (!parse_result) {
             return level_parse_error(error, "Invalid number value.");
+        } else {
+            *result = num;
+            return true;
         }
     } else {
         return level_parse_error(error, "Expected number.");
     }
-
-    *result = num;
 }
 
 bool32 Level_Loader::parse_vec3(Tokenizer *tokenizer, Vec3 *result, char **error) {
-    Token token;
-
     // don't set vec using result pointer since we may fail in the middle of parsing
     // and don't want to set result to a partially done vector
     Vec3 v;
@@ -478,8 +477,6 @@ bool32 Level_Loader::parse_material(Allocator *temp_allocator, Tokenizer *tokeni
         } else if (string_equals(token.string, "albedo_texture")) {
             token = get_token(tokenizer);
             
-            String result;
-
             if (token.type == STRING) {
                 if (!is_empty(token.string)) {
                     material_info.albedo_texture_name = token.string;
@@ -516,8 +513,6 @@ bool32 Level_Loader::parse_material(Allocator *temp_allocator, Tokenizer *tokeni
         } else if (string_equals(token.string, "metalness_texture")) {
             token = get_token(tokenizer);
             
-            String result;
-
             if (token.type == STRING) {
                 if (!is_empty(token.string)) {
                     material_info.metalness_texture_name = token.string;
@@ -548,8 +543,6 @@ bool32 Level_Loader::parse_material(Allocator *temp_allocator, Tokenizer *tokeni
         } else if (string_equals(token.string, "roughness_texture")) {
             token = get_token(tokenizer);
             
-            String result;
-
             if (token.type == STRING) {
                 if (!is_empty(token.string)) {
                     material_info.roughness_texture_name = token.string;
