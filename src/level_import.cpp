@@ -193,7 +193,7 @@ Level_Loader::Token Level_Loader::get_token(Tokenizer *tokenizer) {
         } else {
             assert(!"Token type not recognized.");
         }
-    } while (token.type != COMMENT);
+    } while (token.type == COMMENT);
 
     return token;
 }
@@ -297,6 +297,7 @@ bool32 Level_Loader::parse_level_info_block(Allocator *temp_allocator, Tokenizer
     }
 
     level_info->name = token.string;
+    token = get_token(tokenizer);
 
     if (token.type != CLOSE_BRACKET) {
         return level_parse_error(error, "Expected close bracket for level_info_block");
@@ -322,6 +323,8 @@ bool32 Level_Loader::parse_meshes_block(Allocator *temp_allocator, Tokenizer *to
     token = get_token(tokenizer);
 
     while (token.type == KEYWORD && string_equals(token.string, "mesh")) {
+        token = get_token(tokenizer);
+        
         String mesh_name, mesh_filename;
         
         if (token.type != STRING) {
@@ -366,6 +369,8 @@ bool32 Level_Loader::parse_textures_block(Allocator *temp_allocator, Tokenizer *
     token = get_token(tokenizer);
 
     while (token.type == KEYWORD && string_equals(token.string, "texture")) {
+        token = get_token(tokenizer);
+        
         String texture_name, texture_filename;
         
         if (token.type != STRING) {
@@ -390,7 +395,6 @@ bool32 Level_Loader::parse_textures_block(Allocator *temp_allocator, Tokenizer *
     }
     
     return true;
-    
 }
 
 // this should return false when it hits the closing bracket of the materials block
@@ -467,7 +471,9 @@ bool32 Level_Loader::parse_material(Allocator *temp_allocator, Tokenizer *tokeni
                 uint32 result;
                 bool32 parse_result = string_to_uint32(token.string, &result);
                 if (parse_result) {
-                    material_info.flags |= MATERIAL_USE_ALBEDO_TEXTURE;
+                    if (result) {
+                        material_info.flags |= MATERIAL_USE_ALBEDO_TEXTURE;
+                    }
                 } else {
                     return level_parse_error(error, "Expected unsigned integer for use_albedo_texture.");
                 }
@@ -503,7 +509,9 @@ bool32 Level_Loader::parse_material(Allocator *temp_allocator, Tokenizer *tokeni
                 uint32 result;
                 bool32 parse_result = string_to_uint32(token.string, &result);
                 if (parse_result) {
-                    material_info.flags |= MATERIAL_USE_METALNESS_TEXTURE;
+                    if (result) {
+                        material_info.flags |= MATERIAL_USE_METALNESS_TEXTURE;
+                    }
                 } else {
                     return level_parse_error(error, "Expected unsigned integer for use_metalness_texture.");
                 }
@@ -533,7 +541,9 @@ bool32 Level_Loader::parse_material(Allocator *temp_allocator, Tokenizer *tokeni
                 uint32 result;
                 bool32 parse_result = string_to_uint32(token.string, &result);
                 if (parse_result) {
-                    material_info.flags |= MATERIAL_USE_ROUGHNESS_TEXTURE;
+                    if (result) {
+                        material_info.flags |= MATERIAL_USE_ROUGHNESS_TEXTURE;
+                    }
                 } else {
                     return level_parse_error(error, "Expected unsigned integer for use_roughness_texture.");
                 }
@@ -664,7 +674,7 @@ bool32 Level_Loader::parse_entity(Allocator *temp_allocator, Tokenizer *tokenize
                 return false;
             }
         } else if (string_equals(token.string, "scale")) {
-            if (!parse_vec3(tokenizer, &entity_info.transform.position, error)) {
+            if (!parse_vec3(tokenizer, &entity_info.transform.scale, error)) {
                 return false;
             }
         } else if (string_equals(token.string, "mesh")) {
@@ -720,6 +730,8 @@ bool32 Level_Loader::parse_entity(Allocator *temp_allocator, Tokenizer *tokenize
             if (!parse_real(tokenizer, &entity_info.falloff_end, error)) {
                 return false;
             }
+        } else {
+            return level_parse_error(error, "Unrecognized entity property.");
         }
     }
 

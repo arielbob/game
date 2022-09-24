@@ -3082,7 +3082,6 @@ void gl_render_editor(GL_Framebuffer framebuffer,
     int32 num_point_lights = 0;
     Entity *current = level->entities;
     while (current) {
-        current = current->next;
         if (current->flags & ENTITY_LIGHT) {
             if (current->light_type == LIGHT_POINT) {
                 num_point_lights++;
@@ -3098,6 +3097,8 @@ void gl_render_editor(GL_Framebuffer framebuffer,
                 ubo_offset += padded_point_light_struct_size;
             }
         }
+
+        current = current->next;
     }
     *((int32 *) ubo_buffer) = num_point_lights;
 
@@ -3116,6 +3117,8 @@ void gl_render_editor(GL_Framebuffer framebuffer,
             Material *material = get_material(current->material_name);
             gl_draw_mesh(current->mesh_name, material, current->transform);
         }
+
+        current = current->next;
     }
 
     // TODO: refactor this

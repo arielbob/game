@@ -21,8 +21,13 @@ int32 add_entity(Level *level, Entity *entity) {
 
     entity->id = id;
 
-    update_entity_aabb(entity);
-    
+    if (entity->flags & ENTITY_MESH) {
+        update_entity_aabb(entity);
+    }
+
+    if (level->entities) {
+        level->entities->prev = entity;
+    }
     entity->next = level->entities;
     level->entities = entity;
     

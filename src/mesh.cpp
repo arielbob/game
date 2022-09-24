@@ -221,6 +221,7 @@ Mesh Mesh_Loader::load_mesh(File_Data file_data, Allocator *allocator) {
 
     Mesh mesh = {};
 
+    mesh.allocator = allocator;
     mesh.n_vertex = 3;
     mesh.n_normal = 3;
     mesh.n_uv = 2;
@@ -234,7 +235,9 @@ Mesh Mesh_Loader::load_mesh(File_Data file_data, Allocator *allocator) {
 
     AABB aabb = {};
     bool32 aabb_is_initialized = false;
-    
+
+    // we allocate but don't clean up if we error out, but it doesn't really matter.
+    // we just assert. we shouldn't have bad mesh data.
     do {
         token = get_token(&tokenizer, (char *) file_data.contents);
 
@@ -406,13 +409,6 @@ inline void get_triangle(Mesh *mesh, int32 triangle_index, Vec3 triangle[3]) {
     triangle[0] = get_vertex_from_index(mesh, mesh->indices[triangle_index*3]);
     triangle[1] = get_vertex_from_index(mesh, mesh->indices[triangle_index*3 + 1]);
     triangle[2] = get_vertex_from_index(mesh, mesh->indices[triangle_index*3 + 2]);
-}
-
-void deallocate(Mesh mesh) {
-    deallocate(mesh.name);
-    //deallocate(mesh.filename);
-    //deallocate(mesh.allocator, mesh.data);
-    //deallocate(mesh.allocator, mesh.indices);
 }
 
 // this uses the same allocator for everything

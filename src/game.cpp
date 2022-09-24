@@ -14,7 +14,7 @@ void init_asset_manager(Arena_Allocator *game_data) {
     //       with the level heap in the function below
     Heap_Allocator *heap = (Heap_Allocator *) arena_push(game_data, sizeof(Heap_Allocator));
     *heap = make_heap_allocator(heap_base, heap_size);
-    
+
     *asset_manager = {};
     asset_manager->allocator = (Allocator *) heap;
 }
@@ -44,6 +44,7 @@ bool32 read_and_load_level(Level *level, char *filename) {
     if (!parse_result) {
         // TODO: don't assert here and handle the error instead somehow
         debug_print(error);
+        debug_print("\n");
         assert(!"Level parsing failed.");
         return false;
     }
@@ -484,6 +485,7 @@ void draw_messages(Asset_Manager *asset_manager, Message_Manager *manager, real3
 #endif
 
 void init_game(Sound_Output *sound_output, uint32 num_samples) {
+    assert(!game_state->is_initted);
     game_state->mode = Game_Mode::EDITING;
     
     Arena_Allocator *game_data_arena = &memory.game_data;
@@ -512,6 +514,8 @@ void init_game(Sound_Output *sound_output, uint32 num_samples) {
     Context::message_manager = &game_state->message_manager;
 
     // init asset manager
+    game_state->asset_manager = {};
+    asset_manager = &game_state->asset_manager;
     init_asset_manager(&memory.game_data);
     load_default_assets();
 

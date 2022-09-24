@@ -32,9 +32,7 @@ void delete_mesh(String name) {
                 current->table_next->table_prev = current->table_prev;
             }
 
-            deallocate(current->name);
-            deallocate(asset_manager->allocator, current->data);
-            deallocate(asset_manager->allocator, current->indices);
+            deallocate(current);
             deallocate(asset_manager->allocator, current);
             
             return;
@@ -53,8 +51,9 @@ Mesh load_mesh(Allocator *allocator, Mesh_Type type, String name, String filenam
     File_Data file_data = platform_open_and_read_file(temp_region, filename);
 
     Mesh mesh = Mesh_Loader::load_mesh(file_data, allocator);
-    mesh.name = name;
-    mesh.type = type;
+    mesh.type     = type;
+    mesh.name     = name;
+    mesh.filename = filename;
 
     end_region(m);
 
@@ -557,7 +556,6 @@ void load_default_assets() {
     add_mesh("capsule_cylinder", "blender/capsule_cylinder.mesh", Mesh_Type::ENGINE);
     add_mesh("capsule_cap",      "blender/capsule_cap.mesh",      Mesh_Type::ENGINE);
     add_mesh("cube",             "blender/cube.mesh",             Mesh_Type::PRIMITIVE);
-    add_mesh("sphere",           "blender/sphere.mesh",           Mesh_Type::PRIMITIVE);
     
     add_texture("texture_default", "blender/debug-texture.jpg",  Texture_Type::DEFAULT);
     add_texture("lightbulb",       "src/textures/lightbulb.png", Texture_Type::ENGINE);

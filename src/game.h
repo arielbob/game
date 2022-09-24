@@ -212,6 +212,7 @@ struct Game_State {
     Editor_State editor_state;
     Debug_State debug_state;
 
+    Asset_Manager asset_manager;
     Message_Manager message_manager;
 
     Audio_Source music;

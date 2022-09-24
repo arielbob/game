@@ -1154,9 +1154,7 @@ int WinMain(HINSTANCE hInstance,
                 game_sound_output.max_samples = game_sound_output.buffer_size / sound_output.bytes_per_sample;
                 game_sound_output.samples_per_second = 44100;
 
-                // TODO: we may want to store this in memory
-                Game_State init_game_state = {};
-                game_state = &init_game_state;
+                game_state = (Game_State *) arena_push(&memory.game_data, sizeof(Game_State), true);
                 game_state->is_initted = false;
                 game_state->render_state.display_output = initial_display_output;
                 render_state = &game_state->render_state;
