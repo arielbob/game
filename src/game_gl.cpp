@@ -1477,7 +1477,7 @@ void gl_draw_textured_mesh(char *mesh_name, char *texture_name, Transform transf
     glBindVertexArray(0);
 }
 
-void gl_draw_wireframe(char *mesh_name, Vec4 color, Transform transform) {
+void gl_draw_wireframe(String mesh_name, Vec4 color, Transform transform) {
     uint32 shader_id = gl_use_shader("debug_wireframe");
 
     GL_Mesh *gl_mesh = gl_use_mesh(mesh_name);
@@ -1497,7 +1497,7 @@ void gl_draw_wireframe(char *mesh_name, Vec4 color, Transform transform) {
     glBindVertexArray(0);
 }
 
-inline void gl_draw_wireframe(char *mesh_name, Transform transform) {
+inline void gl_draw_wireframe(String mesh_name, Transform transform) {
     gl_draw_wireframe(mesh_name, make_vec4(1.0f, 1.0f, 0.0f, 1.0f), transform);
 }
 
@@ -3136,47 +3136,28 @@ void gl_render_editor(GL_Framebuffer framebuffer,
     while (current) {
         bool32 has_mesh     = current->flags & ENTITY_MESH;
         bool32 has_material = current->flags & ENTITY_MATERIAL;
+        bool32 has_collider = current->flags & ENTITY_COLLIDER;
+        
         if (has_mesh && has_material) {
             Material *material = get_material(current->material_name);
             gl_draw_mesh(current->mesh_name, material, current->transform);
         }
 
+        if (editor_state->show_wireframe &&
+            (selected_entity == current) &&
+            has_mesh) {
+            gl_draw_wireframe(current->mesh_name, current->transform);
+        }
+
+        if (editor_state->show_colliders && has_collider) {
+            gl_draw_collider(current->collider);
+        }
+        
         current = current->next;
     }
 
     // TODO: refactor this
 #if 0
-    // entities
-    {
-        FOR_LIST_NODES(Normal_Entity *, normal_entities) {
-            Normal_Entity *entity = current_node->value;
-
-            int32 mesh_id = entity->mesh_id;
-
-            Material material;
-            if (entity->material_id >= 0) {
-                material = get_material(asset_manager, entity->material_id);
-            } else {
-                material = default_material;
-            }
-
-            gl_draw_mesh(gl_state, render_state,
-                         mesh_id, material,
-                         entity->transform);
-
-            if (editor_state->show_wireframe &&
-                selected_entity &&
-                selected_entity->type == ENTITY_NORMAL &&
-                selected_entity->id == entity->id) {
-                gl_draw_wireframe(gl_state, render_state, mesh_id, entity->transform);
-            }
-
-            if (editor_state->show_colliders) {
-                gl_draw_collider(gl_state, render_state, entity->collider);
-            }
-        }
-    }
-
     // point light icons
     
     int32 num_point_lights = point_light_entities.num_entries;
