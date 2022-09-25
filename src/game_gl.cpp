@@ -2502,7 +2502,7 @@ void gl_draw_quad_p(real32 x, real32 y,
 
 void gl_draw_constant_facing_quad_view_space(Vec3 view_space_center_position,
                                              real32 world_space_side_length,
-                                             char *texture_name) {
+                                             String texture_name) {
     uint32 basic_shader_id = gl_use_shader("constant_facing_quad");
     GL_Mesh *quad_mesh = gl_use_mesh("debug_quad");
     gl_use_texture(texture_name);
@@ -3047,60 +3047,13 @@ void gl_render_editor(GL_Framebuffer framebuffer,
     
     Marker m = begin_region();
 
-    #if 0
-    // gather entities by type
-    Linked_List<Point_Light_Entity *> point_light_entities;
-    make_and_init_linked_list(Point_Light_Entity *, &point_light_entities, temp_region);
-    Linked_List<Normal_Entity *> normal_entities;
-    make_and_init_linked_list(Normal_Entity *, &normal_entities, temp_region);
-
-    Editor_Level *level = &editor_state->level;
-    FOR_LIST_NODES(Entity *, level->entities) {
-        Entity *entity = current_node->value;
-        switch (entity->type) {
-            case ENTITY_NORMAL: {
-                add(&normal_entities, (Normal_Entity *) entity);
-            } break;
-            case ENTITY_POINT_LIGHT: {
-                add(&point_light_entities, (Point_Light_Entity *) entity);
-            } break;
-            default: {
-                assert(!"Unhandled entity type.");
-            }
-        }
-    }
-    #endif
-
-    #if 0
-    glBindBuffer(GL_UNIFORM_BUFFER, gl_state->global_ubo);
-    int64 ubo_offset = 0;
-    glBufferSubData(GL_UNIFORM_BUFFER, (int32 *) ubo_offset, sizeof(int32),
-                    &point_light_entities.num_entries);
-    // NOTE: not sure why we use 16 here, instead of 32, which is the size of the GL_Point_Light struct.
-    //       i think we just use the aligned offset of the first member of the struct, which is a vec4, so we offset
-    //       by 16 since it's the closest multiple.
-    ubo_offset += 16;
-    FOR_LIST_NODES(Point_Light_Entity *, point_light_entities) {
-        Point_Light_Entity *entity = current_node->value;
-        if (entity->type == ENTITY_POINT_LIGHT) {
-            // TODO: we may just want to replace position and light_color with vec4s in Point_Light_Entity.
-            //       although this would be kind of annoying since we would have to modify the Transform struct.
-            GL_Point_Light gl_point_light = {
-                make_vec4(entity->transform.position, 1.0f),
-                make_vec4(entity->light_color, 1.0f),
-                entity->falloff_start,
-                entity->falloff_end
-            };
-
-            glBufferSubData(GL_UNIFORM_BUFFER, (int32 *) ubo_offset,
-                            sizeof(GL_Point_Light), &gl_point_light);
-            ubo_offset += sizeof(GL_Point_Light) + 8; // add 8 bytes of padding so that it aligns to size of vec4
-        }
-    }
-    #endif
-
     Level *level = &game_state->level;
 
+    // TODO: will need to use different macro when adding more lights
+    Vec3 *light_positions = (Vec3 *) allocate(temp_region, sizeof(Vec3)*MAX_POINT_LIGHTS);
+    int32 current_light_index = 0;
+
+    // fill in UBO with point light data
     uint32 padded_point_light_struct_size = sizeof(GL_Point_Light) + 8;
     uint32 ubo_offset = 16; // start at 16 because we set num_point_lights after adding the lights
     uint8 *ubo_buffer = (uint8 *) allocate(temp_region, GLOBAL_UBO_SIZE);
@@ -3121,6 +3074,11 @@ void gl_render_editor(GL_Framebuffer framebuffer,
                 };
                 memcpy(ubo_buffer + ubo_offset, &gl_point_light, sizeof(GL_Point_Light));
                 ubo_offset += padded_point_light_struct_size;
+
+                // for point light icon
+                light_positions[current_light_index++] = truncate_v4_to_v3(render_state->view_matrix *
+                                                                           make_vec4(current->transform.position,
+                                                                                     1.0f));
             }
         }
 
@@ -3133,6 +3091,7 @@ void gl_render_editor(GL_Framebuffer framebuffer,
     glBufferSubData(GL_UNIFORM_BUFFER, (int32 *) 0, ubo_offset, ubo_buffer);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
+    // render entities
     Entity *selected_entity = get_selected_entity(editor_state);
     current = level->entities;
 
@@ -3160,41 +3119,28 @@ void gl_render_editor(GL_Framebuffer framebuffer,
         current = current->next;
     }
 
-    // TODO: refactor this
-#if 0
-    // point light icons
-    
-    int32 num_point_lights = point_light_entities.num_entries;
-
-    Vec3 *positions = (Vec3 *) allocate(temp_region, sizeof(Vec3)*num_point_lights);
-    int32 current_index = 0;
-    FOR_LIST_NODES(Point_Light_Entity *, point_light_entities) {
-        Point_Light_Entity *entity = current_node->value;
-        positions[current_index++] = truncate_v4_to_v3(render_state->view_matrix *
-                                                       make_vec4(entity->transform.position, 1.0f));
-    }
-
-    // insertion sort
+    // insertion sort on light positions, to render back to front with transparency
     for (int32 i = 1; i < num_point_lights; i++) {
-        Vec3 key = positions[i];
+        Vec3 key = light_positions[i];
         int32 j = i - 1;
-        for (; j >= 0 && (positions[j].z < key.z); j--) {
-            positions[j + 1] = positions[j];
+        for (; j >= 0 && (light_positions[j].z < key.z); j--) {
+            light_positions[j + 1] = light_positions[j];
         }
-        positions[j + 1] = key;
+        light_positions[j + 1] = key;
     }
 
+    // draw light icons
     glDepthMask(GL_FALSE);
+    String light_icon_texture_name = make_string("lightbulb");
     for (int32 i = 0; i < num_point_lights; i++) {
-        Vec3 view_space_position = positions[i];
+        Vec3 view_space_position = light_positions[i];
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        gl_draw_constant_facing_quad_view_space(gl_state, render_state,
-                                                view_space_position, Editor_Constants::point_light_side_length,
-                                                gl_state->light_icon_texture_id, true);
+        gl_draw_constant_facing_quad_view_space(view_space_position, Editor_Constants::point_light_side_length,
+                                                light_icon_texture_name);
     }
     glDepthMask(GL_TRUE);
-#endif
-    
+
+    // draw gizmo
     glBindFramebuffer(GL_FRAMEBUFFER, g_gl_state->gizmo_framebuffer.fbo);
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
