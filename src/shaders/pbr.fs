@@ -22,16 +22,17 @@ layout (std140) uniform shader_globals {
 uniform vec3 camera_pos;
 
 uniform bool use_albedo_texture;
-uniform bool use_roughness_texture;
 uniform bool use_metalness_texture;
+uniform bool use_roughness_texture;
+
 uniform vec3 u_albedo_color;
 uniform float u_metalness;
 uniform float u_roughness;
 uniform float ao;
 
 uniform sampler2D albedo_texture;
-uniform sampler2D roughness_texture;
 uniform sampler2D metalness_texture;
+uniform sampler2D roughness_texture;
 
 in vec2 uv;
 in vec3 frag_pos;
@@ -90,8 +91,8 @@ void main() {
     vec3 n = normalize(normal);
     
     vec3 albedo;
-    float roughness;
     float metalness;
+    float roughness;
 
 #if 1
     if (use_albedo_texture) {
@@ -100,22 +101,22 @@ void main() {
         albedo = u_albedo_color;
     }
 
-    if (use_roughness_texture) {
-        roughness = texture(roughness_texture, uv).x;
-    } else {
-        roughness = u_roughness;
-    }
-    
     if (use_metalness_texture) {
         metalness = texture(metalness_texture, uv).x;
     } else {
         metalness = u_metalness;
     }
+    
+    if (use_roughness_texture) {
+        roughness = texture(roughness_texture, uv).x;
+    } else {
+        roughness = u_roughness;
+    }
 #endif
     
     albedo    = pow(albedo, vec3(1.0 / 2.2));
-    roughness = pow(roughness, 1.0 / 2.2);
     metalness = pow(metalness, 1.0 / 2.2);
+    roughness = pow(roughness, 1.0 / 2.2);
 
     vec3 light_out = vec3(0.0);
 

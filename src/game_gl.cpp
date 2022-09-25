@@ -1300,16 +1300,20 @@ uint32 gl_use_shader(char *shader_name) {
     return shader->id;
 }
 
-uint32 gl_use_texture(String texture_name) {
-    // TODO: will have to add parameter to specify which texture slot to use
+uint32 gl_use_texture(String texture_name, int32 slot_index = 0) {
     GL_Texture *texture = gl_get_texture(texture_name);
+
+    GLenum slots[3] = { GL_TEXTURE0, GL_TEXTURE1, GL_TEXTURE2 };
     
     if (texture) {
+        glActiveTexture(slots[slot_index]);
         glBindTexture(GL_TEXTURE_2D, texture->id); 
     } else {
         assert(!"Texture does not exist!");
         return 0;
     }
+
+    glActiveTexture(GL_TEXTURE0);
 
     return texture->id;
 }
@@ -1435,7 +1439,9 @@ void gl_draw_mesh(String mesh_name,
     uint32 shader_id = gl_use_shader("pbr");
 
     GL_Mesh *gl_mesh = gl_use_mesh(mesh_name);
-    gl_use_texture(material->albedo_texture_name);
+    gl_use_texture(material->albedo_texture_name,    0);
+    gl_use_texture(material->metalness_texture_name, 1);
+    gl_use_texture(material->roughness_texture_name, 2);
     
     // TODO: call gl_use_texture with different slots based on material_use_x_texture flags
 
@@ -1444,8 +1450,8 @@ void gl_draw_mesh(String mesh_name,
     gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->cpv_matrix);
     // TODO: we may need to think about this for transparent materials
     gl_set_uniform_bool(shader_id, "use_albedo_texture",    material->flags & MATERIAL_USE_ALBEDO_TEXTURE);
-    gl_set_uniform_bool(shader_id, "use_roughness_texture", material->flags & MATERIAL_USE_ROUGHNESS_TEXTURE);
     gl_set_uniform_bool(shader_id, "use_metalness_texture", material->flags & MATERIAL_USE_METALNESS_TEXTURE);
+    gl_set_uniform_bool(shader_id, "use_roughness_texture", material->flags & MATERIAL_USE_ROUGHNESS_TEXTURE);
     
     gl_set_uniform_vec3(shader_id, "u_albedo_color", &material->albedo_color);
     gl_set_uniform_float(shader_id, "u_metalness", material->metalness);
@@ -2949,8 +2955,6 @@ void gl_draw_framebuffer(GL_Framebuffer framebuffer) {
 
 void gl_draw_gizmo(Gizmo_State *gizmo_state) {
     Transform_Mode transform_mode = gizmo_state->transform_mode;
-
-    uint32 shader_id = gl_use_shader("basic_3d");
 
     Transform x_transform, y_transform, z_transform;
 
