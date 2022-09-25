@@ -34,6 +34,8 @@ void delete_mesh(String name) {
 
             deallocate(current);
             deallocate(asset_manager->allocator, current);
+
+            r_unload_mesh(name);
             
             return;
         }
@@ -52,8 +54,8 @@ Mesh load_mesh(Allocator *allocator, Mesh_Type type, String name, String filenam
 
     Mesh mesh = Mesh_Loader::load_mesh(file_data, allocator);
     mesh.type     = type;
-    mesh.name     = name;
-    mesh.filename = filename;
+    mesh.name     = copy(allocator, name);
+    mesh.filename = copy(allocator, filename);
 
     end_region(m);
 
@@ -94,6 +96,8 @@ Mesh *add_mesh(String name, String filename, Mesh_Type type) {
     }
     asset_manager->mesh_table[hash] = mesh;
 
+    r_load_mesh(mesh->name);
+    
     return mesh;
 }
 
@@ -136,6 +140,8 @@ void delete_texture(String name) {
             deallocate(current->name);
             deallocate(current->filename);
             deallocate(asset_manager->allocator, current);
+
+            r_unload_texture(name);
             
             return;
         }
@@ -168,8 +174,8 @@ Texture *add_texture(String name, String filename, Texture_Type type) {
     }
 
     Texture *texture  = (Texture *) allocate(asset_manager->allocator, sizeof(Texture), true);
-    texture->name     = name;
-    texture->filename = filename;
+    texture->name     = copy(asset_manager->allocator, name);
+    texture->filename = copy(asset_manager->allocator, filename);
     texture->type     = type;
     
     uint32 hash = get_hash(name, NUM_TEXTURE_BUCKETS);
@@ -182,6 +188,8 @@ Texture *add_texture(String name, String filename, Texture_Type type) {
     }
     asset_manager->texture_table[hash] = texture;
 
+    r_load_texture(name);
+    
     return texture;
 }
 
@@ -204,16 +212,28 @@ bool32 material_exists(String name) {
     return false;
 }
 
-Material *add_material(Material material_to_add) {
-    if (material_exists(material_to_add.name)) {
+Material *add_material(Material_Info *material_info) {
+    if (material_exists(material_info->name)) {
         assert(!"Material with name already exists.");
         return NULL;
     }
 
-    Material *material = (Material *) allocate(asset_manager->allocator, sizeof(Material));
-    *material = material_to_add;
-    
-    uint32 hash = get_hash(material_to_add.name, NUM_MATERIAL_BUCKETS);
+    Allocator *allocator = asset_manager->allocator;
+    Material *material = (Material *) allocate(allocator, sizeof(Material), true);
+
+    material->name                   = copy(allocator, material_info->name);
+    material->flags                  = material_info->flags;
+        
+    material->albedo_texture_name    = copy(allocator, material_info->albedo_texture_name);
+    material->albedo_color           = material_info->albedo_color;
+        
+    material->metalness_texture_name = copy(allocator, material_info->metalness_texture_name);
+    material->metalness              = material_info->metalness;
+
+    material->roughness_texture_name = copy(allocator, material_info->roughness_texture_name);
+    material->roughness              = material_info->roughness;
+
+    uint32 hash = get_hash(material->name, NUM_MATERIAL_BUCKETS);
 
     Material *current = asset_manager->material_table[hash];
     material->table_next = current;
@@ -351,6 +371,8 @@ Font *add_font(char *font_name, char *font_filename,
         current->table_prev = font;
     }
     asset_manager->font_table[hash] = font;
+
+    r_load_font(font->name);
     
     return font;
 }
@@ -490,38 +512,21 @@ void load_level_assets(Level_Info *level_info) {
     // functions is responsible to copy them.
     for (int32 i = 0; i < level_info->num_meshes; i++) {
         Mesh_Info *mesh_info = &level_info->meshes[i];
-        String name     = copy(asset_manager->allocator, mesh_info->name);
-        String filename = copy(asset_manager->allocator, mesh_info->filename);
-        
-        add_mesh(name, filename, Mesh_Type::LEVEL);
+        add_mesh(mesh_info->name,
+                 mesh_info->filename,
+                 Mesh_Type::LEVEL);
     }
 
     for (int32 i = 0; i < level_info->num_textures; i++) {
         Texture_Info *texture_info = &level_info->textures[i];
-        String name     = copy(asset_manager->allocator, texture_info->name);
-        String filename = copy(asset_manager->allocator, texture_info->filename);
-
-        add_texture(name, filename, Texture_Type::LEVEL);
+        add_texture(texture_info->name,
+                    texture_info->filename,
+                    Texture_Type::LEVEL);
     }
 
     for (int32 i = 0; i < level_info->num_materials; i++) {
         Material_Info *material_info = &level_info->materials[i];
-        Material material_to_add = {};
-        Allocator *allocator = asset_manager->allocator;
-        
-        material_to_add.name                   = copy(allocator, material_info->name);
-        material_to_add.flags                  = material_info->flags;
-        
-        material_to_add.albedo_texture_name    = copy(allocator, material_info->albedo_texture_name);
-        material_to_add.albedo_color           = material_info->albedo_color;
-        
-        material_to_add.metalness_texture_name = copy(allocator, material_info->metalness_texture_name);
-        material_to_add.metalness              = material_info->metalness;
-
-        material_to_add.roughness_texture_name = copy(allocator, material_info->roughness_texture_name);
-        material_to_add.roughness              = material_info->roughness;
-        
-        add_material(material_to_add);
+        add_material(material_info);
     }
 }
 

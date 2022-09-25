@@ -32,7 +32,7 @@ enum class Command_Type {
 };
 
 struct Command_Load_Font {
-    char *font_name;
+    String font_name;
 };
 
 struct Command_Load_Mesh {

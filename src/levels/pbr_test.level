@@ -19,15 +19,15 @@ materials {
 
         use_albedo_texture 1
         albedo_texture "debug"
-        albedo_color 1.0 0.0 0.0
+        albedo_color 1.0 1.0 0.0
 
         use_metalness_texture 0
         ;; metalness_texture "debug"
-        metalness 0.5
+        metalness 0.0
     
         use_roughness_texture 0
         roughness_texture "debug"
-        roughness 0.2
+        roughness 0.5
     }
 }
 

@@ -113,6 +113,7 @@
 #define GL_RGB16F                         0x881B
 #define GL_R8                             0x8229
 #define GL_R16                            0x822A
+#define GL_INVALID_INDEX                  0xFFFFFFFFu
 
 #define GL_HEAP_SIZE MEGABYTES(128)
 #define NUM_SHADER_BUCKETS 128
@@ -123,6 +124,7 @@
 #define MAX_ALPHA_MASKS 16
 #define MAX_POINT_LIGHTS 16
 #define GL_MAX_TEXT_CHARACTERS 1024
+#define GLOBAL_UBO_SIZE 1024
 
 #define FRAMEBUFFER_IS_HDR   (1 << 0)
 #define FRAMEBUFFER_HAS_ALPHA (1 << 1)

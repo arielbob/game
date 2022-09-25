@@ -932,6 +932,12 @@ inline void gl_set_uniform_uint(uint32 shader_id, char* uniform_name, uint32 ui)
     glUniform1ui(uniform_location, ui);
 }
 
+inline void gl_set_uniform_bool(uint32 shader_id, char* uniform_name, bool32 b) {
+    int32 uniform_location = glGetUniformLocation(shader_id, uniform_name);
+    assert(uniform_location > -1);
+    glUniform1ui(uniform_location, b);
+}
+
 inline void gl_set_uniform_float(uint32 shader_id, char* uniform_name, real32 f) {
     int32 uniform_location = glGetUniformLocation(shader_id, uniform_name);
     assert(uniform_location > -1);
@@ -952,18 +958,25 @@ GL_Shader *gl_get_shader(char *shader_name) {
     return NULL;
 }
 
+#define GL_GET_TEXTURE_DEF                                      \
+    uint32 hash = get_hash(texture_name, NUM_TEXTURE_BUCKETS);  \
+    GL_Texture *current = g_gl_state->texture_table[hash];      \
+    while (current) {                                           \
+        if (string_equals(current->name, texture_name)) {       \
+            return current;                                     \
+        }                                                       \
+                                                                \
+        current = current->table_next;                          \
+    }                                                           \
+                                                                \
+    return NULL;                                                \
+
 GL_Texture *gl_get_texture(char *texture_name) {
-    uint32 hash = get_hash(texture_name, NUM_TEXTURE_BUCKETS);
-    GL_Texture *current = g_gl_state->texture_table[hash];
-    while (current) {
-        if (string_equals(current->name, texture_name)) {
-            return current;
-        }
+    GL_GET_TEXTURE_DEF;
+}
 
-        current = current->table_next;
-    }
-
-    return NULL;
+GL_Texture *gl_get_texture(String texture_name) {
+    GL_GET_TEXTURE_DEF;
 }
 
 GL_Font *gl_get_font(char *font_name) {
@@ -994,6 +1007,7 @@ GL_Mesh *gl_get_mesh(String mesh_name) {
     return NULL;
 }
 
+// TODO: maybe just use the macro like GL_GET_TEXTURE_DEF
 inline GL_Mesh *gl_get_mesh(char *mesh_name) {
     return gl_get_mesh(make_string(mesh_name));
 }
@@ -1286,7 +1300,7 @@ uint32 gl_use_shader(char *shader_name) {
     return shader->id;
 }
 
-uint32 gl_use_texture(char *texture_name) {
+uint32 gl_use_texture(String texture_name) {
     // TODO: will have to add parameter to specify which texture slot to use
     GL_Texture *texture = gl_get_texture(texture_name);
     
@@ -1298,6 +1312,10 @@ uint32 gl_use_texture(char *texture_name) {
     }
 
     return texture->id;
+}
+
+inline uint32 gl_use_texture(char *texture_name) {
+    return gl_use_texture(make_string(texture_name));
 }
 
 uint32 gl_use_font_texture(char *font_name) {
@@ -1417,20 +1435,25 @@ void gl_draw_mesh(String mesh_name,
     uint32 shader_id = gl_use_shader("pbr");
 
     GL_Mesh *gl_mesh = gl_use_mesh(mesh_name);
-
+    gl_use_texture(material->albedo_texture_name);
+    
     // TODO: call gl_use_texture with different slots based on material_use_x_texture flags
 
     Mat4 model_matrix = get_model_matrix(transform);
     gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
     gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->cpv_matrix);
     // TODO: we may need to think about this for transparent materials
-    gl_set_uniform_vec3(shader_id, "albedo_color", &material->albedo_color);
-    gl_set_uniform_float(shader_id, "metallic", 0.0f);
-    gl_set_uniform_float(shader_id, "roughness", 0.5f);
+    gl_set_uniform_bool(shader_id, "use_albedo_texture",    material->flags & MATERIAL_USE_ALBEDO_TEXTURE);
+    gl_set_uniform_bool(shader_id, "use_roughness_texture", material->flags & MATERIAL_USE_ROUGHNESS_TEXTURE);
+    gl_set_uniform_bool(shader_id, "use_metalness_texture", material->flags & MATERIAL_USE_METALNESS_TEXTURE);
+    
+    gl_set_uniform_vec3(shader_id, "u_albedo_color", &material->albedo_color);
+    gl_set_uniform_float(shader_id, "u_metalness", material->metalness);
+    gl_set_uniform_float(shader_id, "u_roughness", material->roughness);
     gl_set_uniform_float(shader_id, "ao", 1.0f);
     
     gl_set_uniform_vec3(shader_id, "camera_pos", &render_state->camera.position);
-
+    
     glDrawElements(GL_TRIANGLES, gl_mesh->num_triangles * 3, GL_UNSIGNED_INT, 0);
 
     glUseProgram(0);
@@ -2275,15 +2298,15 @@ void gl_init(Arena_Allocator *game_data, Display_Output display_output) {
     // NOTE: unified buffer object
     glGenBuffers(1, &g_gl_state->global_ubo);
     glBindBuffer(GL_UNIFORM_BUFFER, g_gl_state->global_ubo);
-    // TODO: not sure if 1024 bytes is enough
-    // we add 1 to MAX_POINT_LIGHTS for the int to hold num_point_lights.
-    // maybe we could put num_point lights at the end of the uniform buffer object?
-    glBufferData(GL_UNIFORM_BUFFER, (MAX_POINT_LIGHTS + 1) * sizeof(GL_Point_Light), NULL, GL_STATIC_DRAW);
+
+    // make sure to increase GLOBAL_UBO_SIZE if more size is needed
+    glBufferData(GL_UNIFORM_BUFFER, GLOBAL_UBO_SIZE, NULL, GL_STATIC_DRAW);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
     glBindBufferBase(GL_UNIFORM_BUFFER, 0, g_gl_state->global_ubo);
 
-    uint32 shader_id = gl_use_shader("basic_3d");
+    uint32 shader_id = gl_use_shader("pbr");
     uint32 uniform_block_index = glGetUniformBlockIndex(shader_id, "shader_globals");
+    assert(uniform_block_index != GL_INVALID_INDEX);
     glUniformBlockBinding(shader_id, uniform_block_index, 0);
     glUseProgram(0);
 
@@ -3073,11 +3096,10 @@ void gl_render_editor(GL_Framebuffer framebuffer,
     #endif
 
     Level *level = &game_state->level;
-    
+
     uint32 padded_point_light_struct_size = sizeof(GL_Point_Light) + 8;
-    uint32 ubo_buffer_size = 16 + padded_point_light_struct_size * 16;
     uint32 ubo_offset = 16; // start at 16 because we set num_point_lights after adding the lights
-    uint8 *ubo_buffer = (uint8 *) allocate(temp_region, ubo_buffer_size, true);
+    uint8 *ubo_buffer = (uint8 *) allocate(temp_region, GLOBAL_UBO_SIZE);
 
     int32 num_point_lights = 0;
     Entity *current = level->entities;
@@ -3103,7 +3125,8 @@ void gl_render_editor(GL_Framebuffer framebuffer,
     *((int32 *) ubo_buffer) = num_point_lights;
 
     glBindBuffer(GL_UNIFORM_BUFFER, g_gl_state->global_ubo);
-    glBufferSubData(GL_UNIFORM_BUFFER, 0, ubo_buffer_size, ubo_buffer);
+    // only need to send up to ubo_offset bytes (this assumes ubo_offset is right after final byte set)
+    glBufferSubData(GL_UNIFORM_BUFFER, (int32 *) 0, ubo_offset, ubo_buffer);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
     Entity *selected_entity = get_selected_entity(editor_state);

@@ -2,6 +2,8 @@
 
 #define PI 3.1415926538
 
+// size of this struct is 16 + 16 + 4 + 4 + 8
+// final 8 bytes is to make final size a multiple of 16 (i.e. multiple of size of a vec4)
 struct Point_Light {
     vec4 position;
     vec4 color;
@@ -19,13 +21,17 @@ layout (std140) uniform shader_globals {
 
 uniform vec3 camera_pos;
 
-uniform vec3 albedo_color;
-uniform float metallic;
-uniform float roughness;
+uniform bool use_albedo_texture;
+uniform bool use_roughness_texture;
+uniform bool use_metalness_texture;
+uniform vec3 u_albedo_color;
+uniform float u_metalness;
+uniform float u_roughness;
 uniform float ao;
 
 uniform sampler2D albedo_texture;
-uniform bool use_color_override;
+uniform sampler2D roughness_texture;
+uniform sampler2D metalness_texture;
 
 in vec2 uv;
 in vec3 frag_pos;
@@ -78,20 +84,38 @@ vec3 fresnel_schlick(float h_dot_v, vec3 f0) {
     return f0 + (1.0 - f0)*pow(clamp(1.0 - h_dot_v, 0.0, 1.0), 5.0);
 }
 
-// TODO: test on non-intel gpu
 void main() {
     // fragment to camera
     vec3 v = normalize(camera_pos - frag_pos);
     vec3 n = normalize(normal);
     
     vec3 albedo;
-    if (use_color_override) {
-        albedo = albedo_color;
-    } else {
+    float roughness;
+    float metalness;
+
+#if 1
+    if (use_albedo_texture) {
         albedo = texture(albedo_texture, uv).xyz;
+    } else {
+        albedo = u_albedo_color;
     }
 
-    albedo = pow(albedo, vec3(1.0 / 2.2));
+    if (use_roughness_texture) {
+        roughness = texture(roughness_texture, uv).x;
+    } else {
+        roughness = u_roughness;
+    }
+    
+    if (use_metalness_texture) {
+        metalness = texture(metalness_texture, uv).x;
+    } else {
+        metalness = u_metalness;
+    }
+#endif
+    
+    albedo    = pow(albedo, vec3(1.0 / 2.2));
+    roughness = pow(roughness, 1.0 / 2.2);
+    metalness = pow(metalness, 1.0 / 2.2);
 
     vec3 light_out = vec3(0.0);
 
@@ -110,7 +134,7 @@ void main() {
         vec3 radiance = attenuation * light_color;
 
         vec3 f0 = vec3(0.04);
-        f0 = mix(f0, albedo, metallic);
+        f0 = mix(f0, albedo, metalness);
         // i'm pretty sure we don't need to do max(dot(h, v), 0.0) here
         vec3 fresnel = fresnel_schlick(dot(h, v), f0);
         float ndf = normal_distribution_ggx(n, h, roughness);
@@ -124,7 +148,7 @@ void main() {
 
         vec3 k_specular = fresnel;
         vec3 k_diffuse = vec3(1.0) - k_specular;
-        k_diffuse *= (1.0 - metallic);
+        k_diffuse *= (1.0 - metalness);
         
         // we don't use k_specular here, since fresnel == k_specular and is already included
         // in the specular term.
@@ -138,4 +162,6 @@ void main() {
     color = pow(color, vec3(2.2));       // gamma correction
     
     FragColor = vec4(color, 1.0);
+    //FragColor = vec4(num_point_lights, 0.0, 0.0, 1.0);
+    //FragColor = vec4(1.0, 0.0, 0.0, 1.0);
 }

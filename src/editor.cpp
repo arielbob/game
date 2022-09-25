@@ -28,13 +28,12 @@ Entity *get_selected_entity(Editor_State *editor_state) {
 
     if (selected_id < 0) return NULL;
 
-    {
-        Entity *current = level->entities;
-        while (current) {
-            if (current->id == selected_id) {
-                return current;
-            }
+    Entity *current = level->entities;
+    while (current) {
+        if (current->id == selected_id) {
+            return current;
         }
+        current = current->next;
     }
 
     return NULL;
@@ -145,6 +144,8 @@ Entity *pick_entity(Editor_State *editor_state, Ray cursor_ray) {
                 }
             }
         }
+
+        current = current->next;
     }
 
     return picked_entity;

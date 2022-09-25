@@ -21,9 +21,7 @@ int32 add_entity(Level *level, Entity *entity) {
 
     entity->id = id;
 
-    if (entity->flags & ENTITY_MESH) {
-        update_entity_aabb(entity);
-    }
+    update_entity_aabb(entity);
 
     if (level->entities) {
         level->entities->prev = entity;
@@ -71,9 +69,11 @@ Entity *get_entity(Level *level, int32 id) {
 }
 
 void load_level_entities(Level *level, Level_Info *level_info) {
+    Allocator *allocator = (Allocator *) &level->heap;
+    
     for (int32 i = 0; i < level_info->num_entities; i++) {
-        Entity *entity = (Entity *) allocate((Allocator *) &level->heap, sizeof(Entity));
-        *entity = make_entity_from_info(&level_info->entities[i]);
+        Entity *entity = (Entity *) allocate(allocator, sizeof(Entity));
+        *entity = make_entity_from_info(allocator, &level_info->entities[i]);
         
         add_entity(level, entity);
     }

@@ -1,17 +1,22 @@
 #include "entity.h"
 #include "level.h"
 
-Entity make_entity_from_info(Entity_Info *info) {
+Entity make_entity_from_info(Allocator *allocator, Entity_Info *info) {
     Entity result = {};
 
     result.flags            = info->flags;
     result.transform        = info->transform;
 
-    result.mesh_name        = info->mesh_name;
-    result.material_name    = info->material_name;
+    if (info->flags & ENTITY_MESH) {
+        result.mesh_name        = copy(allocator, info->mesh_name);
+    }
+    if (info->flags & ENTITY_MATERIAL) {
+        result.material_name    = copy(allocator, info->material_name);
+    }
+    
     result.transformed_aabb = info->transformed_aabb;
 
-    result.collider = info->collider;
+    result.collider         = info->collider;
 
     result.light_type       = info->light_type;
     result.light_color      = info->light_color;
@@ -26,8 +31,6 @@ void update_entity_aabb(Entity *entity) {
     if (entity->flags & ENTITY_MESH) {
         Mesh *mesh = get_mesh(entity->mesh_name);
         entity->transformed_aabb = transform_aabb(mesh->aabb, get_model_matrix(entity->transform));
-    } else {
-        assert(!"Entity does not have an AABB.");
     }
 }
 

@@ -55,6 +55,7 @@ global_variable Render_State *render_state;
 #include "math.cpp"
 #include "mesh.cpp"
 #include "render.cpp"
+#include "render_queue.cpp"
 #include "font.cpp"
 #include "asset.cpp"
 #include "ui.cpp"
@@ -1293,6 +1294,7 @@ int WinMain(HINSTANCE hInstance,
                     verify(&memory.global_stack);
                     
                     ui_frame_end();
+                    r_queue_frame_end();
 
                     real64 work_time = win32_get_elapsed_time(last_perf_counter);
                     // debug_print("work time before sleep: %f\n", work_time);
