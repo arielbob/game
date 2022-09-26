@@ -19,6 +19,9 @@
 #define BORDER_TOP    (1 << 3)
 #define BORDER_ALL    (0b1111)
 
+#define UI_MAX_VERTICES  1024
+#define UI_MAX_TRIANGLES 1024
+#define UI_MAX_INDICES   UI_MAX_TRIANGLES*3
 #define NUM_WIDGET_BUCKETS 128
 
 struct UI_Widget;
@@ -279,6 +282,12 @@ struct UI_Interact_Result {
     Vec2 relative_mouse_percentage;
 };
 
+struct UI_Vertex {
+    Vec2 position;
+    Vec2 uv;
+    Vec4 color;
+};
+
 struct UI_Manager {
     UI_id hot;
     UI_id active;
@@ -325,6 +334,12 @@ struct UI_Manager {
     UI_Style_Text_Color *text_color_stack;
     
     bool32 is_disabled;
+
+    // rendering
+    int32 num_vertices;
+    UI_Vertex *vertices;
+    int32 num_indices;
+    uint32 *indices;     // made up of triangles
 };
 
 bool32 is_hot(UI_Widget *widget);

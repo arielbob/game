@@ -2765,7 +2765,7 @@ void draw_sound_buffer(Win32_Sound_Output *win32_sound_output) {
                       write_cursor_position, make_vec3(1.0f, 0.0f, 0.0f));
 }
 
-void gl_draw_ui_widget(Asset_Manager *asset, UI_Manager *manager, UI_Widget *widget) {    
+void gl_draw_ui_widget(Asset_Manager *asset, UI_Manager *manager, UI_Widget *widget) {
     Vec2 computed_position = widget->computed_position;
     Vec2 computed_size = widget->computed_size;
 
@@ -2778,7 +2778,7 @@ void gl_draw_ui_widget(Asset_Manager *asset, UI_Manager *manager, UI_Widget *wid
     }
     #endif
     bool32 has_alpha = false;
-    
+
     if (widget->flags & UI_WIDGET_DRAW_BACKGROUND) {
         Vec4 color = widget->background_color;
         if (widget->flags & UI_WIDGET_IS_CLICKABLE) {
@@ -3398,7 +3398,6 @@ void gl_render(Controller_State *controller_state,
     }
     glLineWidth(1.0f);
     glEnable(GL_DEPTH_TEST);
-
 
     // draw msaa framebuffer
     #if 1

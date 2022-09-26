@@ -997,6 +997,11 @@ void ui_init(Arena_Allocator *arena) {
 }
 
 void ui_frame_init(Display_Output *display_output, real32 dt) {
+    // note that we have a global frame arena and a frame arena for ui (inside ui_manager).
+    // frame arena for ui should be used for when we need to reference data in the frame arena
+    // in the subsequent frame.
+    // the global frame arena is reset every frame and no data is kept, so we use that for
+    // rendering. we use the ui_manager's frame arena for ui state stuff.
     ui_push_position({ 0.0f, 0.0f });
     ui_push_layout_type(UI_LAYOUT_NONE);
     ui_push_size_type({ UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE });
@@ -1013,13 +1018,18 @@ void ui_frame_init(Display_Output *display_output, real32 dt) {
     ui_manager->root = widget;
 
     ui_manager->widget_table = (UI_Widget **) arena_push(&ui_manager->frame_arena,
-                                                      sizeof(UI_Widget *) * NUM_WIDGET_BUCKETS, true);
+                                                         sizeof(UI_Widget *) * NUM_WIDGET_BUCKETS, true);
     
     ui_table_add(ui_manager->widget_table, widget);
 
-    ui_manager->hot_t += dt;
-    ui_manager->focus_t += dt;
+    ui_manager->hot_t    += dt;
+    ui_manager->focus_t  += dt;
     ui_manager->active_t += dt;
+
+    ui_manager->num_vertices = 0;
+    ui_manager->num_indices  = 0;
+    ui_manager->vertices     = (UI_Vertex *) allocate(frame_arena, sizeof(UI_Vertex) * UI_MAX_VERTICES);
+    ui_manager->indices      = (uint32 *)    allocate(frame_arena, sizeof(uint32)    * UI_MAX_INDICES);
 }
 
 void ui_frame_end() {

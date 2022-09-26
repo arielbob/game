@@ -59,6 +59,7 @@ global_variable Render_State *render_state;
 #include "font.cpp"
 #include "asset.cpp"
 #include "ui.cpp"
+#include "ui_render.cpp"
 #include "entity.cpp"
 #include "level.cpp"
 #include "level_import.cpp"
