@@ -1,5 +1,156 @@
 #include "ui.h"
 
+void ui_push_draw_command(UI_Draw_Command command) {
+    assert(ui_manager->num_draw_commands < UI_MAX_DRAW_COMMANDS);
+    ui_manager->draw_commands[ui_manager->num_draw_commands++] = command;
+}
+
+void ui_reset_render_group(UI_Render_Group *group) {
+    group->num_vertices = 0;
+    group->num_indices = 0;
+}
+
+void ui_push_render_group(UI_Render_Group *group) {
+    // indices in group are based off of vertices array. we save the number of vertices before
+    // adding the vertices so that we can offset the indices so that they're relative to the
+    // ui_manager's vertices array that we'are appending to.
+    int32 indices_offset = ui_manager->num_vertices;
+    
+    // copy vertices
+    assert(ui_manager->num_vertices + group->num_vertices <= UI_MAX_VERTICES);
+    memcpy(&ui_manager->vertices[ui_manager->num_vertices], group->vertices,
+           group->num_vertices*sizeof(UI_Vertex));
+    ui_manager->num_vertices += group->num_vertices;
+
+    // add offset to indices
+    for (int32 i = 0; i < group->num_indices; i++) {
+        group->indices[i] += indices_offset;
+    }
+    
+    // copy indices
+    int32 indices_start = ui_manager->num_indices;
+    assert(ui_manager->num_indices + group->num_indices <= UI_MAX_INDICES);
+    memcpy(&ui_manager->indices[ui_manager->num_indices], group->indices,
+           group->num_indices*sizeof(uint32));
+    ui_manager->num_indices += group->num_indices;
+
+    // create draw command
+    UI_Draw_Command command;
+    command.type = group->type;
+    switch (command.type) {
+        case UI_Texture_Type::UI_TEXTURE_NONE: {} break;
+        case UI_Texture_Type::UI_TEXTURE_IMAGE: {
+            command.texture_name = copy(frame_arena, group->texture_name);
+        } break;
+        case UI_Texture_Type::UI_TEXTURE_FONT: {
+            command.font_name = copy(frame_arena, group->font_name);
+        } break;
+        default: {
+            assert(!"Invalid UI texture type.");
+        } break;
+    }
+    command.num_indices = group->num_indices;
+    command.indices_start = indices_start;
+
+    ui_push_draw_command(command);
+}
+
+/*
+- root children are sorted from back to front
+- no need for ordering within a window because widgets inside a window can never be floating, and also they
+already will be in traversed in the correct render order
+- within a window, text will always be on top of quads. so we can group by quads and text, and render in that
+order.
+- for textured quads, we should basically just the group around the textured quad. we can't group by textured
+quads and render them after because other quads can be rendered on top of the textured quad.
+- for now, we can just group by quads and single font. we don't need to handle multiple fonts yet. we don't even
+need to handle textured quads yet.
+
+
+we assume that a depth first search from left to right on a widget tree is render-order, i.e. from back to front.
+we assume that the ui manager sorts the widgets in this way before calling ui_create_render_lists().
+we group by window: [quads text] [quads text]
+
+ */
+
+void ui_create_render_lists() {
+    Marker m = begin_region();
+
+    // TODO: for each window, create two UI render groups: one for quads and one for glyph quads
+    //       - in the future we may want to dynamically create these render groups so we can have more groups per
+    //         window, like multiple fonts/quads with different textures.
+    
+    //       - for both the render groups, copy its vertices to the UI vertex buffer. for the indices, go through
+    //         the render group's indices array and add the total amount of vertices in the UI vertex buffer so
+    //         that the indices are correctly offset. then, copy the render group's indices to the index buffer.
+    //         (we could maybe try adding and setting? but i think memcpy might be faster and adding to each
+    //         index will probably be auto-vectorized.)
+    
+    //       - for each render group, create a UI_Draw_Command struct that has the render group info and the
+    //         indices start and end index within the UI's indices buffer.
+    
+    //       - delete the UI_Render_Group structs
+    
+    // TODO: render the UI with the array of UI_Draw_Command structs
+
+    // every direct child of the root is a group
+    
+    UI_Widget *current = ui_manager->root;
+
+    bool32 inside_group = false;
+    UI_Render_Group *group_quads      = (UI_Render_Group *) allocate(temp_region, sizeof(UI_Render_Group));
+    UI_Render_Group *group_text_quads = (UI_Render_Group *) allocate(temp_region, sizeof(UI_Render_Group));
+    
+    while (current) {
+        if (current->parent == ui_manager->root) {
+            if (inside_group) {
+                ui_push_render_group(group_quads);
+                ui_push_render_group(group_text_quads);
+
+                ui_reset_render_group(group_quads);
+                ui_reset_render_group(group_text_quads);
+            }
+
+            inside_group = true;
+        }
+
+        // don't add anything if the current node is root
+        // TODO: we could probably avoid this if we just start at root->first?
+        if (current != ui_manager->root) {
+            // TODO: push quad to quads group (use ui_push_quad(), but change so we push to a render group)
+            // TODO: push quad to text group
+        }
+        
+        if (current->first) {
+            current = current->first;
+        } else {
+            if (current->next) {
+                current = current->next;
+            } else {
+                if (!current->parent) {
+                    break;
+                }
+
+                UI_Widget *current_ancestor = current;
+
+                do {
+                    current_ancestor = current_ancestor->parent;
+
+                    if (!current_ancestor->parent) {
+                        // root
+                        // this will break out of outer loop as well, since root->next is NULL
+                        break;
+                    }
+                } while (!current_ancestor->next);
+
+                current = current_ancestor->next;
+            }
+        }
+    }
+
+    end_region(m);
+}
+
 void ui_push_triangle_list(UI_Vertex *vertices, int32 num_vertices,
                            uint32 *indices,     int32 num_indices) {
     assert(num_indices % 3 == 0);
@@ -26,6 +177,12 @@ void ui_push_triangle_list(UI_Vertex *vertices, int32 num_vertices,
         ui_manager->indices[ui_manager->num_indices++] = i3;
     }
 }
+
+/*
+we go through the UI widget tree and for each window, we create lists of basic quads, textured quads, and font quads
+and we push UI_Draw_Commands for all the different groups.
+we can't really put the draw commands in ui_push_quad or whatever. it would have to be in a grouping function.
+ */
 
 // assumes clockwise order of vertices
 void ui_push_quad(Vec2 vertices[4], Vec2 uvs[4], Vec4 color) {

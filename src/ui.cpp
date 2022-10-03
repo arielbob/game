@@ -989,11 +989,11 @@ void ui_init(Arena_Allocator *arena) {
     }
 
     ui_manager->widget_table            = (UI_Widget **) arena_push(&ui_manager->frame_arena,
-                                                                 sizeof(UI_Widget *) * NUM_WIDGET_BUCKETS, true);
+                                                                    sizeof(UI_Widget *) * NUM_WIDGET_BUCKETS, true);
     ui_manager->last_frame_widget_table = (UI_Widget **) arena_push(&ui_manager->last_frame_arena,
-                                                                 sizeof(UI_Widget *) * NUM_WIDGET_BUCKETS, true);
+                                                                    sizeof(UI_Widget *) * NUM_WIDGET_BUCKETS, true);
     ui_manager->state_table             = (UI_Widget_State **) heap_allocate(&ui_manager->persistent_heap,
-                                                                          sizeof(UI_Widget_State *) * NUM_WIDGET_BUCKETS, true);
+                                                                             sizeof(UI_Widget_State *) * NUM_WIDGET_BUCKETS, true);
 }
 
 void ui_frame_init(Display_Output *display_output, real32 dt) {
@@ -1026,10 +1026,13 @@ void ui_frame_init(Display_Output *display_output, real32 dt) {
     ui_manager->focus_t  += dt;
     ui_manager->active_t += dt;
 
-    ui_manager->num_vertices = 0;
-    ui_manager->num_indices  = 0;
-    ui_manager->vertices     = (UI_Vertex *) allocate(frame_arena, sizeof(UI_Vertex) * UI_MAX_VERTICES);
-    ui_manager->indices      = (uint32 *)    allocate(frame_arena, sizeof(uint32)    * UI_MAX_INDICES);
+    ui_manager->num_vertices      = 0;
+    ui_manager->num_indices       = 0;
+    ui_manager->num_draw_commands = 0;
+    ui_manager->vertices      = (UI_Vertex *) allocate(frame_arena, sizeof(UI_Vertex) * UI_MAX_VERTICES);
+    ui_manager->indices       = (uint32 *)    allocate(frame_arena, sizeof(uint32) * UI_MAX_INDICES);
+    ui_manager->draw_commands = (UI_Draw_Command *) allocate(frame_arena,
+                                                             sizeof(UI_Draw_Command) * UI_MAX_DRAW_COMMANDS);
 }
 
 void ui_frame_end() {
@@ -1623,8 +1626,8 @@ void push_window(char *title, UI_Window_Theme theme, char *id_string, int32 inde
         state = &state_variant->window;
     }
 
-    // we might want to assert that parent is root?
-    //ui_push_existing_widget(ui_manager->root);
+    // we only want to add windows to the root node
+    assert(ui_manager->widget_stack->widget == ui_manager->root);
 
     UI_Theme window_theme = {};
     window_theme.semantic_position       = state->position;

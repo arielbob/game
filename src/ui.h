@@ -22,6 +22,7 @@
 #define UI_MAX_VERTICES  1024
 #define UI_MAX_TRIANGLES 1024
 #define UI_MAX_INDICES   UI_MAX_TRIANGLES*3
+#define UI_MAX_DRAW_COMMANDS 1024
 #define NUM_WIDGET_BUCKETS 128
 
 struct UI_Widget;
@@ -288,6 +289,37 @@ struct UI_Vertex {
     Vec4 color;
 };
 
+enum class UI_Texture_Type {
+    UI_TEXTURE_NONE,
+    UI_TEXTURE_IMAGE,
+    UI_TEXTURE_FONT
+};
+
+struct UI_Render_Group {
+    UI_Texture_Type type;
+    union {
+        // for per vertex colors, type will be UI_TEXTURE_NONE. we just ignore this union.
+        // however, for text quads, we use the per vertex color data for the text color.
+        String texture_name;
+        String font_name;
+    };
+    int32 num_vertices;
+    UI_Vertex vertices[UI_MAX_VERTICES];
+    int32 num_indices;
+    uint32 indices[UI_MAX_INDICES];
+};
+
+struct UI_Draw_Command {
+    UI_Texture_Type type;
+    union {
+        String texture_name;
+        String font_name;
+    };
+
+    int32 num_indices;
+    int32 indices_start; // start index in indices array
+};
+
 struct UI_Manager {
     UI_id hot;
     UI_id active;
@@ -338,8 +370,12 @@ struct UI_Manager {
     // rendering
     int32 num_vertices;
     UI_Vertex *vertices;
+    
     int32 num_indices;
     uint32 *indices;     // made up of triangles
+    
+    int32 num_draw_commands;
+    UI_Draw_Command *draw_commands;
 };
 
 bool32 is_hot(UI_Widget *widget);
