@@ -2021,6 +2021,44 @@ void generate_circle_vertices(real32 *buffer, int32 buffer_size,
     }
 }
 
+void gl_init_ui() {
+    uint32 vao, vbo, ebo;
+    
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
+    glGenBuffers(1, &ebo);
+        
+    glBindVertexArray(vao);
+    
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(UI_Vertex) * UI_MAX_VERTICES, NULL, GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32) * UI_MAX_INDICES, NULL, GL_DYNAMIC_DRAW);
+
+    // vertices
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE,
+                          sizeof(UI_Vertex), (void *) 0);
+    glEnableVertexAttribArray(0);
+    
+    // UVs
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE,
+                          sizeof(UI_Vertex),
+                          (void *) (offsetof(UI_Vertex, uv)));
+    glEnableVertexAttribArray(1);
+
+    // UVs
+    glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE,
+                          sizeof(UI_Vertex),
+                          (void *) (offsetof(UI_Vertex, color)));
+    glEnableVertexAttribArray(2);
+
+    glBindVertexArray(0);
+
+    g_gl_state->ui_data = {
+        vao, vbo, ebo
+    };
+}
+
 void gl_init(Arena_Allocator *game_data, Display_Output display_output) {
     g_gl_state = (GL_State *) allocate((Allocator *) game_data,
                                        sizeof(GL_State), true);
@@ -2287,7 +2325,11 @@ void gl_init(Arena_Allocator *game_data, Display_Output display_output) {
                    "rounded_quad");
     gl_load_shader("src/shaders/pbr.vs",                      "src/shaders/pbr.fs",
                    "pbr");
-    
+    gl_load_shader("src/shaders/ui.vs",                       "src/shaders/ui.fs",
+                   "ui");
+
+    // NOTE: ui buffer
+    gl_init_ui();
 
     // NOTE: framebuffers
     int32 num_samples = NUM_MSAA_SAMPLES;
@@ -2863,6 +2905,41 @@ void gl_draw_ui_widget(Asset_Manager *asset, UI_Manager *manager, UI_Widget *wid
     }
 }
 
+void gl_draw_ui() {
+    uint32 shader_id = gl_use_shader("ui");
+    gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->ortho_clip_matrix);
+
+    glBindVertexArray(g_gl_state->ui_data.vao);
+    glBindBuffer(GL_ARRAY_BUFFER, g_gl_state->ui_data.vbo);
+    glBufferSubData(GL_ARRAY_BUFFER, 0,
+                    ui_manager->num_vertices*sizeof(UI_Vertex), ui_manager->vertices);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_gl_state->ui_data.ebo);
+    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0,
+                    ui_manager->num_indices*sizeof(real32), ui_manager->indices);
+    
+    // TODO: finish this
+    for (int32 i = 0; i < ui_manager->num_draw_commands; i++) {
+        UI_Draw_Command *command = &ui_manager->draw_commands[i];
+        if (command->texture_type == UI_Texture_Type::UI_TEXTURE_IMAGE) {
+            gl_set_uniform_bool(shader_id, "use_texture", true);
+            // TODO: bind texture
+        } else if (command->texture_type == UI_Texture_Type::UI_TEXTURE_FONT) {
+            gl_set_uniform_bool(shader_id, "use_texture", true);
+            // TODO: bind texture for font
+        } else {
+            gl_set_uniform_bool(shader_id, "use_texture", false);
+        }
+
+        glDrawElements(GL_TRIANGLES, command->num_indices, GL_UNSIGNED_INT,
+                       (void *) ((uint64) command->indices_start));
+    }
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindVertexArray(0);
+}
+
+#if 0
 void gl_draw_ui(Asset_Manager *asset, UI_Manager *manager) {
     #if 0
     glBindFramebuffer(GL_FRAMEBUFFER, gl_state->alpha_mask_framebuffer.fbo);
@@ -2930,6 +3007,7 @@ void gl_draw_ui(Asset_Manager *asset, UI_Manager *manager) {
         }
     }
 }
+#endif
 
 void gl_draw_framebuffer(GL_Framebuffer framebuffer) {
     // use premultiplied alpha to prevent dark edges when transitioning from opaque to transparent
@@ -3375,6 +3453,9 @@ void gl_render(Controller_State *controller_state,
         gl_render_editor(g_gl_state->msaa_framebuffer,
                          &game_state->editor_state);
 
+        glDisable(GL_DEPTH_TEST);
+        gl_draw_ui();
+        glEnable(GL_DEPTH_TEST);
         #if 0
         glDisable(GL_DEPTH_TEST);
         // TODO: for some reason, if we comment out this line, nothing renders at all, other than the gizmos

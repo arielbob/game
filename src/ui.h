@@ -295,8 +295,13 @@ enum class UI_Texture_Type {
     UI_TEXTURE_FONT
 };
 
+// render groups and draw commands only draw triangles, so num_indices should always be
+// a multiple of 3.
+// we don't use UI_Render_Group's in gl code. the data from UI_Render_Group's get added
+// to UI_Manager's vertices and indices arrays, which get sent to a single gl buffer,
+// which then get rendered using UI_Draw_Command's.
 struct UI_Render_Group {
-    UI_Texture_Type type;
+    UI_Texture_Type texture_type;
     union {
         // for per vertex colors, type will be UI_TEXTURE_NONE. we just ignore this union.
         // however, for text quads, we use the per vertex color data for the text color.
@@ -310,7 +315,7 @@ struct UI_Render_Group {
 };
 
 struct UI_Draw_Command {
-    UI_Texture_Type type;
+    UI_Texture_Type texture_type;
     union {
         String texture_name;
         String font_name;

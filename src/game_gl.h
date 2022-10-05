@@ -239,6 +239,12 @@ struct GL_Alpha_Mask_Stack {
     int32 index = -1;
 };
 
+struct GL_UI_Data {
+    uint32 vao;
+    uint32 vbo;
+    uint32 ebo;
+};
+
 struct GL_State {
     Heap_Allocator heap;
     
@@ -253,7 +259,8 @@ struct GL_State {
     GL_Framebuffer gizmo_framebuffer;
     GL_Framebuffer msaa_framebuffer;
     uint32 global_ubo;
-    
+
+    GL_UI_Data ui_data;
     //GL_Framebuffer alpha_mask_framebuffer;
     //GL_Alpha_Mask_Stack alpha_mask_stack;
 };
