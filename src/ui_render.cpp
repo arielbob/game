@@ -75,7 +75,7 @@ void ui_push_render_group(UI_Render_Group *group) {
     ui_manager->num_indices += group->num_indices;
 
     // create draw command
-    UI_Draw_Command command;
+    UI_Draw_Command command = {};
     command.texture_type = group->texture_type;
     switch (command.texture_type) {
         case UI_Texture_Type::UI_TEXTURE_NONE: {} break;
@@ -97,6 +97,9 @@ void ui_push_render_group(UI_Render_Group *group) {
 
 void ui_render_widget_to_groups(UI_Render_Group *quads, UI_Render_Group *text_quads,
                                 UI_Widget *widget) {
+    Vec2 computed_position = widget->computed_position;
+    Vec2 computed_size = widget->computed_size;
+    
     // TODO: finish this - see gl_draw_ui_widget() for the rest of the stuff
     if (widget->flags & UI_WIDGET_DRAW_BACKGROUND) {
         Vec4 color = widget->background_color;
@@ -115,9 +118,7 @@ void ui_render_widget_to_groups(UI_Render_Group *quads, UI_Render_Group *text_qu
                 color = mix(color, widget->active_background_color, t);
             }
         }
-
-        Vec2 computed_position = widget->computed_position;
-        Vec2 computed_size = widget->computed_size;
+        
         Vec2 vertices[4] = {
             { computed_position.x,                   computed_position.y },
             { computed_position.x + computed_size.x, computed_position.y },
@@ -132,6 +133,52 @@ void ui_render_widget_to_groups(UI_Render_Group *quads, UI_Render_Group *text_qu
         };
         
         ui_push_quad(quads, vertices, uvs, color);
+    }
+
+    if (widget->flags & UI_WIDGET_DRAW_TEXT) {
+        // TODO: we eventually just want to have some type of map of groups, and in here we would want to
+        //       look for the group with this specific font name and then add the quads to there.
+        //       but for now, we just assume we're using the same font.
+        Font *font = get_font(widget->font);
+
+        real32 line_advance = font->scale_for_pixel_height * (font->ascent - font->descent + font->line_gap);
+
+        // initial text_pos is based on bottom left corner and computed_position is top left, so we just
+        // add the computed height - line gap to get proper text_pos.y.
+        Vec2 text_pos = computed_position;
+        text_pos.y = computed_position.y + computed_size.y - (font->scale_for_pixel_height*font->line_gap);
+        
+        Vec2 initial_text_pos = text_pos;
+        
+        char *text = widget->text;
+        int32 i = 0;
+        while (*text) {
+            if (*text >= 32 && *text < 128 || *text == '-') {
+                stbtt_aligned_quad q;
+                stbtt_GetBakedQuad(font->cdata, 512, 512, *text - 32, &text_pos.x, &text_pos.y, &q, 1);
+
+                Vec2 vertices[4] = {
+                    { q.x0, q.y0 },
+                    { q.x1, q.y0 },
+                    { q.x1, q.y1 },
+                    { q.x0, q.y1 }
+                };
+                Vec2 uvs[4] = {
+                    { q.s0, q.t0 },
+                    { q.s1, q.t0 },
+                    { q.s1, q.t1 },
+                    { q.s0, q.t1 }
+                };
+
+                ui_push_quad(text_quads, vertices, uvs, widget->text_color);
+            } else if (*text == '\n') {
+                text_pos.x = initial_text_pos.x;
+                text_pos.y += line_advance;
+            }
+        
+            text++;
+            i++;
+        }
     }
 }
 
@@ -183,6 +230,10 @@ void ui_create_render_lists() {
     bool32 inside_group = false;
     UI_Render_Group *group_quads      = (UI_Render_Group *) allocate(temp_region, sizeof(UI_Render_Group));
     UI_Render_Group *group_text_quads = (UI_Render_Group *) allocate(temp_region, sizeof(UI_Render_Group));
+    // TODO: dynamically create render groups that group by texture names and font names.
+    //       currently, we're just assuming every widget uses the same font.
+    group_text_quads->texture_type = UI_Texture_Type::UI_TEXTURE_FONT;
+    group_text_quads->font_name = make_string(Editor_Constants::editor_font_name);
     
     while (current) {
         if (current->parent == ui_manager->root) {
@@ -198,10 +249,8 @@ void ui_create_render_lists() {
         }
 
         // don't add anything if the current node is root
-        // TODO: we could probably avoid this if we just start at root->first?
+        // TODO: we could probably avoid this check if we just start at root->first?
         if (current != ui_manager->root) {
-            // TODO: push quad to text group
-
             ui_render_widget_to_groups(group_quads, group_text_quads, current);
         }
         

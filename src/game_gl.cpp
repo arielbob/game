@@ -979,18 +979,25 @@ GL_Texture *gl_get_texture(String texture_name) {
     GL_GET_TEXTURE_DEF;
 }
 
+#define GL_GET_FONT_DEF                                         \
+    uint32 hash = get_hash(font_name, NUM_FONT_BUCKETS);        \
+    GL_Font *current = g_gl_state->font_table[hash];            \
+    while (current) {                                           \
+        if (string_equals(current->name, font_name)) {          \
+            return current;                                     \
+        }                                                       \
+                                                                \
+        current = current->table_next;                          \
+    }                                                           \
+                                                                \
+    return NULL;                                                \
+    
 GL_Font *gl_get_font(char *font_name) {
-    uint32 hash = get_hash(font_name, NUM_FONT_BUCKETS);
-    GL_Font *current = g_gl_state->font_table[hash];
-    while (current) {
-        if (string_equals(current->name, font_name)) {
-            return current;
-        }
+    GL_GET_FONT_DEF
+}
 
-        current = current->table_next;
-    }
-
-    return NULL;
+GL_Font *gl_get_font(String font_name) {
+    GL_GET_FONT_DEF
 }
 
 GL_Mesh *gl_get_mesh(String mesh_name) {
@@ -1322,7 +1329,7 @@ inline uint32 gl_use_texture(char *texture_name) {
     return gl_use_texture(make_string(texture_name));
 }
 
-uint32 gl_use_font_texture(char *font_name) {
+uint32 gl_use_font_texture(String font_name) {
     GL_Font *font = gl_get_font(font_name);
     
     if (font) {
@@ -1333,6 +1340,10 @@ uint32 gl_use_font_texture(char *font_name) {
     }
 
     return font->baked_texture_id;
+}
+
+inline uint32 gl_use_font_texture(char *font_name) {
+    return gl_use_font_texture(make_string(font_name));
 }
 
 GL_Mesh *gl_use_mesh(String mesh_name) {
@@ -2906,6 +2917,9 @@ void gl_draw_ui_widget(Asset_Manager *asset, UI_Manager *manager, UI_Widget *wid
 }
 
 void gl_draw_ui() {
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    
     uint32 shader_id = gl_use_shader("ui");
     gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->ortho_clip_matrix);
 
@@ -2926,13 +2940,15 @@ void gl_draw_ui() {
             // TODO: bind texture
         } else if (command->texture_type == UI_Texture_Type::UI_TEXTURE_FONT) {
             gl_set_uniform_bool(shader_id, "use_texture", true);
-            // TODO: bind texture for font
+            gl_set_uniform_bool(shader_id, "is_text", true);
+            gl_use_font_texture(command->font_name);
         } else {
             gl_set_uniform_bool(shader_id, "use_texture", false);
         }
 
         glDrawElements(GL_TRIANGLES, command->num_indices, GL_UNSIGNED_INT,
-                       (void *) ((uint64) command->indices_start));
+                       (void *) ((uint64) command->indices_start * sizeof(uint32)));
+        glBindTexture(GL_TEXTURE_2D, 0);
     }
 
     glBindTexture(GL_TEXTURE_2D, 0);
