@@ -2046,7 +2046,7 @@ void gl_init_ui() {
                           (void *) (offsetof(UI_Vertex, uv)));
     glEnableVertexAttribArray(1);
 
-    // UVs
+    // color
     glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE,
                           sizeof(UI_Vertex),
                           (void *) (offsetof(UI_Vertex, color)));
@@ -2916,7 +2916,7 @@ void gl_draw_ui() {
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_gl_state->ui_data.ebo);
     glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0,
-                    ui_manager->num_indices*sizeof(real32), ui_manager->indices);
+                    ui_manager->num_indices*sizeof(uint32), ui_manager->indices);
     
     // TODO: finish this
     for (int32 i = 0; i < ui_manager->num_draw_commands; i++) {

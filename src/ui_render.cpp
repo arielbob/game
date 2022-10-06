@@ -14,7 +14,11 @@ void ui_push_triangle_list(UI_Render_Group *group,
                            UI_Vertex *vertices, int32 num_vertices,
                            uint32 *indices,     int32 num_indices) {
     assert(num_indices % 3 == 0); // make sure we're doing triangles
-    int32 indices_base = ui_manager->num_vertices;
+    
+    // offset indices by the current number of vertices in the group.
+    // later, when we push the group to the ui manager, we offset the indices in the group by the number
+    // of vertices in the ui_manager's vertices buffer.
+    int32 indices_base = group->num_vertices;
 
     assert(group->num_vertices + num_vertices <= UI_MAX_VERTICES);
     assert(group->num_indices + num_indices <= UI_MAX_INDICES);
