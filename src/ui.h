@@ -295,6 +295,69 @@ enum class UI_Texture_Type {
     UI_TEXTURE_FONT
 };
 
+// - vertices and indices need to be pointers and we need to store max vertices/indices per command
+// - also store the indices start and num indices (these get set after we've gone through the UI tree; they're
+//   for when we actually invoke the draw call)
+// - store an array of UI_Render_Commands
+// - each group starts at a direct child of the root
+// - every time we go to a new element within the group, we check if we can coalesce within the current
+//   range of [base + group_offset, base + group_offset + group_size]
+// - if so, we append the vertices and indices
+// - otherwise, we just add a new command to the group
+// - texture commands will always just have a single quad for now, since we aren't doing texture batching
+// - font commands will be grouped by font
+// - the commands actually need to be sorted though... like it needs to go quads/textured quads, then text quads
+// 
+// - store array of UI_Render_Groups
+// - go through widget tree
+// - for each widget, go through the current group and see if we can coalese the widget's draw command with a
+//   command that's already there
+// - if not, we just add a new command
+//
+// - actually, we shouldn't coalesce commands. the order is important and should stay as the traversal order.
+// - all the quads (basic quads and textured quads) can be in the same array
+//   - [basic, textured, basic] - in this, we don't want to group basics since we need to keep the order correct
+// - when we're adding a new command, we can just check the last entry and merge into that. we don't want to
+//   merge into a non-last one.
+//   - imagine a tree like this:
+//            root
+//            /   \
+//           b     t 
+//          / \   /
+//         b   b b
+//   - we wouldn't want to merge the final basic into the group before the textured quad, since when we would
+//     draw the first group, the textured quad, would end up on top of the first group, which includes its child.
+//     this would be incorrect since the traversal order means that the last basic should be on top of the
+//     textured quad.
+//
+// TODO: do this
+// - store array or UI_Render_Groups
+// - traverse tree and check if we can append to last entry for basic/textured quads
+//   (although, for textured quads, we just add a new entry)
+// - for text, we can coalesce with any entry, since the text will always be on top
+// - go through all groups and commands and create a vertex array and index array and send those to gpu
+//   - while doing this, each command should be updated with an index_start and num_indices
+// - go through all the commands and draw them
+
+struct UI_Render_Group {
+    UI_Render_Command *quads;
+    UI_Render_Command *text_quads;
+};
+
+struct UI_Render_Command {
+    UI_Texture_Type texture_type;
+    union {
+        // for per vertex colors, type will be UI_TEXTURE_NONE. we just ignore this union.
+        // however, for text quads, we use the per vertex color data for the text color.
+        String texture_name;
+        String font_name;
+    };
+    int32 num_vertices;
+    UI_Vertex vertices[UI_MAX_VERTICES];
+    int32 num_indices;
+    uint32 indices[UI_MAX_INDICES];
+};
+
 // render groups and draw commands only draw triangles, so num_indices should always be
 // a multiple of 3.
 // we don't use UI_Render_Group's in gl code. the data from UI_Render_Group's get added
