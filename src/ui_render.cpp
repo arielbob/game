@@ -1,102 +1,161 @@
 #include "ui.h"
 
-void ui_push_draw_command(UI_Draw_Command command) {
-    assert(ui_manager->num_draw_commands < UI_MAX_DRAW_COMMANDS);
-    ui_manager->draw_commands[ui_manager->num_draw_commands++] = command;
-}
-
-void ui_reset_render_group(UI_Render_Group *group) {
-    group->num_vertices = 0;
-    group->num_indices = 0;
-}
-
-void ui_push_triangle_list(UI_Render_Group *group,
-                           UI_Vertex *vertices, int32 num_vertices,
-                           uint32 *indices,     int32 num_indices) {
-    assert(num_indices % 3 == 0); // make sure we're doing triangles
-    
-    // offset indices by the current number of vertices in the group.
-    // later, when we push the group to the ui manager, we offset the indices in the group by the number
-    // of vertices in the ui_manager's vertices buffer.
-    int32 indices_base = group->num_vertices;
-
-    assert(group->num_vertices + num_vertices <= UI_MAX_VERTICES);
-    assert(group->num_indices + num_indices <= UI_MAX_INDICES);
-    
-    memcpy(&group->vertices[group->num_vertices], vertices, num_vertices*sizeof(UI_Vertex));
-    group->num_vertices += num_vertices;
-
-    // TODO: try also adding and copying at the same time?
-    for (int32 i = 0; i < num_indices; i++) {
-        // assert(indices[i] < num_vertices);
-        indices[i] += indices_base;
+bool32 ui_command_should_coalesce(UI_Render_Command *a, UI_Render_Command *b) {
+    if (a->texture_type != b->texture_type) {
+        return false;
     }
 
-    memcpy(&group->indices[group->num_indices], indices, num_indices*sizeof(uint32));
-    group->num_indices += num_indices;
+    switch (a->texture_type) {
+        case UI_Texture_Type::UI_TEXTURE_NONE: {
+            return true;
+        } break;
+        case UI_Texture_Type::UI_TEXTURE_IMAGE: {
+            return string_equals(a->texture_name, b->texture_name);
+        } break;
+        case UI_Texture_Type::UI_TEXTURE_FONT: {
+            return string_equals(a->font_name, b->font_name);
+        } break;
+        default: {
+            assert(!"Unhandled UI_Render_Command texture type");
+            return false;
+        }
+    }
+}
+
+void ui_push_command(UI_Render_Command_List *command_list, UI_Render_Command *command, bool32 maintain_order) {
+    // check if we can coalesce
+    UI_Render_Command *current;
+
+    if (maintain_order) {
+        current = command_list->last;
+    } else {
+        current = command_list->first;
+    }
+    
+    while (current) {
+        if (ui_command_should_coalesce(current, command)) {
+            break;
+        }
+
+        current = current->next;
+    }
+
+    // we always copy data here, since we allocate the command on a temp region
+    if (current) {
+        // coalesce
+
+        assert(current->num_vertices + command->num_vertices < current->max_vertices);
+        assert(current->num_indices + command->num_indices < current->max_indices);
+
+        // offset the indices
+        int32 indices_base = current->num_vertices;
+        for (int32 i = 0; i < command->num_indices; i++) {
+            command->indices[i] += indices_base;
+        }
+        
+        memcpy(&current->vertices[current->num_vertices], command->vertices, command->num_vertices*sizeof(UI_Vertex));
+        memcpy(&current->indices[current->num_indices],   command->indices,  command->num_indices*sizeof(int32));
+
+        current->num_vertices += command->num_vertices;
+        current->num_indices  += command->num_indices;
+    } else {
+        UI_Render_Command *new_entry = (UI_Render_Command *) allocate(frame_arena, sizeof(UI_Render_Command));
+        *new_entry = *command;
+        new_entry->next = NULL;
+
+        assert(command->num_vertices < UI_MAX_VERTICES);
+        assert(command->num_indices < UI_MAX_INDICES);
+        
+        int32 vertex_buffer_size = UI_MAX_VERTICES*sizeof(UI_Vertex);
+        int32 index_buffer_size = UI_MAX_INDICES*sizeof(int32);
+        if (command->texture_type == UI_Texture_Type::UI_TEXTURE_IMAGE) {
+            // TODO: this is kinda ugly, but since we don't coalesce UI_TEXTURE_IMAGE quads, we don't need to
+            //       allocate a large buffer
+            assert(command->num_vertices == 4);
+            assert(command->num_indices == 6);
+            vertex_buffer_size = command->num_vertices*sizeof(UI_Vertex);
+            index_buffer_size = command->num_indices*sizeof(int32);
+        }
+        
+        new_entry->vertices = (UI_Vertex *) allocate(frame_arena, vertex_buffer_size);
+        new_entry->indices  = (uint32 *) allocate(frame_arena, index_buffer_size);
+                                       
+        memcpy(new_entry->vertices, command->vertices, command->num_vertices*sizeof(UI_Vertex));
+        memcpy(new_entry->indices,  command->indices,  command->num_indices*sizeof(int32));
+        
+        // couldn't coalesce with anything, so we just append command to end of list
+        if (command_list->last) {
+            command_list->last->next = new_entry;
+        } else {
+            // command list is empty
+            command_list->first = new_entry;
+            command_list->last  = new_entry;
+        }
+
+        command_list->last = new_entry;
+    }
 }
 
 // assumes clockwise order of vertices
-void ui_push_quad(UI_Render_Group *group, Vec2 vertices[4], Vec2 uvs[4], Vec4 color) {
+void ui_push_quad(UI_Render_Command_List *command_list, 
+                  Vec2 vertices[4], Vec2 uvs[4], Vec4 color,
+                  bool32 maintain_order) {
     UI_Vertex ui_vertices[4];
     for (int32 i = 0; i < 4; i++) {
         ui_vertices[i] = { vertices[i], uvs[i], color };
     }
 
     uint32 indices[] = { 0, 1, 2, 0, 2, 3 };
-    ui_push_triangle_list(group, ui_vertices, 4, indices, 6);
+
+    Marker m = begin_region();
+
+    UI_Render_Command *command = (UI_Render_Command *) allocate(temp_region, sizeof(UI_Render_Command));
+    command->texture_type = UI_Texture_Type::UI_TEXTURE_NONE;
+    command->next = NULL;
+    
+    command->vertices = ui_vertices;
+    command->num_vertices = 4;
+    command->max_vertices = UI_MAX_VERTICES;
+
+    command->indices = indices;
+    command->num_indices = 6;
+    command->max_indices = UI_MAX_INDICES;
+    
+    ui_push_command(command_list, command, maintain_order);
+    end_region(m);
 }
 
-// pushes render group data and creates and pushes a render command to draw the group
-void ui_push_render_group(UI_Render_Group *group) {
-    if (group->num_vertices == 0) return;
-    
-    // indices in group are based off of vertices array. we save the number of vertices before
-    // adding the vertices so that we can offset the indices so that they're relative to the
-    // ui_manager's vertices array that we'are appending to.
-    int32 indices_offset = ui_manager->num_vertices;
-    
-    // copy vertices
-    assert(ui_manager->num_vertices + group->num_vertices <= UI_MAX_VERTICES);
-    memcpy(&ui_manager->vertices[ui_manager->num_vertices], group->vertices,
-           group->num_vertices*sizeof(UI_Vertex));
-    ui_manager->num_vertices += group->num_vertices;
-
-    // add offset to indices
-    for (int32 i = 0; i < group->num_indices; i++) {
-        group->indices[i] += indices_offset;
+void ui_push_text_quad(UI_Render_Command_List *command_list,
+                       Vec2 vertices[4], Vec2 uvs[4],
+                       Font *font, Vec4 color,
+                       bool32 maintain_order) {
+    UI_Vertex ui_vertices[4];
+    for (int32 i = 0; i < 4; i++) {
+        ui_vertices[i] = { vertices[i], uvs[i], color };
     }
+
+    uint32 indices[] = { 0, 1, 2, 0, 2, 3 };
+
+    Marker m = begin_region();
+
+    UI_Render_Command *command = (UI_Render_Command *) allocate(temp_region, sizeof(UI_Render_Command));
+    command->texture_type = UI_Texture_Type::UI_TEXTURE_FONT;
+    command->font_name = font->name;
+    command->next = NULL;
     
-    // copy indices
-    int32 indices_start = ui_manager->num_indices;
-    assert(ui_manager->num_indices + group->num_indices <= UI_MAX_INDICES);
-    memcpy(&ui_manager->indices[ui_manager->num_indices], group->indices,
-           group->num_indices*sizeof(uint32));
-    ui_manager->num_indices += group->num_indices;
+    command->vertices = ui_vertices;
+    command->num_vertices = 4;
+    command->max_vertices = UI_MAX_VERTICES;
 
-    // create draw command
-    UI_Draw_Command command = {};
-    command.texture_type = group->texture_type;
-    switch (command.texture_type) {
-        case UI_Texture_Type::UI_TEXTURE_NONE: {} break;
-        case UI_Texture_Type::UI_TEXTURE_IMAGE: {
-            command.texture_name = copy(frame_arena, group->texture_name);
-        } break;
-        case UI_Texture_Type::UI_TEXTURE_FONT: {
-            command.font_name = copy(frame_arena, group->font_name);
-        } break;
-        default: {
-            assert(!"Invalid UI texture type.");
-        } break;
-    }
-    command.num_indices = group->num_indices;
-    command.indices_start = indices_start;
-
-    ui_push_draw_command(command);
+    command->indices = indices;
+    command->num_indices = 6;
+    command->max_indices = UI_MAX_INDICES;
+    
+    ui_push_command(command_list, command, maintain_order);
+    end_region(m);
 }
 
-void ui_render_widget_to_groups(UI_Render_Group *quads, UI_Render_Group *text_quads,
-                                UI_Widget *widget) {
+void ui_render_widget_to_group(UI_Render_Group *group, UI_Widget *widget) {
     Vec2 computed_position = widget->computed_position;
     Vec2 computed_size = widget->computed_size;
     
@@ -132,13 +191,10 @@ void ui_render_widget_to_groups(UI_Render_Group *quads, UI_Render_Group *text_qu
             { 0.0f, 0.0f }
         };
         
-        ui_push_quad(quads, vertices, uvs, color);
+        ui_push_quad(&group->triangles, vertices, uvs, color, true);
     }
 
     if (widget->flags & UI_WIDGET_DRAW_TEXT) {
-        // TODO: we eventually just want to have some type of map of groups, and in here we would want to
-        //       look for the group with this specific font name and then add the quads to there.
-        //       but for now, we just assume we're using the same font.
         Font *font = get_font(widget->font);
 
         real32 line_advance = font->scale_for_pixel_height * (font->ascent - font->descent + font->line_gap);
@@ -170,7 +226,7 @@ void ui_render_widget_to_groups(UI_Render_Group *quads, UI_Render_Group *text_qu
                     { q.s0, q.t1 }
                 };
 
-                ui_push_quad(text_quads, vertices, uvs, widget->text_color);
+                ui_push_text_quad(&group->text_quads, vertices, uvs, font, widget->text_color, false);
             } else if (*text == '\n') {
                 text_pos.x = initial_text_pos.x;
                 text_pos.y += line_advance;
@@ -203,55 +259,27 @@ we group by window: [quads text] [quads text]
 void ui_create_render_lists() {
     Marker m = begin_region();
 
-    // TODO: for each window, create two UI render groups: one for quads and one for glyph quads
-    //       - in the future we may want to dynamically create these render groups so we can have more groups per
-    //         window, like multiple fonts/quads with different textures.
-    //
-    //       - for both the render groups, copy its vertices to the UI vertex buffer. for the indices, go through
-    //         the render group's indices array and add the total amount of vertices in the UI vertex buffer so
-    //         that the indices are correctly offset. then, copy the render group's indices to the index buffer.
-    //         (we could maybe try adding and setting? but i think memcpy might be faster and adding to each
-    //         index will probably be auto-vectorized.)
-    //
-    //       - for each render group, create a UI_Draw_Command struct that has the render group info and the
-    //         indices start and end index within the UI's indices buffer.
-    //
-    //       - delete the UI_Render_Group structs
-    // 
-    //       - we don't do textured quads yet; only if they're textured with a font, and we only handle a single
-    //         fontt
-    
-    // TODO: render the UI with the array of UI_Draw_Command structs
-
     // every direct child of the root is a group
     
     UI_Widget *current = ui_manager->root;
 
-    bool32 inside_group = false;
-    UI_Render_Group *group_quads      = (UI_Render_Group *) allocate(temp_region, sizeof(UI_Render_Group));
-    UI_Render_Group *group_text_quads = (UI_Render_Group *) allocate(temp_region, sizeof(UI_Render_Group));
-    // TODO: dynamically create render groups that group by texture names and font names.
-    //       currently, we're just assuming every widget uses the same font.
-    group_text_quads->texture_type = UI_Texture_Type::UI_TEXTURE_FONT;
-    group_text_quads->font_name = make_string(Editor_Constants::editor_font_name);
+    int32 *num_groups = &ui_manager->num_render_groups;
+    UI_Render_Group *groups = ui_manager->render_groups;
+    UI_Render_Group *current_group = NULL;
     
     while (current) {
         if (current->parent == ui_manager->root) {
-            if (inside_group) {
-                ui_push_render_group(group_quads);
-                ui_push_render_group(group_text_quads);
-
-                ui_reset_render_group(group_quads);
-                ui_reset_render_group(group_text_quads);
-            }
-
-            inside_group = true;
+            assert(*num_groups < UI_MAX_GROUPS);
+            current_group = &groups[*num_groups];
+            
+            (*num_groups)++;
+            *current_group = {};
         }
 
         // don't add anything if the current node is root
-        // TODO: we could probably avoid this check if we just start at root->first?
         if (current != ui_manager->root) {
-            ui_render_widget_to_groups(group_quads, group_text_quads, current);
+            assert(current_group);
+            ui_render_widget_to_group(current_group, current);
         }
         
         if (current->first) {
@@ -281,64 +309,7 @@ void ui_create_render_lists() {
         }
     }
 
-    if (inside_group) {
-        // add last render group if we finished inside one
-        ui_push_render_group(group_quads);
-        ui_push_render_group(group_text_quads);
-
-        ui_reset_render_group(group_quads);
-        ui_reset_render_group(group_text_quads);
-
-        inside_group = false;
-    }
-
+    ui_manager->render_groups = groups;
+    
     end_region(m);
 }
-
-#if 0
-void ui_push_triangle_list(UI_Vertex *vertices, int32 num_vertices,
-                           uint32 *indices,     int32 num_indices) {
-    assert(num_indices % 3 == 0);
-    int32 num_triangles = num_indices / 3;
-
-    int32 indices_base = ui_manager->num_vertices;
-    for (int32 i = 0; i < num_vertices; i++) {
-        assert(ui_manager->num_vertices < UI_MAX_VERTICES);
-        ui_manager->vertices[ui_manager->num_vertices++] = vertices[i];
-    }
-
-    for (int32 i = 0; i < num_triangles; i++) {
-        assert((ui_manager->num_indices / 3) < UI_MAX_TRIANGLES);
-        // convert the indices to be relative to the ui_manager's vertex list instead of relative to
-        // the vertices argument
-        uint32 i1 = indices_base + indices[3*i + 0];
-        uint32 i2 = indices_base + indices[3*i + 1];
-        uint32 i3 = indices_base + indices[3*i + 2];
-        assert(i1 < (uint32) num_vertices);
-        assert(i2 < (uint32) num_vertices);
-        assert(i3 < (uint32) num_vertices);
-        ui_manager->indices[ui_manager->num_indices++] = i1;
-        ui_manager->indices[ui_manager->num_indices++] = i2;
-        ui_manager->indices[ui_manager->num_indices++] = i3;
-    }
-}
-#endif
-
-/*
-we go through the UI widget tree and for each window, we create lists of basic quads, textured quads, and font quads
-and we push UI_Draw_Commands for all the different groups.
-we can't really put the draw commands in ui_push_quad or whatever. it would have to be in a grouping function.
- */
-
-#if 0
-void ui_push_quad(Vec2 vertices[4], Vec2 uvs[4], Vec4 color) {
-    UI_Vertex ui_vertices[4];
-    for (int32 i = 0; i < 4; i++) {
-        ui_vertices[i] = { vertices[i], uvs[i], color };
-    }
-
-    int32 num_triangles = 2;
-    uint32 indices[] = { 0, 1, 2, 0, 2, 3 };
-    ui_push_triangle_list(ui_vertices, 4, indices, num_triangles*3);
-}
-#endif

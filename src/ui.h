@@ -19,6 +19,7 @@
 #define BORDER_TOP    (1 << 3)
 #define BORDER_ALL    (0b1111)
 
+#define UI_MAX_GROUPS 512
 #define UI_MAX_VERTICES  1024
 #define UI_MAX_TRIANGLES 1024
 #define UI_MAX_INDICES   UI_MAX_TRIANGLES*3
@@ -331,7 +332,7 @@ enum class UI_Texture_Type {
 //     textured quad.
 //
 // TODO: do this
-// - store array or UI_Render_Groups
+// - store array of UI_Render_Groups
 // - traverse tree and check if we can append to last entry for basic/textured quads
 //   (although, for textured quads, we just add a new entry)
 // - for text, we can coalesce with any entry, since the text will always be on top
@@ -339,11 +340,8 @@ enum class UI_Texture_Type {
 //   - while doing this, each command should be updated with an index_start and num_indices
 // - go through all the commands and draw them
 
-struct UI_Render_Group {
-    UI_Render_Command *quads;
-    UI_Render_Command *text_quads;
-};
-
+// render groups and draw commands only draw triangles, so num_indices should always be
+// a multiple of 3.
 struct UI_Render_Command {
     UI_Texture_Type texture_type;
     union {
@@ -352,40 +350,37 @@ struct UI_Render_Command {
         String texture_name;
         String font_name;
     };
+    
     int32 num_vertices;
-    UI_Vertex vertices[UI_MAX_VERTICES];
+    int32 max_vertices;
+    UI_Vertex *vertices;
+    
     int32 num_indices;
-    uint32 indices[UI_MAX_INDICES];
+    int32 max_indices;
+    uint32 *indices;
+
+    int32 indices_start;
+    
+    UI_Render_Command *next;
 };
 
-// render groups and draw commands only draw triangles, so num_indices should always be
-// a multiple of 3.
-// we don't use UI_Render_Group's in gl code. the data from UI_Render_Group's get added
-// to UI_Manager's vertices and indices arrays, which get sent to a single gl buffer,
-// which then get rendered using UI_Draw_Command's.
+struct UI_Render_Command_List {
+    UI_Render_Command *first;
+    UI_Render_Command *last;
+};
+
 struct UI_Render_Group {
-    UI_Texture_Type texture_type;
-    union {
-        // for per vertex colors, type will be UI_TEXTURE_NONE. we just ignore this union.
-        // however, for text quads, we use the per vertex color data for the text color.
-        String texture_name;
-        String font_name;
-    };
-    int32 num_vertices;
-    UI_Vertex vertices[UI_MAX_VERTICES];
-    int32 num_indices;
-    uint32 indices[UI_MAX_INDICES];
-};
-
-struct UI_Draw_Command {
-    UI_Texture_Type texture_type;
-    union {
-        String texture_name;
-        String font_name;
-    };
-
-    int32 num_indices;
-    int32 indices_start; // start index in indices array
+    // we make two command lists because text_quads are always rendered after the triangles, since text is
+    // always on top of a group.
+    // we could have a single command list, and i guess that would be nice since then we wouldn't have to do anything
+    // if for some reason we wanted quads inside a group to overlap text.
+    // but this makes drawing less efficient since we would have more draw calls since we'd be switching from
+    // basic quads to text quads a lot (for example with text buttons). i guess you could just reorganize it
+    // later, and it would be easy, since we're using linked lists. actually, you would have to reorganize, but then
+    // also have to coalesce again, which is annoying.
+    // it's nice that we don't have to reorganize stuff the way we have it now.
+    UI_Render_Command_List triangles;
+    UI_Render_Command_List text_quads;
 };
 
 struct UI_Manager {
@@ -436,14 +431,8 @@ struct UI_Manager {
     bool32 is_disabled;
 
     // rendering
-    int32 num_vertices;
-    UI_Vertex *vertices;
-    
-    int32 num_indices;
-    uint32 *indices;     // made up of triangles
-    
-    int32 num_draw_commands;
-    UI_Draw_Command *draw_commands;
+    int32 num_render_groups;
+    UI_Render_Group *render_groups;
 };
 
 bool32 is_hot(UI_Widget *widget);

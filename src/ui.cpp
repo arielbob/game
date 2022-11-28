@@ -1026,13 +1026,8 @@ void ui_frame_init(Display_Output *display_output, real32 dt) {
     ui_manager->focus_t  += dt;
     ui_manager->active_t += dt;
 
-    ui_manager->num_vertices      = 0;
-    ui_manager->num_indices       = 0;
-    ui_manager->num_draw_commands = 0;
-    ui_manager->vertices      = (UI_Vertex *) allocate(frame_arena, sizeof(UI_Vertex) * UI_MAX_VERTICES);
-    ui_manager->indices       = (uint32 *)    allocate(frame_arena, sizeof(uint32) * UI_MAX_INDICES);
-    ui_manager->draw_commands = (UI_Draw_Command *) allocate(frame_arena,
-                                                             sizeof(UI_Draw_Command) * UI_MAX_DRAW_COMMANDS);
+    ui_manager->num_render_groups = 0;
+    ui_manager->render_groups = (UI_Render_Group *) allocate(frame_arena, UI_MAX_GROUPS*sizeof(UI_Render_Group));
 }
 
 void ui_frame_end() {

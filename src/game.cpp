@@ -1064,6 +1064,18 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     }
     ui_pop_widget();
 #endif
+
+    // basic pink rectangle
+#if 0
+    UI_Theme solid_theme = {};
+    solid_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
+    solid_theme.semantic_size = { 200.0f, 30.0f };
+    //solid_theme.layout_type = UI_LAYOUT_HORIZONTAL_SPACE_BETWEEN;
+    solid_theme.semantic_position = { 600.0f, 500.0f };
+    solid_theme.background_color = { 1.0f, 0.0f, 1.0f, 1.0f };
+
+    ui_add_widget(make_widget("", solid_theme, UI_WIDGET_DRAW_BACKGROUND));
+#endif
     
 #if 1
     ui_push_size_type({ UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN });

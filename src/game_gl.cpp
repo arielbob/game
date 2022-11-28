@@ -2916,43 +2916,121 @@ void gl_draw_ui_widget(Asset_Manager *asset, UI_Manager *manager, UI_Widget *wid
     }
 }
 
+void gl_draw_ui_command_list(UI_Render_Command_List *list, uint32 shader_id) {
+    UI_Render_Command *current = list->first;
+
+    while (current) {
+        if (current->texture_type == UI_Texture_Type::UI_TEXTURE_IMAGE) {
+            gl_set_uniform_bool(shader_id, "use_texture", true);
+            // TODO: bind texture
+        } else if (current->texture_type == UI_Texture_Type::UI_TEXTURE_FONT) {
+            gl_set_uniform_bool(shader_id, "use_texture", true);
+            gl_set_uniform_bool(shader_id, "is_text", true);
+            gl_use_font_texture(current->font_name);
+        } else {
+            gl_set_uniform_bool(shader_id, "use_texture", false);
+        }
+
+        glDrawElements(GL_TRIANGLES, current->num_indices, GL_UNSIGNED_INT,
+                       (void *) (current->indices_start * sizeof(uint32)));
+        glBindTexture(GL_TEXTURE_2D, 0);
+
+        current = current->next;
+    }
+}
+
+
+/*
+  this is how indices are offset:
+  local indices ([0, 1, 2, 0, 2, 3])
+  -> render command indices (offset by amount of vertices inside current render command when coalescing)
+  -> vertex buffer indices (offset by amount of vertices inside the single buffer we're sending to the GPU)
+ */
+void copy_ui_command_to_buffers(UI_Vertex *vertices_buffer, int32 *buffer_num_vertices,
+                                uint32 *indices_buffer,     int32 *buffer_num_indices,
+                                UI_Render_Command *command) {
+    assert(*buffer_num_vertices + command->num_vertices < UI_MAX_VERTICES);
+    assert(*buffer_num_indices + command->num_indices < UI_MAX_INDICES);
+
+    // use this for when we do the draw call to know where indices are located in the buffer for
+    // this command
+    command->indices_start = *buffer_num_indices;
+
+    // offset command indices by current amount of vertices inside buffer
+    int32 indices_offset = *buffer_num_vertices;
+    for (int32 i = 0; i < command->num_indices; i++) {
+        command->indices[i] += indices_offset;
+    }
+
+    memcpy(&vertices_buffer[*buffer_num_vertices], command->vertices, command->num_vertices * sizeof(UI_Vertex));
+    memcpy(&indices_buffer[*buffer_num_indices],   command->indices,  command->num_indices * sizeof(uint32));
+
+    *buffer_num_vertices += command->num_vertices;            
+    *buffer_num_indices += command->num_indices;
+}
+
 void gl_draw_ui() {
+    // go through ui_manager->render_groups and copy the vertex and index data to two arrays
+    // then upload both arrays to GPU (idk if this is actually faster than just uploading each command data directly)
+    // while doing this, update the commands with an indices_start member
+    // go through the render groups again and this time go through the command lists and draw the indices
+
+    Marker m = begin_region();
+
+    int32 total_num_vertices = 0;
+    int32 total_num_indices  = 0;
+    UI_Vertex *vertices_to_upload = (UI_Vertex *) allocate(temp_region, UI_MAX_VERTICES*sizeof(UI_Vertex));
+    uint32    *indices_to_upload = (uint32 *) allocate(temp_region, UI_MAX_INDICES*sizeof(uint32));
+
+    // copy vertex and index data to two arrays for all the commands
+    UI_Render_Group *groups = ui_manager->render_groups;
+    for (int32 i = 0; i < ui_manager->num_render_groups; i++) {
+        UI_Render_Group *group = &groups[i];
+
+        UI_Render_Command *current = group->triangles.first;
+        while (current) {
+            copy_ui_command_to_buffers(vertices_to_upload, &total_num_vertices,
+                                       indices_to_upload, &total_num_indices,
+                                       current);
+            current = current->next;
+        }
+
+        current = group->text_quads.first;
+        while (current) {
+            copy_ui_command_to_buffers(vertices_to_upload, &total_num_vertices,
+                                       indices_to_upload, &total_num_indices,
+                                       current);
+            current = current->next;
+        }
+    }
+    
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     
     uint32 shader_id = gl_use_shader("ui");
     gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->ortho_clip_matrix);
 
+    // upload the vertex and index arrays to the GPU
     glBindVertexArray(g_gl_state->ui_data.vao);
     glBindBuffer(GL_ARRAY_BUFFER, g_gl_state->ui_data.vbo);
     glBufferSubData(GL_ARRAY_BUFFER, 0,
-                    ui_manager->num_vertices*sizeof(UI_Vertex), ui_manager->vertices);
+                    total_num_vertices*sizeof(UI_Vertex), vertices_to_upload);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_gl_state->ui_data.ebo);
     glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0,
-                    ui_manager->num_indices*sizeof(uint32), ui_manager->indices);
+                    total_num_indices*sizeof(uint32), indices_to_upload);
     
-    // TODO: finish this
-    for (int32 i = 0; i < ui_manager->num_draw_commands; i++) {
-        UI_Draw_Command *command = &ui_manager->draw_commands[i];
-        if (command->texture_type == UI_Texture_Type::UI_TEXTURE_IMAGE) {
-            gl_set_uniform_bool(shader_id, "use_texture", true);
-            // TODO: bind texture
-        } else if (command->texture_type == UI_Texture_Type::UI_TEXTURE_FONT) {
-            gl_set_uniform_bool(shader_id, "use_texture", true);
-            gl_set_uniform_bool(shader_id, "is_text", true);
-            gl_use_font_texture(command->font_name);
-        } else {
-            gl_set_uniform_bool(shader_id, "use_texture", false);
-        }
-
-        glDrawElements(GL_TRIANGLES, command->num_indices, GL_UNSIGNED_INT,
-                       (void *) ((uint64) command->indices_start * sizeof(uint32)));
-        glBindTexture(GL_TEXTURE_2D, 0);
+    for (int32 i = 0; i < ui_manager->num_render_groups; i++) {
+        UI_Render_Group *group = &groups[i];
+        
+        gl_draw_ui_command_list(&group->triangles, shader_id);
+        gl_draw_ui_command_list(&group->text_quads, shader_id);
     }
 
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindVertexArray(0);
+
+    end_region(m);
 }
 
 #if 0
