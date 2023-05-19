@@ -1,5 +1,17 @@
 #include "ui.h"
 
+UI_Theme NULL_THEME = {
+    {}, {}, {},
+    {}, NULL, NULL,
+    {}, 0, 0, 0, 0,
+    UI_LAYOUT_NONE,
+    { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE },
+    UI_POSITION_NONE,
+    { 0.0f, 0.0f },
+    { 0.0f, 0.0f }
+};
+
+#if 0
 UI_Widget *make_widget(UI_id id, uint32 flags) {
     UI_Widget *widget = (UI_Widget *) allocate(&ui_manager->frame_arena, sizeof(UI_Widget));
 
@@ -70,6 +82,7 @@ UI_Widget *make_widget(UI_id id, uint32 flags) {
     
     return widget;
 }
+#endif
 
 UI_Widget *make_widget(UI_id id, UI_Theme theme, uint32 flags) {
     UI_Widget *widget = (UI_Widget *) allocate(&ui_manager->frame_arena, sizeof(UI_Widget));
@@ -230,12 +243,14 @@ UI_Widget *ui_add_widget(UI_Widget *widget) {
 //       ui_push_widget also adds the widget to the widget stack, so that next calls to ui_add_widget or
 //       ui_push_widget will have their widget added as a child of the widget at the top of the widget
 //       stack.
+#if 0
 UI_Widget *ui_add_widget(UI_id id, uint32 flags) {
     UI_Widget *widget = make_widget(id, flags);
     ui_add_widget(widget);
 
     return widget;
 }
+#endif
 
 UI_Widget *ui_add_widget(char *id_string_ptr, UI_Theme theme, uint32 flags = 0) {
     UI_Widget *widget = make_widget(make_ui_id(id_string_ptr, 0), theme, flags);
@@ -243,9 +258,17 @@ UI_Widget *ui_add_widget(char *id_string_ptr, UI_Theme theme, uint32 flags = 0) 
     return widget;
 }
 
+UI_Widget *ui_add_widget(UI_id id, UI_Theme theme, uint32 flags = 0) {
+    UI_Widget *widget = make_widget(id, theme, flags);
+    ui_add_widget(widget);
+    return widget;
+}
+
+#if 0
 UI_Widget *ui_add_widget(char *id_string_ptr, uint32 flags = 0) {
     return ui_add_widget(make_ui_id(id_string_ptr), flags);
 }
+#endif
 
 // should only be used to push widgets that have already been added using add_widget
 UI_Widget *ui_push_existing_widget(UI_Widget *widget) {
@@ -260,6 +283,7 @@ UI_Widget *ui_push_existing_widget(UI_Widget *widget) {
     return widget;
 }
 
+#if 0
 UI_Widget *ui_push_widget(UI_id id, uint32 flags = 0) {
     UI_Widget *widget = make_widget(id, flags);
     ui_add_widget(widget);
@@ -270,6 +294,7 @@ UI_Widget *ui_push_widget(UI_id id, uint32 flags = 0) {
 UI_Widget *ui_push_widget(char *id_string_ptr, uint32 flags = 0) {
     return ui_push_widget(make_ui_id(id_string_ptr), flags);
 }
+#endif
 
 UI_Widget *ui_add_and_push_widget(UI_Widget *widget) {
     ui_add_widget(widget);
@@ -290,8 +315,8 @@ void ui_pop_widget() {
 }
 
 // TODO: layout types, and calculating positions (should be done after size calculations)
-// TODO: stack popping procedures
 
+#if 0
 void ui_push_position(Vec2 position) {
     UI_Style_Position *entry = (UI_Style_Position *) allocate(&ui_manager->frame_arena, sizeof(UI_Style_Position));
 
@@ -487,6 +512,7 @@ void ui_push_font(char *font) {
     
     ui_manager->font_stack = entry;
 }
+#endif
 
 // this sets hot based on the rendering_index, which is just when the widget was drawn, higher being later/above.
 // we do this so that we set hot to the widget that is above other widgets and don't set hot to a widget that is
@@ -751,7 +777,7 @@ void calculate_child_dependent_size(UI_Widget *widget, UI_Widget_Axis axis) {
             
         }
 
-        #if 1
+#if 1
         // we need need this layout type check here because we only add to the child size sum if the axis
         // and the layout axis match. because when we use the child size sum later for FILL_REMAINING, we only
         // want the child sizes that took up space on that axis.
@@ -761,8 +787,8 @@ void calculate_child_dependent_size(UI_Widget *widget, UI_Widget_Axis axis) {
              parent->layout_type == UI_LAYOUT_HORIZONTAL)) {
             parent->computed_child_size_sum[axis] += widget->computed_size[axis];
         } else if (axis == UI_WIDGET_Y_AXIS &&
-            (widget->size_type[axis] != UI_SIZE_FILL_REMAINING) &&
-            parent->layout_type == UI_LAYOUT_VERTICAL) {
+                   (widget->size_type[axis] != UI_SIZE_FILL_REMAINING) &&
+                   parent->layout_type == UI_LAYOUT_VERTICAL) {
             parent->computed_child_size_sum[axis] += widget->computed_size[axis];
         }
 #endif
@@ -1002,12 +1028,25 @@ void ui_frame_init(Display_Output *display_output, real32 dt) {
     // in the subsequent frame.
     // the global frame arena is reset every frame and no data is kept, so we use that for
     // rendering. we use the ui_manager's frame arena for ui state stuff.
+    // TODO: replace this with NULL_THEME and set the size manually
+    UI_Theme root_theme = {
+        {}, {}, {},
+        {}, NULL, NULL,
+        {}, 0, 0, 0, 0,
+        UI_LAYOUT_NONE,
+        { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE },
+        UI_POSITION_NONE,
+        { (real32) display_output->width, (real32) display_output->height },
+        { 0.0f, 0.0f }
+    };
+    #if 0
     ui_push_position({ 0.0f, 0.0f });
     ui_push_layout_type(UI_LAYOUT_NONE);
     ui_push_size_type({ UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE });
     ui_push_size({ (real32) display_output->width, (real32) display_output->height });
+    #endif
 
-    UI_Widget *widget = make_widget(make_ui_id("root"), 0);
+    UI_Widget *widget = make_widget(make_ui_id("root"), root_theme, 0);
 
     UI_Stack_Widget *entry = (UI_Stack_Widget *) allocate(&ui_manager->frame_arena, sizeof(UI_Stack_Widget));
     assert(ui_manager->widget_stack == NULL);
@@ -1044,7 +1083,8 @@ void ui_frame_end() {
     UI_Widget **temp_widget_table = ui_manager->last_frame_widget_table;
     ui_manager->last_frame_widget_table = ui_manager->widget_table;
     ui_manager->widget_table = temp_widget_table;
-    
+
+#if 0
     ui_manager->widget_stack = NULL;
     ui_manager->background_color_stack = NULL;
     ui_manager->hot_background_color_stack = NULL;
@@ -1054,6 +1094,7 @@ void ui_frame_end() {
     ui_manager->position_stack = NULL;
     ui_manager->size_type_stack = NULL;
     ui_manager->text_color_stack = NULL;
+#endif
 }
 
 bool32 ui_has_focus() {
@@ -1202,23 +1243,20 @@ UI_Text_Field_Slider_State *ui_add_text_field_slider_state(UI_id id, real32 valu
 // COMPOUND WIDGETS
 
 void do_text(char *text, char *id, uint32 flags = 0, int32 index = 0) {
-    ui_push_size_type({ UI_SIZE_FIT_TEXT, UI_SIZE_FIT_TEXT });
-    ui_push_background_color({ 1.0f, 0.0f, 0.0f, 1.0f });
+    UI_Theme text_theme = NULL_THEME;
+    text_theme.size_type = { UI_SIZE_FIT_TEXT, UI_SIZE_FIT_TEXT };
+    text_theme.background_color = { 1.0f, 0.0f, 0.0f, 1.0f };
     //UI_Widget *text_widget = ui_add_widget(make_ui_id(id, index), UI_WIDGET_DRAW_TEXT | UI_WIDGET_DRAW_BACKGROUND);
-    UI_Widget *text_widget = ui_add_widget(make_ui_id(id, index), UI_WIDGET_DRAW_TEXT);
+    UI_Widget *text_widget = ui_add_widget(make_ui_id(id, index), text_theme, UI_WIDGET_DRAW_TEXT);
     text_widget->text = text;
-    ui_pop_background_color();
-    ui_pop_size_type();
 }
 
 void do_text(char *text) {
-    ui_push_size_type({ UI_SIZE_FIT_TEXT, UI_SIZE_FIT_TEXT });
-    UI_Widget *text_widget = ui_add_widget("", UI_WIDGET_DRAW_TEXT);
-    text_widget->text = text;
-    ui_pop_size_type();
+    return do_text(text, "");
 }
 
-bool32 do_button(UI_id id) {
+// TODO: fix the do_button calls to include a theme here
+bool32 do_button(UI_id id, UI_Theme theme) {
     UI_Widget *widget = ui_add_widget(id, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
     UI_Interact_Result interact_result = ui_interact(widget);
     

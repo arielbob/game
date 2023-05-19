@@ -500,6 +500,7 @@ void init_game(Sound_Output *sound_output, uint32 num_samples) {
     game_state->player.height = Player_Constants::player_height;
 
     // music file testing
+#if 0
     File_Data music_file_data = platform_open_and_read_file((Allocator *) game_data_arena,
                                                             "../drive my car.wav");
     Wav_Data *wav_data = (Wav_Data *) music_file_data.contents;
@@ -507,6 +508,7 @@ void init_game(Sound_Output *sound_output, uint32 num_samples) {
     Audio_Source *music = &game_state->music;
     *music = make_audio_source(wav_data->subchunk_2_size / (wav_data->bits_per_sample / 8 * 2),
                                0, 1.0f, true, (int16 *) &wav_data->data);
+#endif
 
     // init message manager
     game_state->message_manager = {};

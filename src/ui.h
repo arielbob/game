@@ -336,6 +336,7 @@ enum class UI_Texture_Type {
 // - traverse tree and check if we can append to last entry for basic/textured quads
 //   (although, for textured quads, we just add a new entry)
 // - for text, we can coalesce with any entry, since the text will always be on top
+//   - i don't think this is true?
 // - go through all groups and commands and create a vertex array and index array and send those to gpu
 //   - while doing this, each command should be updated with an index_start and num_indices
 // - go through all the commands and draw them
@@ -409,7 +410,8 @@ struct UI_Manager {
     Arena_Allocator frame_arena;
 
     UI_Stack_Widget *widget_stack;
-    
+
+#if 0
     UI_Style_BG_Color *background_color_stack;
     UI_Style_BG_Color *hot_background_color_stack;
     UI_Style_BG_Color *active_background_color_stack;
@@ -427,6 +429,7 @@ struct UI_Manager {
     UI_Style_Size_Type *size_type_stack;
     UI_Style_Font *font_stack;
     UI_Style_Text_Color *text_color_stack;
+#endif
     
     bool32 is_disabled;
 
