@@ -12,79 +12,6 @@ UI_Theme NULL_THEME = {
     { 0.0f, 0.0f }
 };
 
-#if 0
-UI_Widget *make_widget(UI_id id, uint32 flags) {
-    UI_Widget *widget = (UI_Widget *) allocate(&ui_manager->frame_arena, sizeof(UI_Widget));
-
-    *widget = {};
-    widget->id = id;
-    widget->flags = flags;
-
-    // TODO: just have initial values for these, so we don't have to do these checks
-    if (ui_manager->background_color_stack) {
-        widget->background_color = ui_manager->background_color_stack->background_color;
-    }
-
-    if (ui_manager->hot_background_color_stack) {
-        widget->hot_background_color = ui_manager->hot_background_color_stack->background_color;
-    }
-
-    if (ui_manager->active_background_color_stack) {
-        widget->active_background_color = ui_manager->active_background_color_stack->background_color;
-    }
-    
-    if (ui_manager->size_stack) {
-        widget->semantic_size = ui_manager->size_stack->size;
-    }
-
-    if (ui_manager->position_stack) {
-        widget->semantic_position = ui_manager->position_stack->position;
-    }
-
-    if (ui_manager->position_type_stack) {
-        widget->position_type = ui_manager->position_type_stack->type;
-    }
-
-    if (ui_manager->layout_type_stack) {
-        widget->layout_type = ui_manager->layout_type_stack->type;
-    }
-    
-    if (ui_manager->size_type_stack) {
-        widget->size_type = ui_manager->size_type_stack->type;
-    }
-
-    if (ui_manager->font_stack) {
-        widget->font = ui_manager->font_stack->font;
-    }
-    
-    if (ui_manager->text_color_stack) {
-        widget->text_color = ui_manager->text_color_stack->color;
-    }
-
-    if (ui_manager->border_color_stack) {
-        widget->border_color = ui_manager->border_color_stack->border_color;
-    }
-
-    if (ui_manager->border_flags_stack) {
-        widget->border_flags = ui_manager->border_flags_stack->border_flags;
-    }
-
-    if (ui_manager->border_width_stack) {
-        widget->border_width = ui_manager->border_width_stack->border_width;
-    }
-
-    if (ui_manager->corner_radius_stack) {
-        widget->corner_radius = ui_manager->corner_radius_stack->radius;
-    }
-    
-    if (ui_manager->corner_flags_stack) {
-        widget->corner_flags = ui_manager->corner_flags_stack->corner_flags;
-    }
-    
-    return widget;
-}
-#endif
-
 UI_Widget *make_widget(UI_id id, UI_Theme theme, uint32 flags) {
     UI_Widget *widget = (UI_Widget *) allocate(&ui_manager->frame_arena, sizeof(UI_Widget));
 
@@ -312,206 +239,6 @@ void ui_pop_widget() {
     assert(ui_manager->widget_stack);
     ui_manager->widget_stack = ui_manager->widget_stack->next;
 }
-
-// TODO: layout types, and calculating positions (should be done after size calculations)
-
-#if 0
-void ui_push_position(Vec2 position) {
-    UI_Style_Position *entry = (UI_Style_Position *) allocate(&ui_manager->frame_arena, sizeof(UI_Style_Position));
-
-    entry->position = position;
-    entry->next = ui_manager->position_stack;
-    
-    ui_manager->position_stack = entry;
-}
-
-void ui_push_position_type(UI_Position_Type type) {
-    UI_Style_Position_Type *entry = (UI_Style_Position_Type *) allocate(&ui_manager->frame_arena,
-                                                                        sizeof(UI_Style_Position_Type));
-
-    entry->type = type;
-    entry->next = ui_manager->position_type_stack;
-    
-    ui_manager->position_type_stack = entry;
-}
-
-void ui_push_size(Vec2 size) {
-    UI_Style_Size *entry = (UI_Style_Size *) allocate(&ui_manager->frame_arena, sizeof(UI_Style_Size));
-
-    entry->size = size;
-    entry->next = ui_manager->size_stack;
-    
-    ui_manager->size_stack = entry;
-}
-
-void ui_push_background_color(Vec4 color) {
-    UI_Style_BG_Color *entry = (UI_Style_BG_Color *) allocate(&ui_manager->frame_arena, sizeof(UI_Style_BG_Color));
-
-    entry->background_color = color;
-    entry->next = ui_manager->background_color_stack;
-    
-    ui_manager->background_color_stack = entry;
-}
-
-void ui_push_hot_background_color(Vec4 color) {
-    UI_Style_BG_Color *entry = (UI_Style_BG_Color *) allocate(&ui_manager->frame_arena, sizeof(UI_Style_BG_Color));
-
-    entry->background_color = color;
-    entry->next = ui_manager->hot_background_color_stack;
-    
-    ui_manager->hot_background_color_stack = entry;
-}
-
-void ui_push_active_background_color(Vec4 color) {
-    UI_Style_BG_Color *entry = (UI_Style_BG_Color *) allocate(&ui_manager->frame_arena, sizeof(UI_Style_BG_Color));
-
-    entry->background_color = color;
-    entry->next = ui_manager->active_background_color_stack;
-    
-    ui_manager->active_background_color_stack = entry;
-}
-
-void ui_push_layout_type(UI_Layout_Type type) {
-    UI_Style_Layout_Type *entry = (UI_Style_Layout_Type *) allocate(&ui_manager->frame_arena, sizeof(UI_Style_Layout_Type));
-
-    entry->type = type;
-    entry->next = ui_manager->layout_type_stack;
-    
-    ui_manager->layout_type_stack = entry;
-}
-
-void ui_pop_layout_type() {
-    assert(ui_manager->layout_type_stack);
-    ui_manager->layout_type_stack = ui_manager->layout_type_stack->next;
-}
-
-void ui_push_border_color(Vec4 color) {
-    UI_Style_Border_Color *entry = (UI_Style_Border_Color *) allocate(&ui_manager->frame_arena, sizeof(UI_Style_Border_Color));
-
-    entry->border_color = color;
-    entry->next = ui_manager->border_color_stack;
-
-    ui_manager->border_color_stack = entry;
-}
-
-void ui_push_border_width(real32 width) {
-    UI_Style_Border_Width *entry = (UI_Style_Border_Width *) allocate(&ui_manager->frame_arena, sizeof(UI_Style_Border_Width));
-
-    entry->border_width = width;
-    entry->next = ui_manager->border_width_stack;
-
-    ui_manager->border_width_stack = entry;
-}
-
-void ui_push_border_flags(uint32 flags) {
-    UI_Style_Border_Flags *entry = (UI_Style_Border_Flags *) allocate(&ui_manager->frame_arena, sizeof(UI_Style_Border_Flags));
-
-    entry->border_flags = flags;
-    entry->next = ui_manager->border_flags_stack;
-
-    ui_manager->border_flags_stack = entry;
-}
-
-void ui_push_corner_radius(real32 radius) {
-    UI_Style_Corner_Radius *entry = (UI_Style_Corner_Radius *) allocate(&ui_manager->frame_arena, sizeof(UI_Style_Corner_Radius));
-
-    entry->radius = radius;
-    entry->next = ui_manager->corner_radius_stack;
-
-    ui_manager->corner_radius_stack = entry;
-}
-
-void ui_push_corner_flags(uint32 corner_flags) {
-    UI_Style_Corner_Flags *entry = (UI_Style_Corner_Flags *) allocate(&ui_manager->frame_arena, sizeof(UI_Style_Corner_Flags));
-
-    entry->corner_flags = corner_flags;
-    entry->next = ui_manager->corner_flags_stack;
-
-    ui_manager->corner_flags_stack = entry;
-}
-
-void ui_push_size_type(Vec2_UI_Size_Type type) {
-    UI_Style_Size_Type *entry = (UI_Style_Size_Type *) allocate(&ui_manager->frame_arena, sizeof(UI_Style_Size_Type));
-
-    entry->type = type;
-    entry->next = ui_manager->size_type_stack;
-    
-    ui_manager->size_type_stack = entry;
-}
-
-void ui_pop_size_type() {
-    assert(ui_manager->size_type_stack);
-    ui_manager->size_type_stack = ui_manager->size_type_stack->next;
-}
-
-void ui_pop_size() {
-    assert(ui_manager->size_stack);
-    ui_manager->size_stack = ui_manager->size_stack->next;
-}
-
-void ui_pop_position() {
-    assert(ui_manager->position_stack);
-    ui_manager->position_stack = ui_manager->position_stack->next;
-}
-
-void ui_pop_position_type() {
-    assert(ui_manager->position_type_stack);
-    ui_manager->position_type_stack = ui_manager->position_type_stack->next;
-}
-
-void ui_pop_background_color() {
-    assert(ui_manager->background_color_stack);
-    ui_manager->background_color_stack = ui_manager->background_color_stack->next;
-}
-
-void ui_pop_text_color() {
-    assert(ui_manager->text_color_stack);
-    ui_manager->text_color_stack = ui_manager->text_color_stack->next;
-}
-
-void ui_pop_corner_radius() {
-    assert(ui_manager->corner_radius_stack);
-    ui_manager->corner_radius_stack = ui_manager->corner_radius_stack->next;
-}
-
-void ui_pop_corner_flags() {
-    assert(ui_manager->corner_flags_stack);
-    ui_manager->corner_flags_stack = ui_manager->corner_flags_stack->next;
-}
-
-void ui_pop_border_flags() {
-    assert(ui_manager->border_flags_stack);
-    ui_manager->border_flags_stack = ui_manager->border_flags_stack->next;
-}
-
-void ui_pop_border_width() {
-    assert(ui_manager->border_width_stack);
-    ui_manager->border_width_stack = ui_manager->border_width_stack->next;
-}
-
-void ui_pop_border_color() {
-    assert(ui_manager->border_color_stack);
-    ui_manager->border_color_stack = ui_manager->border_color_stack->next;
-}
-
-void ui_push_text_color(Vec4 color) {
-    UI_Style_Text_Color *entry = (UI_Style_Text_Color *) allocate(&ui_manager->frame_arena, sizeof(UI_Style_Text_Color));
-
-    entry->color = color;
-    entry->next = ui_manager->text_color_stack;
-    
-    ui_manager->text_color_stack = entry;
-}
-
-void ui_push_font(char *font) {
-    UI_Style_Font *entry = (UI_Style_Font *) allocate(&ui_manager->frame_arena, sizeof(UI_Style_Font));
-
-    entry->font = font;
-    entry->next = ui_manager->font_stack;
-    
-    ui_manager->font_stack = entry;
-}
-#endif
 
 // this sets hot based on the rendering_index, which is just when the widget was drawn, higher being later/above.
 // we do this so that we set hot to the widget that is above other widgets and don't set hot to a widget that is
@@ -1039,12 +766,6 @@ void ui_frame_init(Display_Output *display_output, real32 dt) {
         { (real32) display_output->width, (real32) display_output->height },
         { 0.0f, 0.0f }
     };
-    #if 0
-    ui_push_position({ 0.0f, 0.0f });
-    ui_push_layout_type(UI_LAYOUT_NONE);
-    ui_push_size_type({ UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE });
-    ui_push_size({ (real32) display_output->width, (real32) display_output->height });
-    #endif
 
     UI_Widget *widget = make_widget(make_ui_id("root"), root_theme, 0);
 
@@ -1085,16 +806,6 @@ void ui_frame_end() {
     ui_manager->widget_table = temp_widget_table;
 
     ui_manager->widget_stack = NULL;
-#if 0
-    ui_manager->background_color_stack = NULL;
-    ui_manager->hot_background_color_stack = NULL;
-    ui_manager->active_background_color_stack = NULL;
-    ui_manager->layout_type_stack = NULL;
-    ui_manager->size_stack = NULL;
-    ui_manager->position_stack = NULL;
-    ui_manager->size_type_stack = NULL;
-    ui_manager->text_color_stack = NULL;
-#endif
 }
 
 bool32 ui_has_focus() {
@@ -1264,7 +975,6 @@ void do_text(char *text) {
     return do_text(text, "");
 }
 
-// TODO: fix the do_button calls to include a theme here
 bool32 do_button(UI_id id, UI_Theme theme) {
     UI_Widget *widget = ui_add_widget(id, theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
     UI_Interact_Result interact_result = ui_interact(widget);
@@ -1305,24 +1015,6 @@ bool32 do_text_button(char *text, real32 padding, UI_id id) {
     ui_pop_widget();
     
     UI_Interact_Result interact_result = ui_interact(button);
-#if 0
-    ui_pop_size_type();
-    
-    ui_push_size_type(UI_SIZE_FIT_TEXT);
-
-    // TODO: we should probably use a hashing method for storing UI IDs, so that we can generate IDs dynamically.
-    //       right now we just use pointers, which is fine for read-only memory, but if we create new strings,
-    //       then the string addresses will not be consistent.
-    // TODO: scope UI IDs. have a parent UI_id be included in all UI_ids. that way, we can do stuff like this
-    //       without having collisions. actually, i don't think that'll work. try and use a hash. actually,
-    //       i think this is fine, since we always have the parent ID use some unique string.
-    UI_Widget *text_widget = ui_add_widget(make_ui_id("button-text"), UI_WIDGET_DRAW_TEXT);
-    text_widget->text = text;
-
-    ui_pop_layout_type();
-    ui_pop_size_type();
-    ui_pop_widget();
-#endif
 
     return interact_result.clicked;
 }
@@ -1563,11 +1255,6 @@ real32 do_text_field_slider(Asset_Manager *asset, real32 value,
     if (theme.show_slider) {
         if (!state->is_using || state->is_sliding) {
             ui_add_slider_bar(slider_theme, value, min_value, max_value);
-            #if 0
-            ui_push_background_color({ 0.0f, 0.0f, 1.0f, 1.0f });
-            ui_add_slider_bar(value, min_value, max_value);
-            ui_pop_background_color();
-            #endif
         }
     }
     

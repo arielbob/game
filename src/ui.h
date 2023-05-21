@@ -411,26 +411,6 @@ struct UI_Manager {
 
     UI_Stack_Widget *widget_stack;
 
-#if 0
-    UI_Style_BG_Color *background_color_stack;
-    UI_Style_BG_Color *hot_background_color_stack;
-    UI_Style_BG_Color *active_background_color_stack;
-
-    UI_Style_Corner_Radius *corner_radius_stack;
-    UI_Style_Border_Color *border_color_stack;
-    UI_Style_Border_Flags *border_flags_stack;
-    UI_Style_Border_Width *border_width_stack;
-    UI_Style_Corner_Flags *corner_flags_stack;
-    
-    UI_Style_Layout_Type *layout_type_stack;
-    UI_Style_Size *size_stack;
-    UI_Style_Position *position_stack;
-    UI_Style_Position_Type *position_type_stack;
-    UI_Style_Size_Type *size_type_stack;
-    UI_Style_Font *font_stack;
-    UI_Style_Text_Color *text_color_stack;
-#endif
-    
     bool32 is_disabled;
 
     // rendering
