@@ -1,8 +1,9 @@
 #include "ui.h"
 
+char *default_font = "calibri14";
 UI_Theme NULL_THEME = {
     {}, {}, {},
-    {}, NULL, NULL,
+    {}, default_font, NULL,
     {}, 0, 0, 0, 0,
     UI_LAYOUT_NONE,
     { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE },
@@ -283,18 +284,16 @@ UI_Widget *ui_push_existing_widget(UI_Widget *widget) {
     return widget;
 }
 
-#if 0
-UI_Widget *ui_push_widget(UI_id id, uint32 flags = 0) {
-    UI_Widget *widget = make_widget(id, flags);
+UI_Widget *ui_push_widget(UI_id id, UI_Theme theme,uint32 flags = 0) {
+    UI_Widget *widget = make_widget(id, theme, flags);
     ui_add_widget(widget);
 
     return ui_push_existing_widget(widget);
 }
 
-UI_Widget *ui_push_widget(char *id_string_ptr, uint32 flags = 0) {
-    return ui_push_widget(make_ui_id(id_string_ptr), flags);
+UI_Widget *ui_push_widget(char *id_string_ptr, UI_Theme theme, uint32 flags = 0) {
+    return ui_push_widget(make_ui_id(id_string_ptr), theme, flags);
 }
-#endif
 
 UI_Widget *ui_add_and_push_widget(UI_Widget *widget) {
     ui_add_widget(widget);
@@ -630,6 +629,7 @@ void calculate_standalone_size(Asset_Manager *asset, UI_Widget *widget, UI_Widge
     if (size_type == UI_SIZE_ABSOLUTE) {
         *axis_computed_size = axis_semantic_size;
     } else if (size_type == UI_SIZE_FIT_TEXT) {
+        assert(widget->font);
         Font *font = get_font(widget->font);
         if (axis == UI_WIDGET_X_AXIS) {
             *axis_computed_size = get_width(font, widget->text);
@@ -1084,8 +1084,8 @@ void ui_frame_end() {
     ui_manager->last_frame_widget_table = ui_manager->widget_table;
     ui_manager->widget_table = temp_widget_table;
 
-#if 0
     ui_manager->widget_stack = NULL;
+#if 0
     ui_manager->background_color_stack = NULL;
     ui_manager->hot_background_color_stack = NULL;
     ui_manager->active_background_color_stack = NULL;
@@ -1245,8 +1245,17 @@ UI_Text_Field_Slider_State *ui_add_text_field_slider_state(UI_id id, real32 valu
 void do_text(char *text, char *id, uint32 flags = 0, int32 index = 0) {
     UI_Theme text_theme = NULL_THEME;
     text_theme.size_type = { UI_SIZE_FIT_TEXT, UI_SIZE_FIT_TEXT };
-    text_theme.background_color = { 1.0f, 0.0f, 0.0f, 1.0f };
+    text_theme.text_color = { 1.0f, 1.0f, 1.0f, 1.0f };
+    //text_theme.background_color = { 1.0f, 0.0f, 0.0f, 1.0f };
     //UI_Widget *text_widget = ui_add_widget(make_ui_id(id, index), UI_WIDGET_DRAW_TEXT | UI_WIDGET_DRAW_BACKGROUND);
+    UI_Widget *text_widget = ui_add_widget(make_ui_id(id, index), text_theme, UI_WIDGET_DRAW_TEXT);
+    text_widget->text = text;
+}
+
+void do_text(char *text, char *id, UI_Theme theme, uint32 flags = 0, int32 index = 0) {
+    UI_Theme text_theme = NULL_THEME;
+    text_theme.size_type = { UI_SIZE_FIT_TEXT, UI_SIZE_FIT_TEXT };
+    text_theme.text_color = theme.text_color;
     UI_Widget *text_widget = ui_add_widget(make_ui_id(id, index), text_theme, UI_WIDGET_DRAW_TEXT);
     text_widget->text = text;
 }
@@ -1257,49 +1266,43 @@ void do_text(char *text) {
 
 // TODO: fix the do_button calls to include a theme here
 bool32 do_button(UI_id id, UI_Theme theme) {
-    UI_Widget *widget = ui_add_widget(id, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
+    UI_Widget *widget = ui_add_widget(id, theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
     UI_Interact_Result interact_result = ui_interact(widget);
     
     return interact_result.clicked;
 }
 
 bool32 do_text_button(char *text, real32 padding, UI_id id) {
-    ui_push_size({});
-    ui_push_size_type({ UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN });
-    ui_push_layout_type(UI_LAYOUT_VERTICAL);
-    UI_Widget *button = ui_push_widget(id,
+    UI_Theme theme = NULL_THEME;
+    theme.semantic_size = {};
+    theme.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN };
+    theme.layout_type = UI_LAYOUT_VERTICAL;
+    
+    UI_Widget *button = ui_push_widget(id, theme,
                                        UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
+
+    UI_Theme text_theme = NULL_THEME;
+    text_theme.semantic_size = { 0.0f, padding };
+    text_theme.layout_type = UI_LAYOUT_HORIZONTAL;
+    
     {
-        ui_push_size({ 0.0f, padding });
-        ui_add_widget("");
+        UI_Theme vertical_pad = NULL_THEME;
+        vertical_pad.semantic_size = { 0.0f, padding };
+        ui_add_widget("", vertical_pad);
 
-        ui_push_layout_type(UI_LAYOUT_HORIZONTAL);
-        ui_push_widget("", 0);
+        UI_Theme horizontal_row = NULL_THEME;
+        horizontal_row.layout_type = UI_LAYOUT_HORIZONTAL;
+        ui_push_widget("", horizontal_row);
         {
-            // inner row
-            ui_push_size({ padding, 0.0f });
-            ui_add_widget("");
-            //ui_pop_size_type();
+            UI_Theme horizontal_pad = NULL_THEME;
+            horizontal_pad.semantic_size = { padding, 0.0f };
+            ui_add_widget("", horizontal_pad);
 
-            ui_push_size_type({ UI_SIZE_FIT_TEXT, UI_SIZE_FIT_TEXT });
-            UI_Widget *text_widget = ui_add_widget(make_ui_id(NULL), UI_WIDGET_DRAW_TEXT);
-            text_widget->text = text;
-            ui_pop_size_type();
-
-            ui_add_widget("");
-            ui_pop_size();
+            do_text(text);
         }
         ui_pop_widget();
-        ui_pop_layout_type();
-        
-        ui_add_widget("");
-        ui_pop_size();
     }
     ui_pop_widget();
-    ui_pop_layout_type();
-    ui_pop_size_type();
-    ui_pop_size();
-    
     
     UI_Interact_Result interact_result = ui_interact(button);
 #if 0
@@ -1695,11 +1698,7 @@ void push_window(char *title, UI_Window_Theme theme, char *id_string, int32 inde
         ui_add_and_push_widget(title_bar);
         
         UI_Interact_Result title_bar_interact = ui_interact(title_bar);
-        {
-            ui_push_text_color(theme.title_text_color);
-            do_text(title, "");
-            ui_pop_text_color();
-        }
+        do_text(title, "");
         ui_pop_widget();
 
         if (title_bar_interact.holding) {

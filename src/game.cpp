@@ -973,9 +973,6 @@ void update_game(Controller_State *controller_state, Sound_Output *sound_output,
 void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 dt) {
     ui_frame_init(display_output, dt);
 
-    ui_push_text_color({ 0.0f, 0.0f, 0.0f, 1.0f });
-    ui_push_font("calibri14");
-
 #if 0
     ui_push_text_color({ 1.0f, 1.0f, 1.0f, 1.0f });
     ui_push_position({ 5.0f, 5.0f });
@@ -987,15 +984,13 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     ui_pop_position();
     ui_pop_text_color();
 #endif
-    
-    ui_push_text_color({ 1.0f, 1.0f, 1.0f, 1.0f });
-    ui_push_position({ 5.0f, 5.0f });
+
+    UI_Theme white_text = NULL_THEME;
+    white_text.text_color = { 1.0f, 1.0f, 1.0f, 1.0f };
+    white_text.semantic_position = { 5.0f, 5.0f };
     char *fps_text = string_format((Allocator *) &ui_manager->frame_arena, "FPS: %d / dt %.3f",
                                    (int32) round(game_state->last_second_fps), dt);
-    do_text(fps_text, "");
-    ui_pop_position();
-    ui_pop_text_color();
-    
+    do_text(fps_text, "", white_text);
 
     // test border drawing
 #if 0
@@ -1080,12 +1075,14 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
 #endif
     
 #if 1
+    #if 0
     ui_push_size_type({ UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN });
     ui_push_layout_type(UI_LAYOUT_VERTICAL);
     ui_push_background_color({ 0.0f, 0.0f, 1.0f, 1.0f });
 
     ui_push_size({ 300.0f, 0.0f });
     ui_push_position({ 10.0f, 10.0f });
+    #endif
 
 #if 0
     ui_push_widget("", UI_WIDGET_DRAW_BACKGROUND);
@@ -1202,7 +1199,6 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     group_theme.layout_type = UI_LAYOUT_VERTICAL;
     
     ui_push_container(inner_theme);
-    ui_push_text_color({ 1.0f, 1.0f, 1.0f, 1.0f });
     {
         do_text("Position");
         ui_y_pad(5.0f);
@@ -1320,7 +1316,7 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
             } ui_pop_widget();
         } ui_pop_widget();
     }
-    ui_pop_text_color();
+    //ui_pop_text_color();
     ui_pop_widget();
     
     pop_window();
