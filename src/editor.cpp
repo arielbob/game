@@ -658,9 +658,27 @@ void update_editor(Controller_State *controller_state, real32 dt) {
 
 void draw_editor(Controller_State *controller_state) {
     Editor_State *editor_state = &game_state->editor_state;
-
+    
     Entity *selected_entity = get_selected_entity(editor_state);
-    #if 0
+
+    bool32 toggle_show_wireframe_clicked = do_text_button(editor_state->show_wireframe ?
+                                                          "Hide Wireframe" : "Show Wireframe",
+                                                          5.0f, "toggle_wireframe");
+#if 0
+    bool32 toggle_show_wireframe_clicked = do_text_button(
+        render_state->display_output.width - sidebar_button_width,
+        y,
+        wireframe_button_width, button_height,
+        default_text_button_style, default_text_style,
+        editor_state->show_wireframe ?
+        "Hide Wireframe" : "Show Wireframe",
+        button_font_name, "toggle_wireframe");
+#endif
+    if (toggle_show_wireframe_clicked) {
+        editor_state->show_wireframe = !editor_state->show_wireframe;
+    }
+    
+#if 0
     if (selected_entity) {
         draw_entity_box(editor_state, ui_manager, controller_state, selected_entity);
 

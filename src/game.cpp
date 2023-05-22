@@ -1319,7 +1319,7 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     //ui_pop_text_color();
     ui_pop_widget();
     
-    pop_window();
+    ui_pop_widget();
 
 
 #endif
@@ -1364,6 +1364,8 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     ui_pop_widget();
 #endif
 
+    draw_editor(Context::controller_state);
+    
     ui_calculate_standalone_sizes(asset);
     ui_calculate_ancestor_dependent_sizes();
     ui_calculate_child_dependent_sizes();

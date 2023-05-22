@@ -984,13 +984,17 @@ bool32 do_button(UI_id id, UI_Theme theme) {
 
 bool32 do_text_button(char *text, real32 padding, UI_id id) {
     UI_Theme theme = NULL_THEME;
-    theme.semantic_size = {};
-    theme.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN };
+    theme.semantic_size = { 10.0f, 10.0f };
+    theme.semantic_position = { 5.0f, 5.0f };
+    //theme.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN };
+    theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
     theme.layout_type = UI_LAYOUT_VERTICAL;
-    
+    theme.background_color = { 1.0f, 0.0f, 0.0f, 1.0f };
+
     UI_Widget *button = ui_push_widget(id, theme,
                                        UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
 
+    #if 0
     UI_Theme text_theme = NULL_THEME;
     text_theme.semantic_size = { 0.0f, padding };
     text_theme.layout_type = UI_LAYOUT_HORIZONTAL;
@@ -1012,6 +1016,7 @@ bool32 do_text_button(char *text, real32 padding, UI_id id) {
         }
         ui_pop_widget();
     }
+    #endif
     ui_pop_widget();
     
     UI_Interact_Result interact_result = ui_interact(button);
@@ -1054,11 +1059,10 @@ void ui_push_container(UI_Container_Theme theme) {
     column_theme.semantic_size = theme.size;
     column_theme.layout_type = UI_LAYOUT_VERTICAL;
 
+    UI_Widget *inner;
+
     // vertical
     UI_Widget *column = ui_add_and_push_widget("", column_theme, 0);
-
-    UI_Widget *inner;
-    
     {
         ui_y_pad(theme.top_padding);
 
@@ -1084,6 +1088,7 @@ void ui_push_container(UI_Container_Theme theme) {
 
         ui_y_pad(theme.bottom_padding);
     }
+    ui_pop_widget();
 
     ui_push_existing_widget(inner);
 }
@@ -1393,8 +1398,4 @@ void push_window(char *title, UI_Window_Theme theme, char *id_string, int32 inde
             state->position += delta;
         }
     }
-}
-
-void pop_window() {
-    ui_pop_widget();
 }
