@@ -75,6 +75,18 @@ inline UI_Size_Type &Vec2_UI_Size_Type::operator[](int32 index) {
     return (*this).values[index];
 }
 
+struct Vec4_UI_Padding {
+    union {
+        real32 values[4];
+        struct {
+            real32 top;
+            real32 right;
+            real32 bottom;
+            real32 left;
+        };
+    };
+};
+
 struct Rect {
     real32 x;
     real32 y;
@@ -105,69 +117,27 @@ struct UI_Theme {
     Vec2 semantic_position;
 };
 
-struct UI_Style_BG_Color {
-    Vec4 background_color;
-    UI_Style_BG_Color *next;
-};
+struct UI_Container_Theme {
+    real32 top_padding;
+    real32 right_padding;
+    real32 bottom_padding;
+    real32 left_padding;
 
-struct UI_Style_Border_Color {
-    Vec4 border_color;
-    UI_Style_Border_Color *next;
-};
-
-struct UI_Style_Border_Flags {
-    uint32 border_flags;
-    UI_Style_Border_Flags *next;
-};
-
-struct UI_Style_Border_Width {
-    real32 border_width;
-    UI_Style_Border_Width *next;
-};
-
-struct UI_Style_Corner_Flags {
-    uint32 corner_flags;
-    UI_Style_Corner_Flags *next;
-};
-
-struct UI_Style_Corner_Radius {
-    real32 radius;
-    UI_Style_Corner_Radius *next;
-};
-
-struct UI_Style_Position {
-    Vec2 position;
-    UI_Style_Position *next;
-};
-
-struct UI_Style_Position_Type {
-    UI_Position_Type type;
-    UI_Style_Position_Type *next;
-};
-
-struct UI_Style_Size {
+    Vec2_UI_Size_Type size_type;
     Vec2 size;
-    UI_Style_Size *next;
+    UI_Layout_Type layout_type;
 };
 
-struct UI_Style_Layout_Type {
-    UI_Layout_Type type;
-    UI_Style_Layout_Type *next;
-};
+struct UI_Button_Theme {
+    Vec2 size;
+    Vec2 position;
 
-struct UI_Style_Size_Type {
-    Vec2_UI_Size_Type type;
-    UI_Style_Size_Type *next;
-};
+    Vec4 background_color;
+    Vec4 hot_background_color;
+    Vec4 active_background_color;
 
-struct UI_Style_Text_Color {
-    Vec4 color;
-    UI_Style_Text_Color *next;
-};
-
-struct UI_Style_Font {
+    Vec4 text_color;
     char *font;
-    UI_Style_Font *next;
 };
 
 struct UI_id {

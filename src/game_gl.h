@@ -261,8 +261,8 @@ struct GL_State {
     uint32 global_ubo;
 
     GL_UI_Data ui_data;
-    //GL_Framebuffer alpha_mask_framebuffer;
-    //GL_Alpha_Mask_Stack alpha_mask_stack;
+    GL_Framebuffer alpha_mask_framebuffer;
+    GL_Alpha_Mask_Stack alpha_mask_stack;
 };
 
 #if 0

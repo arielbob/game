@@ -6,7 +6,7 @@ UI_Theme NULL_THEME = {
     {}, default_font, NULL,
     {}, 0, 0, 0, 0,
     UI_LAYOUT_NONE,
-    { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE },
+    { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN },
     UI_POSITION_NONE,
     { 0.0f, 0.0f },
     { 0.0f, 0.0f }
@@ -352,7 +352,6 @@ void calculate_standalone_size(Asset_Manager *asset, UI_Widget *widget, UI_Widge
     real32 axis_semantic_size = widget->semantic_size[axis];
     real32 *axis_computed_size = &widget->computed_size[axis];
 
-    
     if (size_type == UI_SIZE_ABSOLUTE) {
         *axis_computed_size = axis_semantic_size;
     } else if (size_type == UI_SIZE_FIT_TEXT) {
@@ -805,6 +804,8 @@ void ui_frame_end() {
     ui_manager->last_frame_widget_table = ui_manager->widget_table;
     ui_manager->widget_table = temp_widget_table;
 
+    // make sure we only have a single widget in the stack (should be root)
+    assert(ui_manager->widget_stack->next == NULL);
     ui_manager->widget_stack = NULL;
 }
 
@@ -975,6 +976,10 @@ void do_text(char *text) {
     return do_text(text, "");
 }
 
+void do_text(char *text, UI_Theme theme) {
+    return do_text(text, "", theme);
+}
+
 bool32 do_button(UI_id id, UI_Theme theme) {
     UI_Widget *widget = ui_add_widget(id, theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
     UI_Interact_Result interact_result = ui_interact(widget);
@@ -982,41 +987,34 @@ bool32 do_button(UI_id id, UI_Theme theme) {
     return interact_result.clicked;
 }
 
-bool32 do_text_button(char *text, real32 padding, UI_id id) {
+bool32 do_text_button(char *text, UI_Button_Theme button_theme, UI_id id) {
     UI_Theme theme = NULL_THEME;
-    theme.semantic_size = { 10.0f, 10.0f };
-    theme.semantic_position = { 5.0f, 5.0f };
-    //theme.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN };
+    theme.semantic_position = button_theme.position;
     theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
+    theme.semantic_size = button_theme.size;
     theme.layout_type = UI_LAYOUT_VERTICAL;
-    theme.background_color = { 1.0f, 0.0f, 0.0f, 1.0f };
+    theme.background_color = button_theme.background_color;
+    theme.hot_background_color = button_theme.hot_background_color;
+    theme.active_background_color = button_theme.active_background_color;
+    theme.corner_radius = 5.0f;
+    theme.corner_flags = CORNER_ALL;
 
     UI_Widget *button = ui_push_widget(id, theme,
-                                       UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
+                                       UI_WIDGET_DRAW_BORDER | UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
 
-    #if 0
-    UI_Theme text_theme = NULL_THEME;
-    text_theme.semantic_size = { 0.0f, padding };
-    text_theme.layout_type = UI_LAYOUT_HORIZONTAL;
-    
     {
-        UI_Theme vertical_pad = NULL_THEME;
-        vertical_pad.semantic_size = { 0.0f, padding };
-        ui_add_widget("", vertical_pad);
-
-        UI_Theme horizontal_row = NULL_THEME;
-        horizontal_row.layout_type = UI_LAYOUT_HORIZONTAL;
-        ui_push_widget("", horizontal_row);
+        UI_Theme row_theme = NULL_THEME;
+        row_theme.layout_type = UI_LAYOUT_CENTER;
+        row_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
+        ui_push_widget("", row_theme);
         {
-            UI_Theme horizontal_pad = NULL_THEME;
-            horizontal_pad.semantic_size = { padding, 0.0f };
-            ui_add_widget("", horizontal_pad);
-
-            do_text(text);
+            UI_Theme text_theme = NULL_THEME;
+            text_theme.text_color = button_theme.text_color;
+            text_theme.font = button_theme.font;
+            do_text(text, text_theme);
         }
         ui_pop_widget();
     }
-    #endif
     ui_pop_widget();
     
     UI_Interact_Result interact_result = ui_interact(button);
@@ -1024,8 +1022,8 @@ bool32 do_text_button(char *text, real32 padding, UI_id id) {
     return interact_result.clicked;
 }
 
-inline bool32 do_text_button(char *text, real32 padding, char *id, int32 index = 0) {
-    return do_text_button(text, padding, make_ui_id(id, index));
+inline bool32 do_text_button(char *text, UI_Button_Theme button_theme, char *id, int32 index = 0) {
+    return do_text_button(text, button_theme, make_ui_id(id, index));
 }
 
 void ui_x_pad(real32 width) {
@@ -1041,17 +1039,6 @@ void ui_y_pad(real32 height) {
     theme.semantic_size = { 0.0f, height };
     ui_add_widget("", theme);
 }
-
-struct UI_Container_Theme {
-    real32 top_padding;
-    real32 right_padding;
-    real32 bottom_padding;
-    real32 left_padding;
-
-    Vec2_UI_Size_Type size_type;
-    Vec2 size;
-    UI_Layout_Type layout_type;
-};
 
 void ui_push_container(UI_Container_Theme theme) {
     UI_Theme column_theme = {};
@@ -1143,7 +1130,7 @@ struct UI_Text_Field_Slider_Theme {
     Vec2 size;
 };
 
-real32 do_text_field_slider(Asset_Manager *asset, real32 value,
+real32 do_text_field_slider(real32 value,
                             real32 min_value, real32 max_value,
                             UI_Text_Field_Slider_Theme theme,
                             char *id_string, int32 index = 0) {

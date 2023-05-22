@@ -1812,8 +1812,8 @@ GL_Framebuffer gl_make_framebuffer(int32 width, int32 height, uint32 flags) {
 }
 
 #if 0
-void gl_init_alpha_mask_stack(GL_State *gl_state, int32 width, int32 height) {
-    GL_Alpha_Mask_Stack *stack = &gl_state->alpha_mask_stack;
+void gl_init_alpha_mask_stack(int32 width, int32 height) {
+    GL_Alpha_Mask_Stack *stack = &g_gl_state->alpha_mask_stack;
     glGenTextures(MAX_ALPHA_MASKS, stack->texture_ids);
 
     for (int32 i = 0; i < MAX_ALPHA_MASKS; i++) {
@@ -1827,66 +1827,34 @@ void gl_init_alpha_mask_stack(GL_State *gl_state, int32 width, int32 height) {
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-uint32 gl_push_new_alpha_mask_texture(GL_State *gl_state) {
-    GL_Alpha_Mask_Stack *stack = &gl_state->alpha_mask_stack;
+uint32 gl_push_new_alpha_mask_texture() {
+    GL_Alpha_Mask_Stack *stack = &g_gl_state->alpha_mask_stack;
     stack->index++;
     assert(stack->index < MAX_ALPHA_MASKS);
     return stack->texture_ids[stack->index];
 }
 
 // pushes new alpha mask onto the alpha mask stack and binds the framebuffer for drawing
-void gl_push_alpha_mask(GL_State *gl_state) {
-    glBindFramebuffer(GL_FRAMEBUFFER, gl_state->alpha_mask_framebuffer.fbo);
-    uint32 alpha_texture_id = gl_push_new_alpha_mask_texture(gl_state);
+void gl_push_alpha_mask() {
+    glBindFramebuffer(GL_FRAMEBUFFER, g_gl_state->alpha_mask_framebuffer.fbo);
+    uint32 alpha_texture_id = gl_push_new_alpha_mask_texture();
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
                            alpha_texture_id, 0);
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
-void gl_pop_alpha_mask(GL_State *gl_state) {
-    GL_Alpha_Mask_Stack *stack = &gl_state->alpha_mask_stack;
+void gl_pop_alpha_mask() {
+    GL_Alpha_Mask_Stack *stack = &g_gl_state->alpha_mask_stack;
     stack->index--;
     assert(stack->index >= -1);
 }
 
 // TODO: add procedure to deallocate and reset alpha masks and framebuffer when window dimensions change
-
 GL_Framebuffer gl_make_alpha_mask_framebuffer(int32 width, int32 height) {
     GL_Framebuffer framebuffer = {};
 
     glGenFramebuffers(1, &framebuffer.fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.fbo);
-
-    // color buffer texture
-    #if 0
-    glGenTextures(1, &framebuffer.color_buffer_texture);
-    glBindTexture(GL_TEXTURE_2D, framebuffer.color_buffer_texture);
-    
-    GLint format = gl_get_framebuffer_format(flags);
-    glTexImage2D(GL_TEXTURE_2D, 0, format,
-                 width, height,
-                 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-                           framebuffer.color_buffer_texture, 0);
-    #endif
-
-    // render buffer
-    #if 0
-    glGenRenderbuffers(1, &framebuffer.render_buffer);
-    glBindRenderbuffer(GL_RENDERBUFFER, framebuffer.render_buffer);
-    glRenderbufferStorage(GL_RENDERBUFFER, 0, width, height);
-    glBindRenderbuffer(GL_RENDERBUFFER, 0);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, framebuffer.render_buffer);
-    #endif
-
-    #if 0
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-        debug_print("Framebuffer is not complete.\n");
-        assert(false);
-    }
-    #endif
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     return framebuffer;
@@ -2349,10 +2317,10 @@ void gl_init(Arena_Allocator *game_data, Display_Output display_output) {
                                                              num_samples, framebuffer_flags);
     g_gl_state->msaa_framebuffer = gl_make_msaa_framebuffer(display_output.width, display_output.height,
                                                             num_samples, framebuffer_flags);
-    //gl_state->alpha_mask_framebuffer = gl_make_alpha_mask_framebuffer(display_output.width, display_output.height);
+    //g_gl_state->alpha_mask_framebuffer = gl_make_alpha_mask_framebuffer(display_output.width, display_output.height);
 
     // NOTE: alpha mask textures
-    //gl_init_alpha_mask_stack(gl_state, display_output.width, display_output.height);
+    //gl_init_alpha_mask_stack(display_output.width, display_output.height);
     
     // NOTE: unified buffer object
     glGenBuffers(1, &g_gl_state->global_ubo);
@@ -2636,14 +2604,13 @@ void gl_draw_quad(real32 x_pos_pixels, real32 y_pos_pixels,
 }
 
 #if 0
-void gl_draw_rounded_quad(GL_State *gl_state, Render_State *render_state,
-                          Vec2 position, Vec2 size,
+void gl_draw_rounded_quad(Vec2 position, Vec2 size,
                           Vec4 color,
                           real32 corner_radius, uint32 corner_flags,
                           Vec4 border_color, real32 border_width, uint32 border_side_flags,
                           bool32 is_alpha_pass = false, bool32 has_alpha = false) {
-    uint32 shader_id = gl_use_shader(gl_state, "rounded_quad");
-    GL_Mesh quad_mesh = gl_use_rendering_mesh(gl_state, gl_state->quad_mesh_id);
+    uint32 shader_id = gl_use_shader("rounded_quad");
+    GL_Mesh *quad_mesh = gl_use_mesh("debug_quad");
     
     real32 quad_vertices[8] = {
         position.x, position.y + size.y,         // bottom left
@@ -2652,7 +2619,7 @@ void gl_draw_rounded_quad(GL_State *gl_state, Render_State *render_state,
         position.x + size.x, position.y + size.y // bottom right
     };
     
-    glBindBuffer(GL_ARRAY_BUFFER, quad_mesh.vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, quad_mesh->vbo);
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(quad_vertices), quad_vertices);
     gl_set_uniform_mat4(shader_id, "ortho_matrix", &render_state->ortho_clip_matrix);
     gl_set_uniform_vec4(shader_id, "color", &color);
@@ -2862,7 +2829,7 @@ void gl_draw_ui_widget(Asset_Manager *asset, UI_Manager *manager, UI_Widget *wid
                                  false, has_alpha);
 
             // draw inner area alpha mask
-            gl_push_alpha_mask(gl_state);
+            gl_push_alpha_mask();
             glDisable(GL_BLEND);
             gl_draw_rounded_quad(computed_position, computed_size,
                                  color,
@@ -2871,7 +2838,7 @@ void gl_draw_ui_widget(Asset_Manager *asset, UI_Manager *manager, UI_Widget *wid
                                  true, has_alpha);
             glEnable(GL_BLEND);
             
-            glBindFramebuffer(GL_FRAMEBUFFER, gl_state->msaa_framebuffer.fbo);
+            glBindFramebuffer(GL_FRAMEBUFFER, g_gl_state->msaa_framebuffer.fbo);
             #endif
         } else {
             gl_draw_quad(computed_position.x, computed_position.y, computed_size.x, computed_size.y,
@@ -3584,7 +3551,7 @@ void gl_render(Controller_State *controller_state,
     #endif
 
     #if 0
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, gl_state->alpha_mask_framebuffer.fbo);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, g_gl_state->alpha_mask_framebuffer.fbo);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
     glBlitFramebuffer(0, 0, display_output.width, display_output.height, 0, 0,
                       display_output.width, display_output.height,
