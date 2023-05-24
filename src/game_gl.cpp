@@ -2883,10 +2883,9 @@ void gl_draw_ui_widget(Asset_Manager *asset, UI_Manager *manager, UI_Widget *wid
     }
 }
 
-void gl_draw_ui_command_list(UI_Render_Command_List *list, uint32 shader_id) {
-    UI_Render_Command *current = list->first;
-
-    while (current) {
+void gl_draw_ui_commands(uint32 shader_id) {
+    for (int32 i = 0; i < ui_manager->num_render_commands; i++) {
+        UI_Render_Command *current = &ui_manager->render_commands[i];
         if (current->texture_type == UI_Texture_Type::UI_TEXTURE_IMAGE) {
             gl_set_uniform_bool(shader_id, "use_texture", true);
             // TODO: bind texture
@@ -2901,41 +2900,39 @@ void gl_draw_ui_command_list(UI_Render_Command_List *list, uint32 shader_id) {
         glDrawElements(GL_TRIANGLES, current->num_indices, GL_UNSIGNED_INT,
                        (void *) (current->indices_start * sizeof(uint32)));
         glBindTexture(GL_TEXTURE_2D, 0);
-
-        current = current->next;
     }
 }
 
+void gl_draw_ui() {
+    Marker m = begin_region();
 
-/*
-  this is how indices are offset:
-  local indices ([0, 1, 2, 0, 2, 3])
-  -> render command indices (offset by amount of vertices inside current render command when coalescing)
-  -> vertex buffer indices (offset by amount of vertices inside the single buffer we're sending to the GPU)
- */
-void copy_ui_command_to_buffers(UI_Vertex *vertices_buffer, int32 *buffer_num_vertices,
-                                uint32 *indices_buffer,     int32 *buffer_num_indices,
-                                UI_Render_Command *command) {
-    assert(*buffer_num_vertices + command->num_vertices < UI_MAX_VERTICES);
-    assert(*buffer_num_indices + command->num_indices < UI_MAX_INDICES);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    
+    uint32 shader_id = gl_use_shader("ui");
+    gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->ortho_clip_matrix);
 
-    // use this for when we do the draw call to know where indices are located in the buffer for
-    // this command
-    command->indices_start = *buffer_num_indices;
+    UI_Render_Data *render_data = &ui_manager->render_data;
+    
+    // upload the vertex and index arrays to the GPU
+    glBindVertexArray(g_gl_state->ui_data.vao);
+    glBindBuffer(GL_ARRAY_BUFFER, g_gl_state->ui_data.vbo);
+    glBufferSubData(GL_ARRAY_BUFFER, 0,
+                    render_data->num_vertices*sizeof(UI_Vertex), render_data->vertices);
 
-    // offset command indices by current amount of vertices inside buffer
-    int32 indices_offset = *buffer_num_vertices;
-    for (int32 i = 0; i < command->num_indices; i++) {
-        command->indices[i] += indices_offset;
-    }
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_gl_state->ui_data.ebo);
+    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0,
+                    render_data->num_indices*sizeof(uint32), render_data->indices);
+    
+    gl_draw_ui_commands(shader_id);
 
-    memcpy(&vertices_buffer[*buffer_num_vertices], command->vertices, command->num_vertices * sizeof(UI_Vertex));
-    memcpy(&indices_buffer[*buffer_num_indices],   command->indices,  command->num_indices * sizeof(uint32));
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindVertexArray(0);
 
-    *buffer_num_vertices += command->num_vertices;            
-    *buffer_num_indices += command->num_indices;
+    end_region(m);
 }
 
+#if 0
 void gl_draw_ui() {
     // go through ui_manager->render_groups and copy the vertex and index data to two arrays
     // then upload both arrays to GPU (idk if this is actually faster than just uploading each command data directly)
@@ -2999,6 +2996,7 @@ void gl_draw_ui() {
 
     end_region(m);
 }
+#endif
 
 #if 0
 void gl_draw_ui(Asset_Manager *asset, UI_Manager *manager) {

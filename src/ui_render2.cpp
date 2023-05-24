@@ -1,6 +1,6 @@
 #include "ui.h"
 
-bool32 ui_command_should_coalesce(UI_Texture_Type texture_type, char *font_name) {
+bool32 ui_command_should_coalesce(UI_Texture_Type texture_type, Font *font) {
     // we only coalesce with the last command for now.
     // coalescing with anything before can be confusing.
 
@@ -17,11 +17,11 @@ bool32 ui_command_should_coalesce(UI_Texture_Type texture_type, char *font_name)
                 return true;
             } break;
             case UI_Texture_Type::UI_TEXTURE_IMAGE: {
-                assert(texture_name);
-                return string_equals(last_command->texture_name, texture_name);
+                assert(!"Not implemented yet");
+                //return string_equals(last_command->texture_name, texture_name);
             } break;
             case UI_Texture_Type::UI_TEXTURE_FONT: {
-                assert(!"Not implemented yet");
+                return string_equals(last_command->font_name, font->name);
             } break;
             default: {
                 assert(!"Unhandled UI_Render_Command texture type");
@@ -56,7 +56,7 @@ void ui_push_command(UI_Texture_Type texture_type,
     memcpy(&render_data->indices[render_data->num_indices], indices, num_indices*sizeof(uint32));
     render_data->num_indices += num_indices;
     
-    if (ui_command_should_coalesce(texture_type, font->name)) {
+    if (ui_command_should_coalesce(texture_type, font)) {
         // we check this in the should_coalesce function, but just being safe..
         assert(ui_manager->num_render_commands > 0);
         UI_Render_Command *last_command = &ui_manager->render_commands[ui_manager->num_render_commands - 1];
@@ -74,11 +74,11 @@ void ui_push_command(UI_Texture_Type texture_type,
                 // new_command->texture_name = texture->name;
             } break;
             case UI_Texture_Type::UI_TEXTURE_FONT: {
+                assert(font);
                 new_command->font_name = font->name;
             } break;
             default: {
                 assert(!"Unhandled UI_Render_Command texture type");
-                return false;
             }
         }
 
@@ -156,7 +156,7 @@ void ui_render_widget_to_commands(UI_Widget *widget) {
                 stbtt_aligned_quad q;
                 stbtt_GetBakedQuad(font->cdata, 512, 512, *text - 32, &text_pos.x, &text_pos.y, &q, 1);
 
-                Vec2 vertices[4] = {
+                UI_Vertex vertices[4] = {
                     {
                         { q.x0, q.y0 }, { q.s0, q.t0 }, {}
                     },
@@ -173,7 +173,6 @@ void ui_render_widget_to_commands(UI_Widget *widget) {
                 uint32 indices[] = { 0, 1, 2, 0, 2, 3 };
 
                 ui_push_command(UI_Texture_Type::UI_TEXTURE_FONT, vertices, 4, indices, 6, font);
-                //ui_push_text_quad(&group->text_quads, vertices, uvs, font, widget->text_color, false);
             } else if (*text == '\n') {
                 text_pos.x = initial_text_pos.x;
                 text_pos.y += line_advance;
@@ -186,17 +185,7 @@ void ui_render_widget_to_commands(UI_Widget *widget) {
 }
 
 void ui_create_render_commands() {
-    Marker m = begin_region();
-
-    // every direct child of the root is a group
-    
     UI_Widget *current = ui_manager->root;
-
-#if 0
-    int32 *num_commands = &ui_manager->num_render_commands;
-    UI_Render_Command *commands = ui_manager->render_commands;
-    UI_Render_Command *current_command = NULL;
-#endif
 
     // depth-first traversal
     while (current) {
@@ -234,7 +223,5 @@ void ui_create_render_commands() {
             }
         }
     }
-
-    end_region(m);
 };
 

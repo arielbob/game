@@ -1177,7 +1177,7 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     ui_calculate_positions();
 
     // TODO: move this somewhere else probably, maybe to win32_game.cpp after update()
-    ui_create_render_lists();
+    ui_create_render_commands();
 }
 
 void update(Controller_State *controller_state,
