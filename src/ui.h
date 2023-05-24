@@ -23,7 +23,7 @@
 #define UI_MAX_VERTICES  1024
 #define UI_MAX_TRIANGLES 1024
 #define UI_MAX_INDICES   UI_MAX_TRIANGLES*3
-#define UI_MAX_DRAW_COMMANDS 1024
+#define UI_MAX_RENDER_COMMANDS 1024
 #define NUM_WIDGET_BUCKETS 128
 
 struct UI_Widget;
@@ -321,7 +321,8 @@ struct UI_Render_Command {
         String texture_name;
         String font_name;
     };
-    
+
+#if 0
     int32 num_vertices;
     int32 max_vertices;
     UI_Vertex *vertices;
@@ -329,17 +330,57 @@ struct UI_Render_Command {
     int32 num_indices;
     int32 max_indices;
     uint32 *indices;
+#endif
 
     int32 indices_start;
+    int32 num_indices;
     
-    UI_Render_Command *next;
+    //UI_Render_Command *next;
 };
 
+#if 0
 struct UI_Render_Command_List {
     UI_Render_Command *first;
     UI_Render_Command *last;
 };
+#endif
 
+struct UI_Render_Data {
+    int32 num_vertices;
+    UI_Vertex vertices[UI_MAX_VERTICES];
+    
+    int32 num_indices;
+    uint32 indices[UI_MAX_INDICES];
+};
+
+/*
+TODO: may 23, 2023
+what's the minimum that we need to render?
+
+- we need vertices and indices
+- we need fonts and textures
+- do we actually need "groups"?
+- i don't think so
+- we just have two big arrays or vertices and indices
+- then another struct that has the spans
+  - i guess this can be considered groups
+
+- how do we decide where a group begins and when one ends?
+- we need to split on font changes, definitely
+- if it's just a basic quad, we can coalesce no matter what, i think
+  - we don't care about windows because we assume that the window order will be set
+    by the caller
+  - i.e. we can already expect the windows to be in the correct render order in the tree
+- we can actually coalesce text as well
+  - if it's in the same window, we can coalesce, but that's kind of more annoying
+  - because if we have commands after the first one, we would have to move those vertices so that
+    the new command's vertices can be adjacent to the first one's
+  - i think it's fine if we don't coalesce text right now; it's way simpler than how we have it
+    right now
+
+ */
+
+#if 0
 struct UI_Render_Group {
     // we make two command lists because text_quads are always rendered after the triangles, since text is
     // always on top of a group.
@@ -353,6 +394,7 @@ struct UI_Render_Group {
     UI_Render_Command_List triangles;
     UI_Render_Command_List text_quads;
 };
+#endif
 
 struct UI_Manager {
     UI_id hot;
@@ -384,8 +426,13 @@ struct UI_Manager {
     bool32 is_disabled;
 
     // rendering
+#if 0
     int32 num_render_groups;
     UI_Render_Group *render_groups;
+#endif
+    UI_Render_Data render_data;
+    int32 num_render_commands;
+    UI_Render_Command render_commands[UI_MAX_RENDER_COMMANDS];
 };
 
 bool32 is_hot(UI_Widget *widget);

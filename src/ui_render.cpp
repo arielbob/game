@@ -164,7 +164,8 @@ void ui_render_widget_to_group(UI_Render_Group *group, UI_Widget *widget) {
         Vec4 color = widget->background_color;
         if (widget->flags & UI_WIDGET_IS_CLICKABLE) {
             real32 transition_time = 0.1f;
-            
+
+            // TODO: the mix needs to be gamma correct
             if (is_hot(widget)) {
                 real32 t = min(ui_manager->hot_t / transition_time, 1.0f);
                 t = 1.0f-(1.0f-t)*(1.0f-t);
@@ -238,24 +239,68 @@ void ui_render_widget_to_group(UI_Render_Group *group, UI_Widget *widget) {
     }
 }
 
-/*
-- root children are sorted from back to front
-- no need for ordering within a window because widgets inside a window can never be floating, and also they
-already will be in traversed in the correct render order
-- within a window, text will always be on top of quads. so we can group by quads and text, and render in that
-order.
-- for textured quads, we should basically just the group around the textured quad. we can't group by textured
-quads and render them after because other quads can be rendered on top of the textured quad.
-- for now, we can just group by quads and single font. we don't need to handle multiple fonts yet. we don't even
-need to handle textured quads yet.
+void ui_create_render_groups() {
+    Marker m = begin_region();
 
+    // every direct child of the root is a group
+    
+    UI_Widget *current = ui_manager->root;
 
-we assume that a depth first search from left to right on a widget tree is render-order, i.e. from back to front.
-we assume that the ui manager sorts the widgets in this way before calling ui_create_render_lists().
-we group by window: [quads text] [quads text]
+    int32 *num_groups = &ui_manager->num_render_groups;
+    UI_Render_Group *groups = ui_manager->render_groups;
+    UI_Render_Group *current_group = NULL;
 
- */
+    // depth-first traversal
+    while (current) {
+        if (current->parent == ui_manager->root) {
+            assert(*num_groups < UI_MAX_GROUPS);
+            current_group = &groups[*num_groups];
+            
+            (*num_groups)++;
+            *current_group = {};
+        }
 
+        // don't add anything if the current node is root
+        if (current != ui_manager->root) {
+            assert(current_group);
+            ui_render_widget_to_group(current_group, current);
+        }
+        
+        if (current->first) {
+            current = current->first;
+        } else {
+            if (current->next) {
+                current = current->next;
+            } else {
+                // if there's no sibling, then go up the tree until we find a node
+                // that has a sibling or until we hit the root
+                if (!current->parent) {
+                    break;
+                }
+
+                UI_Widget *current_ancestor = current;
+
+                do {
+                    current_ancestor = current_ancestor->parent;
+
+                    if (!current_ancestor->parent) {
+                        // root
+                        // this will break out of outer loop as well, since root->next is NULL
+                        break;
+                    }
+                } while (!current_ancestor->next);
+
+                current = current_ancestor->next;
+            }
+        }
+    }
+
+    ui_manager->render_groups = groups;
+    
+    end_region(m);
+};
+
+#if 0
 void ui_create_render_lists() {
     Marker m = begin_region();
 
@@ -288,6 +333,8 @@ void ui_create_render_lists() {
             if (current->next) {
                 current = current->next;
             } else {
+                // if there's no sibling, then go up the tree until we find a node
+                // that has a sibling or until we hit the root
                 if (!current->parent) {
                     break;
                 }
@@ -313,3 +360,4 @@ void ui_create_render_lists() {
     
     end_region(m);
 }
+#endif

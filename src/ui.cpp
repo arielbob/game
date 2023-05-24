@@ -785,8 +785,12 @@ void ui_frame_init(Display_Output *display_output, real32 dt) {
     ui_manager->focus_t  += dt;
     ui_manager->active_t += dt;
 
-    ui_manager->num_render_groups = 0;
-    ui_manager->render_groups = (UI_Render_Group *) allocate(frame_arena, UI_MAX_GROUPS*sizeof(UI_Render_Group));
+    // reset ui render commands
+    ui_manager->num_render_commands = 0;
+    
+    UI_Render_Data *render_data = &ui_manager->render_data;
+    render_data->num_vertices = 0;
+    render_data->num_indices = 0;
 }
 
 void ui_frame_end() {
