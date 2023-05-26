@@ -990,7 +990,7 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
     white_text.semantic_position = { 5.0f, 5.0f };
     char *fps_text = string_format((Allocator *) &ui_manager->frame_arena, "FPS: %d / dt %.3f",
                                    (int32) round(game_state->last_second_fps), dt);
-    //do_text(fps_text, "", white_text);
+    do_text(fps_text, "", white_text);
 
     // test border drawing
 #if 0

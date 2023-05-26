@@ -862,33 +862,38 @@ void draw_editor(Controller_State *controller_state) {
     
     Entity *selected_entity = get_selected_entity(editor_state);
 
-    //draw_entity_box();
-
-    UI_Button_Theme editor_button_theme = {
-        { 200.0f, 30.0f }, {},
-        DEFAULT_BUTTON_BACKGROUND, DEFAULT_BUTTON_HOT_BACKGROUND, DEFAULT_BUTTON_ACTIVE_BACKGROUND,
-        { 1.0f, 1.0f, 1.0f, 1.0f },
-        default_font
+    UI_Container_Theme sidebar_theme = {
+        5.0f, 5.0f, 5.0f, 5.0f,
+        { UI_SIZE_ABSOLUTE, UI_SIZE_FIT_CHILDREN },
+        { 200.0f, 0.0f },
+        UI_LAYOUT_VERTICAL
     };
 
-    bool32 toggle_show_wireframe_clicked = do_text_button(editor_state->show_wireframe ?
-                                                          "Hide Wireframe" : "Show Wireframe",
-                                                          editor_button_theme,
-                                                          "toggle_wireframe");
+    #if 1
+    // TODO: make container child widgets use the parent container's ID to create unique widget IDs
+    ui_push_container(sidebar_theme);
+    {
+        UI_Button_Theme editor_button_theme = {
+            { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE },
+            { 0.0f, 30.0f }, { 0.0f, 0.0f },
+            DEFAULT_BUTTON_BACKGROUND, DEFAULT_BUTTON_HOT_BACKGROUND, DEFAULT_BUTTON_ACTIVE_BACKGROUND,
+            { 1.0f, 1.0f, 1.0f, 1.0f },
+            default_font
+        };
+
+        bool32 toggle_show_wireframe_clicked = do_text_button(editor_state->show_wireframe ?
+                                                              "Hide Wireframe" : "Show Wireframe",
+                                                              editor_button_theme,
+                                                              "toggle_wireframe");
     
-#if 0
-    bool32 toggle_show_wireframe_clicked = do_text_button(
-        render_state->display_output.width - sidebar_button_width,
-        y,
-        wireframe_button_width, button_height,
-        default_text_button_style, default_text_style,
-        editor_state->show_wireframe ?
-        "Hide Wireframe" : "Show Wireframe",
-        button_font_name, "toggle_wireframe");
-#endif
-    if (toggle_show_wireframe_clicked) {
-        editor_state->show_wireframe = !editor_state->show_wireframe;
+        if (toggle_show_wireframe_clicked) {
+            editor_state->show_wireframe = !editor_state->show_wireframe;
+        }
     }
+    ui_pop_widget();
+    #endif
+    
+    draw_entity_box();
     
 #if 0
     if (selected_entity) {

@@ -129,6 +129,7 @@ struct UI_Container_Theme {
 };
 
 struct UI_Button_Theme {
+    Vec2_UI_Size_Type size_type;
     Vec2 size;
     Vec2 position;
 
@@ -412,6 +413,8 @@ struct UI_Manager {
     // these tables are just so that we can easily get widgets without traversing the tree.
     // these do NOT hold state; state is handled by the layer that creates stateful widgets out of the primitive
     // widgets.
+    // these are arrays. that's why they're double pointers.
+    // UI_Widgets are their own nodes in this table via their table_next members.
     UI_Widget **last_frame_widget_table;
     UI_Widget **widget_table;
 

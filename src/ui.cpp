@@ -96,6 +96,7 @@ UI_Widget *ui_table_get(UI_Widget **table, UI_id id) {
 }
 
 void ui_table_add(UI_Widget **table, UI_Widget *widget) {
+    // uhh, should we be doing this? idk
     if (!widget->id.string_ptr) return;
     
     uint32 hash = get_hash(widget->id, NUM_WIDGET_BUCKETS);
@@ -798,15 +799,10 @@ void ui_frame_end() {
     ui_manager->root = NULL;
 
     // swap allocators
-    Arena_Allocator temp = ui_manager->last_frame_arena;
     ui_manager->last_frame_arena = ui_manager->frame_arena;
-    ui_manager->frame_arena = temp;
     clear_arena(&ui_manager->frame_arena);
 
-    // swap tables
-    UI_Widget **temp_widget_table = ui_manager->last_frame_widget_table;
     ui_manager->last_frame_widget_table = ui_manager->widget_table;
-    ui_manager->widget_table = temp_widget_table;
 
     // make sure we only have a single widget in the stack (should be root)
     assert(ui_manager->widget_stack->next == NULL);
@@ -994,7 +990,7 @@ bool32 do_button(UI_id id, UI_Theme theme) {
 bool32 do_text_button(char *text, UI_Button_Theme button_theme, UI_id id) {
     UI_Theme theme = NULL_THEME;
     theme.semantic_position = button_theme.position;
-    theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
+    theme.size_type = button_theme.size_type;
     theme.semantic_size = button_theme.size;
     theme.layout_type = UI_LAYOUT_VERTICAL;
     theme.background_color = button_theme.background_color;
