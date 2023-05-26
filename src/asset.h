@@ -79,6 +79,8 @@ void deallocate(Texture *texture) {
     deallocate(texture->filename);
 }
 
+// we have separate structs for Font_Files because a single font file can have multiple
+// baked versions, for ex: bold, regular, different sizes, etc.
 struct Font_File {
     char *filename;
     File_Data file_data;
@@ -92,6 +94,7 @@ struct Font {
     Font *table_prev;
     
     File_Data file_data;
+    uint8 *bitmap;
     stbtt_fontinfo font_info;
     stbtt_bakedchar *cdata;
     real32 height_pixels;

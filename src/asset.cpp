@@ -351,7 +351,7 @@ Font *add_font(char *font_name, char *font_filename,
     font->font_info = font_info;
     font->file_data = font_file_data;
 
-    // allocate memory for the baked characters, but we bake in opengl code
+    // allocate memory for the baked characters
     int32 first_char = 32;
     int32 num_chars = 96;
     font->cdata = (stbtt_bakedchar *) allocate(asset_manager->allocator, num_chars * sizeof(stbtt_bakedchar), false);
@@ -361,6 +361,18 @@ Font *add_font(char *font_name, char *font_filename,
     // NOTE: these font names are expected to be char array constants
     font->name = make_string(font_name);
 
+    // bake it
+    font->bitmap = (uint8 *) allocate(asset_manager->allocator, font->texture_width*font->texture_height);
+    // NOTE: no guarantee that the bitmap will fit the font, so choose temp_bitmap dimensions carefully
+    // TODO: we may want to maybe render this out to an image so that we can verify that the font fits
+    int32 result = stbtt_BakeFontBitmap((uint8 *) font->file_data.contents, 0,
+                                        font->height_pixels,
+                                        font->bitmap, font->texture_width, font->texture_height,
+                                        font->first_char, font->num_chars,
+                                        font->cdata);
+    assert(result > 0);
+    font->is_baked = true;
+    
     // add to table
     uint32 hash = get_hash(font_name, NUM_FONT_BUCKETS);
     Font *current = asset_manager->font_table[hash];

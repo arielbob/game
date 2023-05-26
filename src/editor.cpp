@@ -870,11 +870,12 @@ void draw_editor(Controller_State *controller_state) {
         { 1.0f, 1.0f, 1.0f, 1.0f },
         default_font
     };
-    
+
     bool32 toggle_show_wireframe_clicked = do_text_button(editor_state->show_wireframe ?
                                                           "Hide Wireframe" : "Show Wireframe",
                                                           editor_button_theme,
                                                           "toggle_wireframe");
+    
 #if 0
     bool32 toggle_show_wireframe_clicked = do_text_button(
         render_state->display_output.width - sidebar_button_width,

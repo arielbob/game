@@ -44,18 +44,20 @@ void ui_push_command(UI_Texture_Type texture_type,
 
     // copy vertices
     assert(render_data->num_vertices + num_vertices < UI_MAX_VERTICES);
+    int32 initial_num_vertices = render_data->num_vertices;
     memcpy(&render_data->vertices[render_data->num_vertices], vertices, num_vertices*sizeof(UI_Vertex));
     render_data->num_vertices += num_vertices;
 
     assert(render_data->num_indices + num_indices < UI_MAX_INDICES);
+    int32 indices_start = render_data->num_indices;
     // offset local indices to position in the render_data vertices array
     for (int32 i = 0; i < num_indices; i++) {
-        indices[i] += render_data->num_indices;
+        indices[i] += initial_num_vertices;
     }
     // copy indices
     memcpy(&render_data->indices[render_data->num_indices], indices, num_indices*sizeof(uint32));
     render_data->num_indices += num_indices;
-    
+
     if (ui_command_should_coalesce(texture_type, font)) {
         // we check this in the should_coalesce function, but just being safe..
         assert(ui_manager->num_render_commands > 0);
@@ -64,7 +66,8 @@ void ui_push_command(UI_Texture_Type texture_type,
     } else {
         UI_Render_Command *new_command = &ui_manager->render_commands[ui_manager->num_render_commands];
         new_command->texture_type = texture_type;
-
+        new_command->indices_start = indices_start;
+        new_command->num_indices = num_indices;
         switch (texture_type) {
             case UI_Texture_Type::UI_TEXTURE_NONE: {
                 // nothing to do
@@ -158,16 +161,16 @@ void ui_render_widget_to_commands(UI_Widget *widget) {
 
                 UI_Vertex vertices[4] = {
                     {
-                        { q.x0, q.y0 }, { q.s0, q.t0 }, {}
+                        { q.x0, q.y0 }, { q.s0, q.t0 }, widget->text_color
                     },
                     {
-                        { q.x1, q.y0 }, { q.s1, q.t0 }, {}
+                        { q.x1, q.y0 }, { q.s1, q.t0 }, widget->text_color
                     },
                     {
-                        { q.x1, q.y1 }, { q.s1, q.t1 }, {}
+                        { q.x1, q.y1 }, { q.s1, q.t1 }, widget->text_color
                     },
                     {
-                        { q.x0, q.y1 }, { q.s0, q.t1 }, {}
+                        { q.x0, q.y1 }, { q.s0, q.t1 }, widget->text_color
                     }
                 };
                 uint32 indices[] = { 0, 1, 2, 0, 2, 3 };

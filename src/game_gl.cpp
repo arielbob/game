@@ -1177,21 +1177,15 @@ bool32 gl_load_texture(Texture *texture, bool32 has_alpha=false) {
 // TODO: use the better stb_truetype packing procedures
 void gl_init_font(Font *font) {
     Marker m = begin_region();
-    uint8 *temp_bitmap = (uint8 *) allocate(temp_region, font->texture_width*font->texture_height);
-    // NOTE: no guarantee that the bitmap will fit the font, so choose temp_bitmap dimensions carefully
-    // TODO: we may want to maybe render this out to an image so that we can verify that the font fits
-    int32 result = stbtt_BakeFontBitmap((uint8 *) font->file_data.contents, 0,
-                                        font->height_pixels, temp_bitmap, font->texture_width, font->texture_height,
-                                        font->first_char, font->num_chars,
-                                        font->cdata);
-    assert(result > 0);
 
+    assert(font->is_baked);
+    
     uint32 baked_texture_id;
     glGenTextures(1, &baked_texture_id);
     glBindTexture(GL_TEXTURE_2D, baked_texture_id);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA,
                  font->texture_width, font->texture_height,
-                 0, GL_ALPHA, GL_UNSIGNED_BYTE, temp_bitmap);
+                 0, GL_ALPHA, GL_UNSIGNED_BYTE, font->bitmap);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
     end_region(m);
@@ -1221,8 +1215,6 @@ void gl_init_font(Font *font) {
     } else {
         last_visited->table_next = gl_font;
     }
-
-    font->is_baked = true;
 }
 
 bool32 gl_add_mesh(Mesh_Type type, String name, uint32 vao, uint32 vbo, uint32 num_triangles) {
@@ -3460,7 +3452,7 @@ void gl_render(Controller_State *controller_state,
             case Command_Type::LOAD_FONT: {
                 Command_Load_Font c = command->load_font;
                 Font *font = get_font(c.font_name);
-                assert(!font->is_baked);
+                assert(font->is_baked);
                 gl_init_font(font);
             } break;
             case Command_Type::LOAD_MESH: {
