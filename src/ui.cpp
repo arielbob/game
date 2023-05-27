@@ -96,7 +96,6 @@ UI_Widget *ui_table_get(UI_Widget **table, UI_id id) {
 }
 
 void ui_table_add(UI_Widget **table, UI_Widget *widget) {
-    // uhh, should we be doing this? idk
     if (!widget->id.string_ptr) return;
     
     uint32 hash = get_hash(widget->id, NUM_WIDGET_BUCKETS);
@@ -799,11 +798,17 @@ void ui_frame_end() {
     ui_manager->root = NULL;
 
     // swap allocators
+    Arena_Allocator temp = ui_manager->last_frame_arena;
     ui_manager->last_frame_arena = ui_manager->frame_arena;
-    clear_arena(&ui_manager->frame_arena);
+    ui_manager->frame_arena = temp;
 
+    // swap tables
+    UI_Widget **temp_widget_table = ui_manager->last_frame_widget_table;
     ui_manager->last_frame_widget_table = ui_manager->widget_table;
+    ui_manager->widget_table = temp_widget_table;
 
+    clear_arena(&ui_manager->frame_arena);
+    
     // make sure we only have a single widget in the stack (should be root)
     assert(ui_manager->widget_stack->next == NULL);
     ui_manager->widget_stack = NULL;
@@ -1058,7 +1063,7 @@ void ui_push_container(UI_Container_Theme theme) {
         row_theme.semantic_size = { 1.0f, 1.0f };
         row_theme.layout_type = UI_LAYOUT_HORIZONTAL;
 
-        ui_add_and_push_widget("container-row", row_theme, 0);
+        ui_add_and_push_widget("", row_theme, 0);
         {
             ui_x_pad(theme.left_padding);
 
@@ -1067,7 +1072,7 @@ void ui_push_container(UI_Container_Theme theme) {
             inner_theme.semantic_size = { 0.0f, 0.0f };
             inner_theme.layout_type = theme.layout_type;
             //inner_theme.background_color = rgb_to_vec4(0, 255, 0);
-            inner = ui_add_widget("inner", inner_theme, 0);
+            inner = ui_add_widget("", inner_theme, 0);
 
             ui_x_pad(theme.right_padding);
         }
