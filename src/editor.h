@@ -77,10 +77,5 @@ int32 add_entity(Level *level, Entity *entity);
 void delete_entity(Editor_State *editor_state, int32 id);
 Entity *get_entity(Editor_State *editor_state, int32 id);
 #endif
-Entity *copy_cast_entity(Allocator *allocator, Entity *uncast_entity);
-void unload_level(Editor_State *editor_state);
-//void load_level(Editor_State *editor_state, Level_Info *level_info);
-bool32 read_and_load_level(Editor_State *editor_state, char *filename);
-void reset_editor(Editor_State *editor_state);
 
 #endif

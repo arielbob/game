@@ -5,6 +5,14 @@
 #define DEFAULT_BUTTON_HOT_BACKGROUND rgb_to_vec4(60, 60, 72)
 #define DEFAULT_BUTTON_ACTIVE_BACKGROUND rgb_to_vec4(9, 9, 10)
 
+UI_Button_Theme editor_button_theme = {
+    { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE },
+    { 0.0f, 20.0f }, { 0.0f, 0.0f },
+    DEFAULT_BUTTON_BACKGROUND, DEFAULT_BUTTON_HOT_BACKGROUND, DEFAULT_BUTTON_ACTIVE_BACKGROUND,
+    { 1.0f, 1.0f, 1.0f, 1.0f },
+    default_font
+};
+
 void init_editor(Arena_Allocator *editor_arena, Editor_State *editor_state, Display_Output display_output) {
     *editor_state = {};
 
@@ -857,6 +865,53 @@ void draw_entity_box() {
     ui_pop_widget(); // pop window
 }
 
+void draw_level_box() {
+    Editor_State *editor_state = &game_state->editor_state;
+    
+    UI_Theme top_row_theme = {};
+    top_row_theme.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN };
+    top_row_theme.semantic_size = {};
+    top_row_theme.layout_type = UI_LAYOUT_HORIZONTAL;
+    //top_row_theme.position_type = theme.position_type;
+    //top_row_theme.semantic_position = theme.position;
+    //top_row_theme.background_color = theme.background_color;
+
+    ui_add_and_push_widget("", top_row_theme);
+    {
+        UI_Button_Theme theme = editor_button_theme;
+        theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
+        theme.size.x = 50.0f;
+        
+        bool32 new_level_clicked = do_text_button("New", theme, "new_level");
+        if (new_level_clicked) {
+            new_level(&game_state->level);
+            editor_state->is_new_level = true;
+        }
+        
+        ui_x_pad(1.0f);
+        
+        bool32 open_level_clicked = do_text_button("Open", theme, "open_level");
+        bool32 just_loaded_level = false;
+        if (open_level_clicked) {
+            Marker m = begin_region();
+            char *absolute_filename = (char *) region_push(PLATFORM_MAX_PATH);
+        
+            if (platform_open_file_dialog(absolute_filename,
+                                          LEVEL_FILE_FILTER_TITLE, LEVEL_FILE_FILTER_TYPE,
+                                          PLATFORM_MAX_PATH)) {
+                bool32 result = read_and_load_level(&game_state->level, absolute_filename);
+                if (result) {
+                    editor_state->is_new_level = false;
+                    just_loaded_level = true;
+                }
+            }
+
+            end_region(m);
+        }
+    }
+    ui_pop_widget();
+}
+
 void draw_editor(Controller_State *controller_state) {
     Editor_State *editor_state = &game_state->editor_state;
     
@@ -873,17 +928,8 @@ void draw_editor(Controller_State *controller_state) {
     };
 
     #if 1
-    // TODO: make container child widgets use the parent container's ID to create unique widget IDs
     ui_push_container(sidebar_theme);
     {
-        UI_Button_Theme editor_button_theme = {
-            { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE },
-            { 0.0f, 30.0f }, { 0.0f, 0.0f },
-            DEFAULT_BUTTON_BACKGROUND, DEFAULT_BUTTON_HOT_BACKGROUND, DEFAULT_BUTTON_ACTIVE_BACKGROUND,
-            { 1.0f, 1.0f, 1.0f, 1.0f },
-            default_font
-        };
-
         bool32 toggle_show_wireframe_clicked = do_text_button(editor_state->show_wireframe ?
                                                               "Hide Wireframe" : "Show Wireframe",
                                                               editor_button_theme,
@@ -892,6 +938,25 @@ void draw_editor(Controller_State *controller_state) {
         if (toggle_show_wireframe_clicked) {
             editor_state->show_wireframe = !editor_state->show_wireframe;
         }
+
+        ui_y_pad(1.0f);
+        
+        Gizmo_State *gizmo_state = &editor_state->gizmo_state;
+        bool32 toggle_global_clicked = do_text_button(gizmo_state->transform_mode == TRANSFORM_GLOBAL ?
+                                                      "Use Local Transform" : "Use Global Transform",
+                                                      editor_button_theme, "toggle_transform");
+        if (toggle_global_clicked) {
+            if (gizmo_state->transform_mode == TRANSFORM_GLOBAL) {
+                gizmo_state->transform_mode = TRANSFORM_LOCAL;
+            } else {
+                gizmo_state->transform_mode = TRANSFORM_GLOBAL;
+            }
+        }
+
+        ui_y_pad(5.0f);
+
+        draw_level_box();
+        
     }
     ui_pop_widget();
     #endif

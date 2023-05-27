@@ -438,7 +438,8 @@ void unload_level_meshes() {
                 if (current->table_next) {
                     current->table_next->table_prev = current->table_prev;
                 }
-                
+
+                r_unload_mesh(current->name);
                 deallocate(current);
                 deallocate(asset_manager->allocator, current);
 

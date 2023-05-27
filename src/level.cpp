@@ -16,6 +16,36 @@ void unload_level(Level *level) {
     level->is_loaded = false;
 }
 
+void new_level(Level *level) {
+    unload_level(level);
+}
+
+bool32 read_and_load_level(Level *level, char *filename) {
+    Marker m = begin_region();
+
+    Level_Info *level_info = (Level_Info *) allocate(temp_region, sizeof(Level_Info), true);
+    level_info->name = make_string(filename);
+    File_Data level_file = platform_open_and_read_file(temp_region, filename);
+
+    // TODO: add error string and output error if this fails
+    char *error;
+    bool32 parse_result = Level_Loader::parse_level(temp_region, level_file, level_info, &error);
+
+    if (!parse_result) {
+        // TODO: don't assert here and handle the error instead somehow
+        debug_print(error);
+        debug_print("\n");
+        assert(!"Level parsing failed.");
+        return false;
+    }
+    
+    load_level(level, level_info);
+    
+    end_region(m);
+
+    return true;
+}
+
 int32 add_entity(Level *level, Entity *entity) {
     int32 id = level->total_entities_added_ever++;
 
