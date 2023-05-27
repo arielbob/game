@@ -688,10 +688,10 @@ void draw_entity_box() {
 
     UI_Container_Theme inner_theme = {};
     real32 container_padding = 8.0f;
-    inner_theme.top_padding    = container_padding;
-    inner_theme.right_padding  = container_padding;
-    inner_theme.bottom_padding = container_padding;
-    inner_theme.left_padding   = container_padding;
+    inner_theme.padding.top    = container_padding;
+    inner_theme.padding.right  = container_padding;
+    inner_theme.padding.bottom = container_padding;
+    inner_theme.padding.left   = container_padding;
 
     inner_theme.size_type      = { UI_SIZE_ABSOLUTE, UI_SIZE_FIT_CHILDREN };
     inner_theme.size           = { 200.0f, 0.0f };
@@ -863,7 +863,10 @@ void draw_editor(Controller_State *controller_state) {
     Entity *selected_entity = get_selected_entity(editor_state);
 
     UI_Container_Theme sidebar_theme = {
-        5.0f, 5.0f, 5.0f, 5.0f,
+        { 5.0f, 5.0f, 5.0f, 5.0f },
+        {},
+        UI_POSITION_FLOAT,
+        { render_state->display_output.width - 200.0f, 0.0f },
         { UI_SIZE_ABSOLUTE, UI_SIZE_FIT_CHILDREN },
         { 200.0f, 0.0f },
         UI_LAYOUT_VERTICAL

@@ -1050,13 +1050,16 @@ void ui_push_container(UI_Container_Theme theme) {
     column_theme.size_type = theme.size_type;
     column_theme.semantic_size = theme.size;
     column_theme.layout_type = UI_LAYOUT_VERTICAL;
-
+    column_theme.position_type = theme.position_type;
+    column_theme.semantic_position = theme.position;
+    column_theme.background_color = theme.background_color;
+    
     UI_Widget *inner;
 
     // vertical
-    UI_Widget *column = ui_add_and_push_widget("", column_theme, 0);
+    UI_Widget *column = ui_add_and_push_widget("", column_theme, UI_WIDGET_DRAW_BACKGROUND);
     {
-        ui_y_pad(theme.top_padding);
+        ui_y_pad(theme.padding.top);
 
         UI_Theme row_theme = {};
         row_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
@@ -1065,7 +1068,7 @@ void ui_push_container(UI_Container_Theme theme) {
 
         ui_add_and_push_widget("", row_theme, 0);
         {
-            ui_x_pad(theme.left_padding);
+            ui_x_pad(theme.padding.left);
 
             UI_Theme inner_theme = {};
             inner_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
@@ -1074,11 +1077,11 @@ void ui_push_container(UI_Container_Theme theme) {
             //inner_theme.background_color = rgb_to_vec4(0, 255, 0);
             inner = ui_add_widget("", inner_theme, 0);
 
-            ui_x_pad(theme.right_padding);
+            ui_x_pad(theme.padding.right);
         }
         ui_pop_widget();
 
-        ui_y_pad(theme.bottom_padding);
+        ui_y_pad(theme.padding.bottom);
     }
     ui_pop_widget();
 

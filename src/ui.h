@@ -118,11 +118,11 @@ struct UI_Theme {
 };
 
 struct UI_Container_Theme {
-    real32 top_padding;
-    real32 right_padding;
-    real32 bottom_padding;
-    real32 left_padding;
-
+    Vec4_UI_Padding padding;
+    Vec4 background_color;
+    
+    UI_Position_Type position_type;
+    Vec2 position;
     Vec2_UI_Size_Type size_type;
     Vec2 size;
     UI_Layout_Type layout_type;
