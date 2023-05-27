@@ -335,6 +335,9 @@ void append_string(String_Buffer *buffer, String to_append) {
     buffer->current_length += to_append.length;
 }
 
+// this is kind of an annoying function because the args need to be
+// of valid printf arg types. if you pass in a String type, then you'll
+// just get garbage and it'll be confusing.
 void append_string(String_Buffer *buffer, char *format, ...) {
     Marker m = begin_region();
 
@@ -355,7 +358,8 @@ void append_string(String_Buffer *buffer, char *format, ...) {
     memcpy(&buffer->contents[buffer->current_length], to_append, num_chars_no_null);
     buffer->current_length += num_chars_no_null;
     
-    end_region(m);
+    va_end(args);
+    end_region(m);    
 }
 
 inline void append_string(String_Buffer *buffer, String_Buffer to_append_buffer) {

@@ -303,7 +303,7 @@ bool32 Level_Loader::parse_level_info_block(Allocator *temp_allocator, Tokenizer
         return level_parse_error(error, "Expected close bracket for level_info_block");
     }
 
-    return true;    
+    return true;
 }
 
 bool32 Level_Loader::parse_meshes_block(Allocator *temp_allocator, Tokenizer *tokenizer,

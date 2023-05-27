@@ -423,22 +423,23 @@ void update_messages(Message_Manager *manager, real32 dt) {
     }
 }
 
-#if 0
-void draw_messages(Asset_Manager *asset_manager, Message_Manager *manager, real32 x_start, real32 y_start) {
+void draw_messages(Message_Manager *manager, real32 y_start) {
     int32 index = (MAX_MESSAGES + (manager->current_message_index - 1)) % MAX_MESSAGES;
     Message *messages = manager->messages;
     real32 y_offset = 30.0f;
 
-    UI_Text_Style text_style;
-    // TODO: convert to linear before mixing colors
-    text_style.color = make_vec4(1.0f, 1.0f, 1.0f, 1.0f);
-    text_style.use_offset_shadow = true;
-    text_style.offset_shadow_color = make_vec4(0.0f, 0.0f, 0.0f, 1.0f);
-    text_style.text_align_flags = TEXT_JUSTIFY_CENTER;
-
     Allocator *frame_allocator = (Allocator *) &memory.frame_arena;
-    int32 font_id;
-    Font font = get_font(asset_manager, "calibri24b", &font_id);
+
+    UI_Theme message_container = NULL_THEME;
+    message_container.position_type = UI_POSITION_FLOAT;
+    message_container.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
+    message_container.semantic_size = { 1.0f, 0.0f };
+    message_container.layout_type = { UI_LAYOUT_CENTER };
+    
+    UI_Theme text_theme = NULL_THEME;
+    text_theme.text_color = make_vec4(1.0f, 1.0f, 1.0f, 1.0f);
+    text_theme.font = "calibri24b";
+    
     for (int32 messages_visited = 0; messages_visited < manager->num_messages; messages_visited++) {
         Message *message = &messages[index];
         char *string = to_char_array(frame_allocator, message->text);
@@ -446,17 +447,20 @@ void draw_messages(Asset_Manager *asset_manager, Message_Manager *manager, real3
         real32 total_fade_time = MESSAGE_TIME_LIMIT - MESSAGE_FADE_START;
         real32 unclamped_opacity = 1.0f - ((message->timer - MESSAGE_FADE_START) / total_fade_time);
         real32 opacity = clamp(unclamped_opacity, 0.0f, 1.0f);
-        text_style.color.w = opacity;
-        text_style.offset_shadow_color.w = opacity;
 
-        do_text(Context::ui_manager, x_start, y_start + messages_visited*y_offset,
-                string, font_id, text_style,
-                "message_text", index);
-                
+        // TODO: does this need to be done in linear-space?
+        text_theme.text_color.w = opacity;
+
+        message_container.semantic_position = { 0.0f, y_start + messages_visited*y_offset };
+        ui_add_and_push_widget("", message_container);
+        {
+            do_text(string, text_theme);
+        }
+        ui_pop_widget();
+        
         index = (MAX_MESSAGES + (index - 1)) % MAX_MESSAGES;
     }
 }
-#endif
 
 void init_game(Sound_Output *sound_output, uint32 num_samples) {
     assert(!game_state->is_initted);
@@ -944,9 +948,7 @@ void update_game(Controller_State *controller_state, Sound_Output *sound_output,
 }
 
 // TODO: boxes with image backgrounds for icons
-void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 dt) {
-    ui_frame_init(display_output, dt);
-
+void draw_test_ui(real32 dt) {
 #if 0
     ui_push_text_color({ 1.0f, 1.0f, 1.0f, 1.0f });
     ui_push_position({ 5.0f, 5.0f });
@@ -1143,15 +1145,6 @@ void draw_test_ui(Asset_Manager *asset, Display_Output *display_output, real32 d
 #endif
 
     draw_editor(Context::controller_state);
-    
-    ui_calculate_standalone_sizes(asset);
-    ui_calculate_ancestor_dependent_sizes();
-    ui_calculate_child_dependent_sizes();
-    ui_calculate_ancestor_dependent_sizes_part_2();
-    ui_calculate_positions();
-
-    // TODO: move this somewhere else probably, maybe to win32_game.cpp after update()
-    ui_create_render_commands();
 }
 
 void update(Controller_State *controller_state,
@@ -1166,6 +1159,8 @@ void update(Controller_State *controller_state,
     real64 current_time = platform_get_wall_clock_time();
     real32 dt = (real32) (current_time - game_state->last_update_time);
     game_state->last_update_time = current_time;
+
+    ui_frame_init(dt);
     
     game_state->fps_sum += 1.0f / dt;
     game_state->num_fps_samples++;
@@ -1215,27 +1210,14 @@ void update(Controller_State *controller_state,
         //update_game(game_state, controller_state, sound_output, dt);
     }
 
-    // TODO: walk through this in the debugger
-    draw_test_ui(asset_manager, display_output, dt);
+    draw_test_ui(dt);
     
     Player *player = &game_state->player;
 
-#if 0
-    int32 font_id;
-    Font font = get_font(asset_manager, "calibri14", &font_id);
-
-    char *dt_string = string_format((Allocator *) &memory.frame_arena, "FPS %d / dt %.3f", 
-                                    (int32) round(game_state->last_second_fps), dt);
-    do_text(ui_manager, 5.0f, 14.0f, dt_string, font_id, "dt_string");
-#endif
-
     fill_sound_buffer_with_audio(sound_output, game_state->is_playing_music, &game_state->music, num_samples);
 
-#if 0
     update_messages(&game_state->message_manager, dt);
-    draw_messages(asset_manager, &game_state->message_manager,
-                  display_output->width / 2.0f, display_output->height / 2.0f);
-#endif
+    draw_messages(&game_state->message_manager, display_output->height - 175.0f);
     
     //clear_hot_if_gone(ui_manager);
     //clear_active_if_gone(ui_manager);
@@ -1245,4 +1227,6 @@ void update(Controller_State *controller_state,
     //       that we delete its state, it won't be rendered.
     //delete_state_if_gone(ui_manager);
     //assert(ui_manager->current_layer == 0);
+
+    ui_post_update();
 }

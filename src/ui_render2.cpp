@@ -39,7 +39,7 @@ void ui_push_command(UI_Texture_Type texture_type,
                      uint32 *indices, int32 num_indices,
                      Font *font = NULL) {
     assert(ui_manager->num_render_commands < UI_MAX_RENDER_COMMANDS);
-    
+
     UI_Render_Data *render_data = &ui_manager->render_data;
 
     // copy vertices

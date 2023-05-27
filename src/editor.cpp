@@ -867,54 +867,121 @@ void draw_entity_box() {
 
 void draw_level_box() {
     Editor_State *editor_state = &game_state->editor_state;
-    
-    UI_Theme top_row_theme = {};
-    top_row_theme.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN };
-    top_row_theme.semantic_size = {};
-    top_row_theme.layout_type = UI_LAYOUT_HORIZONTAL;
-    //top_row_theme.position_type = theme.position_type;
-    //top_row_theme.semantic_position = theme.position;
-    //top_row_theme.background_color = theme.background_color;
 
-    ui_add_and_push_widget("", top_row_theme);
+    UI_Theme column_theme = {};
+    column_theme.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN };
+    column_theme.semantic_size = {};
+    column_theme.layout_type = UI_LAYOUT_VERTICAL;
+    
+    UI_Theme row_theme = {};
+    row_theme.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN };
+    row_theme.semantic_size = {};
+    row_theme.layout_type = UI_LAYOUT_HORIZONTAL;
+    //row_theme.position_type = theme.position_type;
+    //row_theme.semantic_position = theme.position;
+    //row_theme.background_color = theme.background_color;
+
+    UI_Button_Theme theme = editor_button_theme;
+    theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
+    theme.size.x = 75.0f;
+    
+    ui_add_and_push_widget("", column_theme);
     {
-        UI_Button_Theme theme = editor_button_theme;
-        theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
-        theme.size.x = 50.0f;
+        ui_add_and_push_widget("", row_theme);
+        {
+            bool32 new_level_clicked = do_text_button("New", theme, "new_level");
+            if (new_level_clicked) {
+                new_level(&game_state->level);
+                editor_state->selected_entity_id = -1;
+                editor_state->last_selected_entity_id = -1;
+                editor_state->is_new_level = true;
+            }
         
-        bool32 new_level_clicked = do_text_button("New", theme, "new_level");
-        if (new_level_clicked) {
-            new_level(&game_state->level);
-            editor_state->selected_entity_id = -1;
-            editor_state->last_selected_entity_id = -1;
-            editor_state->is_new_level = true;
-        }
+            ui_x_pad(1.0f);
         
-        ui_x_pad(1.0f);
+            bool32 open_level_clicked = do_text_button("Open", theme, "open_level");
+            bool32 just_loaded_level = false;
+            if (open_level_clicked) {
+                Marker m = begin_region();
+                char *absolute_filename = (char *) region_push(PLATFORM_MAX_PATH);
         
-        bool32 open_level_clicked = do_text_button("Open", theme, "open_level");
-        bool32 just_loaded_level = false;
-        if (open_level_clicked) {
-            Marker m = begin_region();
-            char *absolute_filename = (char *) region_push(PLATFORM_MAX_PATH);
-        
-            if (platform_open_file_dialog(absolute_filename,
-                                          LEVEL_FILE_FILTER_TITLE, LEVEL_FILE_FILTER_TYPE,
-                                          PLATFORM_MAX_PATH)) {
-                unload_level(&game_state->level);
-                bool32 result = read_and_load_level(&game_state->level, absolute_filename);
-                if (result) {
-                    editor_state->selected_entity_id = -1;
-                    editor_state->last_selected_entity_id = -1;
-                    editor_state->is_new_level = false;
-                    just_loaded_level = true;
+                if (platform_open_file_dialog(absolute_filename,
+                                              LEVEL_FILE_FILTER_TITLE, LEVEL_FILE_FILTER_TYPE,
+                                              PLATFORM_MAX_PATH)) {
+                    unload_level(&game_state->level);
+                    bool32 result = read_and_load_level(&game_state->level, absolute_filename);
+                    if (result) {
+                        editor_state->selected_entity_id = -1;
+                        editor_state->last_selected_entity_id = -1;
+                        editor_state->is_new_level = false;
+                        just_loaded_level = true;
+                    }
                 }
+
+                end_region(m);
             }
 
-            end_region(m);
+            
         }
+        ui_pop_widget();
+
+        ui_y_pad(5.0f);
+        
+        ui_add_and_push_widget("", row_theme);
+        {
+            bool32 save_level_clicked = do_text_button("Save", theme, "save_level");
+
+            if (save_level_clicked) {
+                Marker m = begin_region();
+                
+                if (editor_state->is_new_level) {
+                    char *filename = (char *) region_push(PLATFORM_MAX_PATH);
+                    bool32 has_filename = platform_open_save_file_dialog(filename,
+                                                                         LEVEL_FILE_FILTER_TITLE, LEVEL_FILE_FILTER_TYPE,
+                                                                         PLATFORM_MAX_PATH);
+
+                    if (has_filename) {
+                        export_level(&game_state->level, filename);
+                        editor_state->is_new_level = false;
+                
+                        add_message(&game_state->message_manager, make_string(SAVE_SUCCESS_MESSAGE));
+                    }
+                } else {
+                    export_level(&game_state->level, to_char_array(temp_region, game_state->level.filename));
+                    add_message(&game_state->message_manager, make_string(SAVE_SUCCESS_MESSAGE));
+                }
+
+                end_region(m);
+            }
+            
+            ui_x_pad(1.0f);
+
+            bool32 save_as_level_clicked = do_text_button("Save As..", theme, "save_as");
+            if (save_as_level_clicked) {
+                assert(!is_empty(game_state->level.name));
+
+                Marker m = begin_region();
+                char *filename = (char *) region_push(PLATFORM_MAX_PATH);
+
+                bool32 has_filename = platform_open_save_file_dialog(filename,
+                                                                     LEVEL_FILE_FILTER_TITLE, LEVEL_FILE_FILTER_TYPE,
+                                                                     PLATFORM_MAX_PATH);
+
+                if (has_filename) {
+                    export_level(&game_state->level, filename);
+                    editor_state->is_new_level = false;
+                    add_message(&game_state->message_manager, make_string(SAVE_SUCCESS_MESSAGE));
+                }
+        
+                end_region(m);
+            }
+        }
+        ui_pop_widget();
     }
     ui_pop_widget();
+    
+    
+    
 }
 
 void draw_editor(Controller_State *controller_state) {

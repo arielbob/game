@@ -24,7 +24,7 @@ bool32 read_and_load_level(Level *level, char *filename) {
     Marker m = begin_region();
 
     Level_Info *level_info = (Level_Info *) allocate(temp_region, sizeof(Level_Info), true);
-    level_info->name = make_string(filename);
+    level_info->filename = make_string(filename);
     File_Data level_file = platform_open_and_read_file(temp_region, filename);
 
     // TODO: add error string and output error if this fails

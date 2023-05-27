@@ -347,7 +347,7 @@ UI_Interact_Result ui_interact(UI_Widget *semantic_widget) {
     return result;
 }
 
-void calculate_standalone_size(Asset_Manager *asset, UI_Widget *widget, UI_Widget_Axis axis) {
+void calculate_standalone_size(UI_Widget *widget, UI_Widget_Axis axis) {
     UI_Size_Type size_type = widget->size_type[axis];
     real32 axis_semantic_size = widget->semantic_size[axis];
     real32 *axis_computed_size = &widget->computed_size[axis];
@@ -390,7 +390,7 @@ void calculate_standalone_size(Asset_Manager *asset, UI_Widget *widget, UI_Widge
     }
 }
 
-void ui_calculate_standalone_sizes(Asset_Manager *asset) {
+void ui_calculate_standalone_sizes() {
     UI_Widget *current = ui_manager->root;
 
     int32 num_visited = 0;
@@ -403,8 +403,8 @@ void ui_calculate_standalone_sizes(Asset_Manager *asset) {
         
         UI_Widget *parent = current->parent;
         
-        calculate_standalone_size(asset, current, UI_WIDGET_X_AXIS);
-        calculate_standalone_size(asset, current, UI_WIDGET_Y_AXIS);
+        calculate_standalone_size(current, UI_WIDGET_X_AXIS);
+        calculate_standalone_size(current, UI_WIDGET_Y_AXIS);
                 
         if (current->first) {
             current = current->first;
@@ -748,7 +748,8 @@ void ui_init(Arena_Allocator *arena) {
                                                                              sizeof(UI_Widget_State *) * NUM_WIDGET_BUCKETS, true);
 }
 
-void ui_frame_init(Display_Output *display_output, real32 dt) {
+void ui_frame_init(real32 dt) {
+    Display_Output *display_output = &game_state->render_state.display_output;
     // note that we have a global frame arena and a frame arena for ui (inside ui_manager).
     // frame arena for ui should be used for when we need to reference data in the frame arena
     // in the subsequent frame.
@@ -791,6 +792,17 @@ void ui_frame_init(Display_Output *display_output, real32 dt) {
     UI_Render_Data *render_data = &ui_manager->render_data;
     render_data->num_vertices = 0;
     render_data->num_indices = 0;
+}
+
+void ui_post_update() {
+    ui_calculate_standalone_sizes();
+    ui_calculate_ancestor_dependent_sizes();
+    ui_calculate_child_dependent_sizes();
+    ui_calculate_ancestor_dependent_sizes_part_2();
+    ui_calculate_positions();
+
+    // TODO: move this somewhere else probably, maybe to win32_game.cpp after update()
+    ui_create_render_commands();
 }
 
 void ui_frame_end() {
@@ -973,6 +985,7 @@ void do_text(char *text, char *id, UI_Theme theme, uint32 flags = 0, int32 index
     UI_Theme text_theme = NULL_THEME;
     text_theme.size_type = { UI_SIZE_FIT_TEXT, UI_SIZE_FIT_TEXT };
     text_theme.text_color = theme.text_color;
+    text_theme.font = theme.font;
     UI_Widget *text_widget = ui_add_widget(make_ui_id(id, index), text_theme, UI_WIDGET_DRAW_TEXT);
     text_widget->text = text;
 }

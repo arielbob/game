@@ -135,7 +135,7 @@ struct Debug_State {
 };
 
 // first one added is always the one that gets shown first
-#define MAX_MESSAGES 8
+#define MAX_MESSAGES 5
 #define MESSAGE_TIME_LIMIT 1.8f
 #define MESSAGE_FADE_START 1.5f
 struct Message {

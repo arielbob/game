@@ -19,9 +19,8 @@
 #define BORDER_TOP    (1 << 3)
 #define BORDER_ALL    (0b1111)
 
-#define UI_MAX_GROUPS 512
-#define UI_MAX_VERTICES  1024
-#define UI_MAX_TRIANGLES 1024
+#define UI_MAX_VERTICES  16384
+#define UI_MAX_TRIANGLES 8192
 #define UI_MAX_INDICES   UI_MAX_TRIANGLES*3
 #define UI_MAX_RENDER_COMMANDS 1024
 #define NUM_WIDGET_BUCKETS 128
@@ -448,5 +447,6 @@ real32 get_adjusted_font_height(Font font);
 real32 get_center_x_offset(real32 container_width, real32 element_width);
 real32 get_center_baseline_offset(real32 container_height, real32 text_height);
 real32 get_center_y_offset(real32 height, real32 box_height);
+void ui_create_render_commands();
 
 #endif

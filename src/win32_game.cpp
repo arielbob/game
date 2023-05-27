@@ -227,6 +227,8 @@ void string_format(char *buf, int32 n, char *format, ...) {
     
     int32 num_chars_outputted = vsnprintf(buf, n, format, args);
     assert(num_chars_outputted > 0 && num_chars_outputted < n);
+
+    va_end(args);
 }
 
 char *string_format(Allocator *allocator, char *format, ...) {
@@ -240,6 +242,8 @@ char *string_format(Allocator *allocator, char *format, ...) {
     int32 num_chars_outputted = vsnprintf(buf, n, format, args);
     assert(num_chars_outputted > 0 && num_chars_outputted < n);
 
+    va_end(args);
+    
     return buf;
 }
 
@@ -250,6 +254,8 @@ char *string_format(Allocator *allocator, int32 n, char *format, ...) {
     
     int32 num_chars_outputted = vsnprintf(buf, n, format, args);
     assert(num_chars_outputted > 0 && num_chars_outputted < n);
+
+    va_end(args);
 
     return buf;
 }
@@ -1279,10 +1285,10 @@ int WinMain(HINSTANCE hInstance,
                     }
                         
                     uint32 num_samples = bytes_delta / sound_output.bytes_per_sample;
-                    
+
                     update(controller_state,
                            &game_sound_output, num_samples);
-
+                    
                     fill_sound_buffer(&sound_output, game_sound_output.sound_buffer, num_samples);
                     if (!sound_output.is_playing) {
                         sound_output.sound_buffer->Play(0, 0, DSBPLAY_LOOPING);
