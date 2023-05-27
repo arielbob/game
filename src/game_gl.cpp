@@ -1175,6 +1175,8 @@ bool32 gl_load_texture(Texture *texture, bool32 has_alpha=false) {
 }
 
 // TODO: use the better stb_truetype packing procedures
+// we don't have per-level fonts right now, so we don't have an unloading font procedure.
+// not sure if we ever will need per-level fonts.
 void gl_init_font(Font *font) {
     Marker m = begin_region();
 
@@ -1920,6 +1922,8 @@ void gl_unload_mesh(String name) {
             
             deallocate(current);
             deallocate((Allocator *) &g_gl_state->heap, current);
+
+            return;
         }
 
         current = current->table_next;
@@ -1949,6 +1953,8 @@ void gl_unload_texture(String name) {
             
             deallocate(current);
             deallocate((Allocator *) &g_gl_state->heap, current);
+
+            return;
         }
 
         current = current->table_next;

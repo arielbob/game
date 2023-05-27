@@ -30,6 +30,7 @@ void update_entity_aabb(Entity *entity) {
     // TODO: not sure if all entities with AABBs necessarily need a mesh
     if (entity->flags & ENTITY_MESH) {
         Mesh *mesh = get_mesh(entity->mesh_name);
+        assert(mesh);
         entity->transformed_aabb = transform_aabb(mesh->aabb, get_model_matrix(entity->transform));
     }
 }

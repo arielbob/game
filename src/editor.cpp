@@ -885,6 +885,8 @@ void draw_level_box() {
         bool32 new_level_clicked = do_text_button("New", theme, "new_level");
         if (new_level_clicked) {
             new_level(&game_state->level);
+            editor_state->selected_entity_id = -1;
+            editor_state->last_selected_entity_id = -1;
             editor_state->is_new_level = true;
         }
         
@@ -899,8 +901,11 @@ void draw_level_box() {
             if (platform_open_file_dialog(absolute_filename,
                                           LEVEL_FILE_FILTER_TITLE, LEVEL_FILE_FILTER_TYPE,
                                           PLATFORM_MAX_PATH)) {
+                unload_level(&game_state->level);
                 bool32 result = read_and_load_level(&game_state->level, absolute_filename);
                 if (result) {
+                    editor_state->selected_entity_id = -1;
+                    editor_state->last_selected_entity_id = -1;
                     editor_state->is_new_level = false;
                     just_loaded_level = true;
                 }
