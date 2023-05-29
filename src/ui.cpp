@@ -285,10 +285,11 @@ UI_Interact_Result ui_interact(UI_Widget *semantic_widget) {
                 if (just_pressed(controller_state->left_mouse)) {
                     // we check for !was_down to avoid setting a button active if we click and hold outside then
                     // move into the button
+                    result.just_pressed = true;
                     ui_manager->active = id;
                     ui_manager->active_t = 0.0f;
                 } else if (is_active(computed_widget) && just_lifted(controller_state->left_mouse)) {
-                    result.clicked = true;
+                    result.released = true;
                     result.click_t = ui_manager->active_t;
                     ui_manager->active = {};
                 }
@@ -330,7 +331,7 @@ UI_Interact_Result ui_interact(UI_Widget *semantic_widget) {
             if (just_pressed(controller_state->left_mouse)) {
                 if (!is_focus(computed_widget)) {
                     ui_manager->focus = id;
-                    result.focused = true;
+                    result.just_focused = true;
                     ui_manager->focus_t = 0;
                 }
             }
@@ -956,6 +957,18 @@ UI_Window_State *ui_add_window_state(UI_id id, Vec2 position) {
     return &state->window;
 }
 
+UI_Text_Field_State *ui_add_text_field_state(UI_id id, String value) {
+    UI_Widget_State *state = ui_make_widget_state();
+    state->id = id;
+    state->type = UI_STATE_TEXT_FIELD;
+    String_Buffer buffer = make_string_buffer((Allocator *) &ui_manager->persistent_heap, value, 64);
+    state->text_field_slider = { buffer, false, 0 };
+    
+    _ui_add_state(state);
+
+    return &state->text_field;
+}
+
 UI_Text_Field_Slider_State *ui_add_text_field_slider_state(UI_id id, real32 value) {
     UI_Widget_State *state = ui_make_widget_state();
     state->id = id;
@@ -1002,7 +1015,7 @@ bool32 do_button(UI_id id, UI_Theme theme) {
     UI_Widget *widget = ui_add_widget(id, theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
     UI_Interact_Result interact_result = ui_interact(widget);
     
-    return interact_result.clicked;
+    return interact_result.released;
 }
 
 bool32 do_text_button(char *text, UI_Button_Theme button_theme, UI_id id) {
@@ -1037,7 +1050,7 @@ bool32 do_text_button(char *text, UI_Button_Theme button_theme, UI_id id) {
     
     UI_Interact_Result interact_result = ui_interact(button);
 
-    return interact_result.clicked;
+    return interact_result.released;
 }
 
 inline bool32 do_text_button(char *text, UI_Button_Theme button_theme, char *id, int32 index = 0) {
@@ -1101,27 +1114,6 @@ void ui_push_container(UI_Container_Theme theme) {
     ui_push_existing_widget(inner);
 }
 
-#if 0
-void ui_add_slider_bar(real32 value, real32 min, real32 max) {
-    
-    ui_push_size_type({ UI_SIZE_PERCENTAGE, UI_SIZE_PERCENTAGE });
-    ui_push_position_type(UI_POSITION_FLOAT);
-    ui_push_position({});
-    ui_push_size({ clamp((value - min) / (max - min), 0.0f, 1.0f), 1.0f });
-    
-    ui_add_widget("", UI_WIDGET_DRAW_BACKGROUND);
-
-    ui_pop_size();
-    ui_pop_position();
-    ui_pop_position_type();
-    ui_pop_size_type();
-}
-#endif
-
-struct UI_Slider_Theme {
-    Vec4 background_color;
-};
-
 void ui_add_slider_bar(UI_Slider_Theme theme, real32 value, real32 min, real32 max) {
     UI_Theme slider_theme = {};
     slider_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_PERCENTAGE };
@@ -1131,25 +1123,6 @@ void ui_add_slider_bar(UI_Slider_Theme theme, real32 value, real32 min, real32 m
     
     ui_add_widget("", slider_theme, UI_WIDGET_DRAW_BACKGROUND);
 }
-
-struct UI_Text_Field_Slider_Theme {
-    Vec4 field_background_color;
-    Vec4 slider_background_color;
-    Vec4 cursor_color;
-    bool32 show_slider;
-    bool32 show_field_background;
-    
-    real32 corner_radius;
-    uint32 corner_flags;
-    uint32 border_flags;
-    Vec4 border_color;
-    real32 border_width;
-    
-    char *font;
-    
-    Vec2_UI_Size_Type size_type;
-    Vec2 size;
-};
 
 real32 do_text_field_slider(real32 value,
                             real32 min_value, real32 max_value,
@@ -1193,7 +1166,7 @@ real32 do_text_field_slider(real32 value,
 
         if (state->is_sliding) {
             state->is_using = true;
-        } else if (interact.clicked) {
+        } else if (interact.released) {
             state->is_using = true;
 
             char *value_text = string_format((Allocator *) &ui_manager->frame_arena, "%f", value);
@@ -1406,4 +1379,145 @@ void push_window(char *title, UI_Window_Theme theme, char *id_string, int32 inde
             state->position += delta;
         }
     }
+}
+
+String do_text_field(UI_Text_Field_Theme theme,
+                     String value,
+                     char *id_string, int32 index = 0) {
+    UI_id id = make_ui_id(id_string, index);
+    UI_Widget_State *state_variant = ui_get_state(id);
+    UI_Text_Field_State *state;
+    if (!state_variant) {
+        state = ui_add_text_field_state(id, value);
+    } else {
+        state = &state_variant->text_field;
+    }
+
+    UI_Theme textbox_theme = {};
+    textbox_theme.layout_type             = UI_LAYOUT_HORIZONTAL;
+    textbox_theme.size_type               = theme.size_type;
+    textbox_theme.semantic_size           = theme.size;
+    textbox_theme.background_color        = theme.background_color;
+    textbox_theme.hot_background_color    = theme.hot_background_color;
+    textbox_theme.active_background_color = theme.active_background_color;
+    textbox_theme.font                    = theme.font;
+    textbox_theme.corner_radius           = theme.corner_radius;
+    textbox_theme.corner_flags            = theme.corner_flags;
+    textbox_theme.border_flags            = theme.border_flags;
+    textbox_theme.border_color            = theme.border_color;
+    textbox_theme.border_width            = theme.border_width;
+    
+    uint32 textbox_flags = (UI_WIDGET_IS_CLICKABLE | UI_WIDGET_IS_FOCUSABLE |
+                            UI_WIDGET_DRAW_BORDER | UI_WIDGET_DRAW_BACKGROUND);
+    
+    UI_Widget *textbox = ui_add_and_push_widget(id_string, textbox_theme, textbox_flags);
+                                                
+    UI_Interact_Result interact = ui_interact(textbox);
+    Font *font = get_font(textbox->font);
+
+    state->cursor_timer = ui_manager->active_t;
+    
+    real32 x_padding = 5.0f;
+    if (interact.just_pressed || interact.holding) {
+        int32 last_index = 0;
+        
+        // find where to put it
+        for (int32 i = 1; i <= state->buffer.current_length; i++) {
+            real32 width_to_i = get_width(font, &state->buffer, i);
+            if (width_to_i > interact.relative_mouse.x - x_padding + 3.0f) {
+                break;
+            }
+            last_index = i;
+        }
+
+        state->cursor_timer = 0.0f;
+        state->cursor_index = last_index;
+    }
+    
+    if (is_focus(textbox)) {
+        Controller_State *controller_state = Context::controller_state;
+        int32 original_cursor_index = state->cursor_index;
+        
+        if (just_pressed_or_repeated(controller_state->key_left)) {
+            state->cursor_index--;
+            state->cursor_index = max(state->cursor_index, 0);
+        }
+
+        if (just_pressed_or_repeated(controller_state->key_right)) {
+            state->cursor_index++;
+            state->cursor_index = min(state->cursor_index, state->buffer.current_length);
+            state->cursor_index = min(state->cursor_index, state->buffer.size);
+        }
+
+        String_Buffer *buffer = &state->buffer;
+        for (int32 i = 0; i < controller_state->num_pressed_chars; i++) {
+            char c = controller_state->pressed_chars[i];
+            if (c == '\b') { // backspace key
+                splice(&state->buffer, state->cursor_index - 1);
+                state->cursor_index--;
+                state->cursor_index = max(state->cursor_index, 0);
+            } else if ((buffer->current_length < buffer->size) && (state->cursor_index < buffer->size)) {
+                if (c >= 32 && c <= 126) {
+                    splice_insert(&state->buffer, state->cursor_index, c);
+                    state->cursor_index++;
+                }
+            }
+        }
+
+        if (state->cursor_index != original_cursor_index) {
+            ui_manager->focus_t = 0.0f;
+        }
+    }
+
+#if 1
+    {
+        ui_x_pad(x_padding);
+        UI_Theme inner_field_theme = {};
+        inner_field_theme.size_type     = { UI_SIZE_FILL_REMAINING, UI_SIZE_PERCENTAGE };
+        inner_field_theme.layout_type   = UI_LAYOUT_CENTER;
+        inner_field_theme.semantic_size = { 1.0f, 1.0f };
+
+        ui_add_and_push_widget("", inner_field_theme);
+        {
+            ui_x_pad(x_padding);
+
+            UI_Theme text_theme = {};
+            text_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
+            text_theme.layout_type = UI_LAYOUT_HORIZONTAL;
+
+            ui_add_and_push_widget("", text_theme);
+            {
+                char *str = to_char_array((Allocator *) &ui_manager->frame_arena, state->buffer);
+                do_text(str);
+
+                if (is_active(textbox) || is_focus(textbox)) {
+                    // draw cursor
+                    UI_Theme cursor_theme = {};
+                    cursor_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_PERCENTAGE };
+                    cursor_theme.semantic_size = { 1.0f, 1.0f };
+                    cursor_theme.position_type = UI_POSITION_FLOAT;
+                    cursor_theme.background_color = theme.cursor_color;
+                    
+                    real32 width_to_index = get_width(font, str, state->cursor_index);
+                    cursor_theme.semantic_position = { floorf(width_to_index), 0.0f };
+                    
+                    real32 time_to_switch = 0.5f; // time spent in either state
+                    bool32 show_background = ((int32) (state->cursor_timer*(1.0f / time_to_switch)) + 1) % 2;
+                    
+                    UI_Widget *cursor = ui_add_widget("", cursor_theme,
+                                                      show_background ? UI_WIDGET_DRAW_BACKGROUND : 0);
+                }
+            }
+            ui_pop_widget();
+
+            ui_x_pad(x_padding);
+        }
+        ui_pop_widget();
+    }
+#endif
+    ui_pop_widget();
+
+    // TODO: should we only return a value if we lost focus?
+    
+    return value;
 }

@@ -56,6 +56,7 @@ enum UI_Position_Type {
 
 enum UI_Widget_State_Type {
     UI_STATE_WINDOW,
+    UI_STATE_TEXT_FIELD,
     UI_STATE_TEXT_FIELD_SLIDER
 };
 
@@ -140,6 +141,48 @@ struct UI_Button_Theme {
     char *font;
 };
 
+struct UI_Slider_Theme {
+    Vec4 background_color;
+};
+
+struct UI_Text_Field_Slider_Theme {
+    Vec4 field_background_color;
+    Vec4 slider_background_color;
+    Vec4 cursor_color;
+    bool32 show_slider;
+    bool32 show_field_background;
+    
+    real32 corner_radius;
+    uint32 corner_flags;
+    uint32 border_flags;
+    Vec4 border_color;
+    real32 border_width;
+    
+    char *font;
+    
+    Vec2_UI_Size_Type size_type;
+    Vec2 size;
+};
+
+struct UI_Text_Field_Theme {
+    Vec4 background_color;
+    Vec4 hot_background_color;
+    Vec4 active_background_color;
+
+    Vec4 cursor_color;
+    
+    real32 corner_radius;
+    uint32 corner_flags;
+    uint32 border_flags;
+    Vec4 border_color;
+    real32 border_width;
+    
+    char *font;
+    
+    Vec2_UI_Size_Type size_type;
+    Vec2 size;
+};
+
 struct UI_id {
     // NOTE: we use a pointer to some unique data, such as a constant string specific to a button, to
     //       identify UI elements
@@ -169,6 +212,13 @@ struct UI_Window_State {
     Vec2 position;
 };
 
+struct UI_Text_Field_State {
+    String_Buffer buffer;
+    bool32 is_using;
+    int32 cursor_index; // 0 is before the first character, 1 is before second character, etc.
+    real32 cursor_timer;
+};
+
 struct UI_Text_Field_Slider_State {
     String_Buffer buffer;
     bool32 is_using;
@@ -182,6 +232,7 @@ struct UI_Widget_State {
 
     union {
         UI_Window_State window;
+        UI_Text_Field_State text_field;
         UI_Text_Field_Slider_State text_field_slider;
     };
 
@@ -243,9 +294,10 @@ struct UI_Stack_Widget {
 };
 
 struct UI_Interact_Result {
-    bool32 clicked;
+    bool32 just_pressed;
+    bool32 released;
     bool32 holding;
-    bool32 focused;
+    bool32 just_focused;
     bool32 lost_focus;
 
     real32 click_t;

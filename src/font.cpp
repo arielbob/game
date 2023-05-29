@@ -45,6 +45,28 @@ real32 get_width(Font *font, char *text, int32 index) {
     return width;
 }
 
+real32 get_width(Font *font, String_Buffer *buffer, int32 index) {
+    assert(index <= buffer->current_length);
+    real32 width = 0;
+
+    int32 i = 0;
+    while (i < index) {
+        int32 advance, left_side_bearing;
+        stbtt_GetCodepointHMetrics(&font->font_info, buffer->contents[i], &advance, &left_side_bearing);
+        width += (advance) * font->scale_for_pixel_height;
+        
+        if ((i + 1) < buffer->current_length) {
+            width += font->scale_for_pixel_height * stbtt_GetCodepointKernAdvance(&font->font_info,
+                                                                                  buffer->contents[i],
+                                                                                  buffer->contents[i + 1]);
+        }
+
+        i++;
+    }
+    
+    return width;
+}
+
 real32 get_width(Font *font, String string) {
     real32 width = 0;
 

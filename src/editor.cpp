@@ -869,13 +869,13 @@ void draw_level_box() {
     Editor_State *editor_state = &game_state->editor_state;
 
     UI_Theme column_theme = {};
-    column_theme.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN };
-    column_theme.semantic_size = {};
+    column_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
+    column_theme.semantic_size = { 1.0f, 0.0f };
     column_theme.layout_type = UI_LAYOUT_VERTICAL;
     
     UI_Theme row_theme = {};
-    row_theme.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN };
-    row_theme.semantic_size = {};
+    row_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
+    row_theme.semantic_size = { 1.0f, 0.0f };
     row_theme.layout_type = UI_LAYOUT_HORIZONTAL;
     //row_theme.position_type = theme.position_type;
     //row_theme.semantic_position = theme.position;
@@ -924,6 +924,22 @@ void draw_level_box() {
             
         }
         ui_pop_widget();
+
+        ui_y_pad(5.0f);
+        do_text("Level Name");
+        ui_y_pad(1.0f);
+        
+        {
+            UI_Text_Field_Theme field_theme = {};
+            field_theme.background_color = editor_button_theme.background_color;
+            field_theme.hot_background_color = editor_button_theme.hot_background_color;
+            field_theme.active_background_color = editor_button_theme.active_background_color;
+            field_theme.cursor_color = rgb_to_vec4(0, 255, 0);
+            field_theme.font = default_font;
+            field_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_ABSOLUTE };
+            field_theme.size = { 1.0f, editor_button_theme.size.y };
+            do_text_field(field_theme, game_state->level.name, "level_name_text_field");
+        }
 
         ui_y_pad(5.0f);
         
@@ -979,9 +995,6 @@ void draw_level_box() {
         ui_pop_widget();
     }
     ui_pop_widget();
-    
-    
-    
 }
 
 void draw_editor(Controller_State *controller_state) {
@@ -1025,7 +1038,7 @@ void draw_editor(Controller_State *controller_state) {
             }
         }
 
-        ui_y_pad(5.0f);
+        ui_y_pad(20.0f);
 
         draw_level_box();
         
