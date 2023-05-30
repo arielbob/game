@@ -222,6 +222,8 @@ struct Game_State {
 
     bool32 should_clear_gpu;
 
+    real32 dt;
+    
     char text_buffer[256] = {}; // debugging
 };
 

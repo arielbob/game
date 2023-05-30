@@ -25,6 +25,7 @@ struct Vec2 {
     inline Vec2 &operator*=(real32 factor);
     inline Vec2 &operator/=(real32 factor);
     inline real32 &operator[](int32 index);
+    inline bool32 operator==(Vec2 v);
 };
 
 struct Vec2_int32 {
@@ -41,6 +42,8 @@ struct Vec2_int32 {
     inline Vec2_int32 &operator*=(int32 factor);
     inline Vec2_int32 &operator/=(int32 factor);
     inline int32 &operator[](int32 index);
+    inline bool32 operator==(Vec2_int32 v);
+    inline bool32 operator!=(Vec2_int32 v);
 };
 
 struct Vec3 {

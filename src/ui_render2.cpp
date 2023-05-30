@@ -1,6 +1,6 @@
 #include "ui.h"
 
-bool32 ui_command_should_coalesce(UI_Texture_Type texture_type, Font *font) {
+bool32 ui_command_should_coalesce(UI_Render_Command command) {
     // we only coalesce with the last command for now.
     // coalescing with anything before can be confusing.
 
@@ -8,20 +8,39 @@ bool32 ui_command_should_coalesce(UI_Texture_Type texture_type, Font *font) {
         int32 last_index = ui_manager->num_render_commands - 1;
         UI_Render_Command *last_command = &ui_manager->render_commands[last_index];
 
-        if (last_command->texture_type != texture_type) {
+        if (last_command->texture_type != command.texture_type) {
             return false;
         }
 
-        switch (texture_type) {
+        if (last_command->use_scissor) {
+            if (command.use_scissor) {
+                // if both use scissor regions, make sure that they're equal
+                if (last_command->scissor_position != command.scissor_position) {
+                    return false;
+                }
+            } else {
+                // we need to remove the scissor, so this needs to be a new draw call
+                return false;
+            }
+        } else {
+            if (command.use_scissor) {
+                // if we aren't using a scissor region, but this command needs one, then
+                // we need to start a new scissor
+                return false;
+            }
+        }
+        
+        switch (command.texture_type) {
             case UI_Texture_Type::UI_TEXTURE_NONE: {
                 return true;
             } break;
             case UI_Texture_Type::UI_TEXTURE_IMAGE: {
                 assert(!"Not implemented yet");
                 //return string_equals(last_command->texture_name, texture_name);
+                return false;
             } break;
             case UI_Texture_Type::UI_TEXTURE_FONT: {
-                return string_equals(last_command->font_name, font->name);
+                return string_equals(last_command->font_name, command.font_name);
             } break;
             default: {
                 assert(!"Unhandled UI_Render_Command texture type");
@@ -34,10 +53,12 @@ bool32 ui_command_should_coalesce(UI_Texture_Type texture_type, Font *font) {
 }
 
 // TODO: we don't do textures yet
-void ui_push_command(UI_Texture_Type texture_type,
+// we just use the command argument here for the command type and the parameter for that
+// command type, for example, a font or a texture name.
+// we don't use the indices or scissor region members.
+void ui_push_command(UI_Render_Command command,
                      UI_Vertex *vertices, int32 num_vertices,
-                     uint32 *indices, int32 num_indices,
-                     Font *font = NULL) {
+                     uint32 *indices, int32 num_indices) {
     assert(ui_manager->num_render_commands < UI_MAX_RENDER_COMMANDS);
 
     UI_Render_Data *render_data = &ui_manager->render_data;
@@ -58,32 +79,16 @@ void ui_push_command(UI_Texture_Type texture_type,
     memcpy(&render_data->indices[render_data->num_indices], indices, num_indices*sizeof(uint32));
     render_data->num_indices += num_indices;
 
-    if (ui_command_should_coalesce(texture_type, font)) {
+    if (ui_command_should_coalesce(command)) {
         // we check this in the should_coalesce function, but just being safe..
         assert(ui_manager->num_render_commands > 0);
         UI_Render_Command *last_command = &ui_manager->render_commands[ui_manager->num_render_commands - 1];
         last_command->num_indices += num_indices;
     } else {
         UI_Render_Command *new_command = &ui_manager->render_commands[ui_manager->num_render_commands];
-        new_command->texture_type = texture_type;
+        *new_command = command;
         new_command->indices_start = indices_start;
         new_command->num_indices = num_indices;
-        switch (texture_type) {
-            case UI_Texture_Type::UI_TEXTURE_NONE: {
-                // nothing to do
-            } break;
-            case UI_Texture_Type::UI_TEXTURE_IMAGE: {
-                assert(!"Not implemented yet");
-                // new_command->texture_name = texture->name;
-            } break;
-            case UI_Texture_Type::UI_TEXTURE_FONT: {
-                assert(font);
-                new_command->font_name = font->name;
-            } break;
-            default: {
-                assert(!"Unhandled UI_Render_Command texture type");
-            }
-        }
 
         ui_manager->num_render_commands++;
     }
@@ -137,7 +142,15 @@ void ui_render_widget_to_commands(UI_Widget *widget) {
         };
         uint32 indices[] = { 0, 1, 2, 0, 2, 3 };
 
-        ui_push_command(UI_Texture_Type::UI_TEXTURE_NONE, vertices, 4, indices, 6);
+        UI_Render_Command command = {};
+        command.texture_type = UI_Texture_Type::UI_TEXTURE_NONE;
+        if (widget->use_scissor) {
+            command.use_scissor = widget->use_scissor;
+            command.scissor_position = widget->scissor_position;
+            command.scissor_dimensions = widget->scissor_dimensions;
+        }
+        
+        ui_push_command(command, vertices, 4, indices, 6);
     }
 
     if (widget->flags & UI_WIDGET_DRAW_TEXT) {
@@ -175,7 +188,19 @@ void ui_render_widget_to_commands(UI_Widget *widget) {
                 };
                 uint32 indices[] = { 0, 1, 2, 0, 2, 3 };
 
-                ui_push_command(UI_Texture_Type::UI_TEXTURE_FONT, vertices, 4, indices, 6, font);
+                // TODO: we should probably extract this command stuff and just put it at the
+                //       end of this function. we need to also have some check that makes
+                //       sure we aren't adding commands unnecessarily.
+                UI_Render_Command command = {};
+                command.texture_type = UI_Texture_Type::UI_TEXTURE_FONT;
+                command.font_name = font->name;
+                if (widget->use_scissor) {
+                    command.use_scissor = widget->use_scissor;
+                    command.scissor_position = widget->scissor_position;
+                    command.scissor_dimensions = widget->scissor_dimensions;
+                }
+
+                ui_push_command(command, vertices, 4, indices, 6);
             } else if (*text == '\n') {
                 text_pos.x = initial_text_pos.x;
                 text_pos.y += line_advance;

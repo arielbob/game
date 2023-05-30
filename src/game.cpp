@@ -1159,6 +1159,7 @@ void update(Controller_State *controller_state,
     real64 current_time = platform_get_wall_clock_time();
     real32 dt = (real32) (current_time - game_state->last_update_time);
     game_state->last_update_time = current_time;
+    game_state->dt = dt;
 
     ui_frame_init(dt);
     

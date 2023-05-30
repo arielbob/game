@@ -592,8 +592,10 @@ void calculate_ancestor_dependent_sizes_part_2(UI_Widget *widget, UI_Widget_Axis
         // for example, if we're laying out on x and the layout is horizontal, then we use the computed child size
         // sum on that axis to calculate how we want to fill on that axis. otherwise, for example, if we're on y,
         // then fill_remaining on that axis with a horizontal layout would just fill the entire height.
-        bool32 axis_matches_parent_layout = ((axis == UI_WIDGET_X_AXIS && parent->layout_type == UI_LAYOUT_HORIZONTAL) ||
-                                             (axis == UI_WIDGET_Y_AXIS && parent->layout_type == UI_LAYOUT_VERTICAL));
+        bool32 is_horizontal_match = (axis == UI_WIDGET_X_AXIS && parent->layout_type == UI_LAYOUT_HORIZONTAL);
+        bool32 is_vertical_match = (axis == UI_WIDGET_Y_AXIS && parent->layout_type == UI_LAYOUT_VERTICAL);
+        
+        bool32 axis_matches_parent_layout = is_horizontal_match || is_vertical_match;
 
         if (axis_matches_parent_layout) {
             widget->computed_size[axis] = ((parent->computed_size[axis] - parent->computed_child_size_sum[axis]) /
@@ -996,10 +998,16 @@ void do_text(char *text, char *id, uint32 flags = 0, int32 index = 0) {
 
 void do_text(char *text, char *id, UI_Theme theme, uint32 flags = 0, int32 index = 0) {
     UI_Theme text_theme = NULL_THEME;
-    text_theme.size_type = { UI_SIZE_FIT_TEXT, UI_SIZE_FIT_TEXT };
+    text_theme.size_type = theme.size_type;
+    text_theme.semantic_size = theme.semantic_size;
     text_theme.text_color = theme.text_color;
+    text_theme.layout_type = theme.layout_type;
     text_theme.font = theme.font;
-    UI_Widget *text_widget = ui_add_widget(make_ui_id(id, index), text_theme, UI_WIDGET_DRAW_TEXT);
+    text_theme.use_scissor = theme.use_scissor;
+    text_theme.scissor_position = theme.scissor_position;
+    text_theme.scissor_dimensions = theme.scissor_dimensions;
+
+    UI_Widget *text_widget = ui_add_widget(make_ui_id(id, index), text_theme, UI_WIDGET_DRAW_TEXT | flags);
     text_widget->text = text;
 }
 
@@ -1042,6 +1050,7 @@ bool32 do_text_button(char *text, UI_Button_Theme button_theme, UI_id id) {
             UI_Theme text_theme = NULL_THEME;
             text_theme.text_color = button_theme.text_color;
             text_theme.font = button_theme.font;
+            text_theme.size_type = { UI_SIZE_FIT_TEXT, UI_SIZE_FIT_TEXT };
             do_text(text, text_theme);
         }
         ui_pop_widget();
@@ -1394,7 +1403,7 @@ String do_text_field(UI_Text_Field_Theme theme,
     }
 
     UI_Theme textbox_theme = {};
-    textbox_theme.layout_type             = UI_LAYOUT_HORIZONTAL;
+    textbox_theme.layout_type             = UI_LAYOUT_CENTER;
     textbox_theme.size_type               = theme.size_type;
     textbox_theme.semantic_size           = theme.size;
     textbox_theme.background_color        = theme.background_color;
@@ -1415,7 +1424,7 @@ String do_text_field(UI_Text_Field_Theme theme,
     UI_Interact_Result interact = ui_interact(textbox);
     Font *font = get_font(textbox->font);
 
-    state->cursor_timer = ui_manager->active_t;
+    state->cursor_timer += game_state->dt;
     
     real32 x_padding = 5.0f;
     if (interact.just_pressed || interact.holding) {
@@ -1449,6 +1458,10 @@ String do_text_field(UI_Text_Field_Theme theme,
             state->cursor_index = min(state->cursor_index, state->buffer.size);
         }
 
+        if (controller_state->key_left.is_down || controller_state->key_right.is_down) {
+            state->cursor_timer = 0.0f;
+        }
+
         String_Buffer *buffer = &state->buffer;
         for (int32 i = 0; i < controller_state->num_pressed_chars; i++) {
             char c = controller_state->pressed_chars[i];
@@ -1471,24 +1484,30 @@ String do_text_field(UI_Text_Field_Theme theme,
 
 #if 1
     {
-        ui_x_pad(x_padding);
         UI_Theme inner_field_theme = {};
-        inner_field_theme.size_type     = { UI_SIZE_FILL_REMAINING, UI_SIZE_PERCENTAGE };
-        inner_field_theme.layout_type   = UI_LAYOUT_CENTER;
+        inner_field_theme.size_type     = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
+        inner_field_theme.layout_type   = UI_LAYOUT_HORIZONTAL;
         inner_field_theme.semantic_size = { 1.0f, 1.0f };
 
         ui_add_and_push_widget("", inner_field_theme);
         {
             ui_x_pad(x_padding);
 
-            UI_Theme text_theme = {};
-            text_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
-            text_theme.layout_type = UI_LAYOUT_HORIZONTAL;
+            UI_Theme text_container_theme = {};
+            text_container_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
+            text_container_theme.layout_type = UI_LAYOUT_HORIZONTAL;
 
-            ui_add_and_push_widget("", text_theme);
+            ui_add_and_push_widget("", text_container_theme);
             {
+                UI_Theme text_theme = {};
+                text_theme.font = default_font;
+                text_theme.text_color = make_vec4(1.0f, 1.0f, 1.0f, 1.0f);
+                text_theme.use_scissor = true;
+                text_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_TEXT };
+                text_theme.semantic_size = { 1.0f, 0.0f };
+                text_theme.layout_type = UI_LAYOUT_CENTER;
                 char *str = to_char_array((Allocator *) &ui_manager->frame_arena, state->buffer);
-                do_text(str);
+                do_text(str, "", text_theme);
 
                 if (is_active(textbox) || is_focus(textbox)) {
                     // draw cursor

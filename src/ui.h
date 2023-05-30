@@ -115,6 +115,10 @@ struct UI_Theme {
     
     Vec2 semantic_size;
     Vec2 semantic_position;
+
+    bool32 use_scissor;
+    Vec2_int32 scissor_position;
+    Vec2_int32 scissor_dimensions;
 };
 
 struct UI_Container_Theme {
@@ -282,10 +286,14 @@ struct UI_Widget {
     Vec2 computed_size;
     Vec2 computed_position;
     Vec2 computed_child_size_sum; // only on x-axis
-    
+
     // rendering is done in pre-order; we set this in ui_calculate_standalone_sizes since that is
     // also in pre-order
-    int32 rendering_index; 
+    int32 rendering_index;
+
+    bool32 use_scissor;
+    Vec2_int32 scissor_position;
+    Vec2_int32 scissor_dimensions;
 };
 
 struct UI_Stack_Widget {
@@ -384,6 +392,10 @@ struct UI_Render_Command {
     uint32 *indices;
 #endif
 
+    bool32 use_scissor;
+    Vec2_int32 scissor_position; // on opengl, this is the lower left corner of the scissor box
+    Vec2_int32 scissor_dimensions;
+    
     int32 indices_start;
     int32 num_indices;
     

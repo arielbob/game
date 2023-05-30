@@ -97,6 +97,10 @@ inline real32& Vec2::operator[](int32 index) {
     return (*this).values[index];
 }
 
+inline bool32 Vec2::operator==(Vec2 v) {
+    return (x == v.x && y == v.y);
+}
+
 inline Vec2_int32 make_vec2(int32 x, int32 y) {
     Vec2_int32 vec2;
     vec2.x = x;
@@ -166,6 +170,14 @@ inline Vec2_int32& Vec2_int32::operator/=(int32 factor) {
 
 inline int32& Vec2_int32::operator[](int32 index) {
     return (*this).values[index];
+}
+
+inline bool32 Vec2_int32::operator==(Vec2_int32 v) {
+    return (x == v.x && y == v.y);
+}
+
+inline bool32 Vec2_int32::operator!=(Vec2_int32 v) {
+    return (x != v.x || y != v.y);
 }
 
 inline Vec3 operator+(Vec3 v1, Vec3 v2) {

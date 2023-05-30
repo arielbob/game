@@ -2881,9 +2881,39 @@ void gl_draw_ui_widget(Asset_Manager *asset, UI_Manager *manager, UI_Widget *wid
     }
 }
 
+void gl_scissor(Vec2_int32 position, Vec2_int32 dimensions) {
+    bool32 same_scissor_position = g_gl_state->scissor_position == position;
+    bool32 same_scissor_dimensions = g_gl_state->scissor_dimensions == dimensions;
+
+    if (g_gl_state->scissor_enabled && same_scissor_position && same_scissor_dimensions) {
+        return;
+    }
+
+    if (!g_gl_state->scissor_enabled) {
+        g_gl_state->scissor_enabled = true;
+        glEnable(GL_SCISSOR_TEST);
+    }
+    
+    g_gl_state->scissor_position = position;
+    g_gl_state->scissor_dimensions = dimensions;
+}
+
+void gl_disable_scissor() {
+    if (g_gl_state->scissor_enabled) {
+        glDisable(GL_SCISSOR_TEST);
+    }
+}
+
 void gl_draw_ui_commands(uint32 shader_id) {
     for (int32 i = 0; i < ui_manager->num_render_commands; i++) {
         UI_Render_Command *current = &ui_manager->render_commands[i];
+
+        if (current->use_scissor) {
+            gl_scissor(current->scissor_position, current->scissor_dimensions);
+        } else {
+            gl_disable_scissor();
+        }
+        
         if (current->texture_type == UI_Texture_Type::UI_TEXTURE_IMAGE) {
             gl_set_uniform_bool(shader_id, "use_texture", true);
             // TODO: bind texture
@@ -2899,6 +2929,8 @@ void gl_draw_ui_commands(uint32 shader_id) {
                        (void *) (current->indices_start * sizeof(uint32)));
         glBindTexture(GL_TEXTURE_2D, 0);
     }
+
+    gl_disable_scissor();
 }
 
 void gl_draw_ui() {
