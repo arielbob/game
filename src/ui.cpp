@@ -39,6 +39,8 @@ UI_Widget *make_widget(UI_id id, UI_Theme theme, uint32 flags) {
     
     widget->semantic_size           = theme.semantic_size;
     widget->semantic_position       = theme.semantic_position;
+
+    widget->scissor_type            = theme.scissor_type;
     
     return widget;
 }
@@ -767,7 +769,8 @@ void ui_frame_init(real32 dt) {
         { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE },
         UI_POSITION_NONE,
         { (real32) display_output->width, (real32) display_output->height },
-        { 0.0f, 0.0f }
+        { 0.0f, 0.0f },
+        UI_SCISSOR_NONE
     };
 
     UI_Widget *widget = make_widget(make_ui_id("root"), root_theme, 0);
@@ -999,13 +1002,12 @@ void do_text(char *text, char *id, uint32 flags = 0, int32 index = 0) {
 void do_text(char *text, char *id, UI_Theme theme, uint32 flags = 0, int32 index = 0) {
     UI_Theme text_theme = NULL_THEME;
     text_theme.size_type = theme.size_type;
+    text_theme.semantic_position = theme.semantic_position;
     text_theme.semantic_size = theme.semantic_size;
     text_theme.text_color = theme.text_color;
     text_theme.layout_type = theme.layout_type;
     text_theme.font = theme.font;
-    text_theme.use_scissor = theme.use_scissor;
-    text_theme.scissor_position = theme.scissor_position;
-    text_theme.scissor_dimensions = theme.scissor_dimensions;
+    text_theme.scissor_type = theme.scissor_type;
 
     UI_Widget *text_widget = ui_add_widget(make_ui_id(id, index), text_theme, UI_WIDGET_DRAW_TEXT | flags);
     text_widget->text = text;
@@ -1067,14 +1069,14 @@ inline bool32 do_text_button(char *text, UI_Button_Theme button_theme, char *id,
 }
 
 void ui_x_pad(real32 width) {
-    UI_Theme theme;
+    UI_Theme theme = {};
     theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
     theme.semantic_size = { width, 0.0f };
     ui_add_widget("", theme);
 }
 
 void ui_y_pad(real32 height) {
-    UI_Theme theme;
+    UI_Theme theme = {};
     theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
     theme.semantic_size = { 0.0f, height };
     ui_add_widget("", theme);
@@ -1502,7 +1504,7 @@ String do_text_field(UI_Text_Field_Theme theme,
                 UI_Theme text_theme = {};
                 text_theme.font = default_font;
                 text_theme.text_color = make_vec4(1.0f, 1.0f, 1.0f, 1.0f);
-                text_theme.use_scissor = true;
+                text_theme.scissor_type = UI_SCISSOR_COMPUTED_SIZE;
                 text_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_TEXT };
                 text_theme.semantic_size = { 1.0f, 0.0f };
                 text_theme.layout_type = UI_LAYOUT_CENTER;

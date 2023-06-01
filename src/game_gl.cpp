@@ -2882,6 +2882,13 @@ void gl_draw_ui_widget(Asset_Manager *asset, UI_Manager *manager, UI_Widget *wid
 }
 
 void gl_scissor(Vec2_int32 position, Vec2_int32 dimensions) {
+    // our dimensions are based from the top left of boxes with 0,0 being top left,
+    // but the scissor dimensions are based from the bottom left with 0,0 being bottom left (on opengl).
+    int32 display_height = game_state->render_state.display_output.height;
+    int32 adjusted_y = (display_height - position.y) - dimensions.y;
+    adjusted_y = max(adjusted_y, 0);
+    position.y = adjusted_y;
+
     bool32 same_scissor_position = g_gl_state->scissor_position == position;
     bool32 same_scissor_dimensions = g_gl_state->scissor_dimensions == dimensions;
 
@@ -2892,14 +2899,16 @@ void gl_scissor(Vec2_int32 position, Vec2_int32 dimensions) {
     if (!g_gl_state->scissor_enabled) {
         g_gl_state->scissor_enabled = true;
         glEnable(GL_SCISSOR_TEST);
+        glScissor(position.x, position.y, dimensions.x, dimensions.y);
     }
-    
+
     g_gl_state->scissor_position = position;
     g_gl_state->scissor_dimensions = dimensions;
 }
 
 void gl_disable_scissor() {
     if (g_gl_state->scissor_enabled) {
+        g_gl_state->scissor_enabled = false;
         glDisable(GL_SCISSOR_TEST);
     }
 }

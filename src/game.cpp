@@ -963,7 +963,8 @@ void draw_test_ui(real32 dt) {
 
     UI_Theme white_text = NULL_THEME;
     white_text.text_color = { 1.0f, 1.0f, 1.0f, 1.0f };
-    white_text.semantic_position = { 5.0f, 5.0f };
+    white_text.semantic_position = { 5.0f, 20.0f };
+    
     char *fps_text = string_format((Allocator *) &ui_manager->frame_arena, "FPS: %d / dt %.3f",
                                    (int32) round(game_state->last_second_fps), dt);
     do_text(fps_text, "", white_text);
@@ -1144,6 +1145,20 @@ void draw_test_ui(real32 dt) {
     ui_pop_widget();
 #endif
 
+#if 0
+    {
+        UI_Text_Field_Theme field_theme = {};
+        field_theme.background_color = editor_button_theme.background_color;
+        field_theme.hot_background_color = editor_button_theme.hot_background_color;
+        field_theme.active_background_color = editor_button_theme.active_background_color;
+        field_theme.cursor_color = rgb_to_vec4(0, 255, 0);
+        field_theme.font = default_font;
+        field_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_ABSOLUTE };
+        field_theme.size = { 1.0f, editor_button_theme.size.y };
+        do_text_field(field_theme, game_state->level.name, "level_name_text_field");
+    }
+#endif
+    
     draw_editor(Context::controller_state);
 }
 

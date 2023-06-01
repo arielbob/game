@@ -54,6 +54,12 @@ enum UI_Position_Type {
     UI_POSITION_FLOAT
 };
 
+enum UI_Scissor_Type {
+    UI_SCISSOR_NONE,
+    UI_SCISSOR_COMPUTED_SIZE, // scissor based on computed size of the widget
+    UI_SCISSOR_INHERIT // TODO: not implemented, inherit parent scissor
+};
+
 enum UI_Widget_State_Type {
     UI_STATE_WINDOW,
     UI_STATE_TEXT_FIELD,
@@ -116,9 +122,7 @@ struct UI_Theme {
     Vec2 semantic_size;
     Vec2 semantic_position;
 
-    bool32 use_scissor;
-    Vec2_int32 scissor_position;
-    Vec2_int32 scissor_dimensions;
+    UI_Scissor_Type scissor_type;
 };
 
 struct UI_Container_Theme {
@@ -291,9 +295,7 @@ struct UI_Widget {
     // also in pre-order
     int32 rendering_index;
 
-    bool32 use_scissor;
-    Vec2_int32 scissor_position;
-    Vec2_int32 scissor_dimensions;
+    UI_Scissor_Type scissor_type;
 };
 
 struct UI_Stack_Widget {

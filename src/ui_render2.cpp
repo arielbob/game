@@ -17,6 +17,8 @@ bool32 ui_command_should_coalesce(UI_Render_Command command) {
                 // if both use scissor regions, make sure that they're equal
                 if (last_command->scissor_position != command.scissor_position) {
                     return false;
+                } else {
+                    // they're equal, so we go on to the texture_type checks
                 }
             } else {
                 // we need to remove the scissor, so this needs to be a new draw call
@@ -144,10 +146,13 @@ void ui_render_widget_to_commands(UI_Widget *widget) {
 
         UI_Render_Command command = {};
         command.texture_type = UI_Texture_Type::UI_TEXTURE_NONE;
-        if (widget->use_scissor) {
-            command.use_scissor = widget->use_scissor;
-            command.scissor_position = widget->scissor_position;
-            command.scissor_dimensions = widget->scissor_dimensions;
+        if (widget->scissor_type == UI_SCISSOR_COMPUTED_SIZE) {
+            command.use_scissor = true;
+            command.scissor_position = make_vec2_int32(widget->computed_position);
+            command.scissor_dimensions = make_vec2_int32(widget->computed_size);
+        } else if (widget->scissor_type == UI_SCISSOR_INHERIT) {
+            // TODO: implement this
+            assert(!"UI_SCISSOR_INHERIT not implemented yet.");
         }
         
         ui_push_command(command, vertices, 4, indices, 6);
@@ -194,10 +199,13 @@ void ui_render_widget_to_commands(UI_Widget *widget) {
                 UI_Render_Command command = {};
                 command.texture_type = UI_Texture_Type::UI_TEXTURE_FONT;
                 command.font_name = font->name;
-                if (widget->use_scissor) {
-                    command.use_scissor = widget->use_scissor;
-                    command.scissor_position = widget->scissor_position;
-                    command.scissor_dimensions = widget->scissor_dimensions;
+                if (widget->scissor_type == UI_SCISSOR_COMPUTED_SIZE) {
+                    command.use_scissor = true;
+                    command.scissor_position = make_vec2_int32(widget->computed_position);
+                    command.scissor_dimensions = make_vec2_int32(widget->computed_size);
+                } else if (widget->scissor_type == UI_SCISSOR_INHERIT) {
+                    // TODO: implement this
+                    assert(!"UI_SCISSOR_INHERIT not implemented yet.");
                 }
 
                 ui_push_command(command, vertices, 4, indices, 6);

@@ -109,6 +109,10 @@ inline Vec2_int32 make_vec2(int32 x, int32 y) {
     return vec2;
 };
 
+inline Vec2_int32 make_vec2_int32(Vec2 v) {
+    return { (int32) v.x, (int32) v.y };
+}
+
 inline Vec2_int32 operator+(Vec2_int32 v1, Vec2_int32 v2) {
     Vec2_int32 result = v1;
     result.x += v2.x;

@@ -265,6 +265,8 @@ struct GL_State {
     GL_Alpha_Mask_Stack alpha_mask_stack;
 
     bool32 scissor_enabled;
+    // the below are in the opengl scissor coordinate-space
+    // i.e. 0,0 at bottom left, and dimensions based on position being bottom left of rect
     Vec2_int32 scissor_position;
     Vec2_int32 scissor_dimensions;
 };
