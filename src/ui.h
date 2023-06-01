@@ -49,15 +49,26 @@ enum UI_Layout_Type {
     UI_LAYOUT_HORIZONTAL_SPACE_BETWEEN
 };
 
+/*
+  UI_POSITION_FLOAT:    widget is taken out of the flow of widgets
+  UI_POSITION_RELATIVE: widget is placed as if UI_POSITION_NONE, but then can be moved relative to that 
+                        using semantic_position
+*/
 enum UI_Position_Type {
     UI_POSITION_NONE,
-    UI_POSITION_FLOAT
+    UI_POSITION_FLOAT,
+    UI_POSITION_RELATIVE 
 };
 
+/*
+  UI_SCISSOR_COMPUTED_SIZE: scissor based on computed size of the widget
+  UI_SCISSOR_INHERIT: scissor based on parent; if parent is also inherit, keeps going until we hit a
+                      UI_SCISSOR_COMPUTED_SIZE widget
+ */
 enum UI_Scissor_Type {
     UI_SCISSOR_NONE,
-    UI_SCISSOR_COMPUTED_SIZE, // scissor based on computed size of the widget
-    UI_SCISSOR_INHERIT // TODO: not implemented, inherit parent scissor
+    UI_SCISSOR_COMPUTED_SIZE,
+    UI_SCISSOR_INHERIT
 };
 
 enum UI_Widget_State_Type {

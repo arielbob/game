@@ -589,7 +589,6 @@ void calculate_ancestor_dependent_sizes_part_2(UI_Widget *widget, UI_Widget_Axis
             assert(!"Cannot have widget with axis size type FILL_REMAINING inside a widget who's size type on the same axis is FIT_CHILDREN.");
         }
 
-
         // we only need to use the computed sizes when we're on the same axis as the layout axis.
         // for example, if we're laying out on x and the layout is horizontal, then we use the computed child size
         // sum on that axis to calculate how we want to fill on that axis. otherwise, for example, if we're on y,
@@ -689,6 +688,10 @@ void calculate_position(UI_Widget *widget, UI_Widget_Axis axis) {
         }
     } else {
         widget->computed_position[axis] = widget->semantic_position[axis];
+    }
+
+    if (widget->position_type == UI_POSITION_RELATIVE) {
+        widget->computed_position[axis] += widget->semantic_position[axis];
     }
 }
 
@@ -1008,6 +1011,7 @@ void do_text(char *text, char *id, UI_Theme theme, uint32 flags = 0, int32 index
     text_theme.layout_type = theme.layout_type;
     text_theme.font = theme.font;
     text_theme.scissor_type = theme.scissor_type;
+    text_theme.position_type = theme.position_type;
 
     UI_Widget *text_widget = ui_add_widget(make_ui_id(id, index), text_theme, UI_WIDGET_DRAW_TEXT | flags);
     text_widget->text = text;
@@ -1405,7 +1409,7 @@ String do_text_field(UI_Text_Field_Theme theme,
     }
 
     UI_Theme textbox_theme = {};
-    textbox_theme.layout_type             = UI_LAYOUT_CENTER;
+    textbox_theme.layout_type             = UI_LAYOUT_HORIZONTAL;
     textbox_theme.size_type               = theme.size_type;
     textbox_theme.semantic_size           = theme.size;
     textbox_theme.background_color        = theme.background_color;
@@ -1471,10 +1475,12 @@ String do_text_field(UI_Text_Field_Theme theme,
                 splice(&state->buffer, state->cursor_index - 1);
                 state->cursor_index--;
                 state->cursor_index = max(state->cursor_index, 0);
+                state->cursor_timer = 0.0f;
             } else if ((buffer->current_length < buffer->size) && (state->cursor_index < buffer->size)) {
                 if (c >= 32 && c <= 126) {
                     splice_insert(&state->buffer, state->cursor_index, c);
                     state->cursor_index++;
+                    state->cursor_timer = 0.0f;
                 }
             }
         }
@@ -1486,28 +1492,34 @@ String do_text_field(UI_Text_Field_Theme theme,
 
 #if 1
     {
+        ui_x_pad(x_padding);
+
         UI_Theme inner_field_theme = {};
-        inner_field_theme.size_type     = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
-        inner_field_theme.layout_type   = UI_LAYOUT_HORIZONTAL;
+        inner_field_theme.size_type     = { UI_SIZE_FILL_REMAINING, UI_SIZE_PERCENTAGE };
+        inner_field_theme.layout_type   = UI_LAYOUT_CENTER;
         inner_field_theme.semantic_size = { 1.0f, 1.0f };
 
         ui_add_and_push_widget("", inner_field_theme);
         {
-            ui_x_pad(x_padding);
 
             UI_Theme text_container_theme = {};
             text_container_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
-            text_container_theme.layout_type = UI_LAYOUT_HORIZONTAL;
+            text_container_theme.semantic_size = { 0.0f, 1.0f };
+            text_container_theme.layout_type = UI_LAYOUT_CENTER;
+            text_container_theme.background_color = rgb_to_vec4(255, 0, 0);
+            text_container_theme.scissor_type = UI_SCISSOR_COMPUTED_SIZE;
 
-            ui_add_and_push_widget("", text_container_theme);
+            ui_add_and_push_widget("", text_container_theme, UI_WIDGET_DRAW_BACKGROUND);
             {
                 UI_Theme text_theme = {};
                 text_theme.font = default_font;
                 text_theme.text_color = make_vec4(1.0f, 1.0f, 1.0f, 1.0f);
-                text_theme.scissor_type = UI_SCISSOR_COMPUTED_SIZE;
-                text_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_TEXT };
+                text_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_TEXT };
                 text_theme.semantic_size = { 1.0f, 0.0f };
-                text_theme.layout_type = UI_LAYOUT_CENTER;
+                text_theme.position_type = UI_POSITION_RELATIVE;
+                //text_theme.semantic_position = { -10.0f, 0.0f };
+                text_theme.semantic_position = { 0.0f, 0.0f };
+                text_theme.scissor_type = UI_SCISSOR_INHERIT;
                 char *str = to_char_array((Allocator *) &ui_manager->frame_arena, state->buffer);
                 do_text(str, "", text_theme);
 
@@ -1530,10 +1542,10 @@ String do_text_field(UI_Text_Field_Theme theme,
                 }
             }
             ui_pop_widget();
-
-            ui_x_pad(x_padding);
         }
         ui_pop_widget();
+
+        ui_x_pad(x_padding);
     }
 #endif
     ui_pop_widget();

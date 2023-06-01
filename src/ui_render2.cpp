@@ -96,6 +96,33 @@ void ui_push_command(UI_Render_Command command,
     }
 }
 
+void set_scissor(UI_Render_Command *command, UI_Widget *widget) {
+    if (widget->scissor_type == UI_SCISSOR_COMPUTED_SIZE) {
+        command->use_scissor = true;
+        command->scissor_position = make_vec2_int32(widget->computed_position);
+        command->scissor_dimensions = make_vec2_int32(widget->computed_size);
+    } else if (widget->scissor_type == UI_SCISSOR_INHERIT) {
+        UI_Widget *current = widget->parent;
+        while (current) {
+            if (current->scissor_type == UI_SCISSOR_COMPUTED_SIZE) {
+                command->use_scissor = true;
+                command->scissor_position = make_vec2_int32(current->computed_position);
+                command->scissor_dimensions = make_vec2_int32(current->computed_size);
+                return;
+            } else if (current->scissor_type == UI_SCISSOR_NONE) {
+                assert(!"UI_SCISSOR_INHERIT cannot be used on a widget that does not have a parent with a scissor region.");
+                return;
+            } else if (current->scissor_type == UI_SCISSOR_INHERIT) {
+                // need to keep going until we find what we're inheriting from
+            }
+
+            current = current->parent;
+        }
+        
+        assert(!"UI_SCISSOR_INHERIT cannot be used on root or on a widget that does not have a parent without a scissor region.");
+    }
+}
+
 void ui_render_widget_to_commands(UI_Widget *widget) {
     Vec2 computed_position = widget->computed_position;
     Vec2 computed_size = widget->computed_size;
@@ -146,15 +173,8 @@ void ui_render_widget_to_commands(UI_Widget *widget) {
 
         UI_Render_Command command = {};
         command.texture_type = UI_Texture_Type::UI_TEXTURE_NONE;
-        if (widget->scissor_type == UI_SCISSOR_COMPUTED_SIZE) {
-            command.use_scissor = true;
-            command.scissor_position = make_vec2_int32(widget->computed_position);
-            command.scissor_dimensions = make_vec2_int32(widget->computed_size);
-        } else if (widget->scissor_type == UI_SCISSOR_INHERIT) {
-            // TODO: implement this
-            assert(!"UI_SCISSOR_INHERIT not implemented yet.");
-        }
-        
+        set_scissor(&command, widget);
+                
         ui_push_command(command, vertices, 4, indices, 6);
     }
 
@@ -199,14 +219,7 @@ void ui_render_widget_to_commands(UI_Widget *widget) {
                 UI_Render_Command command = {};
                 command.texture_type = UI_Texture_Type::UI_TEXTURE_FONT;
                 command.font_name = font->name;
-                if (widget->scissor_type == UI_SCISSOR_COMPUTED_SIZE) {
-                    command.use_scissor = true;
-                    command.scissor_position = make_vec2_int32(widget->computed_position);
-                    command.scissor_dimensions = make_vec2_int32(widget->computed_size);
-                } else if (widget->scissor_type == UI_SCISSOR_INHERIT) {
-                    // TODO: implement this
-                    assert(!"UI_SCISSOR_INHERIT not implemented yet.");
-                }
+                set_scissor(&command, widget);
 
                 ui_push_command(command, vertices, 4, indices, 6);
             } else if (*text == '\n') {
