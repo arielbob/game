@@ -1398,7 +1398,8 @@ void push_window(char *title, UI_Window_Theme theme, char *id_string, int32 inde
 
 String do_text_field(UI_Text_Field_Theme theme,
                      String value,
-                     char *id_string, int32 index = 0) {
+                     char *id_string, char *text_id_string,
+                     int32 index = 0) {
     UI_id id = make_ui_id(id_string, index);
     UI_Widget_State *state_variant = ui_get_state(id);
     UI_Text_Field_State *state;
@@ -1436,10 +1437,14 @@ String do_text_field(UI_Text_Field_Theme theme,
     if (interact.just_pressed || interact.holding) {
         int32 last_index = 0;
         
-        // find where to put it
+        // find where to put the cursor
+        // the +3.0 is to add some tolerance around clicking between the characters instead of being
+        // completely biased towards one side.
+        // TODO: there might be a nice way to calculate that tolerance value
+        real32 adjusted_cursor_x = interact.relative_mouse.x - x_padding + 3.0f + state->x_offset;
         for (int32 i = 1; i <= state->buffer.current_length; i++) {
             real32 width_to_i = get_width(font, &state->buffer, i);
-            if (width_to_i > interact.relative_mouse.x - x_padding + 3.0f) {
+            if (width_to_i > adjusted_cursor_x) {
                 break;
             }
             last_index = i;
@@ -1464,7 +1469,11 @@ String do_text_field(UI_Text_Field_Theme theme,
             state->cursor_index = min(state->cursor_index, state->buffer.size);
         }
 
-        if (controller_state->key_left.is_down || controller_state->key_right.is_down) {
+        if (controller_state->key_left.is_down && state->cursor_index > 0) {
+            state->cursor_timer = 0.0f;
+        }
+
+        if (controller_state->key_right.is_down && state->cursor_index < state->buffer.current_length) {
             state->cursor_timer = 0.0f;
         }
 
@@ -1472,10 +1481,12 @@ String do_text_field(UI_Text_Field_Theme theme,
         for (int32 i = 0; i < controller_state->num_pressed_chars; i++) {
             char c = controller_state->pressed_chars[i];
             if (c == '\b') { // backspace key
-                splice(&state->buffer, state->cursor_index - 1);
-                state->cursor_index--;
-                state->cursor_index = max(state->cursor_index, 0);
-                state->cursor_timer = 0.0f;
+                if (state->cursor_index > 0) {
+                    splice(&state->buffer, state->cursor_index - 1);
+                    state->cursor_index--;
+                    state->cursor_index = max(state->cursor_index, 0);
+                    state->cursor_timer = 0.0f;
+                }
             } else if ((buffer->current_length < buffer->size) && (state->cursor_index < buffer->size)) {
                 if (c >= 32 && c <= 126) {
                     splice_insert(&state->buffer, state->cursor_index, c);
@@ -1490,7 +1501,6 @@ String do_text_field(UI_Text_Field_Theme theme,
         }
     }
 
-#if 1
     {
         ui_x_pad(x_padding);
 
@@ -1509,20 +1519,40 @@ String do_text_field(UI_Text_Field_Theme theme,
             text_container_theme.background_color = rgb_to_vec4(255, 0, 0);
             text_container_theme.scissor_type = UI_SCISSOR_COMPUTED_SIZE;
 
-            ui_add_and_push_widget("", text_container_theme, UI_WIDGET_DRAW_BACKGROUND);
+            UI_Widget *text_widget = make_widget(make_ui_id(text_id_string, index), text_container_theme, 0);
+            ui_add_and_push_widget(text_widget);
             {
+                char *str = to_char_array((Allocator *) &ui_manager->frame_arena, state->buffer);
+                real32 width_to_cursor_index = get_width(font, str, state->cursor_index);
+                
+                UI_Widget *computed_widget = ui_table_get(ui_manager->last_frame_widget_table,
+                                                          text_widget->id);
+
+                // this is always positive. think of it as pushing the window to the right.
+                // when we later pass it to text_theme, we make it negative, since we're deciding
+                // where the text should go.
+                real32 x_offset = 0.0f;
+                if (computed_widget) {
+                    real32 text_width = get_width(font, state->buffer);
+                    real32 computed_width = computed_widget->computed_size.x;
+                    
+                    if (width_to_cursor_index < state->x_offset) {
+                        state->x_offset = width_to_cursor_index;
+                    } else if (width_to_cursor_index > state->x_offset + computed_width) {
+                        state->x_offset = width_to_cursor_index - computed_width;
+                    }
+                }
+                
                 UI_Theme text_theme = {};
                 text_theme.font = default_font;
                 text_theme.text_color = make_vec4(1.0f, 1.0f, 1.0f, 1.0f);
                 text_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_TEXT };
                 text_theme.semantic_size = { 1.0f, 0.0f };
                 text_theme.position_type = UI_POSITION_RELATIVE;
-                //text_theme.semantic_position = { -10.0f, 0.0f };
-                text_theme.semantic_position = { 0.0f, 0.0f };
+                text_theme.semantic_position = { -state->x_offset, 0.0f };
                 text_theme.scissor_type = UI_SCISSOR_INHERIT;
-                char *str = to_char_array((Allocator *) &ui_manager->frame_arena, state->buffer);
                 do_text(str, "", text_theme);
-
+                
                 if (is_active(textbox) || is_focus(textbox)) {
                     // draw cursor
                     UI_Theme cursor_theme = {};
@@ -1531,8 +1561,7 @@ String do_text_field(UI_Text_Field_Theme theme,
                     cursor_theme.position_type = UI_POSITION_FLOAT;
                     cursor_theme.background_color = theme.cursor_color;
                     
-                    real32 width_to_index = get_width(font, str, state->cursor_index);
-                    cursor_theme.semantic_position = { floorf(width_to_index), 0.0f };
+                    cursor_theme.semantic_position = { floorf(width_to_cursor_index - state->x_offset), 0.0f };    
                     
                     real32 time_to_switch = 0.5f; // time spent in either state
                     bool32 show_background = ((int32) (state->cursor_timer*(1.0f / time_to_switch)) + 1) % 2;
@@ -1547,7 +1576,6 @@ String do_text_field(UI_Text_Field_Theme theme,
 
         ui_x_pad(x_padding);
     }
-#endif
     ui_pop_widget();
 
     // TODO: should we only return a value if we lost focus?

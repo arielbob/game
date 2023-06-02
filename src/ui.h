@@ -236,6 +236,7 @@ struct UI_Text_Field_State {
     bool32 is_using;
     int32 cursor_index; // 0 is before the first character, 1 is before second character, etc.
     real32 cursor_timer;
+    real32 x_offset;
 };
 
 struct UI_Text_Field_Slider_State {
