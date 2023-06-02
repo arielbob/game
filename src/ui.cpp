@@ -1578,7 +1578,5 @@ String do_text_field(UI_Text_Field_Theme theme,
     }
     ui_pop_widget();
 
-    // TODO: should we only return a value if we lost focus?
-    
-    return value;
+    return make_string(state->buffer);
 }

@@ -938,8 +938,11 @@ void draw_level_box() {
             field_theme.font = default_font;
             field_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_ABSOLUTE };
             field_theme.size = { 1.0f, editor_button_theme.size.y };
-            do_text_field(field_theme, game_state->level.name,
-                          "level_name_text_field", "level_name_text_field_text");
+
+            String name_result = do_text_field(field_theme, game_state->level.name,
+                                               "level_name_text_field", "level_name_text_field_text");
+            deallocate(game_state->level.name);
+            game_state->level.name = copy((Allocator *) &game_state->level.heap, name_result);
         }
 
         ui_y_pad(5.0f);
