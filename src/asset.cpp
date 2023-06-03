@@ -212,7 +212,7 @@ bool32 material_exists(String name) {
     return false;
 }
 
-Material *add_material(Material_Info *material_info) {
+Material *add_material(Material_Info *material_info, Material_Type type) {
     if (material_exists(material_info->name)) {
         assert(!"Material with name already exists.");
         return NULL;
@@ -221,6 +221,7 @@ Material *add_material(Material_Info *material_info) {
     Allocator *allocator = asset_manager->allocator;
     Material *material = (Material *) allocate(allocator, sizeof(Material), true);
 
+    material->type                   = type;
     material->name                   = copy(allocator, material_info->name);
     material->flags                  = material_info->flags;
         
@@ -454,7 +455,7 @@ void unload_level_meshes() {
     }
 }
 
-void unload_materials() {
+void unload_level_materials() {
     Material **material_table = asset_manager->material_table;
 
     for (int32 i = 0; i < NUM_MATERIAL_BUCKETS; i++) {
@@ -462,22 +463,24 @@ void unload_materials() {
         while (current) {
             Material *next = current->table_next;
 
-            if (current->table_prev) {
-                current->table_prev->table_next = next;
-            } else {
-                material_table[i] = current->table_next;
-            }
+            if (current->type == Material_Type::LEVEL) {
+                if (current->table_prev) {
+                    current->table_prev->table_next = next;
+                } else {
+                    material_table[i] = current->table_next;
+                }
             
-            if (current->table_next) {
-                current->table_next->table_prev = current->table_prev;
-            }
+                if (current->table_next) {
+                    current->table_next->table_prev = current->table_prev;
+                }
             
-            deallocate(current);
-            deallocate(asset_manager->allocator, current);
+                deallocate(current);
+                deallocate(asset_manager->allocator, current);
 
-            if (current == material_table[i]) {
-                // if it's first in the list, then we need to update mesh table when we delete it
-                material_table[i] = next;
+                if (current == material_table[i]) {
+                    // if it's first in the list, then we need to update mesh table when we delete it
+                    material_table[i] = next;
+                }
             }
 
             current = next;
@@ -540,7 +543,7 @@ void load_level_assets(Level_Info *level_info) {
 
     for (int32 i = 0; i < level_info->num_materials; i++) {
         Material_Info *material_info = &level_info->materials[i];
-        add_material(material_info);
+        add_material(material_info, Material_Type::LEVEL);
     }
 }
 
@@ -552,7 +555,7 @@ void unload_level_assets() {
     // the asset data at that point since we know which resources are for levels and which are not
 
     unload_level_meshes();
-    unload_materials();
+    unload_level_materials();
     unload_level_textures();
     
     asset_manager->gpu_should_unload_level_assets = true;
@@ -586,4 +589,52 @@ void load_default_assets() {
     add_font("calibri14b",      "c:/windows/fonts/calibrib.ttf", 14.0f);
     add_font("calibri24b",      "c:/windows/fonts/calibrib.ttf", 24.0f);
     add_font("lucidaconsole18", "c:/windows/fonts/lucon.ttf",    18.0f);
+
+    Material_Info default_material_info = {};
+    
+    default_material_info.name = make_string("default_material");
+    default_material_info.flags = 0;
+
+    default_material_info.albedo_color = make_vec3(0.5f, 0.5f, 0.5f);
+    default_material_info.albedo_texture_name = make_string("texture_default");
+
+    default_material_info.metalness = 0.0f;
+    default_material_info.metalness_texture_name = make_string("texture_default");
+
+    default_material_info.roughness = 0.5f;
+    default_material_info.roughness_texture_name = make_string("texture_default");
+
+    add_material(&default_material_info, Material_Type::DEFAULT);
+}
+
+bool32 generate_asset_name(Allocator *allocator, char *asset_type, int32 max_attempts, String *result) {
+    int32 num_attempts = 0;
+    Marker m = begin_region();
+
+    String_Buffer buffer = make_string_buffer(temp_region, 256);
+    bool success = false;
+
+    char *zero_format = string_format(temp_region, "New %s", asset_type);
+    char *n_format = string_format(temp_region, "New %s %%d", asset_type);
+    
+    while (num_attempts < max_attempts) {
+        char *format = (num_attempts == 0) ? zero_format : n_format;
+        string_format(&buffer, format, num_attempts + 1);
+        if (!material_exists(make_string(buffer))) {
+            success = true;
+            break;
+        }
+
+        num_attempts++;
+    }
+
+    if (success) {
+        *result = make_string(allocator, buffer);
+    } else {
+        assert(!"Could not generate material name.");
+    }
+
+    end_region(m);
+
+    return success;
 }

@@ -217,6 +217,11 @@ String make_string(String_Buffer string_buffer) {
     return result;
 }
 
+String make_string(Allocator *allocator, String_Buffer string_buffer) {
+    String_Buffer buffer_copy = copy(allocator, string_buffer);
+    return make_string(buffer_copy);
+}
+
 // NOTE: creates a string from a null-terminated char array
 String make_string(char *contents) {
     String result = {};

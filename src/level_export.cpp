@@ -124,9 +124,15 @@ void export_level(Level *level, char *filename) {
             Material *current = material_table[i];
             
             while (current) {
+                if (current->type != Material_Type::LEVEL) {
+                    current = current->table_next;
+                    continue;
+                }
+
                 append_string(&working_buffer, "material {\n");
                 append_string(&working_buffer, "name ");
                 append_string_add_quotes(&working_buffer, current->name);
+                append_string(&working_buffer, "\n");
 
                 if (current->flags & MATERIAL_USE_ALBEDO_TEXTURE) {
                     append_string(&working_buffer, "use_albedo_texture %d\n", 1);
@@ -156,7 +162,7 @@ void export_level(Level *level, char *filename) {
     append_string(&working_buffer, "entities {\n");
     {
         Entity *current = level->entities;
-        while(current) {
+        while (current) {
             append_string(&working_buffer, "entity {\n");
             append_vec3_property(&working_buffer, "position", current->transform.position);
             append_quaternion_property(&working_buffer, "rotation", current->transform.rotation);

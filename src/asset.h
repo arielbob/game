@@ -21,6 +21,7 @@
 // ENGINE is for rendering code or for the editor, like glyph quads and gizmo arrows.
 enum class Mesh_Type     { NONE, LEVEL, PRIMITIVE, ENGINE };
 enum class Texture_Type  { NONE, LEVEL, DEFAULT, ENGINE };
+enum class Material_Type  { NONE, LEVEL, DEFAULT };
 
 // TODO: we need more types of Mesh objects. since not all meshes require all the data. for example, a nav mesh
 //       doesn't need UVs. and something like a rock mesh won't need joint data. we will also need to modify
@@ -114,7 +115,7 @@ struct Font {
 // have to change some flag when a texture is no longer valid or have to maintain two states like
 // not having a texture at all or a texture being invalid.
 //
-// this decisions also makes it fine to not validate level_info after reading a level file. we just
+// this decision also makes it fine to not validate level_info after reading a level file. we just
 // set the textures to the given strings. if it doesn't exist, then we just put an ugly, conspicuous,
 // default texture.
 //
@@ -125,6 +126,7 @@ struct Font {
 // if we just keep a string, then even if we delete materials, we can keep that name, but then add a
 // new material with the same name and all the materials would be updated.
 #define MATERIAL_FIELDS                         \
+    Material_Type type;                         \
     String name;                                \
                                                 \
     uint32 flags;                               \

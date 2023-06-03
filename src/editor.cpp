@@ -4,6 +4,7 @@
 #define DEFAULT_BUTTON_BACKGROUND rgb_to_vec4(50, 50, 60)
 #define DEFAULT_BUTTON_HOT_BACKGROUND rgb_to_vec4(60, 60, 72)
 #define DEFAULT_BUTTON_ACTIVE_BACKGROUND rgb_to_vec4(9, 9, 10)
+#define DEFAULT_BOX_BACKGROUND rgb_to_vec4(24, 24, 28)
 
 UI_Button_Theme editor_button_theme = {
     { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE },
@@ -887,6 +888,8 @@ void draw_level_box() {
     
     ui_add_and_push_widget("", column_theme);
     {
+        bool32 just_loaded_level = false;
+        
         ui_add_and_push_widget("", row_theme);
         {
             bool32 new_level_clicked = do_text_button("New", theme, "new_level");
@@ -900,7 +903,6 @@ void draw_level_box() {
             ui_x_pad(1.0f);
         
             bool32 open_level_clicked = do_text_button("Open", theme, "open_level");
-            bool32 just_loaded_level = false;
             if (open_level_clicked) {
                 Marker m = begin_region();
                 char *absolute_filename = (char *) region_push(PLATFORM_MAX_PATH);
@@ -939,7 +941,7 @@ void draw_level_box() {
             field_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_ABSOLUTE };
             field_theme.size = { 1.0f, editor_button_theme.size.y };
 
-            String name_result = do_text_field(field_theme, game_state->level.name,
+            String name_result = do_text_field(field_theme, game_state->level.name, just_loaded_level,
                                                "level_name_text_field", "level_name_text_field_text");
             deallocate(game_state->level.name);
             game_state->level.name = copy((Allocator *) &game_state->level.heap, name_result);
@@ -1006,9 +1008,12 @@ void draw_editor(Controller_State *controller_state) {
     
     Entity *selected_entity = get_selected_entity(editor_state);
 
+    Vec4 sidebar_background = DEFAULT_BOX_BACKGROUND;
+    //sidebar_background.w = 0.5f;
+
     UI_Container_Theme sidebar_theme = {
         { 5.0f, 5.0f, 5.0f, 5.0f },
-        {},
+        sidebar_background,
         UI_POSITION_FLOAT,
         { render_state->display_output.width - 200.0f, 0.0f },
         { UI_SIZE_ABSOLUTE, UI_SIZE_FIT_CHILDREN },
@@ -1017,7 +1022,7 @@ void draw_editor(Controller_State *controller_state) {
     };
 
     #if 1
-    ui_push_container(sidebar_theme);
+    ui_push_container(sidebar_theme, "editor_sidebar");
     {
         bool32 toggle_show_wireframe_clicked = do_text_button(editor_state->show_wireframe ?
                                                               "Hide Wireframe" : "Show Wireframe",
@@ -1045,6 +1050,21 @@ void draw_editor(Controller_State *controller_state) {
         ui_y_pad(20.0f);
 
         draw_level_box();
+
+        ui_y_pad(20.0f);
+
+        bool32 add_entity_clicked = do_text_button("Add Entity", editor_button_theme, "add_entity");
+        if (add_entity_clicked) {
+            Marker m = begin_region();
+            Entity_Info info = {};
+            info.flags = ENTITY_MESH | ENTITY_MATERIAL;
+            info.transform = make_transform();
+            info.mesh_name = make_string("suzanne2");
+            info.material_name = make_string("default_material");
+            
+            make_and_add_entity(&game_state->level, info);
+            end_region(m);
+        }
         
     }
     ui_pop_widget();

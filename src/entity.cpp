@@ -1,6 +1,8 @@
 #include "entity.h"
 #include "level.h"
 
+//Entity make_entity()
+
 Entity make_entity_from_info(Allocator *allocator, Entity_Info *info) {
     Entity result = {};
 

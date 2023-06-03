@@ -1086,7 +1086,7 @@ void ui_y_pad(real32 height) {
     ui_add_widget("", theme);
 }
 
-void ui_push_container(UI_Container_Theme theme) {
+void ui_push_container(UI_Container_Theme theme, char *id = "") {
     UI_Theme column_theme = {};
     column_theme.size_type = theme.size_type;
     column_theme.semantic_size = theme.size;
@@ -1094,11 +1094,14 @@ void ui_push_container(UI_Container_Theme theme) {
     column_theme.position_type = theme.position_type;
     column_theme.semantic_position = theme.position;
     column_theme.background_color = theme.background_color;
+    column_theme.hot_background_color = theme.background_color;
+    column_theme.active_background_color = theme.background_color;
     
     UI_Widget *inner;
 
     // vertical
-    UI_Widget *column = ui_add_and_push_widget("", column_theme, UI_WIDGET_DRAW_BACKGROUND);
+    UI_Widget *column = ui_add_and_push_widget(id, column_theme,
+                                               UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
     {
         ui_y_pad(theme.padding.top);
 
@@ -1126,6 +1129,9 @@ void ui_push_container(UI_Container_Theme theme) {
     }
     ui_pop_widget();
 
+    // just so we get hot state, so that it gets clicks instead of whatever's behind it
+    ui_interact(column);
+    
     ui_push_existing_widget(inner);
 }
 
@@ -1397,7 +1403,7 @@ void push_window(char *title, UI_Window_Theme theme, char *id_string, int32 inde
 }
 
 String do_text_field(UI_Text_Field_Theme theme,
-                     String value,
+                     String value, bool32 force_reset,
                      char *id_string, char *text_id_string,
                      int32 index = 0) {
     UI_id id = make_ui_id(id_string, index);
@@ -1407,6 +1413,10 @@ String do_text_field(UI_Text_Field_Theme theme,
         state = ui_add_text_field_state(id, value);
     } else {
         state = &state_variant->text_field;
+    }
+
+    if (force_reset) {
+        // delete the state
     }
 
     UI_Theme textbox_theme = {};

@@ -260,6 +260,33 @@ char *string_format(Allocator *allocator, int32 n, char *format, ...) {
     return buf;
 }
 
+// buffer should be a String_Buffer with contents and size already set.
+// it's being used here like a container for (char *buf, int n) arguments like
+// would usually be passed in a function like this.
+void string_format(String_Buffer *buffer, char *format, ...) {
+    assert(buffer->contents);
+
+    va_list args;
+    va_start(args, format);
+    
+    int32 num_chars_no_null = vsnprintf(NULL, 0, format, args);
+    int32 n = num_chars_no_null + 1;
+
+    Marker m = begin_region();
+    char *temp_buf = (char *) allocate(temp_region, n);
+
+    int32 num_chars_outputted = vsnprintf(temp_buf, n, format, args);
+    assert(num_chars_outputted > 0 && num_chars_outputted < n);
+
+    // copy the temp text to the buffer.
+    // note that this will assert if there isn't enough space.
+    set_string_buffer_text(buffer, temp_buf);
+
+    end_region(m);
+
+    va_end(args);
+}
+
 void platform_get_relative_path(char *absolute_path,
                                 char *relative_path_buffer, int32 relative_path_buffer_size) {
     assert(relative_path_buffer_size >= MAX_PATH);
