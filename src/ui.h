@@ -214,14 +214,11 @@ struct UI_id {
     // not be stored in memory that can be overwritten because you could end up with undesirable behaviour.
     // this is why we use constant char arrays whose addresses point to some place in the executable.
     int32 index;
-
-    char *parent_string_ptr;
-    int32 parent_index;
 };
 
 inline UI_id make_ui_id(char *id, int32 index) {
     if (!id || string_equals(id, "")) id = NULL;
-    UI_id ui_id = { id, index, NULL, 0 };
+    UI_id ui_id = { id, index };
     return ui_id;
 }
 

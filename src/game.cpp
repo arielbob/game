@@ -1245,4 +1245,9 @@ void update(Controller_State *controller_state,
     //assert(ui_manager->current_layer == 0);
 
     ui_post_update();
+
+    if (game_state->mode == Game_Mode::EDITING) {
+        // note that this won't run if you change modes from EDITING this frame
+        editor_post_update();
+    }
 }

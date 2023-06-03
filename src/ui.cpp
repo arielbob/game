@@ -60,6 +60,7 @@ uint32 get_hash(UI_id id, uint32 bucket_size) {
     }
     sum += id.index;
 
+#if 0
     it = make_string_iterator(make_string(id.parent_string_ptr));
     c = get_next_char(&it);
     while (c) {
@@ -67,6 +68,7 @@ uint32 get_hash(UI_id id, uint32 bucket_size) {
         c = get_next_char(&it);
     }
     sum += id.parent_index;
+#endif
     
     uint32 hash = sum % bucket_size;
 
@@ -95,6 +97,16 @@ UI_Widget *ui_table_get(UI_Widget **table, UI_id id) {
     }
 
     return NULL;
+}
+
+// from current frame
+inline UI_Widget *ui_get_widget(UI_id id) {
+    return ui_table_get(ui_manager->widget_table, id);
+}
+
+// from previous frame
+inline UI_Widget *ui_get_widget_prev_frame(UI_id id) {
+    return ui_table_get(ui_manager->last_frame_widget_table, id);
 }
 
 void ui_table_add(UI_Widget **table, UI_Widget *widget) {
@@ -135,8 +147,6 @@ UI_Widget *ui_add_widget(UI_Widget *widget) {
     assert(ui_manager->widget_stack); // ui should be initted with a root node (call ui_frame_init)
     
     UI_Widget *parent = ui_manager->widget_stack->widget;
-    widget->id.parent_string_ptr = parent->id.string_ptr;
-    widget->id.parent_index      = parent->id.index;
     widget->parent = parent;
 
     if (widget->position_type != UI_POSITION_FLOAT) {
@@ -266,8 +276,12 @@ UI_Interact_Result ui_interact(UI_Widget *semantic_widget) {
     // we don't add widgets with NULL IDs to the table, so to interact with a widget, the widget must have a
     // non-null ID.
     UI_Widget *computed_widget = ui_table_get(ui_manager->last_frame_widget_table, semantic_widget->id);
-    if (!computed_widget) return {};
-    //assert(computed_widget);
+
+    if (!computed_widget) {
+        // no need to assert here, because on the first frame that a widget is added, it won't be
+        // in last_frame_widget_table.
+        return {};
+    }
     
     Controller_State *controller_state = Context::controller_state;
     Vec2 mouse_pos = controller_state->current_mouse;
@@ -368,7 +382,7 @@ UI_Widget_State *ui_get_state(UI_id id) {
 
 void _ui_add_state(UI_Widget_State *state) {
     if (!state->id.string_ptr) return;
-    
+
     uint32 hash = get_hash(state->id, NUM_WIDGET_BUCKETS);
 
     UI_Widget_State **state_table = ui_manager->state_table;
@@ -941,10 +955,16 @@ void ui_frame_end() {
     // loop through all the entries of the state table. if we find an entry for a widget
     // that doesn't exist this frame (by checking widget_table), then we delete that
     // widget's state from the state table.
+    // note that it isn't enforced that a state is associated with a widget via its ID, since
+    // it's kind of annoying to do so. if you have state, it'll probably be keyed with the
+    // widget that it's associated with, i.e. a 1:1 relationship. we don't enforce this, but
+    // if you don't do this, then this loop won't succeed in deleting state that's associated
+    // with all of its widgets. i don't really think this is a case we need to handle right
+    // now.
     for (int32 i = 0; i < NUM_WIDGET_BUCKETS; i++) {
         UI_Widget_State *current = ui_manager->state_table[i];
         while (current) {
-            if (!ui_table_get(ui_manager->widget_table, current->id)) {
+            if (!ui_get_widget(current->id)) {
                 assert(num_states_to_delete < UI_MAX_STATES_TO_DELETE);
                 states_to_delete[num_states_to_delete++] = current->id;
             }
@@ -1019,8 +1039,7 @@ inline bool32 in_bounds(Vec2 p, Vec2 widget_position, Vec2 widget_size) {
 }
 
 inline bool32 ui_id_equals(UI_id id1, UI_id id2) {
-    return ((id1.string_ptr == id2.string_ptr) && (id1.index == id2.index) &&
-            (id1.parent_string_ptr == id2.parent_string_ptr) && (id1.parent_index == id2.parent_index));
+    return ((id1.string_ptr == id2.string_ptr) && (id1.index == id2.index));
 }
 
 inline real32 get_adjusted_font_height(Font font) {
@@ -1406,7 +1425,7 @@ void push_window(char *title, UI_Window_Theme theme, char *id_string, int32 inde
     } else {
         state = &state_variant->window;
     }
-
+    
     // we only want to add windows to the root node
     assert(ui_manager->widget_stack->widget == ui_manager->root);
 

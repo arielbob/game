@@ -30,6 +30,7 @@ struct Editor_State {
     bool32 show_colliders;
     int32 selected_entity_id;
     int32 last_selected_entity_id;
+    bool32 selected_entity_changed; // if it changed in the current frame, so we can reset UI
 
     uint32 open_window_flags;
     UI_id color_picker_parent;

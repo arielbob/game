@@ -567,6 +567,7 @@ void update_editor(Controller_State *controller_state, real32 dt) {
                 if (entity->id != editor_state->selected_entity_id) {
                     editor_state->last_selected_entity_id = editor_state->selected_entity_id;
                     editor_state->selected_entity_id = entity->id;
+                    editor_state->selected_entity_changed = true;
 
                     gizmo_state->transform = entity->transform;
                     reset_entity_editors(editor_state);
@@ -1062,7 +1063,7 @@ void draw_editor(Controller_State *controller_state) {
             Entity_Info info = {};
             info.flags = ENTITY_MESH | ENTITY_MATERIAL;
             info.transform = make_transform();
-            info.mesh_name = make_string("suzanne2");
+            info.mesh_name = make_string("cube");
             info.material_name = make_string("default_material");
             
             make_and_add_entity(&game_state->level, info);
@@ -1072,8 +1073,13 @@ void draw_editor(Controller_State *controller_state) {
     }
     ui_pop_widget();
     #endif
-    
-    draw_entity_box();
+
+    if (editor_state->selected_entity_id >= 0) {
+        // if we changed entities this frame, then hide it so it can reset and show up next frame
+        if (!editor_state->selected_entity_changed) {
+            draw_entity_box();    
+        }
+    }
     
 #if 0
     if (selected_entity) {
@@ -1268,4 +1274,8 @@ void draw_editor(Controller_State *controller_state) {
             5.0f, render_state->display_output.height - 114.0f,
             buf, editor_font_name, default_text_style, "editor history");
 #endif
+}
+
+void editor_post_update() {
+    game_state->editor_state.selected_entity_changed = false;
 }
