@@ -350,6 +350,123 @@ UI_Interact_Result ui_interact(UI_Widget *semantic_widget) {
     return result;
 }
 
+
+UI_Widget_State *ui_get_state(UI_id id) {
+    uint32 hash = get_hash(id, NUM_WIDGET_BUCKETS);
+
+    UI_Widget_State *current = ui_manager->state_table[hash];
+    while (current) {
+        if (ui_id_equals(current->id, id)) {
+            return current;
+        }
+
+        current = current->next;
+    }
+
+    return NULL;
+}
+
+void _ui_add_state(UI_Widget_State *state) {
+    if (!state->id.string_ptr) return;
+    
+    uint32 hash = get_hash(state->id, NUM_WIDGET_BUCKETS);
+
+    UI_Widget_State **state_table = ui_manager->state_table;
+    UI_Widget_State *current = state_table[hash];
+    if (!current) {
+        state->next = NULL;
+        state_table[hash] = state;
+        return;
+    }
+    
+    while (true) {
+        if (ui_id_equals(current->id, state->id)) {
+            assert(!"Widget state already exists in table.");
+            return;
+        }
+
+        if (!current->next) {
+            current->next = state;
+            state->next = NULL;
+            return;
+        }
+
+        current = current->next;
+    }
+    
+    assert(!"Should be unreachable.");
+}
+
+void _ui_delete_state(UI_id id) {
+    assert(id.string_ptr);
+
+    uint32 hash = get_hash(id, NUM_WIDGET_BUCKETS);
+
+    UI_Widget_State *current = ui_manager->state_table[hash];
+    UI_Widget_State *prev = NULL;
+
+    while (current) {
+        if (ui_id_equals(current->id, id)) {
+            if (prev) {
+                prev->next = current->next;
+            } else {
+                // if we're first in list, we need to update bucket array when we delete
+                ui_manager->state_table[hash] = current->next;
+            }
+            
+            deallocate(current);
+            deallocate((Allocator *) &ui_manager->persistent_heap, current);
+            
+            return;
+        }
+
+        current = current->next;
+    }
+
+    assert(!"Widget state does not exist.");
+}
+
+UI_Widget_State *ui_make_widget_state() {
+    UI_Widget_State *result = (UI_Widget_State *) heap_allocate(&ui_manager->persistent_heap,
+                                                                sizeof(UI_Widget_State), true);
+    return result;
+}
+
+UI_Window_State *ui_add_window_state(UI_id id, Vec2 position) {
+    UI_Widget_State *state = ui_make_widget_state();
+    state->id = id;
+    state->type = UI_STATE_WINDOW;
+    state->window = { position };
+
+    _ui_add_state(state);
+
+    return &state->window;
+}
+
+UI_Text_Field_State *ui_add_text_field_state(UI_id id, String value) {
+    UI_Widget_State *state = ui_make_widget_state();
+    state->id = id;
+    state->type = UI_STATE_TEXT_FIELD;
+    String_Buffer buffer = make_string_buffer((Allocator *) &ui_manager->persistent_heap, value, 64);
+    state->text_field_slider = { buffer, false, 0 };
+    
+    _ui_add_state(state);
+
+    return &state->text_field;
+}
+
+UI_Text_Field_Slider_State *ui_add_text_field_slider_state(UI_id id, real32 value) {
+    UI_Widget_State *state = ui_make_widget_state();
+    state->id = id;
+    state->type = UI_STATE_TEXT_FIELD_SLIDER;
+    String_Buffer buffer = make_string_buffer((Allocator *) &ui_manager->persistent_heap, 64);
+    state->text_field_slider = { buffer, false, false, 0 };
+    
+    _ui_add_state(state);
+
+    return &state->text_field_slider;
+}
+
 void calculate_standalone_size(UI_Widget *widget, UI_Widget_Axis axis) {
     UI_Size_Type size_type = widget->size_type[axis];
     real32 axis_semantic_size = widget->semantic_size[axis];
@@ -818,6 +935,28 @@ void ui_frame_end() {
     ui_manager->last_frame_root = ui_manager->root;
     ui_manager->root = NULL;
 
+    UI_id states_to_delete[UI_MAX_STATES_TO_DELETE];
+    int32 num_states_to_delete = 0;
+
+    // loop through all the entries of the state table. if we find an entry for a widget
+    // that doesn't exist this frame (by checking widget_table), then we delete that
+    // widget's state from the state table.
+    for (int32 i = 0; i < NUM_WIDGET_BUCKETS; i++) {
+        UI_Widget_State *current = ui_manager->state_table[i];
+        while (current) {
+            if (!ui_table_get(ui_manager->widget_table, current->id)) {
+                assert(num_states_to_delete < UI_MAX_STATES_TO_DELETE);
+                states_to_delete[num_states_to_delete++] = current->id;
+            }
+            current = current->next;
+        }
+    }
+
+    // we don't want to delete while we're iterating through the same table, so delete them here
+    for (int32 i = 0; i < num_states_to_delete; i++) {
+        _ui_delete_state(states_to_delete[i]);
+    }
+    
     // swap allocators
     Arena_Allocator temp = ui_manager->last_frame_arena;
     ui_manager->last_frame_arena = ui_manager->frame_arena;
@@ -901,94 +1040,6 @@ inline real32 get_center_baseline_offset(real32 container_height, real32 text_he
 inline real32 get_center_y_offset(real32 height, real32 box_height) {
     return 0.5f * (height - box_height);
 }
-
-UI_Widget_State *ui_get_state(UI_id id) {
-    uint32 hash = get_hash(id, NUM_WIDGET_BUCKETS);
-
-    UI_Widget_State *current = ui_manager->state_table[hash];
-    while (current) {
-        if (ui_id_equals(current->id, id)) {
-            return current;
-        }
-
-        current = current->next;
-    }
-
-    return NULL;
-}
-
-void _ui_add_state(UI_Widget_State *state) {
-    if (!state->id.string_ptr) return;
-    
-    uint32 hash = get_hash(state->id, NUM_WIDGET_BUCKETS);
-
-    UI_Widget_State **state_table = ui_manager->state_table;
-    UI_Widget_State *current = state_table[hash];
-    if (!current) {
-        state->next = NULL;
-        state_table[hash] = state;
-        return;
-    }
-    
-    while (true) {
-        if (ui_id_equals(current->id, state->id)) {
-            assert(!"Widget state already exists in table.");
-            return;
-        }
-
-        if (!current->next) {
-            current->next = state;
-            state->next = NULL;
-            return;
-        }
-
-        current = current->next;
-    }
-    
-    assert(!"Should be unreachable.");
-}
-
-UI_Widget_State *ui_make_widget_state() {
-    UI_Widget_State *result = (UI_Widget_State *) heap_allocate(&ui_manager->persistent_heap,
-                                                                sizeof(UI_Widget_State), true);
-    return result;
-}
-
-UI_Window_State *ui_add_window_state(UI_id id, Vec2 position) {
-    UI_Widget_State *state = ui_make_widget_state();
-    state->id = id;
-    state->type = UI_STATE_WINDOW;
-    state->window = { position };
-
-    _ui_add_state(state);
-
-    return &state->window;
-}
-
-UI_Text_Field_State *ui_add_text_field_state(UI_id id, String value) {
-    UI_Widget_State *state = ui_make_widget_state();
-    state->id = id;
-    state->type = UI_STATE_TEXT_FIELD;
-    String_Buffer buffer = make_string_buffer((Allocator *) &ui_manager->persistent_heap, value, 64);
-    state->text_field_slider = { buffer, false, 0 };
-    
-    _ui_add_state(state);
-
-    return &state->text_field;
-}
-
-UI_Text_Field_Slider_State *ui_add_text_field_slider_state(UI_id id, real32 value) {
-    UI_Widget_State *state = ui_make_widget_state();
-    state->id = id;
-    state->type = UI_STATE_TEXT_FIELD_SLIDER;
-    String_Buffer buffer = make_string_buffer((Allocator *) &ui_manager->persistent_heap, 64);
-    state->text_field_slider = { buffer, false, false, 0 };
-    
-    _ui_add_state(state);
-
-    return &state->text_field_slider;
-}
-
 
 // COMPOUND WIDGETS
 
@@ -1416,7 +1467,8 @@ String do_text_field(UI_Text_Field_Theme theme,
     }
 
     if (force_reset) {
-        // delete the state
+        _ui_delete_state(id);
+        state = ui_add_text_field_state(id, value);
     }
 
     UI_Theme textbox_theme = {};

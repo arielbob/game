@@ -25,6 +25,8 @@
 #define UI_MAX_RENDER_COMMANDS 1024
 #define NUM_WIDGET_BUCKETS 128
 
+#define UI_MAX_STATES_TO_DELETE 256
+
 struct UI_Widget;
 
 enum UI_Widget_Axis {

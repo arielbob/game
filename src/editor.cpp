@@ -888,7 +888,9 @@ void draw_level_box() {
     
     ui_add_and_push_widget("", column_theme);
     {
-        bool32 just_loaded_level = false;
+        // this is so that we can reset the UI to new states, like the level name text field, when
+        // we create a new level or load a different level
+        bool32 just_changed_level = false;
         
         ui_add_and_push_widget("", row_theme);
         {
@@ -898,6 +900,7 @@ void draw_level_box() {
                 editor_state->selected_entity_id = -1;
                 editor_state->last_selected_entity_id = -1;
                 editor_state->is_new_level = true;
+                just_changed_level = true;
             }
         
             ui_x_pad(1.0f);
@@ -916,7 +919,7 @@ void draw_level_box() {
                         editor_state->selected_entity_id = -1;
                         editor_state->last_selected_entity_id = -1;
                         editor_state->is_new_level = false;
-                        just_loaded_level = true;
+                        just_changed_level = true;
                     }
                 }
 
@@ -941,7 +944,7 @@ void draw_level_box() {
             field_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_ABSOLUTE };
             field_theme.size = { 1.0f, editor_button_theme.size.y };
 
-            String name_result = do_text_field(field_theme, game_state->level.name, just_loaded_level,
+            String name_result = do_text_field(field_theme, game_state->level.name, just_changed_level,
                                                "level_name_text_field", "level_name_text_field_text");
             deallocate(game_state->level.name);
             game_state->level.name = copy((Allocator *) &game_state->level.heap, name_result);
