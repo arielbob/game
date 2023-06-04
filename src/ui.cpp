@@ -1480,6 +1480,74 @@ void push_window(char *title, UI_Window_Theme theme, char *id_string, int32 inde
     }
 }
 
+void handle_text_field_input(UI_Text_Field_State *state) {
+    Controller_State *controller_state = Context::controller_state;
+    int32 original_cursor_index = state->cursor_index;
+        
+    if (just_pressed_or_repeated(controller_state->key_left)) {
+        state->cursor_index--;
+        state->cursor_index = max(state->cursor_index, 0);
+    }
+
+    if (just_pressed_or_repeated(controller_state->key_right)) {
+        state->cursor_index++;
+        state->cursor_index = min(state->cursor_index, state->buffer.current_length);
+        state->cursor_index = min(state->cursor_index, state->buffer.size);
+    }
+
+    if (controller_state->key_left.is_down && state->cursor_index > 0) {
+        state->cursor_timer = 0.0f;
+    }
+
+    if (controller_state->key_right.is_down && state->cursor_index < state->buffer.current_length) {
+        state->cursor_timer = 0.0f;
+    }
+
+    String_Buffer *buffer = &state->buffer;
+    for (int32 i = 0; i < controller_state->num_pressed_chars; i++) {
+        char c = controller_state->pressed_chars[i];
+        if (c == '\b') { // backspace key
+            if (state->cursor_index > 0) {
+                splice(&state->buffer, state->cursor_index - 1);
+                state->cursor_index--;
+                state->cursor_index = max(state->cursor_index, 0);
+                state->cursor_timer = 0.0f;
+            }
+        } else if ((buffer->current_length < buffer->size) && (state->cursor_index < buffer->size)) {
+            if (c >= 32 && c <= 126) {
+                splice_insert(&state->buffer, state->cursor_index, c);
+                state->cursor_index++;
+                state->cursor_timer = 0.0f;
+            }
+        }
+    }
+}
+
+// note that text_widget_id needs to be the id of the widget that is specifies the bounds of the
+// text. this can be confusing because your topmost parent might have padding and if you pass that
+// id into this function, your text will be going outside of your expected bounds.
+void handle_text_field_cursor(UI_id text_widget_id, UI_Text_Field_State *state,
+                              Font *font, char *text, real32 *width_to_cursor_index) {
+    *width_to_cursor_index = get_width(font, text, state->cursor_index);
+
+    UI_Widget *computed_widget = ui_table_get(ui_manager->last_frame_widget_table, text_widget_id);
+
+    // this is always positive. think of it as pushing the window to the right.
+    // when we later pass it to text_theme, we make it negative, since we're deciding
+    // where the text should go.
+    real32 x_offset = 0.0f;
+    if (computed_widget) {
+        real32 text_width = get_width(font, state->buffer);
+        real32 computed_width = computed_widget->computed_size.x;
+                    
+        if (*width_to_cursor_index < state->x_offset) {
+            state->x_offset = *width_to_cursor_index;
+        } else if (*width_to_cursor_index > state->x_offset + computed_width) {
+            state->x_offset = *width_to_cursor_index - computed_width;
+        }
+    }
+}
+
 String do_text_field(UI_Text_Field_Theme theme,
                      String value, bool32 force_reset,
                      char *id_string, char *text_id_string,
@@ -1544,52 +1612,16 @@ String do_text_field(UI_Text_Field_Theme theme,
     }
     
     if (is_focus(textbox)) {
-        Controller_State *controller_state = Context::controller_state;
-        int32 original_cursor_index = state->cursor_index;
-        
-        if (just_pressed_or_repeated(controller_state->key_left)) {
-            state->cursor_index--;
-            state->cursor_index = max(state->cursor_index, 0);
-        }
-
-        if (just_pressed_or_repeated(controller_state->key_right)) {
-            state->cursor_index++;
-            state->cursor_index = min(state->cursor_index, state->buffer.current_length);
-            state->cursor_index = min(state->cursor_index, state->buffer.size);
-        }
-
-        if (controller_state->key_left.is_down && state->cursor_index > 0) {
-            state->cursor_timer = 0.0f;
-        }
-
-        if (controller_state->key_right.is_down && state->cursor_index < state->buffer.current_length) {
-            state->cursor_timer = 0.0f;
-        }
-
-        String_Buffer *buffer = &state->buffer;
-        for (int32 i = 0; i < controller_state->num_pressed_chars; i++) {
-            char c = controller_state->pressed_chars[i];
-            if (c == '\b') { // backspace key
-                if (state->cursor_index > 0) {
-                    splice(&state->buffer, state->cursor_index - 1);
-                    state->cursor_index--;
-                    state->cursor_index = max(state->cursor_index, 0);
-                    state->cursor_timer = 0.0f;
-                }
-            } else if ((buffer->current_length < buffer->size) && (state->cursor_index < buffer->size)) {
-                if (c >= 32 && c <= 126) {
-                    splice_insert(&state->buffer, state->cursor_index, c);
-                    state->cursor_index++;
-                    state->cursor_timer = 0.0f;
-                }
-            }
-        }
-
-        if (state->cursor_index != original_cursor_index) {
-            ui_manager->focus_t = 0.0f;
-        }
+        handle_text_field_input(state);
     }
 
+    UI_id text_widget_id = make_ui_id(text_id_string, index);
+    char *str = to_char_array((Allocator *) &ui_manager->frame_arena, state->buffer);
+    real32 width_to_cursor_index;
+    // this should only be called after calling handle_text_field_input() because state->buffer
+    // could change. i don't think it matters that we still call it even if we don't handle input.
+    handle_text_field_cursor(text_widget_id, state, font, str, &width_to_cursor_index);
+    
     {
         ui_x_pad(x_padding);
 
@@ -1608,30 +1640,9 @@ String do_text_field(UI_Text_Field_Theme theme,
             text_container_theme.background_color = rgb_to_vec4(255, 0, 0);
             text_container_theme.scissor_type = UI_SCISSOR_COMPUTED_SIZE;
 
-            UI_Widget *text_widget = make_widget(make_ui_id(text_id_string, index), text_container_theme, 0);
+            UI_Widget *text_widget = make_widget(text_widget_id, text_container_theme, 0);
             ui_add_and_push_widget(text_widget);
             {
-                char *str = to_char_array((Allocator *) &ui_manager->frame_arena, state->buffer);
-                real32 width_to_cursor_index = get_width(font, str, state->cursor_index);
-                
-                UI_Widget *computed_widget = ui_table_get(ui_manager->last_frame_widget_table,
-                                                          text_widget->id);
-
-                // this is always positive. think of it as pushing the window to the right.
-                // when we later pass it to text_theme, we make it negative, since we're deciding
-                // where the text should go.
-                real32 x_offset = 0.0f;
-                if (computed_widget) {
-                    real32 text_width = get_width(font, state->buffer);
-                    real32 computed_width = computed_widget->computed_size.x;
-                    
-                    if (width_to_cursor_index < state->x_offset) {
-                        state->x_offset = width_to_cursor_index;
-                    } else if (width_to_cursor_index > state->x_offset + computed_width) {
-                        state->x_offset = width_to_cursor_index - computed_width;
-                    }
-                }
-                
                 UI_Theme text_theme = {};
                 text_theme.font = default_font;
                 text_theme.text_color = make_vec4(1.0f, 1.0f, 1.0f, 1.0f);
