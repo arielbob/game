@@ -670,7 +670,110 @@ void update_editor(Controller_State *controller_state, real32 dt) {
     #endif
 }
 
-void draw_entity_box() {
+void draw_entity_box_2(bool32 force_refresh) {
+    UI_Window_Theme window_theme = {};
+    window_theme.initial_position = { 200.0f, 200.0f };
+    window_theme.background_color = rgb_to_vec4(24, 24, 28);
+    window_theme.title_text_color = rgb_to_vec4(255, 255, 255);
+    window_theme.title_bgc        = DEFAULT_BUTTON_BACKGROUND;
+    window_theme.title_hot_bgc    = DEFAULT_BUTTON_HOT_BACKGROUND;
+    window_theme.title_active_bgc = DEFAULT_BUTTON_ACTIVE_BACKGROUND;
+    window_theme.corner_flags     = CORNER_ALL;
+    window_theme.corner_radius    = 5.0f;
+    window_theme.border_flags     = BORDER_ALL;
+    window_theme.border_color     = window_theme.title_bgc;
+    window_theme.border_width     = 1.0f;
+    window_theme.semantic_size    = { 200.0f, 0.0f };
+
+    // TODO: be able to specify size type and size in window_theme
+    
+    push_window("Entity Properties", window_theme, "window-test");
+
+    UI_Container_Theme content_theme = {
+        { 5.0f, 5.0f, 5.0f, 5.0f },
+        DEFAULT_BOX_BACKGROUND,
+        UI_POSITION_NONE,
+        {},
+        { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN },
+        { 1.0f, 0.0f },
+        UI_LAYOUT_VERTICAL
+    };
+
+    UI_Text_Field_Theme transform_field_theme = {
+        DEFAULT_BUTTON_BACKGROUND, DEFAULT_BUTTON_HOT_BACKGROUND, DEFAULT_BUTTON_ACTIVE_BACKGROUND,
+        make_vec4(0.0f, 1.0f, 0.0f, 1.0f),
+        0.0f, 0, 0, {}, 0.0f,
+        default_font,
+        { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN },
+        { 0.0f, 20.0f }
+    };
+
+    ui_push_container(content_theme, "entity-properties-content");
+    {
+        UI_Theme row_theme = {};
+        row_theme.size_type      = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
+        row_theme.semantic_size  = { 0.0f, 0.0f };
+        row_theme.layout_type    = UI_LAYOUT_HORIZONTAL;
+        row_theme.background_color = rgb_to_vec4(0, 255, 0);
+
+        UI_Theme label_theme = {};
+        label_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_PERCENTAGE };
+        label_theme.layout_type = UI_LAYOUT_CENTER;
+        label_theme.semantic_size = { 20.0f, 1.0f };
+        label_theme.background_color = rgb_to_vec4(50, 50, 60);
+        //label_theme.border_flags = BORDER_BOTTOM;
+        //label_theme.border_color = rgb_to_vec4(24, 24, 28);
+        //label_theme.border_width = 1.0f;
+        
+        do_text("Position");
+        ui_y_pad(1.0f);
+
+        ui_add_and_push_widget("", row_theme);
+        {
+            ui_push_widget("", label_theme, UI_WIDGET_DRAW_BACKGROUND);
+            { do_text("X"); }
+            ui_pop_widget();
+            
+            ui_x_pad(1.0f);
+            do_text_field(transform_field_theme, make_string("test"), false, "position-x", "position-x-text");
+        } ui_pop_widget();
+
+        ui_y_pad(1.0f);
+        ui_add_and_push_widget("", row_theme);
+        {
+            ui_push_widget("", label_theme, UI_WIDGET_DRAW_BACKGROUND);
+            { do_text("Y"); }
+            ui_pop_widget();
+            
+            ui_x_pad(1.0f);
+            do_text_field(transform_field_theme, make_string("test"), false, "position-y", "position-y-text");
+        } ui_pop_widget();
+
+        ui_y_pad(1.0f);
+        ui_add_and_push_widget("", row_theme);
+        {
+            ui_push_widget("", label_theme, UI_WIDGET_DRAW_BACKGROUND);
+            { do_text("Z"); }
+            ui_pop_widget();
+            
+            ui_x_pad(1.0f);
+            do_text_field(transform_field_theme, make_string("test"), false, "position-z", "position-z-text");
+        } ui_pop_widget();
+    }
+    ui_pop_widget();
+    #if 0
+    UI_Theme column_theme = {};
+    column_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
+    column_theme.semantic_size = { 1.0f, 0.0f };
+    column_theme.layout_type = UI_LAYOUT_VERTICAL;
+    #endif
+
+    //ui_y_pad(5.0f);
+    
+    ui_pop_widget();
+}
+
+void draw_entity_box(bool32 force_refresh) {
     UI_Window_Theme window_theme = {};
     window_theme.initial_position = { 200.0f, 200.0f };
     window_theme.background_color = rgb_to_vec4(24, 24, 28);
@@ -686,7 +789,7 @@ void draw_entity_box() {
 
     // TODO: be able to specify size type and size in window_theme
     
-    push_window("Entity Transform", window_theme, "window-test");
+    push_window("Entity Properties", window_theme, "window-entity-properties");
     
     UI_Theme content_theme = {};
     content_theme.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN };
@@ -708,9 +811,9 @@ void draw_entity_box() {
     inner_theme.layout_type    = UI_LAYOUT_VERTICAL;
 
     UI_Theme row_theme = {};
-    row_theme.size_type      = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
-    row_theme.semantic_size           = { 0.0f, 20.0f };
-    row_theme.layout_type    = UI_LAYOUT_HORIZONTAL;
+    row_theme.size_type        = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
+    row_theme.semantic_size    = { 0.0f, 20.0f };
+    row_theme.layout_type      = UI_LAYOUT_HORIZONTAL;
     row_theme.background_color = rgb_to_vec4(255, 0, 0);
     
     UI_Text_Field_Slider_Theme text_field_theme = {};
@@ -746,6 +849,7 @@ void draw_entity_box() {
     
     ui_push_container(inner_theme);
     {
+#if 0
         do_text("Position");
         ui_y_pad(5.0f);
         ui_add_and_push_widget("", group_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_DRAW_BORDER);
@@ -861,6 +965,7 @@ void draw_entity_box() {
                 z_scale = do_text_field_slider(z_scale, 0.0f, 100.0f, text_field_theme, "scale-z-slider");
             } ui_pop_widget();
         } ui_pop_widget();
+#endif
     }
     ui_pop_widget();
     
@@ -1076,9 +1181,7 @@ void draw_editor(Controller_State *controller_state) {
 
     if (editor_state->selected_entity_id >= 0) {
         // if we changed entities this frame, then hide it so it can reset and show up next frame
-        if (!editor_state->selected_entity_changed) {
-            draw_entity_box();    
-        }
+        draw_entity_box_2(editor_state->selected_entity_changed);
     }
     
 #if 0

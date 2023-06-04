@@ -163,7 +163,7 @@ UI_Widget *ui_add_widget(UI_Widget *widget) {
         }
     }
     parent->num_total_children++;
-    
+
     if (!parent->last) {
         assert(!parent->first);
         parent->first = widget;
@@ -174,6 +174,12 @@ UI_Widget *ui_add_widget(UI_Widget *widget) {
         parent->last = widget;
     }
 
+    if (parent && parent->layout_type == UI_LAYOUT_CENTER && widget->position_type != UI_POSITION_FLOAT) {
+        if (widget->prev) {
+            assert(!"Widget cannot be added, since parent is LAYOUT_CENTER and can only have a single non-floating child.");
+        }
+    }
+    
     ui_table_add(ui_manager->widget_table, widget);
 
     return widget;
@@ -1067,7 +1073,7 @@ void do_text(char *text, char *id, uint32 flags = 0, int32 index = 0) {
     text_theme.size_type = { UI_SIZE_FIT_TEXT, UI_SIZE_FIT_TEXT };
     text_theme.text_color = { 1.0f, 1.0f, 1.0f, 1.0f };
     //text_theme.background_color = { 1.0f, 0.0f, 0.0f, 1.0f };
-    //UI_Widget *text_widget = ui_add_widget(make_ui_id(id, index), UI_WIDGET_DRAW_TEXT | UI_WIDGET_DRAW_BACKGROUND);
+    //UI_Widget *text_widget = ui_add_widget(make_ui_id(id, index), text_theme, UI_WIDGET_DRAW_TEXT | UI_WIDGET_DRAW_BACKGROUND);
     UI_Widget *text_widget = ui_add_widget(make_ui_id(id, index), text_theme, UI_WIDGET_DRAW_TEXT);
     text_widget->text = text;
 }
@@ -1414,6 +1420,7 @@ struct UI_Window_Theme {
     uint32 border_flags;
     Vec4 border_color;
     real32 border_width;
+    Vec2 semantic_size;
 };
 
 void push_window(char *title, UI_Window_Theme theme, char *id_string, int32 index = 0) {
@@ -1431,8 +1438,9 @@ void push_window(char *title, UI_Window_Theme theme, char *id_string, int32 inde
 
     UI_Theme window_theme = {};
     window_theme.semantic_position       = state->position;
-    window_theme.layout_type             = UI_LAYOUT_VERTICAL;
     window_theme.size_type               = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN };
+    window_theme.semantic_size           = theme.semantic_size;
+    window_theme.layout_type             = UI_LAYOUT_VERTICAL;
     window_theme.background_color        = theme.background_color;
     window_theme.hot_background_color    = theme.background_color;
     window_theme.active_background_color = theme.background_color;
