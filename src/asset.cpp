@@ -648,7 +648,7 @@ void deallocate(UI_Widget_State *state) {
             deallocate(state->text_field.buffer);
         } break;
         case UI_STATE_TEXT_FIELD_SLIDER: {
-            deallocate(state->text_field_slider.buffer);
+            deallocate(state->text_field_slider.text_field_state.buffer);
         } break;
         default: {
             assert(!"Unhandled UI widget state type.");

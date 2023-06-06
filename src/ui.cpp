@@ -468,7 +468,7 @@ UI_Text_Field_State *ui_add_text_field_state(UI_id id, String value) {
     state->id = id;
     state->type = UI_STATE_TEXT_FIELD;
     String_Buffer buffer = make_string_buffer((Allocator *) &ui_manager->persistent_heap, value, 64);
-    state->text_field_slider = { buffer, false, 0 };
+    state->text_field = { buffer, false, 0.0f, 0.0f };
     
     _ui_add_state(state);
 
@@ -479,8 +479,14 @@ UI_Text_Field_Slider_State *ui_add_text_field_slider_state(UI_id id, real32 valu
     UI_Widget_State *state = ui_make_widget_state();
     state->id = id;
     state->type = UI_STATE_TEXT_FIELD_SLIDER;
+
+    UI_Text_Field_Slider_State *text_field_slider_state = &state->text_field_slider;
+    text_field_slider_state->is_using = false;
+    text_field_slider_state->is_sliding = false;
+
+    UI_Text_Field_State *text_field_state = &text_field_slider_state->text_field_state;
     String_Buffer buffer = make_string_buffer((Allocator *) &ui_manager->persistent_heap, 64);
-    state->text_field_slider = { buffer, false, false, 0 };
+    *text_field_state = { buffer, 0, 0.0f, 0.0f };
     
     _ui_add_state(state);
 
@@ -1211,203 +1217,6 @@ void ui_push_container(UI_Container_Theme theme, char *id = "") {
     ui_push_existing_widget(inner);
 }
 
-void ui_add_slider_bar(UI_Slider_Theme theme, real32 value, real32 min, real32 max) {
-    UI_Theme slider_theme = {};
-    slider_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_PERCENTAGE };
-    slider_theme.position_type = UI_POSITION_FLOAT;
-    slider_theme.background_color = theme.background_color;
-    slider_theme.semantic_size = { clamp((value - min) / (max - min), 0.0f, 1.0f), 1.0f };
-    
-    ui_add_widget("", slider_theme, UI_WIDGET_DRAW_BACKGROUND);
-}
-
-real32 do_text_field_slider(real32 value,
-                            real32 min_value, real32 max_value,
-                            UI_Text_Field_Slider_Theme theme,
-                            char *id_string, int32 index = 0) {
-    UI_id id = make_ui_id(id_string, index);
-    UI_Widget_State *state_variant = ui_get_state(id);
-    UI_Text_Field_Slider_State *state;
-    if (!state_variant) {
-        state = ui_add_text_field_slider_state(id, value);
-    } else {
-        state = &state_variant->text_field_slider;
-    }
-
-    UI_Theme textbox_theme = {};
-    textbox_theme.layout_type             = UI_LAYOUT_HORIZONTAL;
-    textbox_theme.size_type               = theme.size_type;
-    textbox_theme.semantic_size           = theme.size;
-    textbox_theme.background_color        = theme.field_background_color;
-    textbox_theme.hot_background_color    = theme.field_background_color;
-    textbox_theme.active_background_color = theme.field_background_color;
-    textbox_theme.font                    = theme.font;
-    textbox_theme.corner_radius           = theme.corner_radius;
-    textbox_theme.corner_flags            = theme.corner_flags;
-    textbox_theme.border_flags            = theme.border_flags;
-    textbox_theme.border_color            = theme.border_color;
-    textbox_theme.border_width            = theme.border_width;
-
-    uint32 textbox_flags = UI_WIDGET_IS_CLICKABLE | UI_WIDGET_IS_FOCUSABLE | UI_WIDGET_DRAW_BORDER;
-    if (theme.show_field_background) textbox_flags |= UI_WIDGET_DRAW_BACKGROUND;
-    
-    UI_Widget *textbox = ui_add_and_push_widget(id_string, textbox_theme, textbox_flags);
-                                                
-    UI_Interact_Result interact = ui_interact(textbox);
-
-    real32 x_delta = fabsf((get_mouse_delta()).x);
-    real32 deadzone = 1.0f;
-
-    if (!state->is_using) {
-        state->is_sliding = is_active(textbox) && (x_delta > deadzone);
-
-        if (state->is_sliding) {
-            state->is_using = true;
-        } else if (interact.released) {
-            state->is_using = true;
-
-            char *value_text = string_format((Allocator *) &ui_manager->frame_arena, "%f", value);
-            set_string_buffer_text(&state->buffer, value_text);
-            state->cursor_index = state->buffer.current_length;
-        }
-    }
-
-    if (state->is_using) {
-        if (state->is_sliding) {
-            if (!is_active(textbox)) {
-                state->is_using = false;
-            }
-        } else {
-            if (!is_focus(textbox)) {
-                state->is_using = false;
-
-                real32 result;
-                bool32 conversion_result = string_to_real32(make_string(state->buffer), &result);
-                if (conversion_result) {
-                    value = result;
-                    //return result;
-                }
-            }
-        }
-    }
-    
-    if (state->is_using && state->is_sliding) {
-        value = interact.relative_mouse_percentage.x * (max_value - min_value);
-        value = clamp(value, min_value, max_value);
-    }
-    
-    if (state->is_using && !state->is_sliding) {
-        Controller_State *controller_state = Context::controller_state;
-        int32 original_cursor_index = state->cursor_index;
-        
-        if (just_pressed_or_repeated(controller_state->key_left)) {
-            state->cursor_index--;
-            state->cursor_index = max(state->cursor_index, 0);
-        }
-
-        if (just_pressed_or_repeated(controller_state->key_right)) {
-            state->cursor_index++;
-            state->cursor_index = min(state->cursor_index, state->buffer.current_length);
-            state->cursor_index = min(state->cursor_index, state->buffer.size);
-        }
-
-        String_Buffer *buffer = &state->buffer;
-        for (int32 i = 0; i < controller_state->num_pressed_chars; i++) {
-            char c = controller_state->pressed_chars[i];
-            if (c == '\b') { // backspace key
-                splice(&state->buffer, state->cursor_index - 1);
-                state->cursor_index--;
-                state->cursor_index = max(state->cursor_index, 0);
-            } else if ((buffer->current_length < buffer->size) && (state->cursor_index < buffer->size)) {
-                if (c >= 32 && c <= 126) {
-                    splice_insert(&state->buffer, state->cursor_index, c);
-                    state->cursor_index++;
-                }
-            }
-        }
-
-        if (state->cursor_index != original_cursor_index) {
-            ui_manager->focus_t = 0.0f;
-        }
-    }
-
-    #if 1
-    UI_Slider_Theme slider_theme = {};
-    slider_theme.background_color = theme.slider_background_color;
-    
-    if (theme.show_slider) {
-        if (!state->is_using || state->is_sliding) {
-            ui_add_slider_bar(slider_theme, value, min_value, max_value);
-        }
-    }
-    
-    {
-        ui_x_pad(5.0f);
-        UI_Theme inner_field_theme = {};
-        inner_field_theme.size_type     = { UI_SIZE_FILL_REMAINING, UI_SIZE_PERCENTAGE };
-        inner_field_theme.layout_type   = UI_LAYOUT_CENTER;
-        inner_field_theme.semantic_size = { 1.0f, 1.0f };
-
-        ui_add_and_push_widget("", inner_field_theme);
-        {
-            ui_x_pad(5.0f);
-
-            UI_Theme text_theme = {};
-            text_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
-            text_theme.layout_type = UI_LAYOUT_HORIZONTAL;
-
-            ui_add_and_push_widget("", text_theme);
-            {
-                if (state->is_using && !state->is_sliding) {
-                    char *str = to_char_array((Allocator *) &ui_manager->frame_arena, state->buffer);
-                    do_text(str, "");
-
-                    // draw cursor
-
-                    UI_Theme cursor_theme = {};
-                    cursor_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_PERCENTAGE };
-                    cursor_theme.semantic_size = { 1.0f, 1.0f };
-                    cursor_theme.position_type = UI_POSITION_FLOAT;
-                    cursor_theme.background_color = theme.cursor_color;
-                    
-                    Font *font = get_font(textbox->font);
-                    real32 width_to_index = get_width(font, str, state->cursor_index);
-                    cursor_theme.semantic_position = { floorf(width_to_index), 0.0f };
-                    
-                    real32 time_to_switch = 0.5f; // time spent in either state
-                    bool32 show_background = ((int32) (ui_manager->focus_t*(1.0f / time_to_switch)) + 1) % 2;
-                    
-                    UI_Widget *cursor = ui_add_widget("", cursor_theme,
-                                                      show_background ? UI_WIDGET_DRAW_BACKGROUND : 0);
-                } else {
-                    char *buf = string_format((Allocator *) &ui_manager->frame_arena, "%f", value);
-                    do_text(buf, "");
-                }
-                //do_text("hello");
-            }
-            ui_pop_widget();
-
-            ui_x_pad(5.0f);
-        }
-        ui_pop_widget();
-    }
-    #endif
-    ui_pop_widget();
-
-    // we do validation that it's a number, but any putting value into bounds should be done by the caller
-#if 0
-    if (interact.lost_focus) {
-        real32 result;
-        bool32 conversion_result = string_to_real32(make_string(state->buffer), &result);
-        if (conversion_result) {
-            return result;
-        }
-    }
-#endif
-    
-    return value;
-}
-
 struct UI_Window_Theme {
     Vec2 initial_position;
     Vec4 background_color;
@@ -1679,4 +1488,252 @@ String do_text_field(UI_Text_Field_Theme theme,
     ui_pop_widget();
 
     return make_string(state->buffer);
+}
+
+void ui_add_slider_bar(UI_Slider_Theme theme, real32 value, real32 min, real32 max) {
+    UI_Theme slider_theme = {};
+    slider_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_PERCENTAGE };
+    slider_theme.position_type = UI_POSITION_FLOAT;
+    slider_theme.background_color = theme.background_color;
+    slider_theme.semantic_size = { clamp((value - min) / (max - min), 0.0f, 1.0f), 1.0f };
+    
+    ui_add_widget("", slider_theme, UI_WIDGET_DRAW_BACKGROUND);
+}
+
+real32 do_text_field_slider(real32 value,
+                            real32 min_value, real32 max_value,
+                            UI_Text_Field_Slider_Theme theme,
+                            char *id_string, char *text_id_string,
+                            int32 index = 0) {
+    UI_id id = make_ui_id(id_string, index);
+    UI_Widget_State *state_variant = ui_get_state(id);
+    UI_Text_Field_Slider_State *state;
+    if (!state_variant) {
+        state = ui_add_text_field_slider_state(id, value);
+    } else {
+        state = &state_variant->text_field_slider;
+    }
+
+    UI_Text_Field_State *text_field_state = &state->text_field_state;
+    
+    UI_Theme textbox_theme = {};
+    textbox_theme.layout_type             = UI_LAYOUT_HORIZONTAL;
+    textbox_theme.size_type               = theme.size_type;
+    textbox_theme.semantic_size           = theme.size;
+    textbox_theme.background_color        = theme.field_background_color;
+    textbox_theme.hot_background_color    = theme.field_background_color;
+    textbox_theme.active_background_color = theme.field_background_color;
+    textbox_theme.font                    = theme.font;
+    textbox_theme.corner_radius           = theme.corner_radius;
+    textbox_theme.corner_flags            = theme.corner_flags;
+    textbox_theme.border_flags            = theme.border_flags;
+    textbox_theme.border_color            = theme.border_color;
+    textbox_theme.border_width            = theme.border_width;
+
+    uint32 textbox_flags = UI_WIDGET_IS_CLICKABLE | UI_WIDGET_IS_FOCUSABLE | UI_WIDGET_DRAW_BORDER | UI_WIDGET_DRAW_BACKGROUND;
+    //if (theme.show_field_background) textbox_flags |= UI_WIDGET_DRAW_BACKGROUND;
+
+    UI_Widget *textbox = ui_add_and_push_widget(id_string, textbox_theme, textbox_flags);
+    Font *font = get_font(textbox->font);
+
+    text_field_state->cursor_timer += game_state->dt;
+    
+    UI_Interact_Result interact = ui_interact(textbox);
+
+    // TODO: redo this stuff
+    if (interact.just_pressed) {
+        //state->mouse_press_start = relative_mouse;
+    }
+
+    real32 x_delta = 0.0f;//(interact.relative_mouse - state->mouse_press_start).x;
+    real32 deadzone = 1.0f;
+    
+    if (!state->is_using) {
+        state->is_sliding = is_active(textbox) && (x_delta > deadzone);
+
+        if (state->is_sliding) {
+            state->is_using = true;
+        } else if (interact.released) {
+            state->is_using = true;
+
+            char *value_text = string_format((Allocator *) &ui_manager->frame_arena, "%f", value);
+            set_string_buffer_text(&text_field_state->buffer, value_text);
+            text_field_state->cursor_index = text_field_state->buffer.current_length;
+        }
+    }
+
+    if (state->is_using) {
+        if (state->is_sliding) {
+            if (!is_active(textbox)) {
+                state->is_using = false;
+            }
+        } else {
+            if (!is_focus(textbox)) {
+                state->is_using = false;
+
+                real32 result;
+                bool32 conversion_result = string_to_real32(make_string(text_field_state->buffer), &result);
+                if (conversion_result) {
+                    value = result;
+                    //return result;
+                }
+            }
+        }
+    }
+
+    if (state->is_sliding) {
+        text_field_state->x_offset = 0.0f;
+    }
+    
+    if (state->is_using && state->is_sliding) {
+        value = interact.relative_mouse_percentage.x * (max_value - min_value);
+        value = clamp(value, min_value, max_value);
+    }
+
+    if (state->is_using && !state->is_sliding) {
+        handle_text_field_input(text_field_state);
+    }
+
+    UI_id text_widget_id = make_ui_id(text_id_string, index);
+    char *str = to_char_array((Allocator *) &ui_manager->frame_arena, text_field_state->buffer);
+
+    real32 width_to_cursor_index;
+    // this should only be called after calling handle_text_field_input() because state->buffer
+    // could change. i don't think it matters that we still call it even if we don't handle input.
+    handle_text_field_cursor(text_widget_id, text_field_state, font, str, &width_to_cursor_index);
+
+#if 1
+    UI_Slider_Theme slider_theme = {};
+    slider_theme.background_color = theme.slider_background_color;
+    
+    if (theme.show_slider) {
+        if (!state->is_using || state->is_sliding) {
+            ui_add_slider_bar(slider_theme, value, min_value, max_value);
+        }
+    }
+
+    real32 x_padding = 5.0f;
+    {
+        ui_x_pad(x_padding);
+
+        UI_Theme inner_field_theme = {};
+        inner_field_theme.size_type     = { UI_SIZE_FILL_REMAINING, UI_SIZE_PERCENTAGE };
+        inner_field_theme.layout_type   = UI_LAYOUT_CENTER;
+        inner_field_theme.semantic_size = { 1.0f, 1.0f };
+
+        ui_add_and_push_widget("", inner_field_theme);
+        {
+
+            UI_Theme text_container_theme = {};
+            text_container_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
+            text_container_theme.semantic_size = { 0.0f, 1.0f };
+            text_container_theme.layout_type = UI_LAYOUT_CENTER;
+            text_container_theme.background_color = rgb_to_vec4(255, 0, 0);
+            text_container_theme.scissor_type = UI_SCISSOR_COMPUTED_SIZE;
+
+            UI_Widget *text_widget = make_widget(text_widget_id, text_container_theme, 0);
+            ui_add_and_push_widget(text_widget);
+            {
+                UI_Theme text_theme = {};
+                text_theme.font = theme.font;
+                text_theme.text_color = make_vec4(1.0f, 1.0f, 1.0f, 1.0f);
+                text_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_TEXT };
+                text_theme.semantic_size = { 1.0f, 0.0f };
+                text_theme.position_type = UI_POSITION_RELATIVE;
+                text_theme.semantic_position = { -text_field_state->x_offset, 0.0f };
+                text_theme.scissor_type = UI_SCISSOR_INHERIT;
+                do_text(str, "", text_theme);
+                
+                if (!state->is_sliding && (is_active(textbox) || is_focus(textbox))) {
+                    // draw cursor
+                    UI_Theme cursor_theme = {};
+                    cursor_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_PERCENTAGE };
+                    cursor_theme.semantic_size = { 1.0f, 1.0f };
+                    cursor_theme.position_type = UI_POSITION_FLOAT;
+                    cursor_theme.background_color = theme.cursor_color;
+                    
+                    cursor_theme.semantic_position = { floorf(width_to_cursor_index - text_field_state->x_offset), 0.0f };    
+                    
+                    real32 time_to_switch = 0.5f; // time spent in either state
+                    bool32 show_background = ((int32) (text_field_state->cursor_timer*(1.0f / time_to_switch)) + 1) % 2;
+                    
+                    UI_Widget *cursor = ui_add_widget("", cursor_theme,
+                                                      show_background ? UI_WIDGET_DRAW_BACKGROUND : 0);
+                }
+            }
+            ui_pop_widget();
+        }
+        ui_pop_widget();
+
+        ui_x_pad(x_padding);
+    }
+    
+    #if 0
+    {
+        ui_x_pad(5.0f);
+        UI_Theme inner_field_theme = {};
+        inner_field_theme.size_type     = { UI_SIZE_FILL_REMAINING, UI_SIZE_PERCENTAGE };
+        inner_field_theme.layout_type   = UI_LAYOUT_HORIZONTAL;
+        inner_field_theme.semantic_size = { 1.0f, 1.0f };
+
+        ui_add_and_push_widget("", inner_field_theme);
+        {
+            ui_x_pad(5.0f);
+
+            UI_Theme text_theme = {};
+            text_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
+            text_theme.semantic_size = { 1.0f, 0.0f };
+            text_theme.layout_type = UI_LAYOUT_HORIZONTAL;
+            text_theme.font = theme.font;
+            text_theme.text_color = { 1.0f, 1.0f, 1.0f, 1.0f };
+
+            ui_add_and_push_widget("", text_theme);
+            {
+                if (state->is_using && !state->is_sliding) {
+                    char *str = to_char_array((Allocator *) &ui_manager->frame_arena, text_field_state->buffer);
+                    do_text(str, text_id_string, text_theme);
+
+                    // draw cursor
+                    UI_Theme cursor_theme = {};
+                    cursor_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_PERCENTAGE };
+                    cursor_theme.semantic_size = { 1.0f, 1.0f };
+                    cursor_theme.position_type = UI_POSITION_FLOAT;
+                    cursor_theme.background_color = theme.cursor_color;
+                    
+                    Font *font = get_font(textbox->font);
+                    real32 width_to_index = get_width(font, str, text_field_state->cursor_index);
+                    cursor_theme.semantic_position = { floorf(width_to_index), 0.0f };
+                    
+                    real32 time_to_switch = 0.5f; // time spent in either state
+                    bool32 show_background = ((int32) (ui_manager->focus_t*(1.0f / time_to_switch)) + 1) % 2;
+                    
+                    UI_Widget *cursor = ui_add_widget("", cursor_theme,
+                                                      show_background ? UI_WIDGET_DRAW_BACKGROUND : 0);
+                } else {
+                    char *buf = string_format((Allocator *) &ui_manager->frame_arena, "%f", value);
+                    do_text(buf, text_id_string, text_theme);
+                }
+            }
+            ui_pop_widget();
+
+            ui_x_pad(5.0f);
+        }
+        ui_pop_widget();
+    }
+    #endif
+#endif
+    ui_pop_widget();
+
+    // we do validation that it's a number, but any putting value into bounds should be done by the caller
+#if 0
+    if (interact.lost_focus) {
+        real32 result;
+        bool32 conversion_result = string_to_real32(make_string(state->buffer), &result);
+        if (conversion_result) {
+            return result;
+        }
+    }
+#endif
+    
+    return value;
 }

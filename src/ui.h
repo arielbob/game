@@ -171,7 +171,6 @@ struct UI_Text_Field_Slider_Theme {
     Vec4 slider_background_color;
     Vec4 cursor_color;
     bool32 show_slider;
-    bool32 show_field_background;
     
     real32 corner_radius;
     uint32 corner_flags;
@@ -232,17 +231,15 @@ struct UI_Window_State {
 
 struct UI_Text_Field_State {
     String_Buffer buffer;
-    bool32 is_using;
     int32 cursor_index; // 0 is before the first character, 1 is before second character, etc.
     real32 cursor_timer;
     real32 x_offset;
 };
 
 struct UI_Text_Field_Slider_State {
-    String_Buffer buffer;
+    UI_Text_Field_State text_field_state;
     bool32 is_using;
     bool32 is_sliding;
-    int32 cursor_index;
 };
 
 struct UI_Widget_State {

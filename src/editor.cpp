@@ -708,6 +708,18 @@ void draw_entity_box_2(bool32 force_refresh) {
         { 0.0f, 20.0f }
     };
 
+    UI_Text_Field_Slider_Theme slider_theme = {};
+    slider_theme.field_background_color  = DEFAULT_BUTTON_BACKGROUND;
+    slider_theme.slider_background_color = rgb_to_vec4(0, 0, 255);//rgb_to_vec4(61, 73, 60);
+    slider_theme.show_slider             = false;
+    slider_theme.size_type               = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
+    slider_theme.size                    = { 0.0f, 20.0f };
+    slider_theme.cursor_color            = rgb_to_vec4(255, 255, 255);
+    slider_theme.font                    = default_font;
+    slider_theme.border_flags            = BORDER_BOTTOM;
+    slider_theme.border_color            = rgb_to_vec4(50, 50, 60);
+    slider_theme.border_width            = 1.0f;
+    
     ui_push_container(content_theme, "entity-properties-content");
     {
         UI_Theme row_theme = {};
@@ -735,7 +747,9 @@ void draw_entity_box_2(bool32 force_refresh) {
             ui_pop_widget();
             
             ui_x_pad(1.0f);
-            do_text_field(transform_field_theme, make_string("test"), false, "position-x", "position-x-text");
+            do_text_field_slider(5.0f, 0.0f, 100.0f, slider_theme,
+                                 "position-x-slider", "position-x-slider-text");
+            //do_text_field(transform_field_theme, make_string("test"), false, "position-x", "position-x-text");
         } ui_pop_widget();
 
         ui_y_pad(1.0f);
@@ -773,6 +787,7 @@ void draw_entity_box_2(bool32 force_refresh) {
     ui_pop_widget();
 }
 
+#if 0
 void draw_entity_box(bool32 force_refresh) {
     UI_Window_Theme window_theme = {};
     window_theme.initial_position = { 200.0f, 200.0f };
@@ -849,7 +864,6 @@ void draw_entity_box(bool32 force_refresh) {
     
     ui_push_container(inner_theme);
     {
-#if 0
         do_text("Position");
         ui_y_pad(5.0f);
         ui_add_and_push_widget("", group_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_DRAW_BORDER);
@@ -965,12 +979,12 @@ void draw_entity_box(bool32 force_refresh) {
                 z_scale = do_text_field_slider(z_scale, 0.0f, 100.0f, text_field_theme, "scale-z-slider");
             } ui_pop_widget();
         } ui_pop_widget();
-#endif
     }
     ui_pop_widget();
     
     ui_pop_widget(); // pop window
 }
+#endif
 
 void draw_level_box() {
     Editor_State *editor_state = &game_state->editor_state;
