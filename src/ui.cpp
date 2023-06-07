@@ -1509,7 +1509,7 @@ void ui_add_slider_bar(UI_Slider_Theme theme, real32 value, real32 min, real32 m
 }
 
 real32 do_text_field_slider(real32 value,
-                            real32 min_value, real32 max_value,
+                            //real32 min_value, real32 max_value,
                             UI_Text_Field_Slider_Theme theme,
                             char *id_string, char *text_id_string,
                             bool32 force_reset,

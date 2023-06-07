@@ -757,7 +757,7 @@ void draw_entity_box_2(bool32 force_reset) {
             ui_pop_widget();
             
             ui_x_pad(1.0f);
-            new_position.x = do_text_field_slider(transform->position.x, 0.0f, 100.0f, slider_theme,
+            new_position.x = do_text_field_slider(transform->position.x, slider_theme,
                                                   "position-x-slider", "position-x-slider-text",
                                                   force_reset);
         } ui_pop_widget();
@@ -770,7 +770,7 @@ void draw_entity_box_2(bool32 force_reset) {
             ui_pop_widget();
 
             ui_x_pad(1.0f);
-            new_position.y = do_text_field_slider(transform->position.y, 0.0f, 100.0f, slider_theme,
+            new_position.y = do_text_field_slider(transform->position.y, slider_theme,
                                                   "position-y-slider", "position-y-slider-text",
                                                   force_reset);
         } ui_pop_widget();
@@ -783,22 +783,60 @@ void draw_entity_box_2(bool32 force_reset) {
             ui_pop_widget();
 
             ui_x_pad(1.0f);
-            new_position.z = do_text_field_slider(transform->position.z, 0.0f, 100.0f, slider_theme,
+            new_position.z = do_text_field_slider(transform->position.z, slider_theme,
                                                   "position-z-slider", "position-z-slider-text",
                                                   force_reset);
+        } ui_pop_widget();
+
+        ui_y_pad(5.0f);
+
+        Vec3 euler_rotation;
+        get_euler_angles_from_quaternion(transform->rotation, &euler_rotation);
+
+        do_text("Rotation");
+        ui_y_pad(1.0f);
+
+        ui_add_and_push_widget("", row_theme);
+        {
+            ui_push_widget("", label_theme, UI_WIDGET_DRAW_BACKGROUND);
+            { do_text("X"); }
+            ui_pop_widget();
+            
+            ui_x_pad(1.0f);
+            do_text_field_slider(euler_rotation.x, slider_theme,
+                                 "rotation-x-slider", "rotation-x-slider-text",
+                                 force_reset);
+        } ui_pop_widget();
+
+        ui_y_pad(1.0f);
+        ui_add_and_push_widget("", row_theme);
+        {
+            ui_push_widget("", label_theme, UI_WIDGET_DRAW_BACKGROUND);
+            { do_text("Y"); }
+            ui_pop_widget();
+
+            ui_x_pad(1.0f);
+            do_text_field_slider(euler_rotation.y, slider_theme,
+                                 "rotation-y-slider", "rotation-y-slider-text",
+                                 force_reset);
+        } ui_pop_widget();
+
+        ui_y_pad(1.0f);
+        ui_add_and_push_widget("", row_theme);
+        {
+            ui_push_widget("", label_theme, UI_WIDGET_DRAW_BACKGROUND);
+            { do_text("Z"); }
+            ui_pop_widget();
+
+            ui_x_pad(1.0f);
+            do_text_field_slider(euler_rotation.z, slider_theme,
+                                 "rotation-z-slider", "rotation-z-slider-text",
+                                 force_reset);
         } ui_pop_widget();
 
         update_entity_position(entity, new_position);
     }
     ui_pop_widget();
-#if 0
-    UI_Theme column_theme = {};
-    column_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
-    column_theme.semantic_size = { 1.0f, 0.0f };
-    column_theme.layout_type = UI_LAYOUT_VERTICAL;
-#endif
-
-    //ui_y_pad(5.0f);
     
     ui_pop_widget();
 }

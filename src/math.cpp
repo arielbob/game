@@ -1837,6 +1837,14 @@ void get_euler_angles_from_rotate_matrix(Mat4 rotate_matrix, real32 *canonical_r
     *canonical_roll = roll;
 }
 
+void get_euler_angles_from_quaternion(Quaternion q, Vec3 *result) {//real32 *canonical_roll, real32 *canonical_pitch, real32 *canonical_heading) {
+    Mat4 rotate_matrix = make_rotate_matrix(q);
+    // roll    = z-axis
+    // pitch   = x-axis
+    // heading = y-axis
+    get_euler_angles_from_rotate_matrix(rotate_matrix, &result->z, &result->x, &result->y);
+}
+
 Mat4 get_model_matrix(Vec3 scale, Quaternion rotation, Vec3 position) {
     Mat4 model_matrix = make_mat4_identity();
 
