@@ -194,6 +194,13 @@ void set_string_buffer_text(String_Buffer *string_buffer, char *text) {
     string_buffer->current_length = len;
 }
 
+void set_string_buffer_text(String_Buffer *string_buffer, String text) {
+    assert(text.length < string_buffer->size);
+
+    memcpy(string_buffer->contents, text.contents, text.length);
+    string_buffer->current_length = text.length;
+}
+
 void deallocate(String_Buffer string_buffer) {
     deallocate(string_buffer.allocator, string_buffer.contents);
 }

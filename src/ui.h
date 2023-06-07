@@ -168,6 +168,9 @@ struct UI_Slider_Theme {
 
 struct UI_Text_Field_Slider_Theme {
     Vec4 field_background_color;
+    Vec4 field_hot_background_color;
+    Vec4 field_active_background_color;
+
     Vec4 slider_background_color;
     Vec4 cursor_color;
     bool32 show_slider;
@@ -236,10 +239,21 @@ struct UI_Text_Field_State {
     real32 x_offset;
 };
 
+enum class Text_Field_Slider_Mode {
+    NONE,
+    SLIDING,
+    TYPING
+};
+
 struct UI_Text_Field_Slider_State {
     UI_Text_Field_State text_field_state;
-    bool32 is_using;
-    bool32 is_sliding;
+    Text_Field_Slider_Mode mode;
+    Vec2 mouse_press_start_relative_pos;
+    real64 mouse_press_start_t;
+
+    // we show this when not in typing mode and only set it to what's in the
+    // text_field_state buffer once text_field_state's buffer is validated by us.
+    String_Buffer current_text; 
 };
 
 struct UI_Widget_State {

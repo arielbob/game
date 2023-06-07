@@ -710,6 +710,8 @@ void draw_entity_box_2(bool32 force_refresh) {
 
     UI_Text_Field_Slider_Theme slider_theme = {};
     slider_theme.field_background_color  = DEFAULT_BUTTON_BACKGROUND;
+    slider_theme.field_hot_background_color  = DEFAULT_BUTTON_HOT_BACKGROUND;
+    slider_theme.field_active_background_color  = DEFAULT_BUTTON_ACTIVE_BACKGROUND;
     slider_theme.slider_background_color = rgb_to_vec4(0, 0, 255);//rgb_to_vec4(61, 73, 60);
     slider_theme.show_slider             = false;
     slider_theme.size_type               = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };

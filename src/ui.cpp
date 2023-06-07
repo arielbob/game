@@ -480,17 +480,25 @@ UI_Text_Field_Slider_State *ui_add_text_field_slider_state(UI_id id, real32 valu
     state->id = id;
     state->type = UI_STATE_TEXT_FIELD_SLIDER;
 
-    UI_Text_Field_Slider_State *text_field_slider_state = &state->text_field_slider;
-    text_field_slider_state->is_using = false;
-    text_field_slider_state->is_sliding = false;
-
-    UI_Text_Field_State *text_field_state = &text_field_slider_state->text_field_state;
-    String_Buffer buffer = make_string_buffer((Allocator *) &ui_manager->persistent_heap, 64);
-    *text_field_state = { buffer, 0, 0.0f, 0.0f };
+    Marker m = begin_region();
+    char *value_text = string_format(temp_region, "%f", value);
+    
+    UI_Text_Field_Slider_State *main_widget_state = &state->text_field_slider;
+    String_Buffer current_text_buffer = make_string_buffer((Allocator *) &ui_manager->persistent_heap,
+                                                           value_text, 64);
+    main_widget_state->current_text = current_text_buffer;
+    
+    UI_Text_Field_State *text_field_state = &main_widget_state->text_field_state;
+    String_Buffer text_field_buffer = make_string_buffer((Allocator *) &ui_manager->persistent_heap,
+                                                         make_string(current_text_buffer),
+                                                         current_text_buffer.size);
+    *text_field_state = { text_field_buffer, 0, 0.0f, 0.0f };
     
     _ui_add_state(state);
 
-    return &state->text_field_slider;
+    end_region(m);
+
+    return main_widget_state;
 }
 
 void calculate_standalone_size(UI_Widget *widget, UI_Widget_Axis axis) {
@@ -1521,8 +1529,8 @@ real32 do_text_field_slider(real32 value,
     textbox_theme.size_type               = theme.size_type;
     textbox_theme.semantic_size           = theme.size;
     textbox_theme.background_color        = theme.field_background_color;
-    textbox_theme.hot_background_color    = theme.field_background_color;
-    textbox_theme.active_background_color = theme.field_background_color;
+    textbox_theme.hot_background_color    = theme.field_hot_background_color;
+    textbox_theme.active_background_color = theme.field_active_background_color;
     textbox_theme.font                    = theme.font;
     textbox_theme.corner_radius           = theme.corner_radius;
     textbox_theme.corner_flags            = theme.corner_flags;
@@ -1539,63 +1547,92 @@ real32 do_text_field_slider(real32 value,
     text_field_state->cursor_timer += game_state->dt;
     
     UI_Interact_Result interact = ui_interact(textbox);
-
-    // TODO: redo this stuff
-    if (interact.just_pressed) {
-        //state->mouse_press_start = relative_mouse;
-    }
-
-    real32 x_delta = 0.0f;//(interact.relative_mouse - state->mouse_press_start).x;
     real32 deadzone = 1.0f;
     
-    if (!state->is_using) {
-        state->is_sliding = is_active(textbox) && (x_delta > deadzone);
+    if (interact.just_pressed) {
+        state->mouse_press_start_relative_pos = interact.relative_mouse;
+        state->mouse_press_start_t = platform_get_wall_clock_time();
+    }
 
-        if (state->is_sliding) {
-            state->is_using = true;
-        } else if (interact.released) {
-            state->is_using = true;
-
-            char *value_text = string_format((Allocator *) &ui_manager->frame_arena, "%f", value);
-            set_string_buffer_text(&text_field_state->buffer, value_text);
-            text_field_state->cursor_index = text_field_state->buffer.current_length;
+    if (interact.holding) {
+        if (state->mode == Text_Field_Slider_Mode::NONE) {
+            real32 x_delta = fabsf((interact.relative_mouse - state->mouse_press_start_relative_pos).x);
+        
+            if (x_delta > deadzone) {
+                state->mode = Text_Field_Slider_Mode::SLIDING;
+            }
+            // maybe if we hold it long enough in the deadzone, we just turn into typing?
+        }
+    } else if (interact.released) {
+        if (state->mode != Text_Field_Slider_Mode::SLIDING) {
+            state->mode = Text_Field_Slider_Mode::TYPING;
+            set_string_buffer_text(&text_field_state->buffer, make_string(state->current_text));
         }
     }
 
-    if (state->is_using) {
-        if (state->is_sliding) {
-            if (!is_active(textbox)) {
-                state->is_using = false;
-            }
-        } else {
-            if (!is_focus(textbox)) {
-                state->is_using = false;
+    // we need to use is_focus and is_active for handling changing states when the mouse is not
+    // on top of the textbox.
+    if (state->mode == Text_Field_Slider_Mode::TYPING && !is_focus(textbox)) {
+        // this is when we just exited the typing mode
+        state->mode = Text_Field_Slider_Mode::NONE;
 
-                real32 result;
-                bool32 conversion_result = string_to_real32(make_string(text_field_state->buffer), &result);
-                if (conversion_result) {
-                    value = result;
-                    //return result;
-                }
-            }
+        // validate the text_field_state buffer and if it's fine, we set the current_text buffer to
+        // its value
+        real32 slider_value;
+        bool32 conversion_result = string_to_real32(make_string(text_field_state->buffer), &slider_value);
+        if (conversion_result) {
+            set_string_buffer_text(&state->current_text, make_string(text_field_state->buffer));
         }
-    }
-
-    if (state->is_sliding) {
-        text_field_state->x_offset = 0.0f;
+    } else if (state->mode == Text_Field_Slider_Mode::SLIDING && !is_active(textbox)) {
+        state->mode = Text_Field_Slider_Mode::NONE;
     }
     
-    if (state->is_using && state->is_sliding) {
-        value = interact.relative_mouse_percentage.x * (max_value - min_value);
-        value = clamp(value, min_value, max_value);
+    // below is based on code from do_text_field()
+    real32 x_padding = 5.0f;
+    if (state->mode == Text_Field_Slider_Mode::TYPING) {
+        if (interact.just_pressed || interact.released || interact.holding) {
+            int32 last_index = 0;
+        
+            real32 adjusted_cursor_x = interact.relative_mouse.x - x_padding + 3.0f + text_field_state->x_offset;
+            for (int32 i = 1; i <= text_field_state->buffer.current_length; i++) {
+                real32 width_to_i = get_width(font, &text_field_state->buffer, i);
+                if (width_to_i > adjusted_cursor_x) {
+                    break;
+                }
+                last_index = i;
+            }
+
+            text_field_state->cursor_timer = 0.0f;
+            text_field_state->cursor_index = last_index;
+        }
+    } else if (state->mode == Text_Field_Slider_Mode::SLIDING) {
+        Vec2 mouse_delta = get_mouse_delta();
+        real32 x_delta = mouse_delta.x;
+
+        real32 slider_value;
+        bool32 conversion_result = string_to_real32(make_string(state->current_text), &slider_value);
+        assert(conversion_result);
+        
+        slider_value += x_delta;
+
+        Marker m = begin_region();
+        char *value_text = string_format(temp_region, "%f", slider_value);
+        set_string_buffer_text(&state->current_text, value_text);
+        end_region(m);
     }
 
-    if (state->is_using && !state->is_sliding) {
+    if (is_focus(textbox)) {
         handle_text_field_input(text_field_state);
     }
 
     UI_id text_widget_id = make_ui_id(text_id_string, index);
-    char *str = to_char_array((Allocator *) &ui_manager->frame_arena, text_field_state->buffer);
+    char *str;
+
+    if (state->mode == Text_Field_Slider_Mode::TYPING) {
+        str = to_char_array((Allocator *) &ui_manager->frame_arena, text_field_state->buffer);
+    } else {
+        str = to_char_array((Allocator *) &ui_manager->frame_arena, state->current_text);
+    }
 
     real32 width_to_cursor_index;
     // this should only be called after calling handle_text_field_input() because state->buffer
@@ -1603,16 +1640,6 @@ real32 do_text_field_slider(real32 value,
     handle_text_field_cursor(text_widget_id, text_field_state, font, str, &width_to_cursor_index);
 
 #if 1
-    UI_Slider_Theme slider_theme = {};
-    slider_theme.background_color = theme.slider_background_color;
-    
-    if (theme.show_slider) {
-        if (!state->is_using || state->is_sliding) {
-            ui_add_slider_bar(slider_theme, value, min_value, max_value);
-        }
-    }
-
-    real32 x_padding = 5.0f;
     {
         ui_x_pad(x_padding);
 
@@ -1640,11 +1667,16 @@ real32 do_text_field_slider(real32 value,
                 text_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_TEXT };
                 text_theme.semantic_size = { 1.0f, 0.0f };
                 text_theme.position_type = UI_POSITION_RELATIVE;
-                text_theme.semantic_position = { -text_field_state->x_offset, 0.0f };
+                if (is_focus(textbox)) {
+                    text_theme.semantic_position = { -text_field_state->x_offset, 0.0f };
+                } else {
+                    text_theme.semantic_position = { 0.0f, 0.0f };
+                }
+                
                 text_theme.scissor_type = UI_SCISSOR_INHERIT;
                 do_text(str, "", text_theme);
                 
-                if (!state->is_sliding && (is_active(textbox) || is_focus(textbox))) {
+                if (state->mode == Text_Field_Slider_Mode::TYPING) {
                     // draw cursor
                     UI_Theme cursor_theme = {};
                     cursor_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_PERCENTAGE };
@@ -1736,4 +1768,13 @@ real32 do_text_field_slider(real32 value,
 #endif
     
     return value;
+}
+
+void deallocate(UI_Text_Field_State state) {
+    deallocate(state.buffer);
+}
+
+void deallocate(UI_Text_Field_Slider_State state) {
+    deallocate(state.text_field_state);
+    deallocate(state.current_text);
 }
