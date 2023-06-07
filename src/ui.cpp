@@ -1572,8 +1572,9 @@ real32 do_text_field_slider(real32 value,
 
     // we need to use is_focus and is_active for handling changing states when the mouse is not
     // on top of the textbox.
+    // these blocks are for when we just exited typing or sliding state
     if (state->mode == Text_Field_Slider_Mode::TYPING && !is_focus(textbox)) {
-        // this is when we just exited the typing mode
+        
         state->mode = Text_Field_Slider_Mode::NONE;
 
         // validate the text_field_state buffer and if it's fine, we set the current_text buffer to
@@ -1581,7 +1582,11 @@ real32 do_text_field_slider(real32 value,
         real32 slider_value;
         bool32 conversion_result = string_to_real32(make_string(text_field_state->buffer), &slider_value);
         if (conversion_result) {
-            set_string_buffer_text(&state->current_text, make_string(text_field_state->buffer));
+            Marker m = begin_region();
+            char *value_text = string_format(temp_region, "%f", slider_value);
+            set_string_buffer_text(&state->current_text, value_text);
+            end_region(m);
+            
         }
     } else if (state->mode == Text_Field_Slider_Mode::SLIDING && !is_active(textbox)) {
         state->mode = Text_Field_Slider_Mode::NONE;
