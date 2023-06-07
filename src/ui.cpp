@@ -1512,6 +1512,7 @@ real32 do_text_field_slider(real32 value,
                             real32 min_value, real32 max_value,
                             UI_Text_Field_Slider_Theme theme,
                             char *id_string, char *text_id_string,
+                            bool32 force_reset,
                             int32 index = 0) {
     UI_id id = make_ui_id(id_string, index);
     UI_Widget_State *state_variant = ui_get_state(id);
@@ -1522,6 +1523,11 @@ real32 do_text_field_slider(real32 value,
         state = &state_variant->text_field_slider;
     }
 
+    if (force_reset) {
+        _ui_delete_state(id);
+        state = ui_add_text_field_slider_state(id, value);
+    }
+    
     UI_Text_Field_State *text_field_state = &state->text_field_state;
     
     UI_Theme textbox_theme = {};
@@ -1570,6 +1576,8 @@ real32 do_text_field_slider(real32 value,
         }
     }
 
+    real32 result = 0.0f;
+    
     // we need to use is_focus and is_active for handling changing states when the mouse is not
     // on top of the textbox.
     // these blocks are for when we just exited typing or sliding state
@@ -1585,13 +1593,16 @@ real32 do_text_field_slider(real32 value,
             char *value_text = string_format(temp_region, "%f", slider_value);
             set_string_buffer_text(&state->current_text, value_text);
             end_region(m);
-            
         }
     } else if (state->mode == Text_Field_Slider_Mode::SLIDING && !is_active(textbox)) {
         state->mode = Text_Field_Slider_Mode::NONE;
+        bool32 conversion_result = string_to_real32(make_string(state->current_text), &result);
+        assert(conversion_result);
     }
-    
-    // below is based on code from do_text_field()
+
+    // below is based on code from do_text_field(). it is ran when we're currently focused on
+    // the text field when we're in typing mode, or when the widget is active and in sliding
+    // mode.
     real32 x_padding = 5.0f;
     if (state->mode == Text_Field_Slider_Mode::TYPING) {
         if (interact.just_pressed || interact.released || interact.holding) {
@@ -1623,6 +1634,21 @@ real32 do_text_field_slider(real32 value,
         char *value_text = string_format(temp_region, "%f", slider_value);
         set_string_buffer_text(&state->current_text, value_text);
         end_region(m);
+
+        result = slider_value;
+    }
+
+    if (state->mode != Text_Field_Slider_Mode::SLIDING) {
+        // if we just exited either typing or sliding state, we'll be in NONE mode and
+        // we'll set the result value here. we only ever use current_text to set the
+        // value because current_text has the validated text. i.e. we don't set
+        // current_text while we're typing. we only set it once we've unfocused the text
+        // field and we validate the text.
+
+        // when in SLIDING mode, we set result above, since that doesn't need validation
+        // and can be done in realtime. and it's a nicer UX.
+        bool32 conversion_result = string_to_real32(make_string(state->current_text), &result);
+        assert(conversion_result);
     }
 
     if (is_focus(textbox)) {
@@ -1643,7 +1669,6 @@ real32 do_text_field_slider(real32 value,
     // could change. i don't think it matters that we still call it even if we don't handle input.
     handle_text_field_cursor(text_widget_id, text_field_state, font, str, &width_to_cursor_index);
 
-#if 1
     {
         ui_x_pad(x_padding);
 
@@ -1703,75 +1728,9 @@ real32 do_text_field_slider(real32 value,
 
         ui_x_pad(x_padding);
     }
-    
-    #if 0
-    {
-        ui_x_pad(5.0f);
-        UI_Theme inner_field_theme = {};
-        inner_field_theme.size_type     = { UI_SIZE_FILL_REMAINING, UI_SIZE_PERCENTAGE };
-        inner_field_theme.layout_type   = UI_LAYOUT_HORIZONTAL;
-        inner_field_theme.semantic_size = { 1.0f, 1.0f };
-
-        ui_add_and_push_widget("", inner_field_theme);
-        {
-            ui_x_pad(5.0f);
-
-            UI_Theme text_theme = {};
-            text_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
-            text_theme.semantic_size = { 1.0f, 0.0f };
-            text_theme.layout_type = UI_LAYOUT_HORIZONTAL;
-            text_theme.font = theme.font;
-            text_theme.text_color = { 1.0f, 1.0f, 1.0f, 1.0f };
-
-            ui_add_and_push_widget("", text_theme);
-            {
-                if (state->is_using && !state->is_sliding) {
-                    char *str = to_char_array((Allocator *) &ui_manager->frame_arena, text_field_state->buffer);
-                    do_text(str, text_id_string, text_theme);
-
-                    // draw cursor
-                    UI_Theme cursor_theme = {};
-                    cursor_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_PERCENTAGE };
-                    cursor_theme.semantic_size = { 1.0f, 1.0f };
-                    cursor_theme.position_type = UI_POSITION_FLOAT;
-                    cursor_theme.background_color = theme.cursor_color;
-                    
-                    Font *font = get_font(textbox->font);
-                    real32 width_to_index = get_width(font, str, text_field_state->cursor_index);
-                    cursor_theme.semantic_position = { floorf(width_to_index), 0.0f };
-                    
-                    real32 time_to_switch = 0.5f; // time spent in either state
-                    bool32 show_background = ((int32) (ui_manager->focus_t*(1.0f / time_to_switch)) + 1) % 2;
-                    
-                    UI_Widget *cursor = ui_add_widget("", cursor_theme,
-                                                      show_background ? UI_WIDGET_DRAW_BACKGROUND : 0);
-                } else {
-                    char *buf = string_format((Allocator *) &ui_manager->frame_arena, "%f", value);
-                    do_text(buf, text_id_string, text_theme);
-                }
-            }
-            ui_pop_widget();
-
-            ui_x_pad(5.0f);
-        }
-        ui_pop_widget();
-    }
-    #endif
-#endif
     ui_pop_widget();
 
-    // we do validation that it's a number, but any putting value into bounds should be done by the caller
-#if 0
-    if (interact.lost_focus) {
-        real32 result;
-        bool32 conversion_result = string_to_real32(make_string(state->buffer), &result);
-        if (conversion_result) {
-            return result;
-        }
-    }
-#endif
-    
-    return value;
+    return result;
 }
 
 void deallocate(UI_Text_Field_State state) {

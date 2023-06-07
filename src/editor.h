@@ -30,7 +30,12 @@ struct Editor_State {
     bool32 show_colliders;
     int32 selected_entity_id;
     int32 last_selected_entity_id;
-    bool32 selected_entity_changed; // if it changed in the current frame, so we can reset UI
+
+    // this is used to know if anything with the entity changed in the current frame,
+    // so we can update UI.
+    // it could be a change in the transform, a change in what entity is selected, etc.
+    // i.e. anything that should force the entity properties box to update.
+    bool32 selected_entity_changed;
 
     uint32 open_window_flags;
     UI_id color_picker_parent;

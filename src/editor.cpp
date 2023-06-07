@@ -633,7 +633,6 @@ void update_editor(Controller_State *controller_state, real32 dt) {
             if (is_translation(gizmo_state->selected_gizmo_handle)) {
                 Vec3 new_position = do_gizmo_translation(editor_state, cursor_ray);
                 update_entity_position(entity, new_position);
-                
             } else if (is_rotation(gizmo_state->selected_gizmo_handle)) {
                 Quaternion new_rotation = do_gizmo_rotation(editor_state, cursor_ray);
                 update_entity_rotation(entity, new_rotation);
@@ -646,6 +645,8 @@ void update_editor(Controller_State *controller_state, real32 dt) {
 
             gizmo_state->transform.position = entity->transform.position;
             gizmo_state->transform.rotation = entity->transform.rotation;
+
+            editor_state->selected_entity_changed = true;
         } else {
             gizmo_state->selected_gizmo_handle = GIZMO_HANDLE_NONE;
             //end_entity_change(editor_state, entity);
@@ -670,7 +671,7 @@ void update_editor(Controller_State *controller_state, real32 dt) {
     #endif
 }
 
-void draw_entity_box_2(bool32 force_refresh) {
+void draw_entity_box_2(bool32 force_reset) {
     UI_Window_Theme window_theme = {};
     window_theme.initial_position = { 200.0f, 200.0f };
     window_theme.background_color = rgb_to_vec4(24, 24, 28);
@@ -744,6 +745,7 @@ void draw_entity_box_2(bool32 force_refresh) {
         //label_theme.border_width = 1.0f;
 
         Transform *transform = &entity->transform;
+        Vec3 new_position = transform->position;
         
         do_text("Position");
         ui_y_pad(1.0f);
@@ -755,8 +757,9 @@ void draw_entity_box_2(bool32 force_refresh) {
             ui_pop_widget();
             
             ui_x_pad(1.0f);
-            do_text_field_slider(transform->position.x, 0.0f, 100.0f, slider_theme,
-                                 "position-x-slider", "position-x-slider-text");
+            new_position.x = do_text_field_slider(transform->position.x, 0.0f, 100.0f, slider_theme,
+                                                  "position-x-slider", "position-x-slider-text",
+                                                  force_reset);
         } ui_pop_widget();
 
         ui_y_pad(1.0f);
@@ -767,8 +770,9 @@ void draw_entity_box_2(bool32 force_refresh) {
             ui_pop_widget();
 
             ui_x_pad(1.0f);
-            do_text_field_slider(transform->position.y, 0.0f, 100.0f, slider_theme,
-                                 "position-y-slider", "position-y-slider-text");
+            new_position.y = do_text_field_slider(transform->position.y, 0.0f, 100.0f, slider_theme,
+                                                  "position-y-slider", "position-y-slider-text",
+                                                  force_reset);
         } ui_pop_widget();
 
         ui_y_pad(1.0f);
@@ -779,17 +783,20 @@ void draw_entity_box_2(bool32 force_refresh) {
             ui_pop_widget();
 
             ui_x_pad(1.0f);
-            do_text_field_slider(transform->position.z, 0.0f, 100.0f, slider_theme,
-                                 "position-z-slider", "position-z-slider-text");
+            new_position.z = do_text_field_slider(transform->position.z, 0.0f, 100.0f, slider_theme,
+                                                  "position-z-slider", "position-z-slider-text",
+                                                  force_reset);
         } ui_pop_widget();
+
+        update_entity_position(entity, new_position);
     }
     ui_pop_widget();
-    #if 0
+#if 0
     UI_Theme column_theme = {};
     column_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
     column_theme.semantic_size = { 1.0f, 0.0f };
     column_theme.layout_type = UI_LAYOUT_VERTICAL;
-    #endif
+#endif
 
     //ui_y_pad(5.0f);
     
