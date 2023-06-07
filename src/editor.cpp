@@ -689,6 +689,10 @@ void draw_entity_box_2(bool32 force_refresh) {
     
     push_window("Entity Properties", window_theme, "window-test");
 
+    Editor_State *editor_state = &game_state->editor_state;
+    assert(editor_state->selected_entity_id > -1);
+    Entity *entity = get_entity(&game_state->level, editor_state->selected_entity_id);
+    
     UI_Container_Theme content_theme = {
         { 5.0f, 5.0f, 5.0f, 5.0f },
         DEFAULT_BOX_BACKGROUND,
@@ -738,6 +742,8 @@ void draw_entity_box_2(bool32 force_refresh) {
         //label_theme.border_flags = BORDER_BOTTOM;
         //label_theme.border_color = rgb_to_vec4(24, 24, 28);
         //label_theme.border_width = 1.0f;
+
+        Transform *transform = &entity->transform;
         
         do_text("Position");
         ui_y_pad(1.0f);
@@ -749,7 +755,7 @@ void draw_entity_box_2(bool32 force_refresh) {
             ui_pop_widget();
             
             ui_x_pad(1.0f);
-            do_text_field_slider(5.0f, 0.0f, 100.0f, slider_theme,
+            do_text_field_slider(transform->position.x, 0.0f, 100.0f, slider_theme,
                                  "position-x-slider", "position-x-slider-text");
             //do_text_field(transform_field_theme, make_string("test"), false, "position-x", "position-x-text");
         } ui_pop_widget();
@@ -760,9 +766,10 @@ void draw_entity_box_2(bool32 force_refresh) {
             ui_push_widget("", label_theme, UI_WIDGET_DRAW_BACKGROUND);
             { do_text("Y"); }
             ui_pop_widget();
-            
+
             ui_x_pad(1.0f);
-            do_text_field(transform_field_theme, make_string("test"), false, "position-y", "position-y-text");
+            do_text_field_slider(transform->position.y, 0.0f, 100.0f, slider_theme,
+                                 "position-y-slider", "position-y-slider-text");
         } ui_pop_widget();
 
         ui_y_pad(1.0f);
@@ -771,9 +778,10 @@ void draw_entity_box_2(bool32 force_refresh) {
             ui_push_widget("", label_theme, UI_WIDGET_DRAW_BACKGROUND);
             { do_text("Z"); }
             ui_pop_widget();
-            
+
             ui_x_pad(1.0f);
-            do_text_field(transform_field_theme, make_string("test"), false, "position-z", "position-z-text");
+            do_text_field_slider(transform->position.z, 0.0f, 100.0f, slider_theme,
+                                 "position-z-slider", "position-z-slider-text");
         } ui_pop_widget();
     }
     ui_pop_widget();

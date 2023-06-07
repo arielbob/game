@@ -1574,7 +1574,6 @@ real32 do_text_field_slider(real32 value,
     // on top of the textbox.
     // these blocks are for when we just exited typing or sliding state
     if (state->mode == Text_Field_Slider_Mode::TYPING && !is_focus(textbox)) {
-        
         state->mode = Text_Field_Slider_Mode::NONE;
 
         // validate the text_field_state buffer and if it's fine, we set the current_text buffer to
