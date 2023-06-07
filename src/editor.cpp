@@ -757,7 +757,6 @@ void draw_entity_box_2(bool32 force_refresh) {
             ui_x_pad(1.0f);
             do_text_field_slider(transform->position.x, 0.0f, 100.0f, slider_theme,
                                  "position-x-slider", "position-x-slider-text");
-            //do_text_field(transform_field_theme, make_string("test"), false, "position-x", "position-x-text");
         } ui_pop_widget();
 
         ui_y_pad(1.0f);
