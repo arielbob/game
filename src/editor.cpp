@@ -721,7 +721,7 @@ void draw_entity_box_2(bool32 force_reset) {
     slider_theme.show_slider             = false;
     slider_theme.size_type               = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
     slider_theme.size                    = { 0.0f, 20.0f };
-    slider_theme.cursor_color            = rgb_to_vec4(255, 255, 255);
+    slider_theme.cursor_color            = rgb_to_vec4(0, 255, 0);
     slider_theme.font                    = default_font;
     slider_theme.border_flags            = BORDER_BOTTOM;
     slider_theme.border_color            = rgb_to_vec4(50, 50, 60);
@@ -888,6 +888,11 @@ void draw_entity_box_2(bool32 force_reset) {
         } ui_pop_widget();
 
         update_entity_scale(entity, new_scale);
+
+        ui_y_pad(10.0f);
+
+        bool32 material_clicked = do_text_button("Material",
+                                                 editor_button_theme, "open_material_window");
     }
     ui_pop_widget();
     
