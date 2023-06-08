@@ -843,210 +843,56 @@ void draw_entity_box_2(bool32 force_reset) {
         Quaternion new_rotation = make_quaternion(roll_degs, pitch_degs, heading_degs);
         update_entity_rotation(entity, new_rotation);
         ui_y_pad(5.0f);
-    }
-    ui_pop_widget();
-    
-    ui_pop_widget();
-}
 
-#if 0
-void draw_entity_box(bool32 force_refresh) {
-    UI_Window_Theme window_theme = {};
-    window_theme.initial_position = { 200.0f, 200.0f };
-    window_theme.background_color = rgb_to_vec4(24, 24, 28);
-    window_theme.title_text_color = rgb_to_vec4(255, 255, 255);
-    window_theme.title_bgc        = DEFAULT_BUTTON_BACKGROUND;
-    window_theme.title_hot_bgc    = DEFAULT_BUTTON_HOT_BACKGROUND;
-    window_theme.title_active_bgc = DEFAULT_BUTTON_ACTIVE_BACKGROUND;
-    window_theme.corner_flags     = CORNER_ALL;
-    window_theme.corner_radius    = 5.0f;
-    window_theme.border_flags     = BORDER_ALL;
-    window_theme.border_color     = window_theme.title_bgc;
-    window_theme.border_width     = 1.0f;
-
-    // TODO: be able to specify size type and size in window_theme
-    
-    push_window("Entity Properties", window_theme, "window-entity-properties");
-    
-    UI_Theme content_theme = {};
-    content_theme.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN };
-    content_theme.layout_type = UI_LAYOUT_VERTICAL;
-    content_theme.text_color = { 1.0f, 1.0f, 1.0f, 1.0f };
-
-    UI_Widget *content = make_widget("transform-window-content", content_theme, 0);
-    //ui_add_and_push_widget("transform-window-content");
-
-    UI_Container_Theme inner_theme = {};
-    real32 container_padding = 8.0f;
-    inner_theme.padding.top    = container_padding;
-    inner_theme.padding.right  = container_padding;
-    inner_theme.padding.bottom = container_padding;
-    inner_theme.padding.left   = container_padding;
-
-    inner_theme.size_type      = { UI_SIZE_ABSOLUTE, UI_SIZE_FIT_CHILDREN };
-    inner_theme.size           = { 200.0f, 0.0f };
-    inner_theme.layout_type    = UI_LAYOUT_VERTICAL;
-
-    UI_Theme row_theme = {};
-    row_theme.size_type        = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
-    row_theme.semantic_size    = { 0.0f, 20.0f };
-    row_theme.layout_type      = UI_LAYOUT_HORIZONTAL;
-    row_theme.background_color = rgb_to_vec4(255, 0, 0);
-    
-    UI_Text_Field_Slider_Theme text_field_theme = {};
-    text_field_theme.slider_background_color = rgb_to_vec4(61, 73, 60);//rgb_to_vec4(0, 0, 255);
-    text_field_theme.show_slider             = false;
-    text_field_theme.size_type               = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
-    text_field_theme.size                    = { 0.0f, 1.0f };
-    text_field_theme.cursor_color            = rgb_to_vec4(255, 255, 255);
-    text_field_theme.font                    = "calibri14";
-    text_field_theme.border_flags            = BORDER_BOTTOM;
-    text_field_theme.border_color            = rgb_to_vec4(50, 50, 60);
-    text_field_theme.border_width            = 1.0f;
-
-    UI_Theme label_theme = {};
-    label_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_FILL_REMAINING };
-    label_theme.layout_type = UI_LAYOUT_CENTER;
-    label_theme.semantic_size = { 15.0f, 0.0f };
-    label_theme.background_color = rgb_to_vec4(50, 50, 60);
-    label_theme.border_flags = BORDER_BOTTOM;
-    label_theme.border_color = rgb_to_vec4(24, 24, 28);
-    label_theme.border_width = 1.0f;
-
-    UI_Theme group_theme = {};
-    group_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
-    group_theme.semantic_size = { 0.0f, 0.0f };
-    group_theme.corner_radius = 5.0f;
-    group_theme.corner_flags = CORNER_ALL;
-    group_theme.border_flags = BORDER_ALL;
-    group_theme.border_color = rgb_to_vec4(50, 50, 60);
-    group_theme.border_width = 1.0f;
-    group_theme.background_color = rgb_to_vec4(61, 73, 60);
-    group_theme.layout_type = UI_LAYOUT_VERTICAL;
-    
-    ui_push_container(inner_theme);
-    {
-        do_text("Position");
-        ui_y_pad(5.0f);
-        ui_add_and_push_widget("", group_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_DRAW_BORDER);
-        {
-            // draw group
-            ui_add_and_push_widget("", row_theme, 0);
-            {
-                ui_add_and_push_widget("", label_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_DRAW_BORDER);
-                do_text("X");
-                ui_pop_widget();
-
-                static real32 x_val = 5.0f;
-                x_val = do_text_field_slider(x_val, 0.0f, 100.0f, text_field_theme, "position-x-slider");
-            }
-            ui_pop_widget();
-
-            ui_add_and_push_widget("", row_theme, 0);
-            {
-                ui_add_and_push_widget("", label_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_DRAW_BORDER);
-                do_text("Y");
-                ui_pop_widget();
-
-                static real32 y_val = 5.0f;
-                y_val = do_text_field_slider(y_val, 0.0f, 100.0f, text_field_theme, "position-y-slider");
-            }
-            ui_pop_widget();
-
-            ui_add_and_push_widget("", row_theme, 0);
-            {
-                ui_add_and_push_widget("", label_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_DRAW_BORDER);
-                do_text("Z");
-                ui_pop_widget();
-
-                static real32 z_val = 5.0f;
-                z_val = do_text_field_slider(z_val, 0.0f, 100.0f, text_field_theme, "position-z-slider");
-            } ui_pop_widget();
-        } ui_pop_widget();
-
-        ui_y_pad(10.0f);
-        do_text("Rotation");
-        ui_y_pad(5.0f);
-        ui_add_and_push_widget("", group_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_DRAW_BORDER);
-        {
-            // draw group
-            ui_add_and_push_widget("", row_theme, 0);
-            {
-                ui_add_and_push_widget("", label_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_DRAW_BORDER);
-                do_text("X");
-                ui_pop_widget();
-
-                static real32 x_rot = 5.0f;
-                x_rot = do_text_field_slider(x_rot, 0.0f, 100.0f, text_field_theme, "rotation-x-slider");
-            }
-            ui_pop_widget();
-
-            ui_add_and_push_widget("", row_theme, 0);
-            {
-                ui_add_and_push_widget("", label_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_DRAW_BORDER);
-                do_text("Y");
-                ui_pop_widget();
-
-                static real32 y_rot = 5.0f;
-                y_rot = do_text_field_slider(y_rot, 0.0f, 100.0f, text_field_theme, "rotation-y-slider");
-            }
-            ui_pop_widget();
-
-            ui_add_and_push_widget("", row_theme, 0);
-            {
-                ui_add_and_push_widget("", label_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_DRAW_BORDER);
-                do_text("Z");
-                ui_pop_widget();
-
-                static real32 z_rot = 5.0f;
-                z_rot = do_text_field_slider(z_rot, 0.0f, 100.0f, text_field_theme, "rotation-z-slider");
-            } ui_pop_widget();
-        } ui_pop_widget();
-
-        ui_y_pad(10.0f);
+        Vec3 new_scale;
+            
         do_text("Scale");
-        ui_y_pad(5.0f);
-        ui_add_and_push_widget("", group_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_DRAW_BORDER);
+        ui_y_pad(1.0f);
+
+        ui_add_and_push_widget("", row_theme);
         {
-            // draw group
-            ui_add_and_push_widget("", row_theme, 0);
-            {
-                ui_add_and_push_widget("", label_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_DRAW_BORDER);
-                do_text("X");
-                ui_pop_widget();
-
-                static real32 x_scale = 5.0f;
-                x_scale = do_text_field_slider(x_scale, 0.0f, 100.0f, text_field_theme, "scale-x-slider");
-            }
+            ui_push_widget("", label_theme, UI_WIDGET_DRAW_BACKGROUND);
+            { do_text("X"); }
             ui_pop_widget();
-
-            ui_add_and_push_widget("", row_theme, 0);
-            {
-                ui_add_and_push_widget("", label_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_DRAW_BORDER);
-                do_text("Y");
-                ui_pop_widget();
-
-                static real32 y_scale = 5.0f;
-                y_scale = do_text_field_slider(y_scale, 0.0f, 100.0f, text_field_theme, "scale-y-slider");
-            }
-            ui_pop_widget();
-
-            ui_add_and_push_widget("", row_theme, 0);
-            {
-                ui_add_and_push_widget("", label_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_DRAW_BORDER);
-                do_text("Z");
-                ui_pop_widget();
-
-                static real32 z_scale = 5.0f;
-                z_scale = do_text_field_slider(z_scale, 0.0f, 100.0f, text_field_theme, "scale-z-slider");
-            } ui_pop_widget();
+            
+            ui_x_pad(1.0f);
+            new_scale.x = do_text_field_slider(transform->scale.x, slider_theme,
+                                               "scale-x-slider", "scale-x-slider-text",
+                                               force_reset);
         } ui_pop_widget();
+
+        ui_y_pad(1.0f);
+        ui_add_and_push_widget("", row_theme);
+        {
+            ui_push_widget("", label_theme, UI_WIDGET_DRAW_BACKGROUND);
+            { do_text("Y"); }
+            ui_pop_widget();
+
+            ui_x_pad(1.0f);
+            new_scale.y = do_text_field_slider(transform->scale.y, slider_theme,
+                                               "scale-y-slider", "scale-y-slider-text",
+                                               force_reset);
+        } ui_pop_widget();
+
+        ui_y_pad(1.0f);
+        ui_add_and_push_widget("", row_theme);
+        {
+            ui_push_widget("", label_theme, UI_WIDGET_DRAW_BACKGROUND);
+            { do_text("Z"); }
+            ui_pop_widget();
+
+            ui_x_pad(1.0f);
+            new_scale.z = do_text_field_slider(transform->scale.z, slider_theme,
+                                               "scale-z-slider", "scale-z-slider-text",
+                                               force_reset);
+        } ui_pop_widget();
+
+        update_entity_scale(entity, new_scale);
     }
     ui_pop_widget();
     
-    ui_pop_widget(); // pop window
+    ui_pop_widget();
 }
-#endif
 
 void draw_level_box() {
     Editor_State *editor_state = &game_state->editor_state;
