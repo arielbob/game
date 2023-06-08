@@ -690,6 +690,15 @@ inline Vec3 cross(Vec3 v1, Vec3 v2) {
     return result;
 }
 
+inline Quaternion operator*(Quaternion q1, Quaternion q2) {
+    Quaternion result;
+    
+    result.w = q1.w*q2.w - dot(q1.v, q2.v);
+    result.v = q1.w*q2.v + q2.w*q1.v + cross(q1.v, q2.v);
+    
+    return result;
+}
+
 // returns unit quaternion
 Quaternion make_quaternion() {
     Quaternion result = { 1.0f, 0.0f, 0.0f, 0.0f };
@@ -703,6 +712,14 @@ Quaternion make_quaternion(real32 angle_degs, Vec3 axis) {
     result.w = cosf(angle_rads / 2.0f);
     result.v = sinf(angle_rads / 2.0f)*axis;
     return result;
+}
+
+Quaternion make_quaternion(real32 roll_degs, real32 pitch_degs, real32 heading_degs) {
+    Quaternion rotation = make_quaternion(roll_degs, z_axis);
+    rotation = make_quaternion(pitch_degs, x_axis) * rotation;
+    rotation = make_quaternion(heading_degs, y_axis) * rotation;
+
+    return rotation;
 }
 
 inline real32 magnitude(Quaternion q) {
@@ -728,15 +745,6 @@ Transform make_transform() {
 inline Transform make_transform(Vec3 position, Quaternion rotation, Vec3 scale) {
     Transform transform = { position, rotation, scale };
     return transform;
-}
-
-inline Quaternion operator*(Quaternion q1, Quaternion q2) {
-    Quaternion result;
-    
-    result.w = q1.w*q2.w - dot(q1.v, q2.v);
-    result.v = q1.w*q2.v + q2.w*q1.v + cross(q1.v, q2.v);
-    
-    return result;
 }
 
 inline Quaternion inverse(Quaternion q) {
@@ -1800,7 +1808,8 @@ inline bool32 is_zero(Vec4 v) {
 
 Mat4 get_rotate_matrix_from_euler_angles(real32 roll, real32 pitch, real32 heading) {
     Mat4 model_matrix = make_mat4_identity();
-    
+
+    // z, x, y rotation order (blue, red, green)
     model_matrix = make_rotate_matrix(z_axis, roll) * model_matrix;
     model_matrix = make_rotate_matrix(x_axis, pitch) * model_matrix;
     model_matrix = make_rotate_matrix(y_axis, heading) * model_matrix;
@@ -1837,7 +1846,7 @@ void get_euler_angles_from_rotate_matrix(Mat4 rotate_matrix, real32 *canonical_r
     *canonical_roll = roll;
 }
 
-void get_euler_angles_from_quaternion(Quaternion q, Vec3 *result) {//real32 *canonical_roll, real32 *canonical_pitch, real32 *canonical_heading) {
+void get_euler_angles_from_quaternion(Quaternion q, Vec3 *result) {
     Mat4 rotate_matrix = make_rotate_matrix(q);
     // roll    = z-axis
     // pitch   = x-axis

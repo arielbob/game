@@ -788,11 +788,17 @@ void draw_entity_box_2(bool32 force_reset) {
                                                   force_reset);
         } ui_pop_widget();
 
+        update_entity_position(entity, new_position);
         ui_y_pad(5.0f);
 
+        // these controls are kind of weird, but i don't really think it's a problem.
+        // i think usually if you're doing rotations, you'll just use the gizmos.
+        // they're weird because you have to be aware of the euler rotation order (roll, pitch, heading
+        // or z, x, y) to know what the result of your inputs will be.
         Vec3 euler_rotation;
         get_euler_angles_from_quaternion(transform->rotation, &euler_rotation);
-
+        real32 roll_degs, pitch_degs, heading_degs;
+        
         do_text("Rotation");
         ui_y_pad(1.0f);
 
@@ -803,9 +809,9 @@ void draw_entity_box_2(bool32 force_reset) {
             ui_pop_widget();
             
             ui_x_pad(1.0f);
-            do_text_field_slider(euler_rotation.x, slider_theme,
-                                 "rotation-x-slider", "rotation-x-slider-text",
-                                 force_reset);
+            pitch_degs = do_text_field_slider(rads_to_degs(euler_rotation.x), slider_theme,
+                                              "rotation-x-slider", "rotation-x-slider-text",
+                                              force_reset);
         } ui_pop_widget();
 
         ui_y_pad(1.0f);
@@ -816,9 +822,9 @@ void draw_entity_box_2(bool32 force_reset) {
             ui_pop_widget();
 
             ui_x_pad(1.0f);
-            do_text_field_slider(euler_rotation.y, slider_theme,
-                                 "rotation-y-slider", "rotation-y-slider-text",
-                                 force_reset);
+            heading_degs = do_text_field_slider(rads_to_degs(euler_rotation.y), slider_theme,
+                                                "rotation-y-slider", "rotation-y-slider-text",
+                                                force_reset);
         } ui_pop_widget();
 
         ui_y_pad(1.0f);
@@ -829,12 +835,14 @@ void draw_entity_box_2(bool32 force_reset) {
             ui_pop_widget();
 
             ui_x_pad(1.0f);
-            do_text_field_slider(euler_rotation.z, slider_theme,
-                                 "rotation-z-slider", "rotation-z-slider-text",
-                                 force_reset);
+            roll_degs = do_text_field_slider(rads_to_degs(euler_rotation.z), slider_theme,
+                                             "rotation-z-slider", "rotation-z-slider-text",
+                                             force_reset);
         } ui_pop_widget();
 
-        update_entity_position(entity, new_position);
+        Quaternion new_rotation = make_quaternion(roll_degs, pitch_degs, heading_degs);
+        update_entity_rotation(entity, new_rotation);
+        ui_y_pad(5.0f);
     }
     ui_pop_widget();
     
