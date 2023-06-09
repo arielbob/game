@@ -891,8 +891,63 @@ void draw_entity_box_2(bool32 force_reset) {
 
         ui_y_pad(10.0f);
 
+        UI_Dropdown_Theme dropdown_theme = {};
+        dropdown_theme.button_theme = editor_button_theme;
+        dropdown_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
+        
+        ui_push_dropdown(dropdown_theme, "Material",
+                         "material_dropdown_button", "material_dropdown",
+                         force_reset);
+        {
+            char *material_names[256];
+            int32 num_material_names = 0;
+            for (int32 i = 0; i < NUM_MATERIAL_BUCKETS; i++) {
+                Material *current = asset_manager->material_table[i];
+                while (current) {
+                    material_names[num_material_names++] = to_char_array((Allocator *) &ui_manager->frame_arena,
+                                                                         current->name);
+                    current = current->table_next;
+                }
+            }
+
+            UI_Button_Theme dropdown_item_theme = editor_button_theme;
+            dropdown_item_theme.background_color = rgb_to_vec4(19, 19, 23);
+            dropdown_item_theme.hot_background_color = rgb_to_vec4(36, 36, 43);
+            dropdown_item_theme.active_background_color = rgb_to_vec4(8, 8, 10);
+            dropdown_item_theme.scissor_type = UI_SCISSOR_INHERIT;
+            for (int32 i = 0; i < num_material_names; i++) {
+                do_text_button(material_names[i], dropdown_item_theme, "material_dropdown_item", i);
+            }
+        }
+        ui_pop_widget();
+
+#if 0
         bool32 material_clicked = do_text_button("Material",
                                                  editor_button_theme, "open_material_window");
+
+        char *material_names[256];
+        int32 num_material_names = 0;
+        for (int32 i = 0; i < NUM_MATERIAL_BUCKETS; i++) {
+            Material *current = asset_manager->material_table[i];
+            while (current) {
+                material_names[num_material_names++] = to_char_array((Allocator *) &ui_manager->frame_arena,
+                                                                     current->name);
+                current = current->table_next;
+            }
+        }
+
+        ui_push_dropdown("material_dropdown");
+        {
+            UI_Button_Theme dropdown_item_theme = editor_button_theme;
+            dropdown_item_theme.background_color = rgb_to_vec4(19, 19, 23);
+            dropdown_item_theme.hot_background_color = rgb_to_vec4(36, 36, 43);
+            dropdown_item_theme.active_background_color = rgb_to_vec4(8, 8, 10);
+            for (int32 i = 0; i < num_material_names; i++) {
+                do_text_button(material_names[i], dropdown_item_theme, "material_dropdown_item", i);
+            }
+        }
+        ui_pop_widget();
+        #endif
     }
     ui_pop_widget();
     

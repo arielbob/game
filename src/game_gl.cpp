@@ -2783,6 +2783,8 @@ void draw_sound_buffer(Win32_Sound_Output *win32_sound_output) {
                       write_cursor_position, make_vec3(1.0f, 0.0f, 0.0f));
 }
 
+// NOTE: we don't use this anymore; see ui_render2.cpp. just keeping it for reference because i haven't
+//       reimplemented some of the stuff that was here.
 void gl_draw_ui_widget(Asset_Manager *asset, UI_Manager *manager, UI_Widget *widget) {
     Vec2 computed_position = widget->computed_position;
     Vec2 computed_size = widget->computed_size;

@@ -44,7 +44,7 @@ enum UI_Size_Type {
 };
 
 enum UI_Layout_Type {
-    UI_LAYOUT_NONE,
+    UI_LAYOUT_NONE, // uhh, what even is this? i'm not sure
     UI_LAYOUT_HORIZONTAL,
     UI_LAYOUT_VERTICAL,
     UI_LAYOUT_CENTER,
@@ -63,7 +63,7 @@ enum UI_Position_Type {
 };
 
 /*
-  UI_SCISSOR_COMPUTED_SIZE: scissor based on computed size of the widget
+  UI_SCISSOR_COMPUTED_SIZE: scissor based on computed size (and position) of the widget
   UI_SCISSOR_INHERIT: scissor based on parent; if parent is also inherit, keeps going until we hit a
                       UI_SCISSOR_COMPUTED_SIZE widget
  */
@@ -76,7 +76,8 @@ enum UI_Scissor_Type {
 enum UI_Widget_State_Type {
     UI_STATE_WINDOW,
     UI_STATE_TEXT_FIELD,
-    UI_STATE_TEXT_FIELD_SLIDER
+    UI_STATE_TEXT_FIELD_SLIDER,
+    UI_STATE_DROPDOWN
 };
 
 struct Vec2_UI_Size_Type {
@@ -160,6 +161,8 @@ struct UI_Button_Theme {
 
     Vec4 text_color;
     char *font;
+
+    UI_Scissor_Type scissor_type;
 };
 
 struct UI_Slider_Theme {
@@ -256,6 +259,13 @@ struct UI_Text_Field_Slider_State {
     String_Buffer current_text; 
 };
 
+struct UI_Dropdown_State {
+    bool32 is_open;
+    real32 y_offset;
+    real32 start_y_offset;
+    real32 t;
+};
+
 struct UI_Widget_State {
     UI_id id;
     UI_Widget_State_Type type;
@@ -264,6 +274,7 @@ struct UI_Widget_State {
         UI_Window_State window;
         UI_Text_Field_State text_field;
         UI_Text_Field_Slider_State text_field_slider;
+        UI_Dropdown_State dropdown;
     };
 
     UI_Widget_State *next;

@@ -638,20 +638,3 @@ bool32 generate_asset_name(Allocator *allocator, char *asset_type, int32 max_att
 
     return success;
 }
-
-void deallocate(UI_Widget_State *state) {
-    switch (state->type) {
-        case UI_STATE_WINDOW: {
-            // nothing to deallocate
-        } break;
-        case UI_STATE_TEXT_FIELD: {
-            deallocate(state->text_field.buffer);
-        } break;
-        case UI_STATE_TEXT_FIELD_SLIDER: {
-            deallocate(state->text_field_slider.text_field_state.buffer);
-        } break;
-        default: {
-            assert(!"Unhandled UI widget state type.");
-        }
-    }
-}

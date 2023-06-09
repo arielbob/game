@@ -253,6 +253,13 @@ UI_Widget *ui_add_and_push_widget(char *id_string_ptr, UI_Theme theme, uint32 fl
     return widget;
 }
 
+UI_Widget *ui_add_and_push_widget(UI_id id, UI_Theme theme, uint32 flags = 0) {
+    UI_Widget *widget = make_widget(id, theme, flags);
+    ui_add_widget(widget);
+    ui_push_existing_widget(widget);
+    return widget;
+}
+
 void ui_pop_widget() {
     assert(ui_manager->widget_stack);
     ui_manager->widget_stack = ui_manager->widget_stack->next;
@@ -386,6 +393,26 @@ UI_Widget_State *ui_get_state(UI_id id) {
     return NULL;
 }
 
+void deallocate(UI_Widget_State *state) {
+    switch (state->type) {
+        case UI_STATE_WINDOW: {
+            // nothing to deallocate
+        } break;
+        case UI_STATE_TEXT_FIELD: {
+            deallocate(state->text_field.buffer);
+        } break;
+        case UI_STATE_TEXT_FIELD_SLIDER: {
+            deallocate(state->text_field_slider.text_field_state.buffer);
+        } break;
+        case UI_STATE_DROPDOWN: {
+            // nothing to deallocate
+        } break;
+        default: {
+            assert(!"Unhandled UI widget state type.");
+        }
+    }
+}
+
 void _ui_add_state(UI_Widget_State *state) {
     if (!state->id.string_ptr) return;
 
@@ -499,6 +526,20 @@ UI_Text_Field_Slider_State *ui_add_text_field_slider_state(UI_id id, real32 valu
     end_region(m);
 
     return main_widget_state;
+}
+
+UI_Dropdown_State *ui_add_dropdown_state(UI_id id) {
+    UI_Widget_State *state = ui_make_widget_state();
+    state->id = id;
+    state->type = UI_STATE_DROPDOWN;
+
+    UI_Dropdown_State *dropdown_state = &state->dropdown;
+    *dropdown_state = {};
+    dropdown_state->t = 1.0f;
+        
+    _ui_add_state(state);
+
+    return dropdown_state;
 }
 
 void calculate_standalone_size(UI_Widget *widget, UI_Widget_Axis axis) {
@@ -1133,6 +1174,7 @@ bool32 do_text_button(char *text, UI_Button_Theme button_theme, UI_id id) {
     theme.active_background_color = button_theme.active_background_color;
     theme.corner_radius = 5.0f;
     theme.corner_flags = CORNER_ALL;
+    theme.scissor_type = button_theme.scissor_type;
 
     UI_Widget *button = ui_push_widget(id, theme,
                                        UI_WIDGET_DRAW_BORDER | UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
@@ -1141,12 +1183,14 @@ bool32 do_text_button(char *text, UI_Button_Theme button_theme, UI_id id) {
         UI_Theme row_theme = NULL_THEME;
         row_theme.layout_type = UI_LAYOUT_CENTER;
         row_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
+        row_theme.scissor_type = UI_SCISSOR_INHERIT;
         ui_push_widget("", row_theme);
         {
             UI_Theme text_theme = NULL_THEME;
             text_theme.text_color = button_theme.text_color;
             text_theme.font = button_theme.font;
             text_theme.size_type = { UI_SIZE_FIT_TEXT, UI_SIZE_FIT_TEXT };
+            text_theme.scissor_type = button_theme.scissor_type;
             do_text(text, text_theme);
         }
         ui_pop_widget();
@@ -1295,6 +1339,136 @@ void push_window(char *title, UI_Window_Theme theme, char *id_string, int32 inde
             state->position += delta;
         }
     }
+}
+
+struct UI_Dropdown_Theme {
+    UI_Button_Theme button_theme; // for the button that opens and closes the dropdown
+    
+    UI_Position_Type position_type;
+    Vec2 position;
+    Vec2_UI_Size_Type size_type;
+    Vec2 size;
+};
+
+void ui_push_dropdown(UI_Dropdown_Theme theme, char *button_text,
+                      char *button_id_str, char *dropdown_id_str,
+                      bool32 force_reset,
+                      int32 index = 0) {
+    // TODO: do we check that id is actually valid when creating states?
+    UI_id button_id   = make_ui_id(button_id_str, index);
+    UI_id dropdown_id = make_ui_id(dropdown_id_str, index);
+
+    UI_Widget_State *state_variant = ui_get_state(dropdown_id);
+    UI_Dropdown_State *state;
+    if (!state_variant) {
+        // t is initialized to 1.0
+        state = ui_add_dropdown_state(dropdown_id);
+    } else {
+        state = &state_variant->dropdown;
+    }
+
+    if (force_reset) {
+        _ui_delete_state(dropdown_id);
+        UI_Dropdown_State old_state = *state;
+        state = ui_add_dropdown_state(dropdown_id);
+        state->is_open        = old_state.is_open;
+        state->y_offset       = old_state.y_offset;
+        state->start_y_offset = old_state.start_y_offset;
+        state->t              = old_state.t;
+    }
+
+    UI_Widget *computed_widget = ui_get_widget_prev_frame(dropdown_id);
+    real32 dropdown_height = 0.0f;
+    if (computed_widget) {
+        dropdown_height = computed_widget->computed_size.y;
+    }
+
+    state->t += game_state->dt;
+    
+    UI_Theme column_theme = {};
+    // these are for the container, basically that holds the button and the dropdown
+    column_theme.size_type = theme.size_type;
+    column_theme.semantic_size = theme.size;
+    column_theme.layout_type = UI_LAYOUT_VERTICAL;
+
+#if 0
+    column_theme.position_type = theme.position_type;
+    column_theme.semantic_position = theme.position;
+    column_theme.background_color = theme.background_color;
+    column_theme.hot_background_color = theme.background_color;
+    column_theme.active_background_color = theme.background_color;
+#endif
+
+    UI_Widget *inner;
+
+    // vertical
+    UI_Widget *column = ui_add_and_push_widget("", column_theme,
+                                               UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
+    // just so we get hot state, so that it gets clicks instead of whatever's behind it
+    //ui_interact(column);
+    {
+        bool32 dropdown_button_clicked = do_text_button(button_text, theme.button_theme, button_id);
+
+        // TODO: fix this
+        if (dropdown_button_clicked) {
+            // we assume that t is between [0.0, 1.0]. we do this calculation so that we can
+            // switch smoothly during a transition.
+            
+            state->t = 0;
+            state->start_y_offset = state->y_offset;
+            state->is_open = !state->is_open;
+        }
+
+        real32 transition_time = 0.1f;
+        // state->t is just the linear percentage we've made it through the transition_time
+        state->t = min(state->t / transition_time, 1.0f);
+        // t is what we use for the transition timing, but it's based on state->t
+        real32 t = 1.0f - (1.0f - state->t) * (1.0f - state->t);
+
+        // TODO: idk if we can use t here, since the position won't be the same on both sides of the curve.
+        if (state->is_open) {
+            state->y_offset = mix(state->start_y_offset, 0.0f, t);
+        } else {
+            state->y_offset = mix(state->start_y_offset, -dropdown_height, t);
+        }
+
+
+        // TODO: rename this
+        // this container is just so that the float container doesn't get put on top of the button.
+        UI_Theme float_container_theme = {};
+        float_container_theme.layout_type = UI_LAYOUT_VERTICAL;
+        float_container_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
+        float_container_theme.semantic_size = { 1.0f, 0.0f }; 
+
+        ui_add_and_push_widget("", float_container_theme);
+        {
+            UI_Theme list_container_theme = {};
+            list_container_theme.position_type = UI_POSITION_FLOAT;
+            list_container_theme.layout_type = UI_LAYOUT_VERTICAL;
+            list_container_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
+            list_container_theme.semantic_size = { 1.0f, 0.0f }; 
+            list_container_theme.scissor_type = UI_SCISSOR_COMPUTED_SIZE;
+            list_container_theme.background_color = rgb_to_vec4(255, 0, 0);
+
+            UI_Widget *list_container = ui_add_and_push_widget(dropdown_id, list_container_theme,
+                                                               UI_WIDGET_DRAW_BACKGROUND);
+            {
+                UI_Theme inner_theme = {};
+                inner_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
+                inner_theme.layout_type = UI_LAYOUT_VERTICAL;
+                inner_theme.semantic_size = { 1.0f, 0.0f };
+                inner_theme.position_type = UI_POSITION_RELATIVE;
+                inner_theme.semantic_position = { 0.0f, state->y_offset };
+                inner_theme.scissor_type = UI_SCISSOR_INHERIT;
+                inner = ui_add_widget("", inner_theme, 0);
+            }
+            ui_pop_widget();
+        }
+        ui_pop_widget();
+    }
+    ui_pop_widget();
+    
+    ui_push_existing_widget(inner);
 }
 
 void handle_text_field_input(UI_Text_Field_State *state) {
@@ -1731,13 +1905,4 @@ real32 do_text_field_slider(real32 value,
     ui_pop_widget();
 
     return result;
-}
-
-void deallocate(UI_Text_Field_State state) {
-    deallocate(state.buffer);
-}
-
-void deallocate(UI_Text_Field_Slider_State state) {
-    deallocate(state.text_field_state);
-    deallocate(state.current_text);
 }
