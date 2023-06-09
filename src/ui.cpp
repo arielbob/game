@@ -265,6 +265,39 @@ void ui_pop_widget() {
     ui_manager->widget_stack = ui_manager->widget_stack->next;
 }
 
+#if 0
+void ui_bring_to_top_of_parent(UI_Widget *widget) {
+    // widget has to have been added to the tree (idk if this is really necessary, but it's fine, i think)
+    assert(ui_get_widget(widget->id));
+    assert(widget->parent);
+
+    UI_Widget *parent = widget->parent;
+
+    assert(parent->last);
+    if (parent->first == parent->last) {
+        // this is the case where widget is the only child
+        // in that case, we don't need to do anything
+        assert(parent->first == widget);
+        return;
+    }
+
+    if (!widget->next) {
+        // already at the end
+        return;
+    }
+
+    if (!widget->prev) {
+        // first child
+        parent->first = widget->next;
+    } else {
+        widget->prev->next = widget->next;
+    }
+    
+    widget->next->prev = widget->prev;
+    parent->last = widget;
+}
+#endif
+
 // this sets hot based on the rendering_index, which is just when the widget was drawn, higher being later/above.
 // we do this so that we set hot to the widget that is above other widgets and don't set hot to a widget that is
 // visually below another one at the cursor position.
@@ -307,7 +340,16 @@ UI_Interact_Result ui_interact(UI_Widget *semantic_widget) {
     
     UI_id id = computed_widget->id;
     if (computed_widget->flags & UI_WIDGET_IS_CLICKABLE) {
-        if (in_bounds(mouse_pos, computed_widget->computed_position, computed_widget->computed_size)) {
+        bool32 in_computed_bounds = in_bounds(mouse_pos,
+                                              computed_widget->computed_position, computed_widget->computed_size);
+        bool32 in_scissor_bounds = true;
+        if (computed_widget->scissor_type != UI_SCISSOR_NONE) {
+            in_scissor_bounds = in_bounds(mouse_pos,
+                                          computed_widget->computed_scissor_position,
+                                          computed_widget->computed_scissor_dimensions);
+        }
+        
+        if (in_computed_bounds && in_scissor_bounds) {
             set_hot_if_above_current_hot(computed_widget);
 
             if (is_hot(computed_widget)) {
@@ -1099,6 +1141,12 @@ inline bool32 in_bounds(Vec2 p, Vec2 widget_position, Vec2 widget_size) {
                      widget_position.y, widget_position.y + widget_size.y);
 }
 
+inline bool32 in_bounds(Vec2 p, Vec2_int32 widget_position, Vec2_int32 widget_size) {
+    return in_bounds(p,
+                     (real32) widget_position.x, (real32) widget_position.x + widget_size.x,
+                     (real32) widget_position.y, (real32) widget_position.y + widget_size.y);
+}
+
 inline bool32 ui_id_equals(UI_id id1, UI_id id2) {
     return ((id1.string_ptr == id2.string_ptr) && (id1.index == id2.index));
 }
@@ -1432,7 +1480,6 @@ void ui_push_dropdown(UI_Dropdown_Theme theme, char *button_text,
             state->y_offset = mix(state->start_y_offset, -dropdown_height, t);
         }
 
-
         // TODO: rename this
         // this container is just so that the float container doesn't get put on top of the button.
         UI_Theme float_container_theme = {};
@@ -1448,10 +1495,8 @@ void ui_push_dropdown(UI_Dropdown_Theme theme, char *button_text,
             list_container_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
             list_container_theme.semantic_size = { 1.0f, 0.0f }; 
             list_container_theme.scissor_type = UI_SCISSOR_COMPUTED_SIZE;
-            list_container_theme.background_color = rgb_to_vec4(255, 0, 0);
 
-            UI_Widget *list_container = ui_add_and_push_widget(dropdown_id, list_container_theme,
-                                                               UI_WIDGET_DRAW_BACKGROUND);
+            UI_Widget *list_container = ui_add_and_push_widget(dropdown_id, list_container_theme);
             {
                 UI_Theme inner_theme = {};
                 inner_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };

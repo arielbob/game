@@ -101,13 +101,22 @@ void set_scissor(UI_Render_Command *command, UI_Widget *widget) {
         command->use_scissor = true;
         command->scissor_position = make_vec2_int32(widget->computed_position);
         command->scissor_dimensions = make_vec2_int32(widget->computed_size);
+
+        widget->computed_scissor_position = command->scissor_position;
+        widget->computed_scissor_dimensions = command->scissor_dimensions;
     } else if (widget->scissor_type == UI_SCISSOR_INHERIT) {
         UI_Widget *current = widget->parent;
+        // TODO: we could maybe optimize this by caching the computed scissor positions/dimensions for
+        //       the widgets we've already visited that have UI_SCISSOR_INHERIT, idk, we'd have to go
+        //       back down after finding the UI_SCISSOR_COMPUTED_SIZE widget.
         while (current) {
             if (current->scissor_type == UI_SCISSOR_COMPUTED_SIZE) {
                 command->use_scissor = true;
                 command->scissor_position = make_vec2_int32(current->computed_position);
                 command->scissor_dimensions = make_vec2_int32(current->computed_size);
+
+                widget->computed_scissor_position = command->scissor_position;
+                widget->computed_scissor_dimensions = command->scissor_dimensions;
                 return;
             } else if (current->scissor_type == UI_SCISSOR_NONE) {
                 assert(!"UI_SCISSOR_INHERIT cannot be used on a widget that does not have a parent with a scissor region.");

@@ -329,6 +329,8 @@ struct UI_Widget {
     int32 rendering_index;
 
     UI_Scissor_Type scissor_type;
+    Vec2_int32 computed_scissor_position;
+    Vec2_int32 computed_scissor_dimensions;
 };
 
 struct UI_Stack_Widget {
@@ -541,6 +543,7 @@ bool32 is_active(UI_Widget *widget);
 bool32 is_focus(UI_Widget *widget);
 bool32 in_bounds(Vec2 p, real32 x_min, real32 x_max, real32 y_min, real32 y_max);
 bool32 in_bounds(Vec2 p, Vec2 widget_position, Vec2 widget_size);
+bool32 in_bounds(Vec2 p, Vec2_int32 widget_position, Vec2_int32 widget_size);
 bool32 ui_id_equals(UI_id id1, UI_id id2);
 real32 get_adjusted_font_height(Font font);
 real32 get_center_x_offset(real32 container_width, real32 element_width);
