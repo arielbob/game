@@ -4,8 +4,9 @@
 #define UI_WIDGET_IS_CLICKABLE       (1 << 0)
 #define UI_WIDGET_DRAW_BACKGROUND    (1 << 1)
 #define UI_WIDGET_DRAW_TEXT          (1 << 2)
-#define UI_WIDGET_IS_FOCUSABLE       (1 << 3)
-#define UI_WIDGET_DRAW_BORDER        (1 << 4)
+#define UI_WIDGET_USE_TEXTURE        (1 << 3)
+#define UI_WIDGET_IS_FOCUSABLE       (1 << 4)
+#define UI_WIDGET_DRAW_BORDER        (1 << 5)
 
 #define CORNER_TOP_LEFT     (1 << 0)
 #define CORNER_TOP_RIGHT    (1 << 1)
@@ -118,7 +119,8 @@ struct UI_Theme {
     Vec4 background_color;
     Vec4 hot_background_color;
     Vec4 active_background_color;
-
+    char *texture_name;
+    
     Vec4 text_color;
     char *font;
     char *text;
@@ -298,7 +300,8 @@ struct UI_Widget {
     Vec4 background_color;
     Vec4 hot_background_color;
     Vec4 active_background_color;
-
+    char *texture_name;
+    
     Vec4 text_color;
     char *font;
     char *text;

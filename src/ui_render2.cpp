@@ -138,24 +138,29 @@ void ui_render_widget_to_commands(UI_Widget *widget) {
     
     // TODO: finish this - see gl_draw_ui_widget() for the rest of the stuff
     if (widget->flags & UI_WIDGET_DRAW_BACKGROUND) {
-        Vec4 color = widget->background_color;
-        if (widget->flags & UI_WIDGET_IS_CLICKABLE) {
-            real32 transition_time = 0.1f;
+        // if we're drawing the background, i guess we just ignore the color stuff
+        Vec4 color = {};
+        if (!(widget->flags & UI_WIDGET_USE_TEXTURE)) {
+            // no texture
+            color = widget->background_color;
+            if (widget->flags & UI_WIDGET_IS_CLICKABLE) {
+                real32 transition_time = 0.1f;
 
-            // TODO: the mix needs to be gamma correct
-            if (is_hot(widget)) {
-                real32 t = min(ui_manager->hot_t / transition_time, 1.0f);
-                t = 1.0f-(1.0f-t)*(1.0f-t);
-                color = mix(color, widget->hot_background_color, t);
-            }
+                // TODO: the mix needs to be gamma correct
+                if (is_hot(widget)) {
+                    real32 t = min(ui_manager->hot_t / transition_time, 1.0f);
+                    t = 1.0f-(1.0f-t)*(1.0f-t);
+                    color = mix(color, widget->hot_background_color, t);
+                }
 
-            if (is_active(widget)) {
-                real32 t = min(ui_manager->active_t / transition_time, 1.0f);
-                t = 1.0f-(1.0f-t)*(1.0f-t);
-                color = mix(color, widget->active_background_color, t);
+                if (is_active(widget)) {
+                    real32 t = min(ui_manager->active_t / transition_time, 1.0f);
+                    t = 1.0f-(1.0f-t)*(1.0f-t);
+                    color = mix(color, widget->active_background_color, t);
+                }
             }
         }
-
+        
         UI_Vertex vertices[4] = {
             {
                 { computed_position.x, computed_position.y },
@@ -181,14 +186,26 @@ void ui_render_widget_to_commands(UI_Widget *widget) {
         uint32 indices[] = { 0, 1, 2, 0, 2, 3 };
 
         UI_Render_Command command = {};
-        command.texture_type = UI_Texture_Type::UI_TEXTURE_NONE;
+        if (widget->flags & UI_WIDGET_USE_TEXTURE) {
+            assert(widget->texture_name);
+            Texture *texture = get_texture(make_string(widget->texture_name));
+            assert(texture);
+
+            command.texture_type = UI_Texture_Type::UI_TEXTURE_IMAGE;
+            command.texture_name = texture->name;
+        } else {
+            command.texture_type = UI_Texture_Type::UI_TEXTURE_NONE;
+        }
+        
         set_scissor(&command, widget);
                 
         ui_push_command(command, vertices, 4, indices, 6);
     }
 
     if (widget->flags & UI_WIDGET_DRAW_TEXT) {
+        assert(widget->font);
         Font *font = get_font(widget->font);
+        assert(font);
 
         real32 line_advance = font->scale_for_pixel_height * (font->ascent - font->descent + font->line_gap);
 

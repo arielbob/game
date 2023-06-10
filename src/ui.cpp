@@ -2,7 +2,7 @@
 
 char *default_font = "calibri14";
 UI_Theme NULL_THEME = {
-    {}, {}, {},
+    {}, {}, {}, "texture_default",
     {}, default_font, NULL,
     {}, 0, 0, 0, 0,
     UI_LAYOUT_NONE,
@@ -22,7 +22,8 @@ UI_Widget *make_widget(UI_id id, UI_Theme theme, uint32 flags) {
     widget->background_color        = theme.background_color;
     widget->hot_background_color    = theme.hot_background_color;
     widget->active_background_color = theme.active_background_color;
-
+    widget->texture_name            = theme.texture_name;
+    
     widget->text_color              = theme.text_color;
     widget->font                    = theme.font;
     widget->text                    = theme.text;
@@ -999,7 +1000,7 @@ void ui_frame_init(real32 dt) {
     // rendering. we use the ui_manager's frame arena for ui state stuff.
     // TODO: replace this with NULL_THEME and set the size manually
     UI_Theme root_theme = {
-        {}, {}, {},
+        {}, {}, {}, "texture_default",
         {}, NULL, NULL,
         {}, 0, 0, 0, 0,
         UI_LAYOUT_NONE,
@@ -1467,7 +1468,7 @@ void ui_push_dropdown(UI_Dropdown_Theme theme, char *button_text,
             state->is_open = !state->is_open;
         }
 
-        real32 transition_time = 0.1f;
+        real32 transition_time = 0.9f;
         // state->t is just the linear percentage we've made it through the transition_time
         state->t = min(state->t / transition_time, 1.0f);
         // t is what we use for the transition timing, but it's based on state->t

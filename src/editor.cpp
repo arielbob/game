@@ -1102,6 +1102,18 @@ void draw_editor(Controller_State *controller_state) {
     Vec4 sidebar_background = DEFAULT_BOX_BACKGROUND;
     //sidebar_background.w = 0.5f;
 
+    UI_Theme test_theme = {};
+    test_theme.layout_type = UI_LAYOUT_VERTICAL;
+    test_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
+    test_theme.semantic_size = { 100.0f, 100.0f };
+    test_theme.position_type = UI_POSITION_FLOAT;
+    test_theme.semantic_position = { 100.0f, 100.0f };
+    test_theme.texture_name = "texture_default";
+
+    UI_Widget *test_widget = make_widget("test_image", test_theme,
+                                         UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_USE_TEXTURE);
+    ui_add_widget(test_widget);
+            
     UI_Container_Theme sidebar_theme = {
         { 5.0f, 5.0f, 5.0f, 5.0f },
         sidebar_background,

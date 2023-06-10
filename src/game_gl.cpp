@@ -2927,7 +2927,8 @@ void gl_draw_ui_commands(uint32 shader_id) {
         
         if (current->texture_type == UI_Texture_Type::UI_TEXTURE_IMAGE) {
             gl_set_uniform_bool(shader_id, "use_texture", true);
-            // TODO: bind texture
+            gl_set_uniform_bool(shader_id, "is_text", false);
+            gl_use_texture(current->texture_name);
         } else if (current->texture_type == UI_Texture_Type::UI_TEXTURE_FONT) {
             gl_set_uniform_bool(shader_id, "use_texture", true);
             gl_set_uniform_bool(shader_id, "is_text", true);
