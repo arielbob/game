@@ -1658,14 +1658,6 @@ int32 do_dropdown(UI_Dropdown_Theme theme,
     column_theme.semantic_size = theme.size;
     column_theme.layout_type = UI_LAYOUT_VERTICAL;
 
-#if 0
-    column_theme.position_type = theme.position_type;
-    column_theme.semantic_position = theme.position;
-    column_theme.background_color = theme.background_color;
-    column_theme.hot_background_color = theme.background_color;
-    column_theme.active_background_color = theme.background_color;
-#endif
-
     assert(selected_index < num_items);
     int32 selected_item_index = selected_index;
 
@@ -1689,11 +1681,8 @@ int32 do_dropdown(UI_Dropdown_Theme theme,
     // vertical
     UI_Widget *column = ui_add_and_push_widget("", column_theme,
                                                UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
-    bool32 dropdown_button_clicked = false;
-    // just so we get hot state, so that it gets clicks instead of whatever's behind it
-    //ui_interact(column);
     {
-        dropdown_button_clicked = ui_push_empty_button(theme.button_theme, button_id);
+        bool32 dropdown_button_clicked = ui_push_empty_button(theme.button_theme, button_id);
         {
             UI_Theme row_theme = NULL_THEME;
             row_theme.layout_type = UI_LAYOUT_HORIZONTAL;
@@ -1731,9 +1720,10 @@ int32 do_dropdown(UI_Dropdown_Theme theme,
                 {
                     UI_Theme arrow_theme = {};
                     arrow_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
-                    arrow_theme.semantic_size = { 10.0f, 10.0f };
-                    arrow_theme.texture_name = "texture_default";
-
+                    arrow_theme.semantic_size = { 15.0f, 15.0f };
+                    arrow_theme.texture_name = "editor_down_arrow";
+                    arrow_theme.background_color = rgb_to_vec4(255, 0, 0);
+                    
                     ui_add_widget("", arrow_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_USE_TEXTURE);
                 } ui_pop_widget();
 
@@ -1742,7 +1732,6 @@ int32 do_dropdown(UI_Dropdown_Theme theme,
             ui_pop_widget();
         }
         ui_pop_widget();
-        //bool32 dropdown_button_clicked = do_text_button(button_text, theme.button_theme, button_id);
 
         if (dropdown_button_clicked) {
             set_is_open(state, !state->is_open);

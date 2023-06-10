@@ -579,8 +579,9 @@ void load_default_assets() {
     add_mesh("capsule_cap",      "blender/capsule_cap.mesh",      Mesh_Type::ENGINE);
     add_mesh("cube",             "blender/cube.mesh",             Mesh_Type::PRIMITIVE);
     
-    add_texture("texture_default", "blender/debug-texture.jpg",  Texture_Type::DEFAULT);
-    add_texture("lightbulb",       "src/textures/lightbulb.png", Texture_Type::ENGINE);
+    add_texture("texture_default",   "blender/debug-texture.jpg",          Texture_Type::DEFAULT);
+    add_texture("lightbulb",         "src/textures/lightbulb.png",         Texture_Type::ENGINE);
+    add_texture("editor_down_arrow", "src/textures/editor_down_arrow.png", Texture_Type::ENGINE);
 
     add_font("times32",         "c:/windows/fonts/times.ttf",    32.0f);
     add_font("times24",         "c:/windows/fonts/times.ttf",    24.0f);
