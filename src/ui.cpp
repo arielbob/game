@@ -1192,8 +1192,9 @@ void do_text(char *text, char *id, UI_Theme theme, uint32 flags = 0, int32 index
     text_theme.font = theme.font;
     text_theme.scissor_type = theme.scissor_type;
     text_theme.position_type = theme.position_type;
-
-    UI_Widget *text_widget = ui_add_widget(make_ui_id(id, index), text_theme, UI_WIDGET_DRAW_TEXT | flags);
+    text_theme.background_color = theme.background_color;
+    
+    UI_Widget *text_widget = ui_add_widget(make_ui_id(id, index), text_theme, UI_WIDGET_DRAW_TEXT | UI_WIDGET_DRAW_BACKGROUND | flags);
     text_widget->text = text;
 }
 
@@ -1232,7 +1233,12 @@ bool32 do_text_button(char *text, UI_Button_Theme button_theme, UI_id id) {
         UI_Theme row_theme = NULL_THEME;
         row_theme.layout_type = UI_LAYOUT_CENTER;
         row_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
+        // TODO: uhh, this doesn't assert because we never run set_scissor with it because this widget
+        //       doesn't have any flags. set_scissor does run with this, however, when button_theme has
+        //       a non-NONE scissor type, but in that case, we will eventually hit a SCISSOR_COMPUTED, as
+        //       long as we laid our stuff out correctly.
         row_theme.scissor_type = UI_SCISSOR_INHERIT;
+        
         ui_push_widget("", row_theme);
         {
             UI_Theme text_theme = NULL_THEME;
@@ -1253,6 +1259,26 @@ bool32 do_text_button(char *text, UI_Button_Theme button_theme, UI_id id) {
 
 inline bool32 do_text_button(char *text, UI_Button_Theme button_theme, char *id, int32 index = 0) {
     return do_text_button(text, button_theme, make_ui_id(id, index));
+}
+
+bool32 ui_push_empty_button(UI_Button_Theme button_theme, UI_id id) {
+    UI_Theme theme = NULL_THEME;
+    theme.semantic_position = button_theme.position;
+    theme.size_type = button_theme.size_type;
+    theme.semantic_size = button_theme.size;
+    theme.layout_type = UI_LAYOUT_VERTICAL;
+    theme.background_color = button_theme.background_color;
+    theme.hot_background_color = button_theme.hot_background_color;
+    theme.active_background_color = button_theme.active_background_color;
+    theme.corner_radius = 5.0f;
+    theme.corner_flags = CORNER_ALL;
+    theme.scissor_type = button_theme.scissor_type;
+
+    UI_Widget *button = ui_push_widget(id, theme,
+                                       UI_WIDGET_DRAW_BORDER | UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
+    UI_Interact_Result interact_result = ui_interact(button);
+
+    return interact_result.released;
 }
 
 void ui_x_pad(real32 width) {
@@ -1456,9 +1482,37 @@ void ui_push_dropdown(UI_Dropdown_Theme theme, char *button_text,
     // just so we get hot state, so that it gets clicks instead of whatever's behind it
     //ui_interact(column);
     {
-        bool32 dropdown_button_clicked = do_text_button(button_text, theme.button_theme, button_id);
+        bool32 dropdown_button_clicked = ui_push_empty_button(theme.button_theme, button_id);
+        {
+            UI_Theme row_theme = NULL_THEME;
+            row_theme.layout_type = UI_LAYOUT_HORIZONTAL;
+            row_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
+            
+            ui_push_widget("", row_theme);
+            {
+                UI_Theme center_text = {};
+                center_text.layout_type = UI_LAYOUT_CENTER;
+                center_text.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
+                center_text.scissor_type = UI_SCISSOR_COMPUTED_SIZE;
+                
+                ui_push_widget("", center_text);
+                {
+                    UI_Theme text_theme = NULL_THEME;
+                    text_theme.text_color = theme.button_theme.text_color;
+                    text_theme.font = theme.button_theme.font;
+                    text_theme.size_type = { UI_SIZE_FIT_TEXT, UI_SIZE_FIT_TEXT };
+                    text_theme.layout_type = UI_LAYOUT_CENTER;
+                    text_theme.scissor_type = UI_SCISSOR_INHERIT;
+                    text_theme.background_color = rgb_to_vec4(255, 0, 0);
+                    do_text(button_text, text_theme);
+                }
+                ui_pop_widget();
+            }
+            ui_pop_widget();
+        }
+        ui_pop_widget();
+        //bool32 dropdown_button_clicked = do_text_button(button_text, theme.button_theme, button_id);
 
-        // TODO: fix this
         if (dropdown_button_clicked) {
             // we assume that t is between [0.0, 1.0]. we do this calculation so that we can
             // switch smoothly during a transition.
@@ -1483,12 +1537,13 @@ void ui_push_dropdown(UI_Dropdown_Theme theme, char *button_text,
 
         // TODO: rename this
         // this container is just so that the float container doesn't get put on top of the button.
-        UI_Theme float_container_theme = {};
-        float_container_theme.layout_type = UI_LAYOUT_VERTICAL;
-        float_container_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
-        float_container_theme.semantic_size = { 1.0f, 0.0f }; 
-
-        ui_add_and_push_widget("", float_container_theme);
+        UI_Theme content_container_theme = {};
+        content_container_theme.layout_type = UI_LAYOUT_VERTICAL;
+        content_container_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
+        content_container_theme.semantic_size = { 1.0f, 0.0f }; 
+        
+        #if 1
+        ui_add_and_push_widget("", content_container_theme);
         {
             UI_Theme list_container_theme = {};
             list_container_theme.position_type = UI_POSITION_FLOAT;
@@ -1496,8 +1551,10 @@ void ui_push_dropdown(UI_Dropdown_Theme theme, char *button_text,
             list_container_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
             list_container_theme.semantic_size = { 1.0f, 0.0f }; 
             list_container_theme.scissor_type = UI_SCISSOR_COMPUTED_SIZE;
+            list_container_theme.background_color = rgb_to_vec4(255, 0, 0);
 
-            UI_Widget *list_container = ui_add_and_push_widget(dropdown_id, list_container_theme);
+            UI_Widget *list_container = ui_add_and_push_widget(dropdown_id, list_container_theme,
+                                                               UI_WIDGET_DRAW_BACKGROUND);
             {
                 UI_Theme inner_theme = {};
                 inner_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
@@ -1506,11 +1563,12 @@ void ui_push_dropdown(UI_Dropdown_Theme theme, char *button_text,
                 inner_theme.position_type = UI_POSITION_RELATIVE;
                 inner_theme.semantic_position = { 0.0f, state->y_offset };
                 inner_theme.scissor_type = UI_SCISSOR_INHERIT;
-                inner = ui_add_widget("", inner_theme, 0);
+                inner = ui_add_widget("dropdown_inner_widget", inner_theme, 0);
             }
             ui_pop_widget();
         }
         ui_pop_widget();
+        #endif
     }
     ui_pop_widget();
     

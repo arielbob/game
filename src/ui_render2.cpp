@@ -31,6 +31,12 @@ bool32 ui_command_should_coalesce(UI_Render_Command command) {
                 return false;
             }
         }
+
+        if (last_command->num_indices == 0) {
+            // if the command is empty (this happens if we're doing something like just setting a
+            // scissor, but not drawing anything), then we can definitely coalesce.
+            return true;
+        }
         
         switch (command.texture_type) {
             case UI_Texture_Type::UI_TEXTURE_NONE: {
@@ -85,7 +91,15 @@ void ui_push_command(UI_Render_Command command,
         // we check this in the should_coalesce function, but just being safe..
         assert(ui_manager->num_render_commands > 0);
         UI_Render_Command *last_command = &ui_manager->render_commands[ui_manager->num_render_commands - 1];
-        last_command->num_indices += num_indices;
+
+        if (last_command->num_indices == 0) {
+            // since the last command isn't drawing anything, then we should just copy the whole command.
+            // note that ui_command_should_coalesce() verifies that the scissor regions are the same, so
+            // we don't have to worry about overwriting it.
+            *last_command = command;
+        } else {
+            last_command->num_indices += num_indices;
+        }
     } else {
         UI_Render_Command *new_command = &ui_manager->render_commands[ui_manager->num_render_commands];
         *new_command = command;
@@ -135,6 +149,8 @@ void set_scissor(UI_Render_Command *command, UI_Widget *widget) {
 void ui_render_widget_to_commands(UI_Widget *widget) {
     Vec2 computed_position = widget->computed_position;
     Vec2 computed_size = widget->computed_size;
+
+    // TODO: need to add something here for no flags, i.e. for scissor commands that don't need drawing
     
     // TODO: finish this - see gl_draw_ui_widget() for the rest of the stuff
     if (widget->flags & UI_WIDGET_DRAW_BACKGROUND) {
