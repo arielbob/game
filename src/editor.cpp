@@ -746,7 +746,8 @@ void draw_entity_box_2(bool32 force_reset) {
 
         Transform *transform = &entity->transform;
         Vec3 new_position = transform->position;
-        
+
+        #if 1
         do_text("Position");
         ui_y_pad(1.0f);
 
@@ -890,6 +891,7 @@ void draw_entity_box_2(bool32 force_reset) {
         update_entity_scale(entity, new_scale);
 
         ui_y_pad(10.0f);
+        #endif
 
         UI_Dropdown_Theme dropdown_theme = {};
         dropdown_theme.button_theme = editor_button_theme;

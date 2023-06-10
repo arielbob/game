@@ -32,12 +32,6 @@ bool32 ui_command_should_coalesce(UI_Render_Command command) {
             }
         }
 
-        if (last_command->num_indices == 0) {
-            // if the command is empty (this happens if we're doing something like just setting a
-            // scissor, but not drawing anything), then we can definitely coalesce.
-            return true;
-        }
-        
         switch (command.texture_type) {
             case UI_Texture_Type::UI_TEXTURE_NONE: {
                 return true;
@@ -60,7 +54,6 @@ bool32 ui_command_should_coalesce(UI_Render_Command command) {
     return false;
 }
 
-// TODO: we don't do textures yet
 // we just use the command argument here for the command type and the parameter for that
 // command type, for example, a font or a texture name.
 // we don't use the indices or scissor region members.
@@ -92,14 +85,7 @@ void ui_push_command(UI_Render_Command command,
         assert(ui_manager->num_render_commands > 0);
         UI_Render_Command *last_command = &ui_manager->render_commands[ui_manager->num_render_commands - 1];
 
-        if (last_command->num_indices == 0) {
-            // since the last command isn't drawing anything, then we should just copy the whole command.
-            // note that ui_command_should_coalesce() verifies that the scissor regions are the same, so
-            // we don't have to worry about overwriting it.
-            *last_command = command;
-        } else {
-            last_command->num_indices += num_indices;
-        }
+        last_command->num_indices += num_indices;
     } else {
         UI_Render_Command *new_command = &ui_manager->render_commands[ui_manager->num_render_commands];
         *new_command = command;
@@ -150,7 +136,12 @@ void ui_render_widget_to_commands(UI_Widget *widget) {
     Vec2 computed_position = widget->computed_position;
     Vec2 computed_size = widget->computed_size;
 
-    // TODO: need to add something here for no flags, i.e. for scissor commands that don't need drawing
+    // we don't need to add anything here for when flags is 0, i.e when we don't draw anything and only
+    // have a scissor region, because we only need scissors when we actually draw something, and when we
+    // draw, that'll automatically visit the widgets with scissors to inherit from them and set the
+    // scissor correctly. i'm pretty sure we won't ever need to scissor without drawing. scissoring is
+    // handled for user input before rendering, i.e. we don't have to wait for rendering for the scissor
+    // to affect interaction, so i'm pretty sure this is fine.
     
     // TODO: finish this - see gl_draw_ui_widget() for the rest of the stuff
     if (widget->flags & UI_WIDGET_DRAW_BACKGROUND) {
