@@ -1666,15 +1666,34 @@ int32 do_dropdown(UI_Dropdown_Theme theme,
     column_theme.active_background_color = theme.background_color;
 #endif
 
+    assert(selected_index < num_items);
     int32 selected_item_index = selected_index;
+
+    Controller_State *controller_state = Context::controller_state;
+    if (state->is_open) {
+        if (just_pressed_or_repeated(controller_state->key_down)) {
+            selected_item_index++;
+        }
+
+        if (just_pressed_or_repeated(controller_state->key_up)) {
+            selected_item_index--;
+        }
+
+        if (just_pressed(controller_state->key_enter)) {
+            set_is_open(state, false);
+        }
+    }
+
+    selected_item_index = clamp(selected_item_index, 0, num_items - 1);
 
     // vertical
     UI_Widget *column = ui_add_and_push_widget("", column_theme,
                                                UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
+    bool32 dropdown_button_clicked = false;
     // just so we get hot state, so that it gets clicks instead of whatever's behind it
     //ui_interact(column);
     {
-        bool32 dropdown_button_clicked = ui_push_empty_button(theme.button_theme, button_id);
+        dropdown_button_clicked = ui_push_empty_button(theme.button_theme, button_id);
         {
             UI_Theme row_theme = NULL_THEME;
             row_theme.layout_type = UI_LAYOUT_HORIZONTAL;
@@ -1804,6 +1823,13 @@ int32 do_dropdown(UI_Dropdown_Theme theme,
     }
     ui_pop_widget();
 
+    if (just_pressed(Context::controller_state->left_mouse) &&
+        ui_manager->active.string_ptr != button_id_str &&
+        ui_manager->active.string_ptr != dropdown_item_id_str &&
+        ui_manager->active.string_ptr != dropdown_id_str) {
+        set_is_open(state, false);
+    }
+    
     return selected_item_index;
 }
 
