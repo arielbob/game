@@ -41,6 +41,8 @@ struct Editor_State {
     UI_id color_picker_parent;
     
     Gizmo_State gizmo_state;
+
+    bool32 is_material_library_window_open;
 };
 
 namespace Editor_Constants {

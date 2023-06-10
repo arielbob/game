@@ -1,5 +1,10 @@
 #include "ui.h"
 
+#define DEFAULT_BUTTON_BACKGROUND rgb_to_vec4(50, 50, 60)
+#define DEFAULT_BUTTON_HOT_BACKGROUND rgb_to_vec4(60, 60, 72)
+#define DEFAULT_BUTTON_ACTIVE_BACKGROUND rgb_to_vec4(9, 9, 10)
+#define DEFAULT_BOX_BACKGROUND rgb_to_vec4(24, 24, 28)
+
 char *default_font = "calibri14";
 UI_Theme NULL_THEME = {
     {}, {}, {}, "texture_default",
@@ -10,6 +15,15 @@ UI_Theme NULL_THEME = {
     UI_POSITION_NONE,
     { 0.0f, 0.0f },
     { 0.0f, 0.0f }
+};
+
+UI_Window_Theme DEFAULT_WINDOW_THEME = {
+    { 200.0f, 200.0f },
+    rgb_to_vec4(24, 24, 28),
+    rgb_to_vec4(255, 255, 255),
+    DEFAULT_BUTTON_BACKGROUND, DEFAULT_BUTTON_HOT_BACKGROUND, DEFAULT_BUTTON_ACTIVE_BACKGROUND,
+    CORNER_ALL, 5.0f, BORDER_ALL,
+    DEFAULT_BUTTON_BACKGROUND, 1.0f, { 200.0f, 0.0f }
 };
 
 UI_Widget *make_widget(UI_id id, UI_Theme theme, uint32 flags) {
@@ -1356,23 +1370,8 @@ void ui_push_container(UI_Container_Theme theme, char *id = "") {
     ui_push_existing_widget(inner);
 }
 
-struct UI_Window_Theme {
-    Vec2 initial_position;
-    Vec4 background_color;
-    Vec4 title_text_color;
-    Vec4 title_bgc;
-    Vec4 title_hot_bgc;
-    Vec4 title_active_bgc;
-    uint32 corner_flags;
-    real32 corner_radius;
-    uint32 border_flags;
-    Vec4 border_color;
-    real32 border_width;
-    Vec2 semantic_size;
-};
-
-void push_window(char *title, UI_Window_Theme theme, char *id_string, int32 index = 0) {
-    UI_id id = make_ui_id(id_string, index);
+void push_window(char *title, UI_Window_Theme theme, char *id_str, char *title_bar_id_str, int32 index = 0) {
+    UI_id id = make_ui_id(id_str, index);
     UI_Widget_State *state_variant = ui_get_state(id);
     UI_Window_State *state;
     if (!state_variant) {
@@ -1382,9 +1381,10 @@ void push_window(char *title, UI_Window_Theme theme, char *id_string, int32 inde
     }
     
     // we only want to add windows to the root node
-    assert(ui_manager->widget_stack->widget == ui_manager->root);
+    ui_push_existing_widget(ui_manager->root);
 
     UI_Theme window_theme = {};
+    window_theme.position_type           = UI_POSITION_FLOAT;
     window_theme.semantic_position       = state->position;
     window_theme.size_type               = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN };
     window_theme.semantic_size           = theme.semantic_size;
@@ -1413,19 +1413,24 @@ void push_window(char *title, UI_Window_Theme theme, char *id_string, int32 inde
         title_bar_theme.hot_background_color    = theme.title_hot_bgc;
         title_bar_theme.active_background_color = theme.title_active_bgc;
         title_bar_theme.text_color              = theme.title_text_color;
-        UI_Widget *title_bar = make_widget("window-title-bar", title_bar_theme,
+        UI_Widget *title_bar = make_widget(title_bar_id_str, title_bar_theme,
                                            UI_WIDGET_IS_CLICKABLE | UI_WIDGET_DRAW_BACKGROUND);
         ui_add_and_push_widget(title_bar);
-        
-        UI_Interact_Result title_bar_interact = ui_interact(title_bar);
-        do_text(title, "");
-        ui_pop_widget();
+        {
+            UI_Interact_Result title_bar_interact = ui_interact(title_bar);
+            do_text(title, "");
 
-        if (title_bar_interact.holding) {
-            Vec2 delta = get_mouse_delta();
-            state->position += delta;
+            if (title_bar_interact.holding) {
+                Vec2 delta = get_mouse_delta();
+                state->position += delta;
+            }
         }
+        ui_pop_widget();
     }
+    ui_pop_widget(); // pop window
+    ui_pop_widget(); // pop root
+
+    ui_push_existing_widget(window);
 }
 
 void set_is_open(UI_Dropdown_State *state, bool32 is_open) {

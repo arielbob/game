@@ -142,6 +142,21 @@ struct UI_Theme {
     UI_Scissor_Type scissor_type;
 };
 
+struct UI_Window_Theme {
+    Vec2 initial_position;
+    Vec4 background_color;
+    Vec4 title_text_color;
+    Vec4 title_bgc;
+    Vec4 title_hot_bgc;
+    Vec4 title_active_bgc;
+    uint32 corner_flags;
+    real32 corner_radius;
+    uint32 border_flags;
+    Vec4 border_color;
+    real32 border_width;
+    Vec2 semantic_size;
+};
+
 struct UI_Container_Theme {
     Vec4_UI_Padding padding;
     Vec4 background_color;

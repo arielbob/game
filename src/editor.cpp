@@ -1,11 +1,6 @@
 #include "linked_list.h"
 #include "editor.h"
 
-#define DEFAULT_BUTTON_BACKGROUND rgb_to_vec4(50, 50, 60)
-#define DEFAULT_BUTTON_HOT_BACKGROUND rgb_to_vec4(60, 60, 72)
-#define DEFAULT_BUTTON_ACTIVE_BACKGROUND rgb_to_vec4(9, 9, 10)
-#define DEFAULT_BOX_BACKGROUND rgb_to_vec4(24, 24, 28)
-
 UI_Button_Theme editor_button_theme = {
     { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE },
     { 0.0f, 20.0f }, { 0.0f, 0.0f },
@@ -672,23 +667,11 @@ void update_editor(Controller_State *controller_state, real32 dt) {
 }
 
 void draw_entity_box_2(bool32 force_reset) {
-    UI_Window_Theme window_theme = {};
-    window_theme.initial_position = { 200.0f, 200.0f };
-    window_theme.background_color = rgb_to_vec4(24, 24, 28);
-    window_theme.title_text_color = rgb_to_vec4(255, 255, 255);
-    window_theme.title_bgc        = DEFAULT_BUTTON_BACKGROUND;
-    window_theme.title_hot_bgc    = DEFAULT_BUTTON_HOT_BACKGROUND;
-    window_theme.title_active_bgc = DEFAULT_BUTTON_ACTIVE_BACKGROUND;
-    window_theme.corner_flags     = CORNER_ALL;
-    window_theme.corner_radius    = 5.0f;
-    window_theme.border_flags     = BORDER_ALL;
-    window_theme.border_color     = window_theme.title_bgc;
-    window_theme.border_width     = 1.0f;
-    window_theme.semantic_size    = { 200.0f, 0.0f };
-
+    UI_Window_Theme window_theme = DEFAULT_WINDOW_THEME;
     // TODO: be able to specify size type and size in window_theme
     
-    push_window("Entity Properties", window_theme, "window-test");
+    push_window("Entity Properties", window_theme,
+                "entity-properties-window", "entity-properties-window-title-bar");
 
     Editor_State *editor_state = &game_state->editor_state;
     assert(editor_state->selected_entity_id > -1);
@@ -1157,7 +1140,20 @@ void draw_editor(Controller_State *controller_state) {
         ui_y_pad(10.0f);
         bool32 open_material_library_clicked = do_text_button("Material Library", editor_button_theme,
                                                               "open_material_library");
-        
+
+        UI_Window_Theme window_theme = DEFAULT_WINDOW_THEME;
+        if (open_material_library_clicked) {
+            editor_state->is_material_library_window_open = true;
+        }
+
+        if (editor_state->is_material_library_window_open) {
+            push_window("Asset Library", window_theme, "asset-library-window", "asset-library-window-title-bar");
+            {
+                // TODO: push a container here too
+                do_text("Materials");
+            }
+            ui_pop_widget();
+        }
     }
     ui_pop_widget();
     #endif
