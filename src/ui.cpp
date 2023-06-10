@@ -1273,7 +1273,7 @@ inline bool32 do_text_button(char *text, UI_Button_Theme button_theme, char *id,
     return do_text_button(text, button_theme, make_ui_id(id, index));
 }
 
-bool32 ui_push_empty_button(UI_Button_Theme button_theme, UI_id id) {
+UI_Interact_Result ui_push_empty_button(UI_Button_Theme button_theme, UI_id id) {
     UI_Theme theme = NULL_THEME;
     theme.semantic_position = button_theme.position;
     theme.size_type = button_theme.size_type;
@@ -1290,7 +1290,7 @@ bool32 ui_push_empty_button(UI_Button_Theme button_theme, UI_id id) {
                                        UI_WIDGET_DRAW_BORDER | UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
     UI_Interact_Result interact_result = ui_interact(button);
 
-    return interact_result.released;
+    return interact_result;
 }
 
 void ui_x_pad(real32 width) {
@@ -1434,6 +1434,7 @@ void set_is_open(UI_Dropdown_State *state, bool32 is_open) {
     state->is_open = is_open;
 }
 
+// TODO: don't know if we still need this
 void ui_push_dropdown(UI_Dropdown_Theme theme, char *button_text,
                       char *button_id_str, char *dropdown_id_str,
                       char *dropdown_inner_id_str, // this is for the content that actually moves
@@ -1495,7 +1496,8 @@ void ui_push_dropdown(UI_Dropdown_Theme theme, char *button_text,
     // just so we get hot state, so that it gets clicks instead of whatever's behind it
     //ui_interact(column);
     {
-        bool32 dropdown_button_clicked = ui_push_empty_button(theme.button_theme, button_id);
+        UI_Interact_Result dropdown_button_result = ui_push_empty_button(theme.button_theme, button_id);
+        bool32 dropdown_button_clicked = dropdown_button_result.released;
         {
             UI_Theme row_theme = NULL_THEME;
             row_theme.layout_type = UI_LAYOUT_HORIZONTAL;
@@ -1682,7 +1684,7 @@ int32 do_dropdown(UI_Dropdown_Theme theme,
     UI_Widget *column = ui_add_and_push_widget("", column_theme,
                                                UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
     {
-        bool32 dropdown_button_clicked = ui_push_empty_button(theme.button_theme, button_id);
+        UI_Interact_Result dropdown_button_result = ui_push_empty_button(theme.button_theme, button_id);
         {
             UI_Theme row_theme = NULL_THEME;
             row_theme.layout_type = UI_LAYOUT_HORIZONTAL;
@@ -1733,7 +1735,7 @@ int32 do_dropdown(UI_Dropdown_Theme theme,
         }
         ui_pop_widget();
 
-        if (dropdown_button_clicked) {
+        if (dropdown_button_result.just_pressed) {
             set_is_open(state, !state->is_open);
         }
 
