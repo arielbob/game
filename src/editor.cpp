@@ -893,35 +893,96 @@ void draw_entity_box_2(bool32 force_reset) {
         ui_y_pad(10.0f);
         #endif
 
+        do_text("Material");
+        ui_y_pad(1.0f);
+        
+        Material *material = get_material(entity->material_name);
+        char *selected_material_string = to_char_array((Allocator *) &ui_manager->frame_arena,
+                                                       entity->material_name);
+
+        const int32 MAX_MATERIAL_NAMES = 256;
+        char *material_names[MAX_MATERIAL_NAMES];
+        int32 num_material_names = 0;
+        int32 selected_index = -1;
+        for (int32 i = 0; i < NUM_MATERIAL_BUCKETS; i++) {
+            Material *current = asset_manager->material_table[i];
+            while (current) {
+                assert(num_material_names < MAX_MATERIAL_NAMES);
+                int32 dropdown_index = num_material_names;
+                material_names[dropdown_index] = to_char_array((Allocator *) &ui_manager->frame_arena,
+                                                               current->name);
+                if (current == material) {
+                    selected_index = dropdown_index;
+                }
+
+                num_material_names++;
+                current = current->table_next;
+            }
+        }
+
+        UI_Button_Theme dropdown_item_theme = editor_button_theme;
+        dropdown_item_theme.background_color = rgb_to_vec4(19, 19, 23);
+        dropdown_item_theme.hot_background_color = rgb_to_vec4(36, 36, 43);
+        dropdown_item_theme.active_background_color = rgb_to_vec4(8, 8, 10);
+        dropdown_item_theme.scissor_type = UI_SCISSOR_INHERIT;
+
+        UI_Button_Theme selected_dropdown_item_theme = dropdown_item_theme;
+        selected_dropdown_item_theme.background_color = rgb_to_vec4(61, 96, 252);
+        selected_dropdown_item_theme.hot_background_color = selected_dropdown_item_theme.background_color;
+        selected_dropdown_item_theme.active_background_color = selected_dropdown_item_theme.background_color;
+
         UI_Dropdown_Theme dropdown_theme = {};
         dropdown_theme.button_theme = editor_button_theme;
         dropdown_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
+        dropdown_theme.item_theme = dropdown_item_theme;
+        dropdown_theme.selected_item_theme = selected_dropdown_item_theme;
         
-        ui_push_dropdown(dropdown_theme, "Material",
-                         "material_dropdown_button", "material_dropdown",
+        int32 dropdown_selected_index = do_dropdown(dropdown_theme,
+                                                    material_names, num_material_names,
+                                                    selected_index,
+                                                    "material_dropdown_button", "material_dropdown",
+                                                    "material_dropdown_inner", "material_dropdown_item",
+                                                    force_reset);
+        if (dropdown_selected_index != selected_index) {
+            set_material(entity, material_names[dropdown_selected_index]);
+            editor_state->selected_entity_changed = true;
+        }
+
+        #if 0
+        ui_push_dropdown(dropdown_theme, selected_material_string,
+                         "material_dropdown_button", "material_dropdown", "material_dropdown_inner",
                          force_reset);
         {
-            char *material_names[256];
-            int32 num_material_names = 0;
-            for (int32 i = 0; i < NUM_MATERIAL_BUCKETS; i++) {
-                Material *current = asset_manager->material_table[i];
-                while (current) {
-                    material_names[num_material_names++] = to_char_array((Allocator *) &ui_manager->frame_arena,
-                                                                         current->name);
-                    current = current->table_next;
-                }
-            }
+            
 
             UI_Button_Theme dropdown_item_theme = editor_button_theme;
             dropdown_item_theme.background_color = rgb_to_vec4(19, 19, 23);
             dropdown_item_theme.hot_background_color = rgb_to_vec4(36, 36, 43);
             dropdown_item_theme.active_background_color = rgb_to_vec4(8, 8, 10);
             dropdown_item_theme.scissor_type = UI_SCISSOR_INHERIT;
+
+            UI_Button_Theme selected_dropdown_item_theme = dropdown_item_theme;
+            selected_dropdown_item_theme.background_color = rgb_to_vec4(61, 96, 252);
+            selected_dropdown_item_theme.hot_background_color = selected_dropdown_item_theme.background_color;
+            selected_dropdown_item_theme.active_background_color = selected_dropdown_item_theme.background_color;
+
+            int32 clicked_index = -1;
             for (int32 i = 0; i < num_material_names; i++) {
-                do_text_button(material_names[i], dropdown_item_theme, "material_dropdown_item", i);
+                bool32 clicked = do_text_button(material_names[i],
+                                                (i == selected_index) ? selected_dropdown_item_theme : dropdown_item_theme,
+                                                "material_dropdown_item", i);
+                if (clicked) {
+                    clicked_index = i;
+                }
+            }
+
+            if (clicked_index > -1) {
+                set_material(entity, material_names[clicked_index]);
+                editor_state->selected_entity_changed = true;
             }
         }
         ui_pop_widget();
+        #endif
 
 #if 0
         bool32 material_clicked = do_text_button("Material",

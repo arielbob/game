@@ -109,6 +109,15 @@ void set_material(Entity *entity, String name) {
     entity->material_name = material->name;
 }
 
+void set_material(Entity *entity, char *name) {
+    Marker m = begin_region();
+
+    String material_name = make_string(temp_region, name);
+    set_material(entity, material_name);
+    
+    end_region(m);
+}
+
 void set_mesh(Entity *entity, String name) {
     assert(entity->flags & ENTITY_MESH);
 

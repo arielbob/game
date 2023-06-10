@@ -269,6 +269,17 @@ struct UI_Dropdown_State {
     real32 t;
 };
 
+struct UI_Dropdown_Theme {
+    UI_Button_Theme button_theme; // for the button that opens and closes the dropdown
+    UI_Button_Theme item_theme;
+    UI_Button_Theme selected_item_theme;
+    
+    UI_Position_Type position_type;
+    Vec2 position;
+    Vec2_UI_Size_Type size_type;
+    Vec2 size;
+};
+
 struct UI_Widget_State {
     UI_id id;
     UI_Widget_State_Type type;
@@ -548,6 +559,7 @@ bool32 is_focus(UI_Widget *widget);
 bool32 in_bounds(Vec2 p, real32 x_min, real32 x_max, real32 y_min, real32 y_max);
 bool32 in_bounds(Vec2 p, Vec2 widget_position, Vec2 widget_size);
 bool32 in_bounds(Vec2 p, Vec2_int32 widget_position, Vec2_int32 widget_size);
+bool32 in_bounds(Vec2 p, UI_Widget *widget);
 bool32 ui_id_equals(UI_id id1, UI_id id2);
 real32 get_adjusted_font_height(Font font);
 real32 get_center_x_offset(real32 container_width, real32 element_width);
