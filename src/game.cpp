@@ -125,6 +125,7 @@ inline bool32 just_lifted(Controller_Button_State button_state) {
 }
 
 inline Vec2 get_mouse_delta() {
+    //return platform_get_cursor_pos() - Context::controller_state->last_mouse;
     return (Context::controller_state->current_mouse - Context::controller_state->last_mouse);
 }
 

@@ -1420,9 +1420,16 @@ void push_window(char *title, UI_Window_Theme theme, char *id_str, char *title_b
             UI_Interact_Result title_bar_interact = ui_interact(title_bar);
             do_text(title, "");
 
+            if (title_bar_interact.just_pressed) {
+                state->relative_start = title_bar_interact.relative_mouse;
+            }
+            
             if (title_bar_interact.holding) {
-                Vec2 delta = get_mouse_delta();
-                state->position += delta;
+                state->position = platform_get_cursor_pos() - state->relative_start;
+                // set it right away to reduce lag.
+                // we can do this because the window is float and a direct child of root, so
+                // semantic_position will always be computed_position.
+                window->semantic_position = state->position;
             }
         }
         ui_pop_widget();

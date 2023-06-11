@@ -251,6 +251,7 @@ inline UI_id make_ui_id(char *id) {
 
 struct UI_Window_State {
     Vec2 position;
+    Vec2 relative_start;
 };
 
 struct UI_Text_Field_State {
