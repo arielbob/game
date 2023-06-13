@@ -431,6 +431,8 @@ void draw_messages(Message_Manager *manager, real32 y_start) {
 
     Allocator *frame_allocator = (Allocator *) &memory.frame_arena;
 
+    ui_push_existing_widget(ui_manager->always_on_top_layer);
+    
     UI_Theme message_container = NULL_THEME;
     message_container.position_type = UI_POSITION_FLOAT;
     message_container.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
@@ -461,6 +463,8 @@ void draw_messages(Message_Manager *manager, real32 y_start) {
         
         index = (MAX_MESSAGES + (index - 1)) % MAX_MESSAGES;
     }
+
+    ui_pop_widget();
 }
 
 void init_game(Sound_Output *sound_output, uint32 num_samples) {
@@ -948,28 +952,23 @@ void update_game(Controller_State *controller_state, Sound_Output *sound_output,
     update_render_state(game_state->camera);
 }
 
-void draw_test_ui(real32 dt) {
-#if 0
-    ui_push_text_color({ 1.0f, 1.0f, 1.0f, 1.0f });
-    ui_push_position({ 5.0f, 5.0f });
-    char *focus_text = string_format((Allocator *) &ui_manager->frame_arena, "focus: %s\nhot: %s\nactive: %s",
-                                     ui_manager->focus.string_ptr,
-                                     ui_manager->hot.string_ptr,
-                                     ui_manager->active.string_ptr);
-    do_text(focus_text, "");
-    ui_pop_position();
-    ui_pop_text_color();
-#endif
-
-    UI_Theme white_text = NULL_THEME;
-    white_text.text_color = { 1.0f, 1.0f, 1.0f, 1.0f };
-    white_text.semantic_position = { 5.0f, 20.0f };
-    
-    char *fps_text = string_format((Allocator *) &ui_manager->frame_arena, "FPS: %d / dt %.3f",
-                                   (int32) round(game_state->last_second_fps), dt);
-    do_text(fps_text, "", white_text);
-    
+void draw_ui(real32 dt) {
     draw_editor(Context::controller_state);
+
+
+    // fps counter
+
+    ui_push_existing_widget(ui_manager->always_on_top_layer);
+    {
+        UI_Theme white_text = NULL_THEME;
+        white_text.text_color = { 1.0f, 1.0f, 1.0f, 1.0f };
+        white_text.semantic_position = { 5.0f, 20.0f };
+    
+        char *fps_text = string_format((Allocator *) &ui_manager->frame_arena, "FPS: %d / dt %.3f",
+                                       (int32) round(game_state->last_second_fps), dt);
+        do_text(fps_text, "", white_text);
+    }
+    ui_pop_widget();
 }
 
 void update(Controller_State *controller_state,
@@ -1036,7 +1035,7 @@ void update(Controller_State *controller_state,
         //update_game(game_state, controller_state, sound_output, dt);
     }
 
-    draw_test_ui(dt);
+    draw_ui(dt);
     
     Player *player = &game_state->player;
 

@@ -1092,6 +1092,8 @@ void draw_editor(Controller_State *controller_state) {
         UI_LAYOUT_VERTICAL
     };
 
+    ui_push_existing_widget(ui_manager->main_layer);
+    
     #if 1
     ui_push_container(sidebar_theme, "editor_sidebar");
     {
@@ -1356,6 +1358,8 @@ void draw_editor(Controller_State *controller_state) {
             5.0f, render_state->display_output.height - 114.0f,
             buf, editor_font_name, default_text_style, "editor history");
 #endif
+
+    ui_pop_widget();
 }
 
 void editor_post_update() {

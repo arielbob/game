@@ -1025,6 +1025,10 @@ void ui_frame_init(real32 dt) {
         UI_SCISSOR_NONE
     };
 
+    UI_Theme layer_theme = root_theme;
+    layer_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_PERCENTAGE };
+    layer_theme.semantic_size = { 1.0f, 1.0f };
+    
     UI_Widget *widget = make_widget(make_ui_id("root"), root_theme, 0);
 
     UI_Stack_Widget *entry = (UI_Stack_Widget *) allocate(&ui_manager->frame_arena, sizeof(UI_Stack_Widget));
@@ -1040,6 +1044,18 @@ void ui_frame_init(real32 dt) {
     
     ui_table_add(ui_manager->widget_table, widget);
 
+    UI_Widget *main_layer = make_widget(make_ui_id("main-layer"), layer_theme, 0);
+    UI_Widget *window_layer = make_widget(make_ui_id("window-layer"), layer_theme, 0);
+    UI_Widget *always_on_top_layer = make_widget(make_ui_id("always-on-top-layer"), layer_theme, 0);
+
+    ui_add_widget(main_layer);
+    ui_add_widget(window_layer);
+    ui_add_widget(always_on_top_layer);
+
+    ui_manager->main_layer = main_layer;
+    ui_manager->window_layer = window_layer;
+    ui_manager->always_on_top_layer = always_on_top_layer;
+
     ui_manager->hot_t    += dt;
     ui_manager->focus_t  += dt;
     ui_manager->active_t += dt;
@@ -1053,6 +1069,63 @@ void ui_frame_init(real32 dt) {
 }
 
 void ui_post_update() {
+    // TODO: do window shit here
+
+    #if 0
+    UI_Widget *current = ui_manager->root->first;
+    if (ui_manager->num_windows == 0) {
+        while (current) {
+            if (current_flags & UI_WIDGET_IS_WINDOW) {
+                // you need to change the rendering order based on which was clicked...
+                // check if it's in bounds? fuck idk
+
+                // save a linked list to the windows, i.e. save a single (UI_Widget *)
+                // save an order array of UI_Widgets
+                // go through it, do a get_widget(), append to the linked list
+                // also, it's an easy way of removing them
+                // you just have to go through the list again and save them to the thing
+                // what if there are no windows in the order?
+                // well, in that case, just go through the windows and add them in whatever order
+                assert(ui_manager->num_windows < UI_MAX_WINDOWS);
+                ui_manager->window_order[ui_manager->num_windows++] = current->id;
+            }
+            current = current->next;
+        }
+    } else {
+        // i think we need to have three separate direct root children
+        // background, mid-ground, and foreground
+        // background will be things like the sidebar
+        // mid-ground is things like windows
+        // foreground is things like the FPS display
+        // if you have a top one, 
+        // the stuff you add
+        // we can just save three different widgets in ui_manager for each
+        // and when we want to add to one, we just push it onto the widget stack.
+        // and maybe instead of naming it like mid-ground, it can be like window_layer or something
+        
+        
+        UI_Widget *windows = NULL;
+        
+        int32 new_num_windows = 0;
+        UI_id new_window_order[UI_MAX_WINDOWS];
+        // from last frame
+        for (int32 i = 0; i < ui_manager->num_windows; i++) {
+            UI_Widget *widget = get_widget(window_order[i]);
+            if (widget) {
+                if (!windows) {
+                    windows = ui_remove_widget_from_tree(widget);
+                }
+            }
+        }
+
+        // replace the window stuff
+        for (int32 i = 0; i < new_num_windows; i++) {
+            ui_manager->window_order[i] = new_window_order[i];
+        }
+        ui_manager->num_windows = new_num_windows;
+    }
+    #endif
+        
     ui_calculate_standalone_sizes();
     ui_calculate_ancestor_dependent_sizes();
     ui_calculate_child_dependent_sizes();
@@ -1380,8 +1453,7 @@ void push_window(char *title, UI_Window_Theme theme, char *id_str, char *title_b
         state = &state_variant->window;
     }
     
-    // we only want to add windows to the root node
-    ui_push_existing_widget(ui_manager->root);
+    ui_push_existing_widget(ui_manager->window_layer);
 
     UI_Theme window_theme = {};
     window_theme.position_type           = UI_POSITION_FLOAT;
@@ -1400,7 +1472,7 @@ void push_window(char *title, UI_Window_Theme theme, char *id_str, char *title_b
     window_theme.border_width            = theme.border_width;
     UI_Widget *window = make_widget(id, window_theme,
                                     UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE | UI_WIDGET_IS_FOCUSABLE |
-                                    UI_WIDGET_DRAW_BORDER);
+                                    UI_WIDGET_DRAW_BORDER | UI_WIDGET_IS_WINDOW);
     ui_add_and_push_widget(window);
     ui_interact(window);
     
@@ -1435,7 +1507,7 @@ void push_window(char *title, UI_Window_Theme theme, char *id_str, char *title_b
         ui_pop_widget();
     }
     ui_pop_widget(); // pop window
-    ui_pop_widget(); // pop root
+    ui_pop_widget(); // pop window_layer
 
     ui_push_existing_widget(window);
 }

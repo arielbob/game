@@ -7,6 +7,7 @@
 #define UI_WIDGET_USE_TEXTURE        (1 << 3)
 #define UI_WIDGET_IS_FOCUSABLE       (1 << 4)
 #define UI_WIDGET_DRAW_BORDER        (1 << 5)
+#define UI_WIDGET_IS_WINDOW          (1 << 6) // should only be active on the window widget in push_window()
 
 #define CORNER_TOP_LEFT     (1 << 0)
 #define CORNER_TOP_RIGHT    (1 << 1)
@@ -24,6 +25,7 @@
 #define UI_MAX_TRIANGLES 8192
 #define UI_MAX_INDICES   UI_MAX_TRIANGLES*3
 #define UI_MAX_RENDER_COMMANDS 1024
+#define UI_MAX_WINDOWS 128
 #define NUM_WIDGET_BUCKETS 128
 
 #define UI_MAX_STATES_TO_DELETE 256
@@ -538,8 +540,15 @@ struct UI_Manager {
     real32 active_t;
     real32 focus_t;
 
+    UI_id window_order[UI_MAX_WINDOWS];
+    int32 num_windows;
+    
     UI_Widget *last_frame_root;
     UI_Widget *root;
+    
+    UI_Widget *main_layer;
+    UI_Widget *window_layer;
+    UI_Widget *always_on_top_layer;
 
     // these tables are just so that we can easily get widgets without traversing the tree.
     // these do NOT hold state; state is handled by the layer that creates stateful widgets out of the primitive
