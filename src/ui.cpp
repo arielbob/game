@@ -245,18 +245,24 @@ void ui_remove_widget_from_tree(UI_Widget *widget) {
     }
     
     if (widget->prev) {
-        widget->prev->next = widget;
+        widget->prev->next = widget->next;
     }
 
     if (widget->next) {
         widget->next->prev = widget->prev;
     }
+
+    widget->prev = NULL;
+    widget->next = NULL;
+    widget->parent = NULL;
 }
 
 // doesn't add anything to tables. this assumes that widget was already added with ui_add_widget().
 // this is also used for sorting just like ui_remove_widget_from_tree().
 void ui_add_existing_widget_to_tree(UI_Widget *parent, UI_Widget *widget) {
     assert(parent);
+
+    widget->parent = parent;
 
     if (!parent->last) {
         assert(!parent->first);
@@ -1113,29 +1119,16 @@ void ui_frame_init(real32 dt) {
 }
 
 void ui_post_update() {
-    // TODO: do window shit here
+    // window sorting
 
-    // we can basically just sort the windows
-    #if 1
-
-    // these are initialized with null widgets that aren't added to the tree or to the widget table.
-    // this is just so we have a nice way of saving widgets.
+    // null widget that isn't added to the tree or to the widget table.
+    // this is just so we have a nice way of storing the order of the widgets.
     UI_Widget *order = make_widget("", NULL_THEME, 0);
-    UI_Widget *interacted = make_widget("", NULL_THEME, 0);
     
-    // loop through window_order
-    // just call get_widget(), just remove it from the thing, then add it to order
-    // the remaining ones are new
-    // so now loop through the remaining window_layer widgets and add them to the end
-    // if any of them were interacted with last frame, since we need to wait for computed widget, then
-    // we move it to the top
-
-    // add all the stuff back to window_order
-
-
-    // go through window_order (which is from last frame) and append the widgets in that order
+    // go through ui_manager->window_order (which is from last frame) and append the widgets in that order
     for (int32 i = 0; i < ui_manager->num_windows; i++) {
         UI_Widget *widget = ui_get_widget(ui_manager->window_order[i]);
+        // note that this check makes it so we automatically handle windows that no longer exist this frame
         if (widget) {
             ui_remove_widget_from_tree(widget);
             ui_add_existing_widget_to_tree(order, widget);
@@ -1146,61 +1139,71 @@ void ui_post_update() {
     // above anything that was in the previous frame.
     UI_Widget *current = ui_manager->window_layer->first;
     while (current) {
+        // save current->next because it's gonna get overwritten
+        UI_Widget *next = current->next;
+
         assert(current->flags & UI_WIDGET_IS_WINDOW);
-        current = current->next;
-        ui_remove_widget_from_tree(widget);
+        ui_remove_widget_from_tree(current);
         ui_add_existing_widget_to_tree(order, current);
+
+        current = next;
     }
 
     // window layer should not have any child widgets anymore
     assert(!ui_manager->window_layer->first);
 
-    // now loop through the order and see if any were interacted with last frame so they can get added
-    // to the end
-    // TODO: add these to interacted
-    
-#if 0
-    if (ui_manager->num_windows == 0) {
-        while (current) {
-            if (current_flags & UI_WIDGET_IS_WINDOW) {
-                // you need to change the rendering order based on which was clicked...
-                // check if it's in bounds? fuck idk
-
-                // save a linked list to the windows, i.e. save a single (UI_Widget *)
-                // save an order array of UI_Widgets
-                // go through it, do a get_widget(), append to the linked list
-                // also, it's an easy way of removing them
-                // you just have to go through the list again and save them to the thing
-                // what if there are no windows in the order?
-                // well, in that case, just go through the windows and add them in whatever order
-                assert(ui_manager->num_windows < UI_MAX_WINDOWS);
-                ui_manager->window_order[ui_manager->num_windows++] = current->id;
-            }
-            current = current->next;
-        }
-    } else {
-        UI_Widget *windows = NULL;
-        
-        int32 new_num_windows = 0;
-        UI_id new_window_order[UI_MAX_WINDOWS];
-        // from last frame
-        for (int32 i = 0; i < ui_manager->num_windows; i++) {
-            UI_Widget *widget = get_widget(window_order[i]);
-            if (widget) {
-                if (!windows) {
-                    windows = ui_remove_widget_from_tree(widget);
+    // now loop through the order to find the highest widget interacted with
+    current = order->first;
+    UI_Widget *highest_widget = NULL;
+    while (current) {
+        UI_Widget *next = current->next;
+        UI_Widget *computed_widget = ui_get_widget_prev_frame(current->id);
+        if (computed_widget) {
+            // TODO: uhh, this doesn't handle stuff that are floating outside of the bounds of the window,
+            //       for example, with dropdowns, but with dropdowns clicking outside hides the dropdown,
+            //       so we would never really be able to click on a dropdown while focused on a different
+            //       window. idk if other things will need this functionality.
+            Vec2 mouse_pos = Context::controller_state->current_mouse;
+            if (just_pressed(Context::controller_state->left_mouse) &&
+                in_bounds(mouse_pos, computed_widget)) {
+                if (highest_widget) {
+                    if (computed_widget->rendering_index > highest_widget->rendering_index) {
+                        highest_widget = current;
+                    }
+                } else {
+                    highest_widget = current;
                 }
             }
         }
 
-        // replace the window stuff
-        for (int32 i = 0; i < new_num_windows; i++) {
-            ui_manager->window_order[i] = new_window_order[i];
-        }
-        ui_manager->num_windows = new_num_windows;
+        current = next;
     }
-#endif
+
+    if (highest_widget) {
+        // add it to the end
+        ui_remove_widget_from_tree(highest_widget);
+        ui_add_existing_widget_to_tree(order, highest_widget);
+    }
+
+    // now add all the (ordered) window widgets back to the window layer. also save the order to
+    // ui_manager->window_order.
+    // we don't just set window_layer->first and window_layer->last here because we also
+    // need to set the parent and we already have a function that does that.
+    ui_manager->num_windows = 0;
+    current = order->first;
+    while (current) {
+        UI_Widget *next = current->next;
+
+        assert(ui_manager->num_windows < UI_MAX_WINDOWS);
+        ui_manager->window_order[ui_manager->num_windows++] = current->id;
         
+        ui_remove_widget_from_tree(current);
+        ui_add_existing_widget_to_tree(ui_manager->window_layer, current);
+
+        current = next;
+    }
+
+    // layout calculations
     ui_calculate_standalone_sizes();
     ui_calculate_ancestor_dependent_sizes();
     ui_calculate_child_dependent_sizes();
