@@ -225,6 +225,50 @@ UI_Widget *ui_add_widget(UI_id id, UI_Theme theme, uint32 flags = 0) {
     return widget;
 }
 
+// this just removes the widget from the tree. it does not remove any associated state from the
+// state table or remove it from the widget table. it also does not do any deallocations. it's
+// meant to be used for doing sorting.
+// widgets removed with this function should definitely be added back because we don't change
+// any layout variables like num_sized_children with this function. i.e. this function expects
+// that we add them back because we aren't changing state because we assume we're gonna add
+// them back.
+void ui_remove_widget_from_tree(UI_Widget *widget) {
+    assert(widget);
+    assert(widget->parent);
+
+    if (widget->parent->first == widget) {
+        widget->parent->first = widget->next;
+    }
+
+    if (widget->parent->last == widget) {
+        widget->parent->last = widget->prev;
+    }
+    
+    if (widget->prev) {
+        widget->prev->next = widget;
+    }
+
+    if (widget->next) {
+        widget->next->prev = widget->prev;
+    }
+}
+
+// doesn't add anything to tables. this assumes that widget was already added with ui_add_widget().
+// this is also used for sorting just like ui_remove_widget_from_tree().
+void ui_add_existing_widget_to_tree(UI_Widget *parent, UI_Widget *widget) {
+    assert(parent);
+
+    if (!parent->last) {
+        assert(!parent->first);
+        parent->first = widget;
+        parent->last = widget;
+    } else {
+        parent->last->next = widget;
+        widget->prev = parent->last;
+        parent->last = widget;
+    }
+}
+
 #if 0
 UI_Widget *ui_add_widget(char *id_string_ptr, uint32 flags = 0) {
     return ui_add_widget(make_ui_id(id_string_ptr), flags);
@@ -1071,8 +1115,51 @@ void ui_frame_init(real32 dt) {
 void ui_post_update() {
     // TODO: do window shit here
 
-    #if 0
-    UI_Widget *current = ui_manager->root->first;
+    // we can basically just sort the windows
+    #if 1
+
+    // these are initialized with null widgets that aren't added to the tree or to the widget table.
+    // this is just so we have a nice way of saving widgets.
+    UI_Widget *order = make_widget("", NULL_THEME, 0);
+    UI_Widget *interacted = make_widget("", NULL_THEME, 0);
+    
+    // loop through window_order
+    // just call get_widget(), just remove it from the thing, then add it to order
+    // the remaining ones are new
+    // so now loop through the remaining window_layer widgets and add them to the end
+    // if any of them were interacted with last frame, since we need to wait for computed widget, then
+    // we move it to the top
+
+    // add all the stuff back to window_order
+
+
+    // go through window_order (which is from last frame) and append the widgets in that order
+    for (int32 i = 0; i < ui_manager->num_windows; i++) {
+        UI_Widget *widget = ui_get_widget(ui_manager->window_order[i]);
+        if (widget) {
+            ui_remove_widget_from_tree(widget);
+            ui_add_existing_widget_to_tree(order, widget);
+        }
+    }
+
+    // remaining widgets in the window layer are ones that were added this frame. they should be
+    // above anything that was in the previous frame.
+    UI_Widget *current = ui_manager->window_layer->first;
+    while (current) {
+        assert(current->flags & UI_WIDGET_IS_WINDOW);
+        current = current->next;
+        ui_remove_widget_from_tree(widget);
+        ui_add_existing_widget_to_tree(order, current);
+    }
+
+    // window layer should not have any child widgets anymore
+    assert(!ui_manager->window_layer->first);
+
+    // now loop through the order and see if any were interacted with last frame so they can get added
+    // to the end
+    // TODO: add these to interacted
+    
+#if 0
     if (ui_manager->num_windows == 0) {
         while (current) {
             if (current_flags & UI_WIDGET_IS_WINDOW) {
@@ -1092,18 +1179,6 @@ void ui_post_update() {
             current = current->next;
         }
     } else {
-        // i think we need to have three separate direct root children
-        // background, mid-ground, and foreground
-        // background will be things like the sidebar
-        // mid-ground is things like windows
-        // foreground is things like the FPS display
-        // if you have a top one, 
-        // the stuff you add
-        // we can just save three different widgets in ui_manager for each
-        // and when we want to add to one, we just push it onto the widget stack.
-        // and maybe instead of naming it like mid-ground, it can be like window_layer or something
-        
-        
         UI_Widget *windows = NULL;
         
         int32 new_num_windows = 0;
@@ -1124,7 +1199,7 @@ void ui_post_update() {
         }
         ui_manager->num_windows = new_num_windows;
     }
-    #endif
+#endif
         
     ui_calculate_standalone_sizes();
     ui_calculate_ancestor_dependent_sizes();
