@@ -939,7 +939,9 @@ void draw_entity_box_2(bool32 force_reset) {
 
 void draw_asset_library(bool32 force_reset) {
     UI_Window_Theme window_theme = DEFAULT_WINDOW_THEME;
-    // TODO: be able to specify size type and size in window_theme
+
+    // since DEFAULT_WINDOW_THEME is FIT_CHILDREN, this is a minimum size
+    window_theme.semantic_size = { 300.0f, 0.0f };
     
     push_window("Asset Library", window_theme,
                 "asset-library-window", "asset-library-window-title-bar");
@@ -959,14 +961,50 @@ void draw_asset_library(bool32 force_reset) {
     UI_Theme list_container_theme = NULL_THEME;
     list_container_theme.layout_type = UI_LAYOUT_VERTICAL;
     list_container_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
-    list_container_theme.semantic_size = { 500.0f, 500.0f };
-    list_container_theme.background_color = DEFAULT_DARK_BACKGROUND;
+    list_container_theme.semantic_size = { 200.0f, 500.0f };
+
+    UI_Theme list_theme = NULL_THEME;
+    list_theme.layout_type = UI_LAYOUT_VERTICAL;
+    list_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
+    list_theme.background_color = { 0.0f, 0.0f, 0.0f, 1.0f };
     
     ui_push_container(content_theme, "asset-library-content");
     {
-        ui_add_and_push_widget("asset-library-material-list", list_container_theme, UI_WIDGET_DRAW_BACKGROUND);
+        ui_add_and_push_widget("asset-library-material-list-container", list_container_theme);
         {
             do_text("Materials");
+            ui_add_and_push_widget("asset-library-material-list-container", list_theme, UI_WIDGET_DRAW_BACKGROUND);
+            {
+                const int32 MAX_MATERIAL_NAMES = 256;
+                char *material_names[MAX_MATERIAL_NAMES];
+                int32 num_material_names = 0;
+                int32 selected_index = 0;
+                for (int32 i = 0; i < NUM_MATERIAL_BUCKETS; i++) {
+                    Material *current = asset_manager->material_table[i];
+                    while (current) {
+                        assert(num_material_names < MAX_MATERIAL_NAMES);
+                        int32 dropdown_index = num_material_names;
+                        material_names[dropdown_index] = to_char_array((Allocator *) &ui_manager->frame_arena,
+                                                                       current->name);
+                        num_material_names++;
+                        current = current->table_next;
+                    }
+                }
+
+                UI_Button_Theme item_theme = editor_button_theme;
+
+                UI_Button_Theme selected_item_theme = item_theme;
+                selected_item_theme.background_color = rgb_to_vec4(61, 96, 252);
+                selected_item_theme.hot_background_color = selected_item_theme.background_color;
+                selected_item_theme.active_background_color = selected_item_theme.background_color;
+
+                for(int32 i = 0; i < num_material_names; i++) {
+                    do_text_button(material_names[i],
+                                   (i == selected_index) ? selected_item_theme : item_theme,
+                                   "asset-library-material-list-item", i);
+                }
+            }
+            ui_pop_widget();
         }
         ui_pop_widget();
     }

@@ -1500,7 +1500,7 @@ void ui_push_container(UI_Container_Theme theme, char *id = "") {
 
         UI_Theme row_theme = {};
         row_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
-        row_theme.semantic_size = { 1.0f, 1.0f };
+        row_theme.semantic_size = { 0.0f, 0.0f };
         row_theme.layout_type = UI_LAYOUT_HORIZONTAL;
 
         ui_add_and_push_widget("", row_theme);
@@ -1509,7 +1509,7 @@ void ui_push_container(UI_Container_Theme theme, char *id = "") {
 
             UI_Theme inner_theme = {};
             inner_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
-            inner_theme.semantic_size = { 1.0f, 1.0f };
+            inner_theme.semantic_size = { 0.0f, 0.0f };
             inner_theme.layout_type = theme.layout_type;
             //inner_theme.background_color = rgb_to_vec4(0, 255, 0);
             inner = ui_add_widget("", inner_theme, 0);
