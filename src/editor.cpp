@@ -676,7 +676,8 @@ void draw_entity_box_2(bool32 force_reset) {
     Editor_State *editor_state = &game_state->editor_state;
     assert(editor_state->selected_entity_id > -1);
     Entity *entity = get_entity(&game_state->level, editor_state->selected_entity_id);
-    
+
+    // TODO: this is broken
     UI_Container_Theme content_theme = {
         { 5.0f, 5.0f, 5.0f, 5.0f },
         DEFAULT_BOX_BACKGROUND,
@@ -692,15 +693,15 @@ void draw_entity_box_2(bool32 force_reset) {
         make_vec4(0.0f, 1.0f, 0.0f, 1.0f),
         0.0f, 0, 0, {}, 0.0f,
         default_font,
-        { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN },
-        { 0.0f, 20.0f }
+        { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN },
+        { 1.0f, 20.0f }
     };
 
     UI_Text_Field_Slider_Theme slider_theme = {};
     slider_theme.field_background_color  = DEFAULT_BUTTON_BACKGROUND;
     slider_theme.field_hot_background_color  = DEFAULT_BUTTON_HOT_BACKGROUND;
     slider_theme.field_active_background_color  = DEFAULT_BUTTON_ACTIVE_BACKGROUND;
-    slider_theme.slider_background_color = rgb_to_vec4(0, 0, 255);//rgb_to_vec4(61, 73, 60);
+    slider_theme.slider_background_color = rgb_to_vec4(61, 73, 60);
     slider_theme.show_slider             = false;
     slider_theme.size_type               = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
     slider_theme.size                    = { 0.0f, 20.0f };
@@ -914,7 +915,8 @@ void draw_entity_box_2(bool32 force_reset) {
 
             UI_Dropdown_Theme dropdown_theme = {};
             dropdown_theme.button_theme = editor_button_theme;
-            dropdown_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
+            dropdown_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
+            dropdown_theme.size = { 1.0f, 0.0f };
             dropdown_theme.item_theme = dropdown_item_theme;
             dropdown_theme.selected_item_theme = selected_dropdown_item_theme;
         
@@ -933,6 +935,44 @@ void draw_entity_box_2(bool32 force_reset) {
     ui_pop_widget();
     
     ui_pop_widget();
+}
+
+void draw_asset_library(bool32 force_reset) {
+    UI_Window_Theme window_theme = DEFAULT_WINDOW_THEME;
+    // TODO: be able to specify size type and size in window_theme
+    
+    push_window("Asset Library", window_theme,
+                "asset-library-window", "asset-library-window-title-bar");
+
+    Editor_State *editor_state = &game_state->editor_state;
+    
+    UI_Container_Theme content_theme = {
+        { 5.0f, 5.0f, 5.0f, 5.0f },
+        DEFAULT_BOX_BACKGROUND,
+        UI_POSITION_NONE,
+        {},
+        { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN },
+        { 0.0f, 0.0f },
+        UI_LAYOUT_HORIZONTAL
+    };
+
+    UI_Theme list_container_theme = NULL_THEME;
+    list_container_theme.layout_type = UI_LAYOUT_VERTICAL;
+    list_container_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
+    list_container_theme.semantic_size = { 500.0f, 500.0f };
+    list_container_theme.background_color = DEFAULT_DARK_BACKGROUND;
+    
+    ui_push_container(content_theme, "asset-library-content");
+    {
+        ui_add_and_push_widget("asset-library-material-list", list_container_theme, UI_WIDGET_DRAW_BACKGROUND);
+        {
+            do_text("Materials");
+        }
+        ui_pop_widget();
+    }
+    ui_pop_widget(); // container
+
+    ui_pop_widget(); // window
 }
 
 void draw_level_box() {
@@ -1093,7 +1133,7 @@ void draw_editor(Controller_State *controller_state) {
     };
 
     ui_push_existing_widget(ui_manager->main_layer);
-    
+
     #if 1
     ui_push_container(sidebar_theme, "editor_sidebar");
     {
@@ -1149,12 +1189,7 @@ void draw_editor(Controller_State *controller_state) {
         }
 
         if (editor_state->is_material_library_window_open) {
-            push_window("Asset Library", window_theme, "asset-library-window", "asset-library-window-title-bar");
-            {
-                // TODO: push a container here too
-                do_text("Materials");
-            }
-            ui_pop_widget();
+            draw_asset_library(false);
         }
     }
     ui_pop_widget();

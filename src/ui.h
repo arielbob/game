@@ -43,8 +43,7 @@ enum UI_Size_Type {
     UI_SIZE_ABSOLUTE,
     UI_SIZE_FIT_CHILDREN,
     UI_SIZE_FIT_TEXT,
-    UI_SIZE_FILL_REMAINING,
-    UI_SIZE_MATCH_OTHER_COMPUTED
+    UI_SIZE_FILL_REMAINING
 };
 
 enum UI_Layout_Type {
@@ -157,6 +156,7 @@ struct UI_Window_Theme {
     Vec4 border_color;
     real32 border_width;
     Vec2 semantic_size;
+    Vec2_UI_Size_Type size_type;
 };
 
 struct UI_Container_Theme {

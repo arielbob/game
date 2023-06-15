@@ -4,6 +4,7 @@
 #define DEFAULT_BUTTON_HOT_BACKGROUND rgb_to_vec4(60, 60, 72)
 #define DEFAULT_BUTTON_ACTIVE_BACKGROUND rgb_to_vec4(9, 9, 10)
 #define DEFAULT_BOX_BACKGROUND rgb_to_vec4(24, 24, 28)
+#define DEFAULT_DARK_BACKGROUND rgb_to_vec4(51, 51, 54)
 
 char *default_font = "calibri14";
 UI_Theme NULL_THEME = {
@@ -23,7 +24,8 @@ UI_Window_Theme DEFAULT_WINDOW_THEME = {
     rgb_to_vec4(255, 255, 255),
     DEFAULT_BUTTON_BACKGROUND, DEFAULT_BUTTON_HOT_BACKGROUND, DEFAULT_BUTTON_ACTIVE_BACKGROUND,
     CORNER_ALL, 5.0f, BORDER_ALL,
-    DEFAULT_BUTTON_BACKGROUND, 1.0f, { 200.0f, 0.0f }
+    DEFAULT_BUTTON_BACKGROUND, 1.0f, { 200.0f, 0.0f },
+    { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN }
 };
 
 UI_Widget *make_widget(UI_id id, UI_Theme theme, uint32 flags) {
@@ -787,11 +789,12 @@ void calculate_child_dependent_size(UI_Widget *widget, UI_Widget_Axis axis) {
     UI_Widget *parent = widget->parent;
 
     if (parent) {
-        // we also check percentage since if the parent of the percentage based widget is FIT_CHILDREN,
+        // we also check PERCENTAGE and FILL_REMAINING since if the parent of the widget is FIT_CHILDREN,
         // we need to bubble up the child width to the FIT_CHILDREN widget. we do this by setting the
-        // percentage based computed size as if it were a FIT_CHILDREN widget. this computed size will be
+        // parent's computed size as if it were a FIT_CHILDREN widget. this computed size will be
         // overwritten later to be based on its parent's size.
-        if (parent->size_type[axis] == UI_SIZE_FIT_CHILDREN || parent->size_type[axis] == UI_SIZE_PERCENTAGE) {
+        if (parent->size_type[axis] == UI_SIZE_FIT_CHILDREN || parent->size_type[axis] == UI_SIZE_PERCENTAGE ||
+            parent->size_type[axis] == UI_SIZE_FILL_REMAINING) {
             // if the current axis matches with the parent's layout axis, then increase the parent's
             // size on that axis.
             bool32 axis_matches_parent_layout = ((axis == UI_WIDGET_X_AXIS && parent->layout_type == UI_LAYOUT_HORIZONTAL) ||
@@ -871,7 +874,11 @@ void ui_calculate_child_dependent_sizes() {
 
 void calculate_ancestor_dependent_sizes_part_2(UI_Widget *widget, UI_Widget_Axis axis) {
     UI_Widget *parent = widget->parent;
-    
+
+    if (!parent) {
+        return;
+    }
+
     if (widget->size_type[axis] == UI_SIZE_PERCENTAGE) {
         assert(parent); // root node cannot be percentage based
 
@@ -882,11 +889,11 @@ void calculate_ancestor_dependent_sizes_part_2(UI_Widget *widget, UI_Widget_Axis
     } else if (widget->size_type[axis] == UI_SIZE_FILL_REMAINING) {
         assert(widget->position_type != UI_POSITION_FLOAT);
         assert(parent);
-        if (widget->parent->size_type[axis] == UI_SIZE_FIT_CHILDREN) {
-            // since the parent only expands to fit the sized children, there will be no space left for the child.
-            // the child will attempt to fill a space of size 0, which can be unexpected, so we assert.
-            assert(!"Cannot have widget with axis size type FILL_REMAINING inside a widget who's size type on the same axis is FIT_CHILDREN.");
-        }
+        // you can have a UI_SIZE_FILL_REMAINING (widget B) inside a UI_SIZE_FIT_CHILDREN (widget A)
+        // because the children of widget B can expand the size of widget A. this logic is used with
+        // push_container(). when we have x_pad, row, x_pad inside a UI_SIZE_FIT_CHILDREN widget, the row
+        // can be UI_SIZE_FILL_REMAINING with the children of row expanding the size of row, thus
+        // expanding the size of row's parent.
 
         // we only need to use the computed sizes when we're on the same axis as the layout axis.
         // for example, if we're laying out on x and the layout is horizontal, then we use the computed child size
@@ -896,7 +903,7 @@ void calculate_ancestor_dependent_sizes_part_2(UI_Widget *widget, UI_Widget_Axis
         bool32 is_vertical_match = (axis == UI_WIDGET_Y_AXIS && parent->layout_type == UI_LAYOUT_VERTICAL);
         
         bool32 axis_matches_parent_layout = is_horizontal_match || is_vertical_match;
-
+    
         if (axis_matches_parent_layout) {
             widget->computed_size[axis] = ((parent->computed_size[axis] - parent->computed_child_size_sum[axis]) /
                                            parent->num_fill_children[axis]);
@@ -1492,17 +1499,17 @@ void ui_push_container(UI_Container_Theme theme, char *id = "") {
         ui_y_pad(theme.padding.top);
 
         UI_Theme row_theme = {};
-        row_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
+        row_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
         row_theme.semantic_size = { 1.0f, 1.0f };
         row_theme.layout_type = UI_LAYOUT_HORIZONTAL;
 
-        ui_add_and_push_widget("", row_theme, 0);
+        ui_add_and_push_widget("", row_theme);
         {
             ui_x_pad(theme.padding.left);
 
             UI_Theme inner_theme = {};
-            inner_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
-            inner_theme.semantic_size = { 0.0f, 0.0f };
+            inner_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
+            inner_theme.semantic_size = { 1.0f, 1.0f };
             inner_theme.layout_type = theme.layout_type;
             //inner_theme.background_color = rgb_to_vec4(0, 255, 0);
             inner = ui_add_widget("", inner_theme, 0);
@@ -1536,7 +1543,7 @@ void push_window(char *title, UI_Window_Theme theme, char *id_str, char *title_b
     UI_Theme window_theme = {};
     window_theme.position_type           = UI_POSITION_FLOAT;
     window_theme.semantic_position       = state->position;
-    window_theme.size_type               = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN };
+    window_theme.size_type               = theme.size_type;
     window_theme.semantic_size           = theme.semantic_size;
     window_theme.layout_type             = UI_LAYOUT_VERTICAL;
     window_theme.background_color        = theme.background_color;
