@@ -9,6 +9,17 @@ UI_Button_Theme editor_button_theme = {
     default_font
 };
 
+UI_Text_Field_Theme editor_text_field_theme = {
+    editor_button_theme.background_color,
+    editor_button_theme.hot_background_color,
+    editor_button_theme.active_background_color,
+    rgb_to_vec4(0, 255, 0),
+    0.0f, 0, 0, { 1.0f, 1.0f, 1.0f, 1.0f }, 0.0f,
+    default_font,
+    { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE },
+    { 0.0f, editor_button_theme.size.y }
+};
+
 void init_editor(Arena_Allocator *editor_arena, Editor_State *editor_state, Display_Output display_output) {
     *editor_state = {};
 
@@ -668,7 +679,8 @@ void update_editor(Controller_State *controller_state, real32 dt) {
 
 void draw_entity_box_2(bool32 force_reset) {
     UI_Window_Theme window_theme = DEFAULT_WINDOW_THEME;
-    // TODO: be able to specify size type and size in window_theme
+    //window_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_FIT_CHILDREN };
+    //window_theme.semantic_size = { 200.0f, 0.0f };
     
     push_window("Entity Properties", window_theme,
                 "entity-properties-window", "entity-properties-window-title-bar");
@@ -677,14 +689,13 @@ void draw_entity_box_2(bool32 force_reset) {
     assert(editor_state->selected_entity_id > -1);
     Entity *entity = get_entity(&game_state->level, editor_state->selected_entity_id);
 
-    // TODO: this is broken
     UI_Container_Theme content_theme = {
         { 5.0f, 5.0f, 5.0f, 5.0f },
         DEFAULT_BOX_BACKGROUND,
         UI_POSITION_NONE,
         {},
-        { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN },
-        { 1.0f, 0.0f },
+        { UI_SIZE_ABSOLUTE, UI_SIZE_FIT_CHILDREN },
+        { 200.0f, 0.0f },
         UI_LAYOUT_VERTICAL
     };
 
@@ -715,7 +726,7 @@ void draw_entity_box_2(bool32 force_reset) {
     {
         UI_Theme row_theme = {};
         row_theme.size_type      = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
-        row_theme.semantic_size  = { 0.0f, 0.0f };
+        row_theme.semantic_size  = { 1.0f, 0.0f };
         row_theme.layout_type    = UI_LAYOUT_HORIZONTAL;
         row_theme.background_color = rgb_to_vec4(0, 255, 0);
 
@@ -734,7 +745,7 @@ void draw_entity_box_2(bool32 force_reset) {
         do_text("Position");
         ui_y_pad(1.0f);
 
-        ui_add_and_push_widget("", row_theme);
+        ui_add_and_push_widget("", row_theme, UI_WIDGET_DRAW_BACKGROUND);
         {
             ui_push_widget("", label_theme, UI_WIDGET_DRAW_BACKGROUND);
             { do_text("X"); }
@@ -953,16 +964,22 @@ void draw_asset_library(bool32 force_reset) {
         DEFAULT_BOX_BACKGROUND,
         UI_POSITION_NONE,
         {},
-        { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN },
-        { 0.0f, 0.0f },
+        { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE },
+        { 500.0f, 500.0f },
         UI_LAYOUT_HORIZONTAL
     };
 
     UI_Theme list_container_theme = NULL_THEME;
     list_container_theme.layout_type = UI_LAYOUT_VERTICAL;
-    list_container_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
-    list_container_theme.semantic_size = { 200.0f, 500.0f };
+    list_container_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_PERCENTAGE };
+    list_container_theme.semantic_size = { 0.4f, 1.0f };
 
+    UI_Theme properties_container_theme = list_container_theme;
+    properties_container_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_PERCENTAGE };
+    properties_container_theme.semantic_size = { 0.0f, 1.0f };
+    properties_container_theme.background_color = rgb_to_vec4(255, 0, 0);
+    properties_container_theme.background_color.w = 0.5f;
+    
     UI_Theme list_theme = NULL_THEME;
     list_theme.layout_type = UI_LAYOUT_VERTICAL;
     list_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
@@ -970,6 +987,8 @@ void draw_asset_library(bool32 force_reset) {
     
     ui_push_container(content_theme, "asset-library-content");
     {
+        Material *selected_material = NULL;
+        
         ui_add_and_push_widget("asset-library-material-list-container", list_container_theme);
         {
             do_text("Materials");
@@ -987,6 +1006,7 @@ void draw_asset_library(bool32 force_reset) {
                         material_names[dropdown_index] = to_char_array((Allocator *) &ui_manager->frame_arena,
                                                                        current->name);
                         num_material_names++;
+
                         current = current->table_next;
                     }
                 }
@@ -999,12 +1019,35 @@ void draw_asset_library(bool32 force_reset) {
                 selected_item_theme.active_background_color = selected_item_theme.background_color;
 
                 for(int32 i = 0; i < num_material_names; i++) {
+                    if (i == selected_index) {
+                        Marker m = begin_region();
+                        selected_material = get_material(make_string(temp_region, material_names[i]));
+                        end_region(m);
+                    }
+                    
                     do_text_button(material_names[i],
                                    (i == selected_index) ? selected_item_theme : item_theme,
                                    "asset-library-material-list-item", i);
                 }
             }
             ui_pop_widget();
+        }
+        ui_pop_widget();
+
+        ui_x_pad(10.0f);
+        
+        ui_add_and_push_widget("asset-library-material-info-container", properties_container_theme, UI_WIDGET_DRAW_BACKGROUND);
+        {
+            do_text("Properties");
+            #if 1
+            UI_Text_Field_Theme field_theme = editor_text_field_theme;
+            field_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
+            field_theme.size.x = 0.0f;
+            String name_result = do_text_field(field_theme, selected_material->name, false,
+                                               "material_name_text_field", "material_name_text_field_text");
+            #endif
+            //deallocate(game_state->level.name);
+            //game_state->level.name = copy((Allocator *) &game_state->level.heap, name_result);
         }
         ui_pop_widget();
     }
@@ -1172,7 +1215,9 @@ void draw_editor(Controller_State *controller_state) {
 
     ui_push_existing_widget(ui_manager->main_layer);
 
-    #if 1
+    draw_asset_library(false);
+    
+    #if 0
     ui_push_container(sidebar_theme, "editor_sidebar");
     {
         bool32 toggle_show_wireframe_clicked = do_text_button(editor_state->show_wireframe ?

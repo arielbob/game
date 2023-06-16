@@ -789,12 +789,7 @@ void calculate_child_dependent_size(UI_Widget *widget, UI_Widget_Axis axis) {
     UI_Widget *parent = widget->parent;
 
     if (parent) {
-        // we also check PERCENTAGE and FILL_REMAINING since if the parent of the widget is FIT_CHILDREN,
-        // we need to bubble up the child width to the FIT_CHILDREN widget. we do this by setting the
-        // parent's computed size as if it were a FIT_CHILDREN widget. this computed size will be
-        // overwritten later to be based on its parent's size.
-        if (parent->size_type[axis] == UI_SIZE_FIT_CHILDREN || parent->size_type[axis] == UI_SIZE_PERCENTAGE ||
-            parent->size_type[axis] == UI_SIZE_FILL_REMAINING) {
+        if (parent->size_type[axis] == UI_SIZE_FIT_CHILDREN) {
             // if the current axis matches with the parent's layout axis, then increase the parent's
             // size on that axis.
             bool32 axis_matches_parent_layout = ((axis == UI_WIDGET_X_AXIS && parent->layout_type == UI_LAYOUT_HORIZONTAL) ||
@@ -879,6 +874,11 @@ void calculate_ancestor_dependent_sizes_part_2(UI_Widget *widget, UI_Widget_Axis
         return;
     }
 
+    bool32 is_horizontal_match = (axis == UI_WIDGET_X_AXIS && parent->layout_type == UI_LAYOUT_HORIZONTAL);
+    bool32 is_vertical_match = (axis == UI_WIDGET_Y_AXIS && parent->layout_type == UI_LAYOUT_VERTICAL);
+        
+    bool32 axis_matches_parent_layout = is_horizontal_match || is_vertical_match;
+
     if (widget->size_type[axis] == UI_SIZE_PERCENTAGE) {
         assert(parent); // root node cannot be percentage based
 
@@ -886,6 +886,10 @@ void calculate_ancestor_dependent_sizes_part_2(UI_Widget *widget, UI_Widget_Axis
         //       the computed size of the parent using its sized children.
         
         widget->computed_size[axis] = parent->computed_size[axis] * widget->semantic_size[axis];
+
+        if (axis_matches_parent_layout) {
+            parent->computed_child_size_sum[axis] += widget->computed_size[axis];
+        }
     } else if (widget->size_type[axis] == UI_SIZE_FILL_REMAINING) {
         assert(widget->position_type != UI_POSITION_FLOAT);
         assert(parent);
@@ -899,11 +903,6 @@ void calculate_ancestor_dependent_sizes_part_2(UI_Widget *widget, UI_Widget_Axis
         // for example, if we're laying out on x and the layout is horizontal, then we use the computed child size
         // sum on that axis to calculate how we want to fill on that axis. otherwise, for example, if we're on y,
         // then fill_remaining on that axis with a horizontal layout would just fill the entire height.
-        bool32 is_horizontal_match = (axis == UI_WIDGET_X_AXIS && parent->layout_type == UI_LAYOUT_HORIZONTAL);
-        bool32 is_vertical_match = (axis == UI_WIDGET_Y_AXIS && parent->layout_type == UI_LAYOUT_VERTICAL);
-        
-        bool32 axis_matches_parent_layout = is_horizontal_match || is_vertical_match;
-    
         if (axis_matches_parent_layout) {
             widget->computed_size[axis] = ((parent->computed_size[axis] - parent->computed_child_size_sum[axis]) /
                                            parent->num_fill_children[axis]);
@@ -1500,10 +1499,11 @@ void ui_push_container(UI_Container_Theme theme, char *id = "") {
 
         UI_Theme row_theme = {};
         row_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
-        row_theme.semantic_size = { 0.0f, 0.0f };
+        row_theme.semantic_size = { 1.0f, 1.0f };
         row_theme.layout_type = UI_LAYOUT_HORIZONTAL;
-
-        ui_add_and_push_widget("", row_theme);
+        row_theme.background_color = rgb_to_vec4(0, 0, 255);
+        
+        ui_add_and_push_widget("", row_theme, UI_WIDGET_DRAW_BACKGROUND);
         {
             ui_x_pad(theme.padding.left);
 
@@ -1511,8 +1511,8 @@ void ui_push_container(UI_Container_Theme theme, char *id = "") {
             inner_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
             inner_theme.semantic_size = { 0.0f, 0.0f };
             inner_theme.layout_type = theme.layout_type;
-            //inner_theme.background_color = rgb_to_vec4(0, 255, 0);
-            inner = ui_add_widget("", inner_theme, 0);
+            inner_theme.background_color = rgb_to_vec4(0, 255, 0);
+            inner = ui_add_widget("", inner_theme, UI_WIDGET_DRAW_BACKGROUND);
 
             ui_x_pad(theme.padding.right);
         }
@@ -2142,7 +2142,7 @@ String do_text_field(UI_Text_Field_Theme theme,
         UI_Theme inner_field_theme = {};
         inner_field_theme.size_type     = { UI_SIZE_FILL_REMAINING, UI_SIZE_PERCENTAGE };
         inner_field_theme.layout_type   = UI_LAYOUT_CENTER;
-        inner_field_theme.semantic_size = { 1.0f, 1.0f };
+        inner_field_theme.semantic_size = { 0.0f, 1.0f };
 
         ui_add_and_push_widget("", inner_field_theme);
         {
