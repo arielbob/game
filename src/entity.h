@@ -30,7 +30,7 @@ enum Light_Type {
     Transform transform;                        \
                                                 \
     String mesh_name;                           \
-    String material_name;                       \
+    int32 material_id;                          \
     AABB transformed_aabb;                      \
                                                 \
     Collider_Variant collider;                  \
@@ -55,7 +55,7 @@ void deallocate(Entity *entity) {
     }
 
     if (entity->flags & ENTITY_MATERIAL) {
-        deallocate(entity->material_name);
+        // nothing to do
     }
 }
 

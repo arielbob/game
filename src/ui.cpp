@@ -2096,10 +2096,10 @@ void handle_text_field_cursor(UI_id text_widget_id, UI_Text_Field_State *state,
     }
 }
 
-String do_text_field(UI_Text_Field_Theme theme,
-                     String value, bool32 force_reset,
-                     char *id_string, char *text_id_string,
-                     int32 index = 0) {
+UI_Text_Field_Result do_text_field(UI_Text_Field_Theme theme,
+                                   String value, bool32 force_reset,
+                                   char *id_string, char *text_id_string,
+                                   int32 index = 0) {
     UI_id id = make_ui_id(id_string, index);
     UI_Widget_State *state_variant = ui_get_state(id);
     UI_Text_Field_State *state;
@@ -2163,6 +2163,13 @@ String do_text_field(UI_Text_Field_Theme theme,
         handle_text_field_input(state);
     }
 
+    UI_Text_Field_Result result = {};
+    result.text = make_string(state->buffer);
+    // idk if we want to always have it be this way, for example, we might want to commit with a
+    // "submit" button, but this interface allows the user to do it that way. they can just ignore
+    // the committed member and do whatever, really.
+    result.committed = interact.lost_focus; 
+    
     UI_id text_widget_id = make_ui_id(text_id_string, index);
     char *str = to_char_array((Allocator *) &ui_manager->frame_arena, state->buffer);
     real32 width_to_cursor_index;
@@ -2226,7 +2233,7 @@ String do_text_field(UI_Text_Field_Theme theme,
     }
     ui_pop_widget();
 
-    return make_string(state->buffer);
+    return result;
 }
 
 void ui_add_slider_bar(UI_Slider_Theme theme, real32 value, real32 min, real32 max) {

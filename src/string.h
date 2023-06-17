@@ -262,6 +262,15 @@ void replace_with_copy(Allocator *allocator, String *old_string, String new_stri
     *old_string = copy(allocator, new_string);
 }
 
+// deallocates contents of string and copies new_contents to string
+void replace_contents(String *string, String new_contents) {
+    deallocate(*string);
+    string->length = new_contents.length;
+    char *buf = (char *) allocate(string->allocator, new_contents.length);
+    memcpy(buf, new_contents.contents, new_contents.length);
+    string->contents = buf;
+}
+
 String_Iterator make_string_iterator(String string) {
     String_Iterator it = {};
     it.string = string;

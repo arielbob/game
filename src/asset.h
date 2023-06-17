@@ -127,6 +127,7 @@ struct Font {
 // new material with the same name and all the materials would be updated.
 #define MATERIAL_FIELDS                         \
     Material_Type type;                         \
+    int32 id;                                   \
     String name;                                \
                                                 \
     uint32 flags;                               \
@@ -156,7 +157,10 @@ struct Asset_Manager {
 
     Mesh      *mesh_table[NUM_MESH_BUCKETS];
     Texture   *texture_table[NUM_TEXTURE_BUCKETS];
+    
     Material  *material_table[NUM_MATERIAL_BUCKETS];
+    int32     total_materials_added_ever;
+    
     Font      *font_table[NUM_FONT_BUCKETS];
     Font_File *font_file_table[NUM_FONT_FILE_BUCKETS]; // for caching font files
 

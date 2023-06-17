@@ -263,6 +263,11 @@ struct UI_Text_Field_State {
     real32 x_offset;
 };
 
+struct UI_Text_Field_Result {
+    String text;
+    bool32 committed;
+};
+
 enum class Text_Field_Slider_Mode {
     NONE,
     SLIDING,

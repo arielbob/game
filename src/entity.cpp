@@ -1,8 +1,6 @@
 #include "entity.h"
 #include "level.h"
 
-//Entity make_entity()
-
 Entity make_entity_from_info(Allocator *allocator, Entity_Info *info) {
     Entity result = {};
 
@@ -13,7 +11,8 @@ Entity make_entity_from_info(Allocator *allocator, Entity_Info *info) {
         result.mesh_name        = copy(allocator, info->mesh_name);
     }
     if (info->flags & ENTITY_MATERIAL) {
-        result.material_name    = copy(allocator, info->material_name);
+        Material *material = get_material(info->material_name);
+        result.material_id = material->id;
     }
     
     result.transformed_aabb = info->transformed_aabb;
@@ -106,7 +105,7 @@ void set_material(Entity *entity, String name) {
     Material *material = get_material(name);
     assert(material);
 
-    entity->material_name = material->name;
+    entity->material_id = material->id;
 }
 
 void set_material(Entity *entity, char *name) {

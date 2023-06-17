@@ -173,7 +173,8 @@ void export_level(Level *level, char *filename) {
             }
 
             if (current->flags & ENTITY_MATERIAL) {
-                append_string_property(&working_buffer, "material", current->material_name);
+                Material *material = get_material(current->material_id);
+                append_string_property(&working_buffer, "material", material->name);
             }
 
             if (current->flags & ENTITY_LIGHT) {

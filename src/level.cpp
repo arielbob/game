@@ -7,8 +7,8 @@ void unload_level(Level *level) {
 
     clear_heap(&level->heap);
 
-    level->name     = make_string("");
-    level->filename = make_string("");
+    level->name     = make_string((Allocator *) &level->heap, "");
+    level->filename = make_string((Allocator *) &level->heap, "");
     
     level->entities = NULL;
     level->total_entities_added_ever = 0;

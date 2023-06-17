@@ -1,4 +1,5 @@
 #include "asset.h"
+#include "entity.h"
 
 Mesh *get_mesh(String name) {
     uint32 hash = get_hash(name, NUM_MESH_BUCKETS);
@@ -198,15 +199,14 @@ inline Texture *add_texture(char *name, char *filename, Texture_Type type) {
 }
 
 bool32 material_exists(String name) {
-    uint32 hash = get_hash(name, NUM_MATERIAL_BUCKETS);
-
-    Material *current = asset_manager->material_table[hash];
-    while (current) {
-        if (string_equals(current->name, name)) {
-            return true;
+    for (int32 i = 0; i < NUM_MATERIAL_BUCKETS; i++) {
+        Material *current = asset_manager->material_table[i];
+        while (current) {
+            if (string_equals(current->name, name)) {
+                return true;
+            }
+            current = current->table_next;
         }
-
-        current = current->table_next;
     }
 
     return false;
@@ -222,6 +222,7 @@ Material *add_material(Material_Info *material_info, Material_Type type) {
     Material *material = (Material *) allocate(allocator, sizeof(Material), true);
 
     material->type                   = type;
+    material->id                     = asset_manager->total_materials_added_ever++;
     material->name                   = copy(allocator, material_info->name);
     material->flags                  = material_info->flags;
         
@@ -234,7 +235,7 @@ Material *add_material(Material_Info *material_info, Material_Type type) {
     material->roughness_texture_name = copy(allocator, material_info->roughness_texture_name);
     material->roughness              = material_info->roughness;
 
-    uint32 hash = get_hash(material->name, NUM_MATERIAL_BUCKETS);
+    uint32 hash = get_hash(material->id, NUM_MATERIAL_BUCKETS);
 
     Material *current = asset_manager->material_table[hash];
     material->table_next = current;
@@ -248,11 +249,25 @@ Material *add_material(Material_Info *material_info, Material_Type type) {
 }
 
 Material *get_material(String name) {
-    uint32 hash = get_hash(name, NUM_MATERIAL_BUCKETS);
+    for (int32 i = 0; i < NUM_MATERIAL_BUCKETS; i++) {
+        Material *current = asset_manager->material_table[i];
+        while (current) {
+            if (string_equals(current->name, name)) {
+                return current;
+            }
+            current = current->table_next;
+        }
+    }
+
+    return NULL;
+}
+
+Material *get_material(int32 id) {
+    uint32 hash = get_hash(id, NUM_MATERIAL_BUCKETS);
 
     Material *current = asset_manager->material_table[hash];
     while (current) {
-        if (string_equals(current->name, name)) {
+        if (current->id == id) {
             return current;
         }
 

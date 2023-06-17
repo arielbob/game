@@ -17,6 +17,10 @@
 #define TEXTURE_LIBRARY_WINDOW  1 << 2
 #define MESH_LIBRARY_WINDOW     1 << 3
 
+struct Asset_Library_State {
+    bool32 material_name_modified;
+};
+
 struct Editor_State {
     Arena_Allocator *arena;
     
@@ -42,6 +46,8 @@ struct Editor_State {
     
     Gizmo_State gizmo_state;
 
+    Asset_Library_State asset_library_state;
+    
     bool32 is_material_library_window_open;
 };
 

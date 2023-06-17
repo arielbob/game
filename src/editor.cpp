@@ -889,9 +889,9 @@ void draw_entity_box_2(bool32 force_reset) {
             do_text("Material");
             ui_y_pad(1.0f);
         
-            Material *material = get_material(entity->material_name);
+            Material *material = get_material(entity->material_id);
             char *selected_material_string = to_char_array((Allocator *) &ui_manager->frame_arena,
-                                                           entity->material_name);
+                                                           material->name);
 
             const int32 MAX_MATERIAL_NAMES = 256;
             char *material_names[MAX_MATERIAL_NAMES];
@@ -948,7 +948,7 @@ void draw_entity_box_2(bool32 force_reset) {
     ui_pop_widget();
 }
 
-void draw_asset_library(bool32 force_reset) {
+void draw_asset_library() {
     UI_Window_Theme window_theme = DEFAULT_WINDOW_THEME;
 
     // since DEFAULT_WINDOW_THEME is FIT_CHILDREN, this is a minimum size
@@ -959,6 +959,7 @@ void draw_asset_library(bool32 force_reset) {
                 "asset-library-window", "asset-library-window-title-bar");
 
     Editor_State *editor_state = &game_state->editor_state;
+    Asset_Library_State *asset_library_state = &editor_state->asset_library_state;
     
     UI_Container_Theme content_theme = {
         { 5.0f, 5.0f, 5.0f, 5.0f },
@@ -1001,11 +1002,13 @@ void draw_asset_library(bool32 force_reset) {
                 for (int32 i = 0; i < NUM_MATERIAL_BUCKETS; i++) {
                     Material *current = asset_manager->material_table[i];
                     while (current) {
-                        assert(num_material_names < MAX_MATERIAL_NAMES);
-                        int32 dropdown_index = num_material_names;
-                        material_names[dropdown_index] = to_char_array((Allocator *) &ui_manager->frame_arena,
-                                                                       current->name);
-                        num_material_names++;
+                        if (current->type == Material_Type::LEVEL) {
+                            assert(num_material_names < MAX_MATERIAL_NAMES);
+                            int32 dropdown_index = num_material_names;
+                            material_names[dropdown_index] = to_char_array((Allocator *) &ui_manager->frame_arena,
+                                                                           current->name);
+                            num_material_names++;
+                        }
 
                         current = current->table_next;
                     }
@@ -1039,15 +1042,32 @@ void draw_asset_library(bool32 force_reset) {
         ui_add_and_push_widget("asset-library-material-info-container", properties_container_theme);
         {
             do_text("Properties");
-            #if 1
+
+            ui_y_pad(10.0f);
+            do_text("Material Name");
+            
             UI_Text_Field_Theme field_theme = editor_text_field_theme;
             field_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
             field_theme.size.x = 0.0f;
-            String name_result = do_text_field(field_theme, selected_material->name, false,
-                                               "material_name_text_field", "material_name_text_field_text");
-            #endif
-            //deallocate(game_state->level.name);
-            //game_state->level.name = copy((Allocator *) &game_state->level.heap, name_result);
+            UI_Text_Field_Result name_result = do_text_field(field_theme, selected_material->name,
+                                                             asset_library_state->material_name_modified,
+                                                             "material_name_text_field",
+                                                             "material_name_text_field_text");
+            
+            // this needs to be directly after the above do_text_field because it's what "consumes" it
+            asset_library_state->material_name_modified = false;
+
+            if (name_result.committed) {
+                if (!string_equals(name_result.text, selected_material->name) && name_result.text.length > 0) {
+                    if (!material_exists(name_result.text)) {
+                        replace_contents(&selected_material->name, name_result.text);
+                    } else {
+                        add_message(Context::message_manager, make_string("Material name already exists!"));
+                    }
+                }
+
+                asset_library_state->material_name_modified = true;
+            }
         }
         ui_pop_widget();
     }
@@ -1134,10 +1154,11 @@ void draw_level_box() {
             field_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_ABSOLUTE };
             field_theme.size = { 1.0f, editor_button_theme.size.y };
 
-            String name_result = do_text_field(field_theme, game_state->level.name, just_changed_level,
-                                               "level_name_text_field", "level_name_text_field_text");
-            deallocate(game_state->level.name);
-            game_state->level.name = copy((Allocator *) &game_state->level.heap, name_result);
+            UI_Text_Field_Result name_result = do_text_field(field_theme, game_state->level.name,
+                                                             just_changed_level,
+                                                             "level_name_text_field",
+                                                             "level_name_text_field_text");
+            replace_contents(&game_state->level.name, name_result.text);
         }
 
         ui_y_pad(5.0f);
@@ -1270,7 +1291,7 @@ void draw_editor(Controller_State *controller_state) {
         }
 
         if (editor_state->is_material_library_window_open) {
-            draw_asset_library(false);
+            draw_asset_library();
         }
     }
     ui_pop_widget();
@@ -1479,5 +1500,11 @@ void draw_editor(Controller_State *controller_state) {
 }
 
 void editor_post_update() {
-    game_state->editor_state.selected_entity_changed = false;
+    Editor_State *editor_state = &game_state->editor_state;
+
+    // note that the reason why this can be here is because entity gizmo operations are done before the UI.
+    // if it was UI -> gizmo -> editor_post_update(), the UI would never get updated by gizmo operations
+    // because this would always reset it. see draw_asset_library() for a case where we couldn't put the
+    // modified flag resetting here.
+    editor_state->selected_entity_changed = false;
 }

@@ -3282,7 +3282,8 @@ void gl_render_editor(GL_Framebuffer framebuffer,
         bool32 has_collider = current->flags & ENTITY_COLLIDER;
         
         if (has_mesh && has_material) {
-            Material *material = get_material(current->material_name);
+            Material *material = get_material(current->material_id);
+            assert(material);
             gl_draw_mesh(current->mesh_name, material, current->transform);
         }
 
