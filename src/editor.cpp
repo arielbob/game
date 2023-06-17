@@ -679,8 +679,8 @@ void update_editor(Controller_State *controller_state, real32 dt) {
 
 void draw_entity_box_2(bool32 force_reset) {
     UI_Window_Theme window_theme = DEFAULT_WINDOW_THEME;
-    //window_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_FIT_CHILDREN };
-    //window_theme.semantic_size = { 200.0f, 0.0f };
+    window_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_FIT_CHILDREN };
+    window_theme.semantic_size = { 200.0f, 0.0f };
     
     push_window("Entity Properties", window_theme,
                 "entity-properties-window", "entity-properties-window-title-bar");
@@ -694,8 +694,8 @@ void draw_entity_box_2(bool32 force_reset) {
         DEFAULT_BOX_BACKGROUND,
         UI_POSITION_NONE,
         {},
-        { UI_SIZE_ABSOLUTE, UI_SIZE_FIT_CHILDREN },
-        { 200.0f, 0.0f },
+        { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN },
+        { 0.0f, 0.0f },
         UI_LAYOUT_VERTICAL
     };
 
@@ -728,7 +728,7 @@ void draw_entity_box_2(bool32 force_reset) {
         row_theme.size_type      = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
         row_theme.semantic_size  = { 1.0f, 0.0f };
         row_theme.layout_type    = UI_LAYOUT_HORIZONTAL;
-        row_theme.background_color = rgb_to_vec4(0, 255, 0);
+        //row_theme.background_color = rgb_to_vec4(0, 255, 0); // debugging
 
         UI_Theme label_theme = {};
         label_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_PERCENTAGE };
@@ -745,7 +745,7 @@ void draw_entity_box_2(bool32 force_reset) {
         do_text("Position");
         ui_y_pad(1.0f);
 
-        ui_add_and_push_widget("", row_theme, UI_WIDGET_DRAW_BACKGROUND);
+        ui_add_and_push_widget("", row_theme);
         {
             ui_push_widget("", label_theme, UI_WIDGET_DRAW_BACKGROUND);
             { do_text("X"); }
@@ -952,7 +952,8 @@ void draw_asset_library(bool32 force_reset) {
     UI_Window_Theme window_theme = DEFAULT_WINDOW_THEME;
 
     // since DEFAULT_WINDOW_THEME is FIT_CHILDREN, this is a minimum size
-    window_theme.semantic_size = { 300.0f, 0.0f };
+    window_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
+    window_theme.semantic_size = { 500.0f, 500.0f };
     
     push_window("Asset Library", window_theme,
                 "asset-library-window", "asset-library-window-title-bar");
@@ -964,8 +965,8 @@ void draw_asset_library(bool32 force_reset) {
         DEFAULT_BOX_BACKGROUND,
         UI_POSITION_NONE,
         {},
-        { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE },
-        { 500.0f, 500.0f },
+        { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING },
+        {},
         UI_LAYOUT_HORIZONTAL
     };
 
@@ -978,7 +979,6 @@ void draw_asset_library(bool32 force_reset) {
     properties_container_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_PERCENTAGE };
     properties_container_theme.semantic_size = { 0.0f, 1.0f };
     properties_container_theme.background_color = rgb_to_vec4(255, 0, 0);
-    properties_container_theme.background_color.w = 0.5f;
     
     UI_Theme list_theme = NULL_THEME;
     list_theme.layout_type = UI_LAYOUT_VERTICAL;
@@ -1036,7 +1036,7 @@ void draw_asset_library(bool32 force_reset) {
 
         ui_x_pad(10.0f);
         
-        ui_add_and_push_widget("asset-library-material-info-container", properties_container_theme, UI_WIDGET_DRAW_BACKGROUND);
+        ui_add_and_push_widget("asset-library-material-info-container", properties_container_theme);
         {
             do_text("Properties");
             #if 1
@@ -1215,9 +1215,7 @@ void draw_editor(Controller_State *controller_state) {
 
     ui_push_existing_widget(ui_manager->main_layer);
 
-    draw_asset_library(false);
-    
-    #if 0
+    #if 1
     ui_push_container(sidebar_theme, "editor_sidebar");
     {
         bool32 toggle_show_wireframe_clicked = do_text_button(editor_state->show_wireframe ?

@@ -1478,6 +1478,37 @@ void ui_y_pad(real32 height) {
     ui_add_widget("", theme);
 }
 
+UI_Size_Type get_container_size_type(UI_Size_Type size_type) {
+    /*
+      absolute -> fill_remaining
+      percentage -> fill_remaining
+      fill_remaining -> fill_remaining
+      fit_children -> fit_children
+    */
+
+    if (size_type == UI_SIZE_ABSOLUTE ||
+        size_type == UI_SIZE_PERCENTAGE ||
+        size_type == UI_SIZE_FILL_REMAINING) {
+        return UI_SIZE_FILL_REMAINING;
+    } else { // fit_children
+        return UI_SIZE_FIT_CHILDREN;
+    }
+}
+
+Vec2_UI_Size_Type get_container_size_type(Vec2_UI_Size_Type theme_size_type) {
+    Vec2_UI_Size_Type result = {};
+
+    assert(theme_size_type.x != UI_SIZE_NONE);
+    assert(theme_size_type.y != UI_SIZE_NONE);
+    assert(theme_size_type.x != UI_SIZE_FIT_TEXT);
+    assert(theme_size_type.y != UI_SIZE_FIT_TEXT);
+
+    result.x = get_container_size_type(theme_size_type.x);
+    result.y = get_container_size_type(theme_size_type.y);
+
+    return result;
+}
+
 void ui_push_container(UI_Container_Theme theme, char *id = "") {
     UI_Theme column_theme = {};
     column_theme.size_type = theme.size_type;
@@ -1488,9 +1519,11 @@ void ui_push_container(UI_Container_Theme theme, char *id = "") {
     column_theme.background_color = theme.background_color;
     column_theme.hot_background_color = theme.background_color;
     column_theme.active_background_color = theme.background_color;
-    
+
     UI_Widget *inner;
 
+    Vec2_UI_Size_Type inner_size_type = get_container_size_type(theme.size_type);
+    
     // vertical
     UI_Widget *column = ui_add_and_push_widget(id, column_theme,
                                                UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
@@ -1498,21 +1531,22 @@ void ui_push_container(UI_Container_Theme theme, char *id = "") {
         ui_y_pad(theme.padding.top);
 
         UI_Theme row_theme = {};
-        row_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
-        row_theme.semantic_size = { 1.0f, 1.0f };
+
+        row_theme.size_type = inner_size_type;
+        row_theme.semantic_size = { 0.0f, 0.0f };
         row_theme.layout_type = UI_LAYOUT_HORIZONTAL;
-        row_theme.background_color = rgb_to_vec4(0, 0, 255);
+        row_theme.background_color = rgb_to_vec4(0, 0, 255); // debugging
         
-        ui_add_and_push_widget("", row_theme, UI_WIDGET_DRAW_BACKGROUND);
+        ui_add_and_push_widget("", row_theme, 0);
         {
             ui_x_pad(theme.padding.left);
 
             UI_Theme inner_theme = {};
-            inner_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
+            inner_theme.size_type = inner_size_type;
             inner_theme.semantic_size = { 0.0f, 0.0f };
             inner_theme.layout_type = theme.layout_type;
-            inner_theme.background_color = rgb_to_vec4(0, 255, 0);
-            inner = ui_add_widget("", inner_theme, UI_WIDGET_DRAW_BACKGROUND);
+            inner_theme.background_color = rgb_to_vec4(0, 255, 0); // debugging
+            inner = ui_add_widget("", inner_theme, 0);
 
             ui_x_pad(theme.padding.right);
         }
