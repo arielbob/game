@@ -269,8 +269,13 @@ void ui_render_widget_to_commands(UI_Widget *widget) {
 void ui_create_render_commands() {
     UI_Widget *current = ui_manager->root;
 
-    // depth-first traversal
+    int32 num_visited = 0;
+    
+    // depth-first traversal (pre-order)
     while (current) {
+        current->rendering_index = num_visited;
+        num_visited++;
+        
         // don't add anything if the current node is root
         if (current != ui_manager->root) {
             //assert(current_command);

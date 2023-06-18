@@ -697,14 +697,9 @@ void calculate_standalone_size(UI_Widget *widget, UI_Widget_Axis axis) {
 void ui_calculate_standalone_sizes() {
     UI_Widget *current = ui_manager->root;
 
-    int32 num_visited = 0;
-    
     while (current) {
         // pre-order
 
-        current->rendering_index = num_visited;
-        num_visited++;
-        
         UI_Widget *parent = current->parent;
         
         calculate_standalone_size(current, UI_WIDGET_X_AXIS);
@@ -1031,6 +1026,87 @@ void ui_calculate_positions() {
     }
 }
 
+void ui_force_widgets_to_top_of_layers() {
+    UI_Widget *current = ui_manager->root;
+    UI_Widget *current_layer = NULL;
+
+    // defer appending so that we don't end up in an infinite loop
+    UI_Widget *to_append_to_end = make_widget("", NULL_THEME, 0);
+    
+    // pre-order traversal
+    
+    while (current) {
+        UI_Widget *parent = current->parent;
+        // save next because it'll get overridden if we move it
+        UI_Widget *next = current->next;
+        
+        bool32 skip_children = false;
+        if (current->parent) {
+            if (current->parent->parent == NULL) {
+                if (current_layer) {
+                    UI_Widget *to_append = to_append_to_end->first;
+                    while (to_append) {
+                        UI_Widget *next_to_append = to_append->next;
+                        
+                        ui_remove_widget_from_tree(to_append);
+                        ui_add_existing_widget_to_tree(current_layer, to_append);
+
+                        to_append = next_to_append;
+                    }
+                }
+                
+                // we hit a layer node (a direct child of root)
+                current_layer = current;
+            } else {
+                if (current->flags & UI_WIDGET_FORCE_TO_TOP_OF_LAYER) {
+                    // all the children will already be rendered on top of the parent, so
+                    // skip the children. it would also be more complex to have to traverse
+                    // the children after moving the current node.
+                    skip_children = true;
+                
+                    // move this widget to end of current layer
+                    assert(current_layer);
+                    ui_remove_widget_from_tree(current);
+                    ui_add_existing_widget_to_tree(to_append_to_end, current);
+                }
+            }
+        }
+        
+        if (!skip_children && current->first) {
+            current = current->first;
+        } else {
+            if (next) {
+                current = next;
+            } else {
+                if (!parent) break;
+
+                UI_Widget *current_ancestor = parent;
+                while (!current_ancestor->next) {
+                    if (!current_ancestor->parent) break; // root
+                    current_ancestor = current_ancestor->parent;
+                }
+
+                current = current_ancestor->next;
+            }
+        }
+    }
+
+    // traversal ends at the last leaf node.
+    // if the last leaf node is a layer node, then to_append will just be empty and this'll do
+    // nothing. otherwise, it'll do the regular appending to the current layer.
+    if (current_layer) {
+        UI_Widget *to_append = to_append_to_end->first;
+        while (to_append) {
+            UI_Widget *next_to_append = to_append->next;
+                        
+            ui_remove_widget_from_tree(to_append);
+            ui_add_existing_widget_to_tree(current_layer, to_append);
+
+            to_append = next_to_append;
+        }
+    }
+}
+
 void ui_init(Arena_Allocator *arena) {
     uint32 max_padding = 8 * 3;
     uint32 persistent_heap_size = MEGABYTES(64);
@@ -1215,6 +1291,7 @@ void ui_post_update() {
     ui_calculate_child_dependent_sizes();
     ui_calculate_ancestor_dependent_sizes_part_2();
     ui_calculate_positions();
+    ui_force_widgets_to_top_of_layers();
     
     // TODO: move this somewhere else probably, maybe to win32_game.cpp after update()
     ui_create_render_commands();
@@ -1942,17 +2019,6 @@ int32 do_dropdown(UI_Dropdown_Theme theme,
             set_is_open(state, !state->is_open);
         }
 
-#if 0
-        // the widget that moves
-        UI_Widget *computed_inner_widget = ui_get_widget_prev_frame(dropdown_inner_id);
-        Vec2 mouse_pos = Context::controller_state->current_mouse;
-        if (state->is_open &&
-            just_pressed(Context::controller_state->left_mouse) &&
-            !in_bounds(mouse_pos, computed_inner_widget)) {
-            set_is_open(state, false);
-        }
-#endif
-        
         real32 transition_time = 0.9f;
         // state->t is just the linear percentage we've made it through the transition_time
         state->t = min(state->t / transition_time, 1.0f);
@@ -1972,7 +2038,6 @@ int32 do_dropdown(UI_Dropdown_Theme theme,
         content_container_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
         content_container_theme.semantic_size = { 1.0f, 0.0f }; 
         
-#if 1
         ui_add_and_push_widget("", content_container_theme);
         {
             UI_Theme list_container_theme = {};
@@ -1983,7 +2048,8 @@ int32 do_dropdown(UI_Dropdown_Theme theme,
             list_container_theme.scissor_type = UI_SCISSOR_COMPUTED_SIZE;
             list_container_theme.background_color = rgb_to_vec4(255, 0, 0);
 
-            UI_Widget *list_container = ui_add_and_push_widget(dropdown_id, list_container_theme);
+            UI_Widget *list_container = ui_add_and_push_widget(dropdown_id, list_container_theme,
+                                                               UI_WIDGET_FORCE_TO_TOP_OF_LAYER);
             {
                 UI_Theme inner_theme = {};
                 inner_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
@@ -2013,7 +2079,6 @@ int32 do_dropdown(UI_Dropdown_Theme theme,
             ui_pop_widget();
         }
         ui_pop_widget();
-#endif
     }
     ui_pop_widget();
 

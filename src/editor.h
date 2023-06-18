@@ -42,11 +42,8 @@ struct Editor_State {
     // so we can update UI.
     // it could be a change in the transform, a change in what entity is selected, etc.
     // i.e. anything that should force the entity properties box to update.
-    bool32 selected_entity_changed;
+    bool32 selected_entity_modified;
 
-    uint32 open_window_flags;
-    UI_id color_picker_parent;
-    
     Gizmo_State gizmo_state;
 
     Asset_Library_State asset_library_state;

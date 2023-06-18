@@ -1,13 +1,14 @@
 #ifndef UI_2_H
 #define UI_2_H
 
-#define UI_WIDGET_IS_CLICKABLE       (1 << 0)
-#define UI_WIDGET_DRAW_BACKGROUND    (1 << 1)
-#define UI_WIDGET_DRAW_TEXT          (1 << 2)
-#define UI_WIDGET_USE_TEXTURE        (1 << 3)
-#define UI_WIDGET_IS_FOCUSABLE       (1 << 4)
-#define UI_WIDGET_DRAW_BORDER        (1 << 5)
-#define UI_WIDGET_IS_WINDOW          (1 << 6) // should only be active on the window widget in push_window()
+#define UI_WIDGET_IS_CLICKABLE          (1 << 0)
+#define UI_WIDGET_DRAW_BACKGROUND       (1 << 1)
+#define UI_WIDGET_DRAW_TEXT             (1 << 2)
+#define UI_WIDGET_USE_TEXTURE           (1 << 3)
+#define UI_WIDGET_IS_FOCUSABLE          (1 << 4)
+#define UI_WIDGET_DRAW_BORDER           (1 << 5)
+#define UI_WIDGET_IS_WINDOW             (1 << 6) // should only be active on the window widget in push_window()
+#define UI_WIDGET_FORCE_TO_TOP_OF_LAYER (1 << 7)
 
 #define CORNER_TOP_LEFT     (1 << 0)
 #define CORNER_TOP_RIGHT    (1 << 1)
@@ -141,6 +142,7 @@ struct UI_Theme {
     Vec2 semantic_position;
 
     UI_Scissor_Type scissor_type;
+    bool32 force_to_top_of_layer;
 };
 
 struct UI_Window_Theme {

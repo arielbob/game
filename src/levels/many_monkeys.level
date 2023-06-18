@@ -74,7 +74,7 @@ material "red"
 }
 entity {
 position 4.637205 0.000000 3.877956
-rotation 1.000000 0.000000 0.000000 0.000000
+rotation 0.841129 0.091396 0.492342 -0.204322
 scale 1.000000 1.000000 1.000000
 mesh "suzanne2"
 material "default_material"

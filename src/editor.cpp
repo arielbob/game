@@ -132,11 +132,6 @@ void update_editor_camera(Editor_State *editor_state, Controller_State *controll
     camera->current_basis = current_basis;
 }
 
-void reset_entity_editors(Editor_State *editor_state) {
-    editor_state->open_window_flags = 0;
-    editor_state->color_picker_parent = {};
-}
-
 Entity *pick_entity(Editor_State *editor_state, Ray cursor_ray) {
     Level *level = &game_state->level;
 
@@ -421,10 +416,14 @@ Quaternion do_gizmo_rotation(Editor_State *editor_state, Ray cursor_ray) {
 }
 
 void reset_editor(Editor_State *editor_state) {
-    reset_entity_editors(editor_state);
-    //history_reset(editor_state);
     editor_state->selected_entity_id = -1;
     editor_state->last_selected_entity_id = -1;
+
+    Asset_Library_State *asset_library_state = &editor_state->asset_library_state;
+    asset_library_state->material_name_modified = true;
+    asset_library_state->material_albedo_texture_modified = true;
+    asset_library_state->material_metalness_texture_modified = true;
+    asset_library_state->material_roughness_texture_modified = true;
 }
 
 #if 0
@@ -591,10 +590,9 @@ void update_editor(Controller_State *controller_state, real32 dt) {
                 if (entity->id != editor_state->selected_entity_id) {
                     editor_state->last_selected_entity_id = editor_state->selected_entity_id;
                     editor_state->selected_entity_id = entity->id;
-                    editor_state->selected_entity_changed = true;
+                    editor_state->selected_entity_modified = true;
 
                     gizmo_state->transform = entity->transform;
-                    reset_entity_editors(editor_state);
                 }
             } else {
                 editor_state->selected_entity_id = -1;
@@ -670,7 +668,7 @@ void update_editor(Controller_State *controller_state, real32 dt) {
             gizmo_state->transform.position = entity->transform.position;
             gizmo_state->transform.rotation = entity->transform.rotation;
 
-            editor_state->selected_entity_changed = true;
+            editor_state->selected_entity_modified = true;
         } else {
             gizmo_state->selected_gizmo_handle = GIZMO_HANDLE_NONE;
             //end_entity_change(editor_state, entity);
@@ -938,7 +936,7 @@ void draw_entity_box_2(bool32 force_reset) {
             if (dropdown_selected_index != selected_index) {
                 selected_index = dropdown_selected_index;
                 set_material(entity, material_names[dropdown_selected_index]);
-                editor_state->selected_entity_changed = true;
+                editor_state->selected_entity_modified = true;
             }
         }
     }
@@ -1196,8 +1194,7 @@ void draw_level_box() {
             bool32 new_level_clicked = do_text_button("New", theme, "new_level");
             if (new_level_clicked) {
                 new_level(&game_state->level);
-                editor_state->selected_entity_id = -1;
-                editor_state->last_selected_entity_id = -1;
+                reset_editor(editor_state);
                 editor_state->is_new_level = true;
                 just_changed_level = true;
             }
@@ -1215,8 +1212,7 @@ void draw_level_box() {
                     unload_level(&game_state->level);
                     bool32 result = read_and_load_level(&game_state->level, absolute_filename);
                     if (result) {
-                        editor_state->selected_entity_id = -1;
-                        editor_state->last_selected_entity_id = -1;
+                        reset_editor(editor_state);
                         editor_state->is_new_level = false;
                         just_changed_level = true;
                     }
@@ -1388,7 +1384,7 @@ void draw_editor(Controller_State *controller_state) {
 
     if (editor_state->selected_entity_id >= 0) {
         // if we changed entities this frame, then hide it so it can reset and show up next frame
-        draw_entity_box_2(editor_state->selected_entity_changed);
+        draw_entity_box_2(editor_state->selected_entity_modified);
     }
     
 #if 0
@@ -1595,5 +1591,5 @@ void editor_post_update() {
     // if it was UI -> gizmo -> editor_post_update(), the UI would never get updated by gizmo operations
     // because this would always reset it. see draw_asset_library() for a case where we couldn't put the
     // modified flag resetting here.
-    editor_state->selected_entity_changed = false;
+    editor_state->selected_entity_modified = false;
 }
