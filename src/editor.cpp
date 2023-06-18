@@ -20,6 +20,24 @@ UI_Text_Field_Theme editor_text_field_theme = {
     { 0.0f, editor_button_theme.size.y }
 };
 
+UI_Button_Theme editor_dropdown_item_theme = {
+    editor_button_theme.size_type,
+    editor_button_theme.size, editor_button_theme.position,
+    rgb_to_vec4(19, 19, 23), rgb_to_vec4(36, 36, 43), rgb_to_vec4(8, 8, 10),
+    editor_button_theme.text_color,
+    editor_button_theme.font,
+    UI_SCISSOR_INHERIT
+};
+
+UI_Button_Theme editor_selected_dropdown_item_theme = {
+    editor_button_theme.size_type,
+    editor_button_theme.size, editor_button_theme.position,
+    rgb_to_vec4(61, 96, 252), rgb_to_vec4(61, 96, 252), rgb_to_vec4(61, 96, 252),
+    editor_button_theme.text_color,
+    editor_button_theme.font,
+    UI_SCISSOR_INHERIT
+};
+
 void init_editor(Arena_Allocator *editor_arena, Editor_State *editor_state, Display_Output display_output) {
     *editor_state = {};
 
@@ -890,46 +908,26 @@ void draw_entity_box_2(bool32 force_reset) {
             ui_y_pad(1.0f);
         
             Material *material = get_material(entity->material_id);
-            char *selected_material_string = to_char_array((Allocator *) &ui_manager->frame_arena,
-                                                           material->name);
 
             const int32 MAX_MATERIAL_NAMES = 256;
             char *material_names[MAX_MATERIAL_NAMES];
-            int32 num_material_names = 0;
-            int32 selected_index = -1;
-            for (int32 i = 0; i < NUM_MATERIAL_BUCKETS; i++) {
-                Material *current = asset_manager->material_table[i];
-                while (current) {
-                    assert(num_material_names < MAX_MATERIAL_NAMES);
-                    int32 dropdown_index = num_material_names;
-                    material_names[dropdown_index] = to_char_array((Allocator *) &ui_manager->frame_arena,
-                                                                   current->name);
-                    if (current == material) {
-                        selected_index = dropdown_index;
-                    }
+            int32 num_material_names;
+            get_material_names((Allocator *) &ui_manager->frame_arena, material_names, MAX_MATERIAL_NAMES,
+                               &num_material_names);
 
-                    num_material_names++;
-                    current = current->table_next;
+            int32 selected_index = -1;
+            for (int32 i = 0; i < num_material_names; i++) {
+                if (string_equals(material->name, material_names[i])) {
+                    selected_index = i;
                 }
             }
-
-            UI_Button_Theme dropdown_item_theme = editor_button_theme;
-            dropdown_item_theme.background_color = rgb_to_vec4(19, 19, 23);
-            dropdown_item_theme.hot_background_color = rgb_to_vec4(36, 36, 43);
-            dropdown_item_theme.active_background_color = rgb_to_vec4(8, 8, 10);
-            dropdown_item_theme.scissor_type = UI_SCISSOR_INHERIT;
-
-            UI_Button_Theme selected_dropdown_item_theme = dropdown_item_theme;
-            selected_dropdown_item_theme.background_color = rgb_to_vec4(61, 96, 252);
-            selected_dropdown_item_theme.hot_background_color = selected_dropdown_item_theme.background_color;
-            selected_dropdown_item_theme.active_background_color = selected_dropdown_item_theme.background_color;
 
             UI_Dropdown_Theme dropdown_theme = {};
             dropdown_theme.button_theme = editor_button_theme;
             dropdown_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
             dropdown_theme.size = { 1.0f, 0.0f };
-            dropdown_theme.item_theme = dropdown_item_theme;
-            dropdown_theme.selected_item_theme = selected_dropdown_item_theme;
+            dropdown_theme.item_theme = editor_dropdown_item_theme;
+            dropdown_theme.selected_item_theme = editor_selected_dropdown_item_theme;
         
             int32 dropdown_selected_index = do_dropdown(dropdown_theme,
                                                         material_names, num_material_names,
@@ -938,6 +936,7 @@ void draw_entity_box_2(bool32 force_reset) {
                                                         "material_dropdown_inner", "material_dropdown_item",
                                                         force_reset);
             if (dropdown_selected_index != selected_index) {
+                selected_index = dropdown_selected_index;
                 set_material(entity, material_names[dropdown_selected_index]);
                 editor_state->selected_entity_changed = true;
             }
@@ -946,6 +945,16 @@ void draw_entity_box_2(bool32 force_reset) {
     ui_pop_widget();
     
     ui_pop_widget();
+}
+
+int32 get_selected_name_index(String name, char **names, int32 num_names) {
+    for (int32 i = 0; i < num_names; i++) {
+        if (string_equals(name, names[i])) {
+            return i;
+        }
+    }
+
+    return -1;
 }
 
 void draw_asset_library() {
@@ -985,6 +994,13 @@ void draw_asset_library() {
     list_theme.layout_type = UI_LAYOUT_VERTICAL;
     list_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
     list_theme.background_color = { 0.0f, 0.0f, 0.0f, 1.0f };
+
+    UI_Dropdown_Theme dropdown_theme = {};
+    dropdown_theme.button_theme = editor_button_theme;
+    dropdown_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
+    dropdown_theme.size = { 1.0f, 0.0f };
+    dropdown_theme.item_theme = editor_dropdown_item_theme;
+    dropdown_theme.selected_item_theme = editor_selected_dropdown_item_theme;
     
     ui_push_container(content_theme, "asset-library-content");
     {
@@ -1043,30 +1059,103 @@ void draw_asset_library() {
         {
             do_text("Properties");
 
-            ui_y_pad(10.0f);
-            do_text("Material Name");
+            if (selected_material) {
+                ui_y_pad(10.0f);
+                {
+                    do_text("Material Name");
+                    UI_Text_Field_Theme field_theme = editor_text_field_theme;
+                    field_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
+                    field_theme.size.x = 0.0f;
+                    UI_Text_Field_Result name_result = do_text_field(field_theme, selected_material->name,
+                                                                     asset_library_state->material_name_modified,
+                                                                     "material_name_text_field",
+                                                                     "material_name_text_field_text");
             
-            UI_Text_Field_Theme field_theme = editor_text_field_theme;
-            field_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
-            field_theme.size.x = 0.0f;
-            UI_Text_Field_Result name_result = do_text_field(field_theme, selected_material->name,
-                                                             asset_library_state->material_name_modified,
-                                                             "material_name_text_field",
-                                                             "material_name_text_field_text");
-            
-            // this needs to be directly after the above do_text_field because it's what "consumes" it
-            asset_library_state->material_name_modified = false;
+                    // this needs to be directly after the above do_text_field because it's what "consumes" it
+                    asset_library_state->material_name_modified = false;
 
-            if (name_result.committed) {
-                if (!string_equals(name_result.text, selected_material->name) && name_result.text.length > 0) {
-                    if (!material_exists(name_result.text)) {
-                        replace_contents(&selected_material->name, name_result.text);
-                    } else {
-                        add_message(Context::message_manager, make_string("Material name already exists!"));
+                    if (name_result.committed) {
+                        if (!string_equals(name_result.text, selected_material->name) && name_result.text.length > 0) {
+                            if (!material_exists(name_result.text)) {
+                                replace_contents(&selected_material->name, name_result.text);
+                            } else {
+                                add_message(Context::message_manager, make_string("Material name already exists!"));
+                            }
+                        }
+
+                        asset_library_state->material_name_modified = true;
                     }
                 }
 
-                asset_library_state->material_name_modified = true;
+                const int32 MAX_TEXTURE_NAMES = 256;
+                char *texture_names[MAX_TEXTURE_NAMES];
+                int32 num_texture_names;
+                get_texture_names((Allocator *) &ui_manager->frame_arena, texture_names, MAX_TEXTURE_NAMES,
+                                  &num_texture_names);
+            
+                ui_y_pad(10.0f);
+                {
+                    do_text("Albedo Texture");
+                    int32 selected_index = get_selected_name_index(selected_material->albedo_texture_name,
+                                                                   texture_names, num_texture_names);
+                    assert(selected_index >= 0);
+                    int32 dropdown_selected_index = do_dropdown(dropdown_theme,
+                                                                texture_names, num_texture_names,
+                                                                selected_index,
+                                                                "albedo_texture_dropdown_button",
+                                                                "albedo_texture_dropdown",
+                                                                "albedo_texture_dropdown_inner",
+                                                                "albedo_texture_dropdown_item",
+                                                                asset_library_state->material_albedo_texture_modified);
+                    // i don't think there's any need right now to reset this
+                    asset_library_state->material_albedo_texture_modified = false;
+                    if (dropdown_selected_index != selected_index) {
+                        selected_index = dropdown_selected_index;
+                        replace_contents(&selected_material->albedo_texture_name, texture_names[selected_index]);
+                    }
+                }
+
+                ui_y_pad(10.0f);
+                {
+                    do_text("Metalness Texture");
+                    int32 selected_index = get_selected_name_index(selected_material->metalness_texture_name,
+                                                                   texture_names, num_texture_names);
+                    assert(selected_index >= 0);
+                    int32 dropdown_selected_index = do_dropdown(dropdown_theme,
+                                                                texture_names, num_texture_names,
+                                                                selected_index,
+                                                                "metalness_texture_dropdown_button",
+                                                                "metalness_texture_dropdown",
+                                                                "metalness_texture_dropdown_inner",
+                                                                "metalness_texture_dropdown_item",
+                                                                asset_library_state->material_metalness_texture_modified);
+                    asset_library_state->material_metalness_texture_modified = false;
+                    if (dropdown_selected_index != selected_index) {
+                        selected_index = dropdown_selected_index;
+                        replace_contents(&selected_material->metalness_texture_name, texture_names[selected_index]);
+                    }
+                }
+
+                ui_y_pad(10.0f);
+                {
+                    do_text("Roughness Texture");
+                    int32 selected_index = get_selected_name_index(selected_material->roughness_texture_name,
+                                                                   texture_names, num_texture_names);
+                    assert(selected_index >= 0);
+                    int32 dropdown_selected_index = do_dropdown(dropdown_theme,
+                                                                texture_names, num_texture_names,
+                                                                selected_index,
+                                                                "roughness_texture_dropdown_button",
+                                                                "roughness_texture_dropdown",
+                                                                "roughness_texture_dropdown_inner",
+                                                                "roughness_texture_dropdown_item",
+                                                                asset_library_state->material_roughness_texture_modified);
+                    asset_library_state->material_roughness_texture_modified = false;
+                    if (dropdown_selected_index != selected_index) {
+                        selected_index = dropdown_selected_index;
+                        replace_contents(&selected_material->roughness_texture_name, texture_names[selected_index]);
+                    }
+                }
             }
         }
         ui_pop_widget();
@@ -1287,7 +1376,7 @@ void draw_editor(Controller_State *controller_state) {
 
         UI_Window_Theme window_theme = DEFAULT_WINDOW_THEME;
         if (open_material_library_clicked) {
-            editor_state->is_material_library_window_open = true;
+            editor_state->is_material_library_window_open = !editor_state->is_material_library_window_open;
         }
 
         if (editor_state->is_material_library_window_open) {

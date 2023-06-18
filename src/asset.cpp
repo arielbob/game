@@ -121,6 +121,29 @@ Texture *get_texture(String name) {
     return NULL;
 }
 
+void get_texture_names(Allocator *allocator, char **names, int max_names, int *num_names) {
+    int32 num_texture_names = 0;
+    for (int32 i = 0; i < NUM_TEXTURE_BUCKETS; i++) {
+        Texture *current = asset_manager->texture_table[i];
+        bool32 should_exit = false;
+        while (current) {
+            if (num_texture_names >= max_names) {
+                assert(num_texture_names < max_names);
+                should_exit = true;
+                break;
+            }
+            names[num_texture_names++] = to_char_array(allocator, current->name);
+            current = current->table_next;
+        }
+
+        if (should_exit) {
+            break;
+        }
+    }
+
+    *num_names = num_texture_names;
+}
+
 void delete_texture(String name) {
     uint32 hash = get_hash(name, NUM_TEXTURE_BUCKETS);
 
@@ -275,6 +298,29 @@ Material *get_material(int32 id) {
     }
 
     return NULL;
+}
+
+void get_material_names(Allocator *allocator, char **names, int max_names, int *num_names) {
+    int32 num_material_names = 0;
+    for (int32 i = 0; i < NUM_MATERIAL_BUCKETS; i++) {
+        Material *current = asset_manager->material_table[i];
+        bool32 should_exit = false;
+        while (current) {
+            if (num_material_names >= max_names) {
+                assert(num_material_names < max_names);
+                should_exit = true;
+                break;
+            }
+            names[num_material_names++] = to_char_array(allocator, current->name);
+            current = current->table_next;
+        }
+
+        if (should_exit) {
+            break;
+        }
+    }
+
+    *num_names = num_material_names;
 }
 
 Font_File *get_font_file(char *filename) {

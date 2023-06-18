@@ -271,6 +271,14 @@ void replace_contents(String *string, String new_contents) {
     string->contents = buf;
 }
 
+void replace_contents(String *string, char *new_contents) {
+    deallocate(*string);
+    string->length = string_length(new_contents);
+    char *buf = (char *) allocate(string->allocator, string->length);
+    memcpy(buf, new_contents, string->length);
+    string->contents = buf;
+}
+
 String_Iterator make_string_iterator(String string) {
     String_Iterator it = {};
     it.string = string;

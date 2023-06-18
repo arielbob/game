@@ -625,11 +625,13 @@ internal void win32_process_keyboard_input(bool was_down, bool is_down,
         case VK_UP: {
             controller_state->key_up.is_down = is_down;
             controller_state->key_up.was_down = was_down;
+            controller_state->key_up.repeat = is_down == was_down;
             return;
         }
         case VK_DOWN: {
             controller_state->key_down.is_down = is_down;
             controller_state->key_down.was_down = was_down;
+            controller_state->key_down.repeat = is_down == was_down;
             return;
         }
         case VK_RIGHT: {
@@ -1242,6 +1244,8 @@ int WinMain(HINSTANCE hInstance,
                                 if (vk_code == VK_ESCAPE) {
                                     is_running = false;
                                 } else {
+                                    // TODO: i'm not sure if we should be using the repeat count in the
+                                    // WM_KEYDOWN message.. (bits 0-15)
                                     win32_process_keyboard_input(was_down, is_down,
                                                                  vk_code, (uint32) (message.lParam >> 16),
                                                                  controller_state);
