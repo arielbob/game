@@ -20,7 +20,11 @@
 struct Asset_Library_State {
     bool32 material_name_modified;
     bool32 material_albedo_texture_modified;
+    
+    bool32 material_metalness_modified;
     bool32 material_metalness_texture_modified;
+
+    bool32 material_roughness_modified;
     bool32 material_roughness_texture_modified;
 };
 

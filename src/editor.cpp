@@ -38,6 +38,23 @@ UI_Button_Theme editor_selected_dropdown_item_theme = {
     UI_SCISSOR_INHERIT
 };
 
+UI_Text_Field_Slider_Theme editor_slider_theme = {
+    DEFAULT_BUTTON_BACKGROUND,
+    DEFAULT_BUTTON_HOT_BACKGROUND,
+    DEFAULT_BUTTON_ACTIVE_BACKGROUND,
+    
+    rgb_to_vec4(61, 73, 60),
+    rgb_to_vec4(0, 255, 0),
+    true,
+
+    0.0f, 0, 0, {}, 0.0f,
+
+    default_font,
+
+    { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE },
+    { 0.0f, 20.0f }
+};
+
 void init_editor(Arena_Allocator *editor_arena, Editor_State *editor_state, Display_Output display_output) {
     *editor_state = {};
 
@@ -422,7 +439,11 @@ void reset_editor(Editor_State *editor_state) {
     Asset_Library_State *asset_library_state = &editor_state->asset_library_state;
     asset_library_state->material_name_modified = true;
     asset_library_state->material_albedo_texture_modified = true;
+
+    asset_library_state->material_metalness_modified = true;
     asset_library_state->material_metalness_texture_modified = true;
+
+    asset_library_state->material_roughness_modified = true;
     asset_library_state->material_roughness_texture_modified = true;
 }
 
@@ -724,19 +745,7 @@ void draw_entity_box_2(bool32 force_reset) {
         { 1.0f, 20.0f }
     };
 
-    UI_Text_Field_Slider_Theme slider_theme = {};
-    slider_theme.field_background_color  = DEFAULT_BUTTON_BACKGROUND;
-    slider_theme.field_hot_background_color  = DEFAULT_BUTTON_HOT_BACKGROUND;
-    slider_theme.field_active_background_color  = DEFAULT_BUTTON_ACTIVE_BACKGROUND;
-    slider_theme.slider_background_color = rgb_to_vec4(61, 73, 60);
-    slider_theme.show_slider             = false;
-    slider_theme.size_type               = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
-    slider_theme.size                    = { 0.0f, 20.0f };
-    slider_theme.cursor_color            = rgb_to_vec4(0, 255, 0);
-    slider_theme.font                    = default_font;
-    slider_theme.border_flags            = BORDER_BOTTOM;
-    slider_theme.border_color            = rgb_to_vec4(50, 50, 60);
-    slider_theme.border_width            = 1.0f;
+    UI_Text_Field_Slider_Theme slider_theme = editor_slider_theme;
     
     ui_push_container(content_theme, "entity-properties-content");
     {
@@ -1115,6 +1124,16 @@ void draw_asset_library() {
 
                 ui_y_pad(10.0f);
                 {
+                    do_text("Metalness");
+                    selected_material->metalness = do_text_field_slider(selected_material->metalness,
+                                                                        0.0f, 1.0f,
+                                                                        editor_slider_theme,
+                                                                        "material-metalness-slider",
+                                                                        "material-metalness-slider",
+                                                                        asset_library_state->material_metalness_modified);
+
+                    ui_y_pad(5.0f);
+                    
                     do_text("Metalness Texture");
                     int32 selected_index = get_selected_name_index(selected_material->metalness_texture_name,
                                                                    texture_names, num_texture_names);
@@ -1136,6 +1155,15 @@ void draw_asset_library() {
 
                 ui_y_pad(10.0f);
                 {
+                    do_text("Roughness");
+                    selected_material->roughness = do_text_field_slider(selected_material->roughness,
+                                                                        0.0f, 1.0f,
+                                                                        editor_slider_theme,
+                                                                        "material-roughness-slider",
+                                                                        "material-roughness-slider",
+                                                                        asset_library_state->material_roughness_modified);
+                    ui_y_pad(5.0f);
+                    
                     do_text("Roughness Texture");
                     int32 selected_index = get_selected_name_index(selected_material->roughness_texture_name,
                                                                    texture_names, num_texture_names);

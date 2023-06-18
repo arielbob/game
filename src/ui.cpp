@@ -783,7 +783,7 @@ void calculate_child_dependent_size(UI_Widget *widget, UI_Widget_Axis axis) {
     
     UI_Widget *parent = widget->parent;
 
-    if (parent) {
+    if (parent) {        
         if (parent->size_type[axis] == UI_SIZE_FIT_CHILDREN) {
             // if the current axis matches with the parent's layout axis, then increase the parent's
             // size on that axis.
@@ -794,11 +794,8 @@ void calculate_child_dependent_size(UI_Widget *widget, UI_Widget_Axis axis) {
             } else {
                 parent->computed_size[axis] = max(parent->computed_size[axis], widget->computed_size[axis]);
             }
-
-            
         }
-
-#if 1
+        
         // we need need this layout type check here because we only add to the child size sum if the axis
         // and the layout axis match. because when we use the child size sum later for FILL_REMAINING, we only
         // want the child sizes that took up space on that axis.
@@ -812,7 +809,6 @@ void calculate_child_dependent_size(UI_Widget *widget, UI_Widget_Axis axis) {
                    parent->layout_type == UI_LAYOUT_VERTICAL) {
             parent->computed_child_size_sum[axis] += widget->computed_size[axis];
         }
-#endif
 
         #if 0
         if (widget->size_type[axis] != UI_SIZE_FILL_REMAINING) {
@@ -882,7 +878,7 @@ void calculate_ancestor_dependent_sizes_part_2(UI_Widget *widget, UI_Widget_Axis
         
         widget->computed_size[axis] = parent->computed_size[axis] * widget->semantic_size[axis];
 
-        if (axis_matches_parent_layout) {
+        if (widget->position_type != UI_POSITION_FLOAT && axis_matches_parent_layout) {
             parent->computed_child_size_sum[axis] += widget->computed_size[axis];
         }
     } else if (widget->size_type[axis] == UI_SIZE_FILL_REMAINING) {
@@ -945,7 +941,12 @@ void calculate_position(UI_Widget *widget, UI_Widget_Axis axis) {
     UI_Widget *parent = widget->parent;
 
     if (parent) {
-        UI_Widget *prev = widget->prev;
+        UI_Widget *prev_sized = widget->prev;
+        while (prev_sized != NULL && prev_sized->position_type == UI_POSITION_FLOAT) {
+            // we use prev_sized to calculate where the next widget will be placed, so ignore
+            // floating widgets because they are taken out of the layout flow.
+            prev_sized = prev_sized->prev;
+        }
 
         if (widget->position_type == UI_POSITION_FLOAT) {
             widget->computed_position[axis] = (parent->computed_position[axis] +
@@ -958,10 +959,10 @@ void calculate_position(UI_Widget *widget, UI_Widget_Axis axis) {
         
         if (parent->layout_type == UI_LAYOUT_HORIZONTAL || parent->layout_type == UI_LAYOUT_VERTICAL) {
             if (axis_matches_parent_layout) {
-                if (!prev) {
+                if (!prev_sized) {
                     widget->computed_position[axis] = parent->computed_position[axis];
                 } else {
-                    widget->computed_position[axis] = prev->computed_position[axis] + prev->computed_size[axis];
+                    widget->computed_position[axis] = prev_sized->computed_position[axis] + prev_sized->computed_size[axis];
                 }
             } else {
                 widget->computed_position[axis] = parent->computed_position[axis];
@@ -975,8 +976,8 @@ void calculate_position(UI_Widget *widget, UI_Widget_Axis axis) {
                 // parent->computed_child_size_sum contains all children widths now, even FILL_REMAINING sized ones
                 real32 d = ((parent->computed_size.x - parent->computed_child_size_sum.x) /
                             (parent->num_total_children - 1));
-                if (prev) {
-                    widget->computed_position.x = prev->computed_position.x + prev->computed_size.x + d;
+                if (prev_sized) {
+                    widget->computed_position.x = prev_sized->computed_position.x + prev_sized->computed_size.x + d;
                 } else {
                     widget->computed_position[axis] = parent->computed_position[axis];
                 }
@@ -2312,11 +2313,11 @@ void ui_add_slider_bar(UI_Slider_Theme theme, real32 value, real32 min, real32 m
 }
 
 real32 do_text_field_slider(real32 value,
-                            //real32 min_value, real32 max_value,
+                            real32 min_value, real32 max_value,
                             UI_Text_Field_Slider_Theme theme,
                             char *id_string, char *text_id_string,
                             bool32 force_reset,
-                            int32 index = 0) {
+                            bool32 check_bounds = true, int32 index = 0) {
     UI_id id = make_ui_id(id_string, index);
     UI_Widget_State *state_variant = ui_get_state(id);
     UI_Text_Field_Slider_State *state;
@@ -2350,7 +2351,9 @@ real32 do_text_field_slider(real32 value,
     uint32 textbox_flags = UI_WIDGET_IS_CLICKABLE | UI_WIDGET_IS_FOCUSABLE | UI_WIDGET_DRAW_BORDER | UI_WIDGET_DRAW_BACKGROUND;
     //if (theme.show_field_background) textbox_flags |= UI_WIDGET_DRAW_BACKGROUND;
 
-    UI_Widget *textbox = ui_add_and_push_widget(id_string, textbox_theme, textbox_flags);
+    UI_Widget *textbox = ui_add_and_push_widget(id, textbox_theme, textbox_flags);
+    UI_Widget *computed_widget = ui_get_widget_prev_frame(id);
+    
     Font *font = get_font(textbox->font);
 
     text_field_state->cursor_timer += game_state->dt;
@@ -2392,6 +2395,10 @@ real32 do_text_field_slider(real32 value,
         real32 slider_value;
         bool32 conversion_result = string_to_real32(make_string(text_field_state->buffer), &slider_value);
         if (conversion_result) {
+            if (check_bounds) {
+                slider_value = clamp(slider_value, min_value, max_value);
+            }
+
             Marker m = begin_region();
             char *value_text = string_format(temp_region, "%f", slider_value);
             set_string_buffer_text(&state->current_text, value_text);
@@ -2427,11 +2434,20 @@ real32 do_text_field_slider(real32 value,
         Vec2 mouse_delta = get_mouse_delta();
         real32 x_delta = mouse_delta.x;
 
+        if (check_bounds) {
+            real32 x_percentage = x_delta / computed_widget->computed_size.x;
+            x_delta = x_percentage * (max_value - min_value);
+        }
+
         real32 slider_value;
         bool32 conversion_result = string_to_real32(make_string(state->current_text), &slider_value);
         assert(conversion_result);
         
         slider_value += x_delta;
+
+        if (check_bounds) {
+            slider_value = clamp(slider_value, min_value, max_value);
+        }
 
         Marker m = begin_region();
         char *value_text = string_format(temp_region, "%f", slider_value);
@@ -2478,8 +2494,21 @@ real32 do_text_field_slider(real32 value,
         UI_Theme inner_field_theme = {};
         inner_field_theme.size_type     = { UI_SIZE_FILL_REMAINING, UI_SIZE_PERCENTAGE };
         inner_field_theme.layout_type   = UI_LAYOUT_CENTER;
-        inner_field_theme.semantic_size = { 1.0f, 1.0f };
+        inner_field_theme.semantic_size = { 0.0f, 1.0f };
 
+        if (state->mode == Text_Field_Slider_Mode::SLIDING && theme.show_slider && check_bounds) {
+            real32 percentage = (result - min_value) / (max_value - min_value);
+            
+            UI_Theme slider_theme = {};
+            slider_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_PERCENTAGE };
+            slider_theme.semantic_size = { percentage, 1.0f };
+            slider_theme.position_type = UI_POSITION_FLOAT;
+            slider_theme.background_color = theme.slider_background_color;
+
+            // add it
+            ui_add_widget("", slider_theme, UI_WIDGET_DRAW_BACKGROUND);
+        }
+        
         ui_add_and_push_widget("", inner_field_theme);
         {
 
@@ -2534,4 +2563,17 @@ real32 do_text_field_slider(real32 value,
     ui_pop_widget();
 
     return result;
+}
+
+real32 do_text_field_slider(real32 value,
+                            UI_Text_Field_Slider_Theme theme,
+                            char *id_string, char *text_id_string,
+                            bool32 force_reset,
+                            int32 index = 0) {
+    return do_text_field_slider(value,
+                                0.0f, 0.0f,
+                                theme,
+                                id_string, text_id_string,
+                                force_reset,
+                                false, 0);
 }
