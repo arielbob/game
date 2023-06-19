@@ -55,6 +55,15 @@ UI_Text_Field_Slider_Theme editor_slider_theme = {
     { 0.0f, 20.0f }
 };
 
+UI_Checkbox_Theme editor_checkbox_theme = {
+    DEFAULT_BUTTON_BACKGROUND,
+    DEFAULT_BUTTON_HOT_BACKGROUND,
+    DEFAULT_BUTTON_ACTIVE_BACKGROUND,
+
+    rgb_to_vec4(255, 255, 255),
+    { 20.0f, 20.0f }
+};
+
 void init_editor(Arena_Allocator *editor_arena, Editor_State *editor_state, Display_Output display_output) {
     *editor_state = {};
 
@@ -964,6 +973,19 @@ int32 get_selected_name_index(String name, char **names, int32 num_names) {
     return -1;
 }
 
+void do_y_centered_text(char *text) {
+    UI_Theme y_center_text_theme = {};
+    y_center_text_theme.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FILL_REMAINING };
+    y_center_text_theme.semantic_size = { 0.0f, 1.0f };
+    y_center_text_theme.layout_type = UI_LAYOUT_CENTER;
+    
+    ui_add_and_push_widget("", y_center_text_theme);
+    {
+        do_text(text);
+    }
+    ui_pop_widget();
+}
+
 void draw_asset_library() {
     UI_Window_Theme window_theme = DEFAULT_WINDOW_THEME;
 
@@ -1008,7 +1030,12 @@ void draw_asset_library() {
     dropdown_theme.size = { 1.0f, 0.0f };
     dropdown_theme.item_theme = editor_dropdown_item_theme;
     dropdown_theme.selected_item_theme = editor_selected_dropdown_item_theme;
-    
+
+    UI_Theme row_theme = {};
+    row_theme.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN };
+    row_theme.semantic_size = { 0.0f, 0.0f };
+    row_theme.layout_type = UI_LAYOUT_HORIZONTAL;
+
     ui_push_container(content_theme, "asset-library-content");
     {
         Material *selected_material = NULL;
@@ -1102,85 +1129,131 @@ void draw_asset_library() {
             
                 ui_y_pad(10.0f);
                 {
-                    do_text("Albedo Texture");
-                    int32 selected_index = get_selected_name_index(selected_material->albedo_texture_name,
-                                                                   texture_names, num_texture_names);
-                    assert(selected_index >= 0);
-                    int32 dropdown_selected_index = do_dropdown(dropdown_theme,
-                                                                texture_names, num_texture_names,
-                                                                selected_index,
-                                                                "albedo_texture_dropdown_button",
-                                                                "albedo_texture_dropdown",
-                                                                "albedo_texture_dropdown_inner",
-                                                                "albedo_texture_dropdown_item",
-                                                                asset_library_state->material_albedo_texture_modified);
-                    // i don't think there's any need right now to reset this
-                    asset_library_state->material_albedo_texture_modified = false;
-                    if (dropdown_selected_index != selected_index) {
-                        selected_index = dropdown_selected_index;
-                        replace_contents(&selected_material->albedo_texture_name, texture_names[selected_index]);
+                    ui_add_and_push_widget("", row_theme);
+                    {
+                        do_y_centered_text("Use Albedo Texture");
+                        ui_x_pad(5.0f);
+                        bool32 checked = do_checkbox(selected_material->flags & MATERIAL_USE_ALBEDO_TEXTURE,
+                                                     editor_checkbox_theme, "material-albedo-texture-checkbox");
+                        selected_material->flags = set_bits(selected_material->flags, MATERIAL_USE_ALBEDO_TEXTURE,
+                                                            checked);
+                    }
+                    ui_pop_widget();
+                    ui_y_pad(5.0f);
+
+                    if (selected_material->flags & MATERIAL_USE_ALBEDO_TEXTURE) {
+                        do_text("Albedo Texture");
+                        int32 selected_index = get_selected_name_index(selected_material->albedo_texture_name,
+                                                                       texture_names, num_texture_names);
+                        assert(selected_index >= 0);
+                        int32 dropdown_selected_index = do_dropdown(dropdown_theme,
+                                                                    texture_names, num_texture_names,
+                                                                    selected_index,
+                                                                    "albedo_texture_dropdown_button",
+                                                                    "albedo_texture_dropdown",
+                                                                    "albedo_texture_dropdown_inner",
+                                                                    "albedo_texture_dropdown_item",
+                                                                    asset_library_state->material_albedo_texture_modified);
+                        // i don't think there's any need right now to reset this
+                        asset_library_state->material_albedo_texture_modified = false;
+                        if (dropdown_selected_index != selected_index) {
+                            selected_index = dropdown_selected_index;
+                            replace_contents(&selected_material->albedo_texture_name, texture_names[selected_index]);
+                        }
+                    } else {
+                        // TODO: color picker
                     }
                 }
 
                 ui_y_pad(10.0f);
                 {
-                    do_text("Metalness");
-                    selected_material->metalness = do_text_field_slider(selected_material->metalness,
-                                                                        0.0f, 1.0f,
-                                                                        editor_slider_theme,
-                                                                        "material-metalness-slider",
-                                                                        "material-metalness-slider",
-                                                                        asset_library_state->material_metalness_modified);
-
-                    ui_y_pad(5.0f);
-                    
-                    do_text("Metalness Texture");
-                    int32 selected_index = get_selected_name_index(selected_material->metalness_texture_name,
-                                                                   texture_names, num_texture_names);
-                    assert(selected_index >= 0);
-                    int32 dropdown_selected_index = do_dropdown(dropdown_theme,
-                                                                texture_names, num_texture_names,
-                                                                selected_index,
-                                                                "metalness_texture_dropdown_button",
-                                                                "metalness_texture_dropdown",
-                                                                "metalness_texture_dropdown_inner",
-                                                                "metalness_texture_dropdown_item",
-                                                                asset_library_state->material_metalness_texture_modified);
-                    asset_library_state->material_metalness_texture_modified = false;
-                    if (dropdown_selected_index != selected_index) {
-                        selected_index = dropdown_selected_index;
-                        replace_contents(&selected_material->metalness_texture_name, texture_names[selected_index]);
+                    ui_add_and_push_widget("", row_theme);
+                    {
+                        do_y_centered_text("Use Metalness Texture");
+                        ui_x_pad(5.0f);
+                        bool32 checked = do_checkbox(selected_material->flags & MATERIAL_USE_METALNESS_TEXTURE,
+                                                     editor_checkbox_theme, "material-metalness-texture-checkbox");
+                        selected_material->flags = set_bits(selected_material->flags,
+                                                            MATERIAL_USE_METALNESS_TEXTURE,
+                                                            checked);
                     }
+                    ui_pop_widget();
+                    ui_y_pad(5.0f);
+
+                    if (selected_material->flags & MATERIAL_USE_METALNESS_TEXTURE) {
+                        do_text("Metalness Texture");
+                        int32 selected_index = get_selected_name_index(selected_material->metalness_texture_name,
+                                                                       texture_names, num_texture_names);
+                        assert(selected_index >= 0);
+                        int32 dropdown_selected_index = do_dropdown(dropdown_theme,
+                                                                    texture_names, num_texture_names,
+                                                                    selected_index,
+                                                                    "metalness_texture_dropdown_button",
+                                                                    "metalness_texture_dropdown",
+                                                                    "metalness_texture_dropdown_inner",
+                                                                    "metalness_texture_dropdown_item",
+                                                                    asset_library_state->material_metalness_texture_modified);
+                        asset_library_state->material_metalness_texture_modified = false;
+                        if (dropdown_selected_index != selected_index) {
+                            selected_index = dropdown_selected_index;
+                            replace_contents(&selected_material->metalness_texture_name, texture_names[selected_index]);
+                        }
+                    } else {
+                        do_text("Metalness");
+                        selected_material->metalness = do_text_field_slider(selected_material->metalness,
+                                                                            0.0f, 1.0f,
+                                                                            editor_slider_theme,
+                                                                            "material-metalness-slider",
+                                                                            "material-metalness-slider",
+                                                                            asset_library_state->material_metalness_modified);
+                    }
+                    ui_y_pad(5.0f);
                 }
 
                 ui_y_pad(10.0f);
                 {
-                    do_text("Roughness");
-                    selected_material->roughness = do_text_field_slider(selected_material->roughness,
-                                                                        0.0f, 1.0f,
-                                                                        editor_slider_theme,
-                                                                        "material-roughness-slider",
-                                                                        "material-roughness-slider",
-                                                                        asset_library_state->material_roughness_modified);
+                    ui_add_and_push_widget("", row_theme);
+                    {
+                        do_y_centered_text("Use Roughness Texture");
+                        ui_x_pad(5.0f);
+                        bool32 checked = do_checkbox(selected_material->flags & MATERIAL_USE_ROUGHNESS_TEXTURE,
+                                                     editor_checkbox_theme, "material-roughness-texture-checkbox");
+                        selected_material->flags = set_bits(selected_material->flags,
+                                                            MATERIAL_USE_ROUGHNESS_TEXTURE,
+                                                            checked);
+                    }
+                    ui_pop_widget();
                     ui_y_pad(5.0f);
                     
-                    do_text("Roughness Texture");
-                    int32 selected_index = get_selected_name_index(selected_material->roughness_texture_name,
-                                                                   texture_names, num_texture_names);
-                    assert(selected_index >= 0);
-                    int32 dropdown_selected_index = do_dropdown(dropdown_theme,
-                                                                texture_names, num_texture_names,
-                                                                selected_index,
-                                                                "roughness_texture_dropdown_button",
-                                                                "roughness_texture_dropdown",
-                                                                "roughness_texture_dropdown_inner",
-                                                                "roughness_texture_dropdown_item",
-                                                                asset_library_state->material_roughness_texture_modified);
-                    asset_library_state->material_roughness_texture_modified = false;
-                    if (dropdown_selected_index != selected_index) {
-                        selected_index = dropdown_selected_index;
-                        replace_contents(&selected_material->roughness_texture_name, texture_names[selected_index]);
+                    if (selected_material->flags & MATERIAL_USE_ROUGHNESS_TEXTURE) {
+                        do_text("Roughness Texture");
+                        int32 selected_index = get_selected_name_index(selected_material->roughness_texture_name,
+                                                                       texture_names, num_texture_names);
+                        assert(selected_index >= 0);
+                        int32 dropdown_selected_index = do_dropdown(dropdown_theme,
+                                                                    texture_names, num_texture_names,
+                                                                    selected_index,
+                                                                    "roughness_texture_dropdown_button",
+                                                                    "roughness_texture_dropdown",
+                                                                    "roughness_texture_dropdown_inner",
+                                                                    "roughness_texture_dropdown_item",
+                                                                    asset_library_state->material_roughness_texture_modified);
+                        asset_library_state->material_roughness_texture_modified = false;
+                        if (dropdown_selected_index != selected_index) {
+                            selected_index = dropdown_selected_index;
+                            replace_contents(&selected_material->roughness_texture_name, texture_names[selected_index]);
+                        }
+                    } else {
+                        do_text("Roughness");
+                        selected_material->roughness = do_text_field_slider(selected_material->roughness,
+                                                                            0.0f, 1.0f,
+                                                                            editor_slider_theme,
+                                                                            "material-roughness-slider",
+                                                                            "material-roughness-slider",
+                                                                            asset_library_state->material_roughness_modified);
                     }
+                    
+                    ui_y_pad(5.0f);
                 }
             }
         }

@@ -1314,7 +1314,7 @@ uint32 gl_use_texture(String texture_name, int32 slot_index = 0) {
         return 0;
     }
 
-    glActiveTexture(GL_TEXTURE0);
+    //glActiveTexture(GL_TEXTURE0);
 
     return texture->id;
 }

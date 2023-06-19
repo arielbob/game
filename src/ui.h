@@ -231,6 +231,16 @@ struct UI_Text_Field_Theme {
     Vec2 size;
 };
 
+struct UI_Checkbox_Theme {
+    Vec4 background_color;
+    Vec4 hot_background_color;
+    Vec4 active_background_color;
+
+    Vec4 check_color;
+    
+    Vec2 size;
+};
+
 struct UI_id {
     // NOTE: we use a pointer to some unique data, such as a constant string specific to a button, to
     //       identify UI elements

@@ -11,6 +11,7 @@
 #define NUM_FONT_BUCKETS      128
 #define NUM_FONT_FILE_BUCKETS 128
 
+// material flags
 #define MATERIAL_USE_ALBEDO_TEXTURE    (1 << 0)
 #define MATERIAL_USE_METALNESS_TEXTURE (1 << 1)
 #define MATERIAL_USE_ROUGHNESS_TEXTURE (1 << 2)

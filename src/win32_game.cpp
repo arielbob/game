@@ -33,6 +33,7 @@
 
 #include "win32_game.h"
 
+#include "utils.h"
 #include "memory.h"
 
 global_variable Allocator *temp_region;

@@ -2577,3 +2577,41 @@ real32 do_text_field_slider(real32 value,
                                 force_reset,
                                 false, 0);
 }
+
+bool32 do_checkbox(bool32 checked,
+                   UI_Checkbox_Theme theme,
+                   char *id_string, int32 index = 0) {
+    UI_Theme box_theme = {};
+    box_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
+    box_theme.semantic_size = theme.size;
+    box_theme.background_color = theme.background_color;
+    box_theme.hot_background_color = theme.hot_background_color;
+    box_theme.active_background_color = theme.active_background_color;
+    box_theme.layout_type = UI_LAYOUT_CENTER;
+
+    UI_Theme check_theme = {};
+
+    check_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_PERCENTAGE };
+    check_theme.semantic_size = { 0.5f, 0.5f };
+    check_theme.background_color = theme.check_color;
+    check_theme.texture_name = "editor_check";
+
+    UI_id id = make_ui_id(id_string, index);
+    
+    UI_Widget *box = ui_add_and_push_widget(id, box_theme,
+                                            UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
+    {
+        UI_Interact_Result interact = ui_interact(box);
+        if (interact.released) {
+            checked = !checked;
+        }
+
+        if (checked) {
+            ui_add_widget("", check_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_USE_TEXTURE);
+        }
+    }
+    ui_pop_widget();
+
+    return checked;
+}
+
