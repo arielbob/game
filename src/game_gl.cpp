@@ -1447,6 +1447,10 @@ void gl_draw_mesh(String mesh_name,
     gl_use_texture(material->albedo_texture_name,    0);
     gl_use_texture(material->metalness_texture_name, 1);
     gl_use_texture(material->roughness_texture_name, 2);
+
+    gl_set_uniform_int(shader_id, "albedo_texture", 0);
+    gl_set_uniform_int(shader_id, "metalness_texture", 1);
+    gl_set_uniform_int(shader_id, "roughness_texture", 2);
     
     // TODO: call gl_use_texture with different slots based on material_use_x_texture flags
 
