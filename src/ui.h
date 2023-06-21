@@ -81,7 +81,8 @@ enum UI_Widget_State_Type {
     UI_STATE_WINDOW,
     UI_STATE_TEXT_FIELD,
     UI_STATE_TEXT_FIELD_SLIDER,
-    UI_STATE_DROPDOWN
+    UI_STATE_DROPDOWN,
+    UI_STATE_COLOR_PICKER
 };
 
 struct Vec2_UI_Size_Type {

@@ -16,8 +16,6 @@ texture "white" "src/textures/white.bmp"
 materials {
 material {
 name "shiny debug"
-use_albedo_texture 1
-albedo_texture "texture_default"
 albedo_color 1.000000 0.000000 0.000000
 metalness 0.000000
 roughness 0.028168
@@ -27,27 +25,18 @@ roughness 0.028168
 
 entities {
 entity {
-position 3.480953 0.000000 0.000000
+position -1.741156 0.000000 -1.354605
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
 mesh "cube"
 material "default_material"
 }
 entity {
-position -1.083288 0.528036 -0.122449
-rotation 0.903185 0.393827 -0.156521 0.068250
-scale 0.518848 0.558422 0.551765
+position 0.747548 0.659598 -0.546931
+rotation 0.921624 0.255085 0.281875 -0.078017
+scale 1.000000 1.000000 1.000000
 mesh "suzanne2"
 material "shiny debug"
-}
-entity {
-position -2.071458 2.134163 2.876131
-rotation 1.000000 0.000000 0.000000 0.000000
-scale 1.000000 1.000000 1.000000
-light_type point
-light_color 0.220000 0.220000 0.220000
-falloff_start 0.000000
-falloff_end 5.000000
 }
 entity {
 position 0.219617 2.049393 -1.493652
@@ -59,14 +48,23 @@ falloff_start 0.000000
 falloff_end 0.000000
 }
 entity {
-position 0.747548 0.659598 -0.546931
-rotation 0.921624 0.255085 0.281875 -0.078017
+position -2.071458 2.134163 2.876131
+rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
+light_type point
+light_color 0.220000 0.220000 0.220000
+falloff_start 0.000000
+falloff_end 5.000000
+}
+entity {
+position -1.083288 0.528036 -0.122449
+rotation 0.903185 0.393827 -0.156521 0.068250
+scale 0.518848 0.558422 0.551765
 mesh "suzanne2"
 material "shiny debug"
 }
 entity {
-position -1.741156 0.000000 -1.354605
+position 3.480953 0.000000 0.000000
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
 mesh "cube"

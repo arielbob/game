@@ -2615,3 +2615,66 @@ bool32 do_checkbox(bool32 checked,
     return checked;
 }
 
+Vec3 do_color_picker(Vec3 color,
+                     char *id_string,
+                     int32 index = 0) {
+    UI_id id = make_ui_id(id_string, index);
+
+#if 0
+    UI_Widget_State *state_variant = ui_get_state(dropdown_id);
+    UI_Dropdown_State *state;
+    if (!state_variant) {
+        // t is initialized to 1.0
+        state = ui_add_dropdown_state(dropdown_id);
+    } else {
+        state = &state_variant->dropdown;
+    }
+#endif
+
+#if 0
+    if (force_reset) {
+        _ui_delete_state(dropdown_id);
+        UI_Dropdown_State old_state = *state;
+        state = ui_add_dropdown_state(dropdown_id);
+        state->is_open        = old_state.is_open;
+        state->y_offset       = old_state.y_offset;
+        state->start_y_offset = old_state.start_y_offset;
+        state->t              = old_state.t;
+    }
+#endif
+
+    UI_Widget *computed_widget = ui_get_widget_prev_frame(id);
+
+#if 0
+    UI_Theme column_theme = {};
+    // these are for the container, basically that holds the button and the dropdown
+    column_theme.size_type = theme.size_type;
+    column_theme.semantic_size = theme.size;
+    column_theme.layout_type = UI_LAYOUT_VERTICAL;
+#endif
+
+    // put a container that's in the layout flow, so that the floating panel position
+    // is based on where we call do_color_picker()
+    UI_Theme container_theme = {};
+    container_theme.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN };
+    container_theme.semantic_size = {};
+
+    ui_add_and_push_widget(id, container_theme, UI_WIDGET_DRAW_BACKGROUND);
+    {
+        UI_Theme panel_theme = {};
+        panel_theme.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN };
+        panel_theme.semantic_size = {};
+        panel_theme.layout_type = UI_LAYOUT_HORIZONTAL;
+        panel_theme.position_type = UI_POSITION_FLOAT;
+
+        ui_add_and_push_widget("", panel_theme);
+        {
+            do_text("color picker");
+        }
+        ui_pop_widget();
+    }
+    ui_pop_widget();
+    
+    return color;
+}
+

@@ -1161,7 +1161,16 @@ void draw_asset_library() {
                             replace_contents(&selected_material->albedo_texture_name, texture_names[selected_index]);
                         }
                     } else {
-                        // TODO: color picker
+                        bool32 open_color_picker_pressed = do_text_button("Open Color Picker",
+                                                                         editor_button_theme,
+                                                                         "open-color-picker");
+                        if (open_color_picker_pressed) {
+                            asset_library_state->material_albedo_color_picker_open = !asset_library_state->material_albedo_color_picker_open;
+                        }
+
+                        if (asset_library_state->material_albedo_color_picker_open) {
+                            do_color_picker(selected_material->albedo_color, "albedo-color-picker");
+                        }
                     }
                 }
 
