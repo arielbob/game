@@ -8,6 +8,12 @@ bool32 ui_command_should_coalesce(UI_Render_Command command) {
         int32 last_index = ui_manager->num_render_commands - 1;
         UI_Render_Command *last_command = &ui_manager->render_commands[last_index];
 
+        if (command.shader_type != UI_Shader_Type::NONE) {
+            // we're using uniforms, and it's annoying to have to check those, so just
+            // don't coalesce whenever we use a custom shader
+            return false;
+        }
+
         if (last_command->texture_type != command.texture_type) {
             return false;
         }
@@ -144,7 +150,39 @@ void ui_render_widget_to_commands(UI_Widget *widget) {
     // to affect interaction, so i'm pretty sure this is fine.
     
     // TODO: finish this - see gl_draw_ui_widget() for the rest of the stuff
-    if (widget->flags & UI_WIDGET_DRAW_BACKGROUND) {
+    if (widget->flags & UI_WIDGET_USE_CUSTOM_SHADER) {
+        UI_Vertex vertices[4] = {
+            {
+                { computed_position.x, computed_position.y },
+                { 0.0f, 1.0f },
+                {}
+            },
+            {
+                { computed_position.x + computed_size.x, computed_position.y },
+                { 1.0f, 1.0f },
+                {}
+            },
+            {
+                { computed_position.x + computed_size.x, computed_position.y + computed_size.y },
+                { 1.0f, 0.0f },
+                {}
+            },
+            {
+                { computed_position.x, computed_position.y + computed_size.y },
+                { 0.0f, 0.0f },
+                {}
+            }
+        };
+        uint32 indices[] = { 0, 1, 2, 0, 2, 3 };
+
+        UI_Render_Command command = {};
+        command.shader_type = widget->shader_type;
+        command.shader_uniforms = widget->shader_uniforms;
+        
+        set_scissor(&command, widget);
+                
+        ui_push_command(command, vertices, 4, indices, 6);
+    } else if (widget->flags & UI_WIDGET_DRAW_BACKGROUND) {
         // if we're drawing the background, i guess we just ignore the color stuff
         Vec4 color = {};
         if (!(widget->flags & UI_WIDGET_USE_TEXTURE)) {

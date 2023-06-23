@@ -58,6 +58,8 @@ UI_Widget *make_widget(UI_id id, UI_Theme theme, uint32 flags) {
     widget->semantic_position       = theme.semantic_position;
 
     widget->scissor_type            = theme.scissor_type;
+    widget->shader_type             = theme.shader_type;
+    widget->shader_uniforms         = theme.shader_uniforms;
     
     return widget;
 }
@@ -2662,12 +2664,15 @@ Vec3 do_color_picker(Vec3 color,
     ui_add_and_push_widget(id, container_theme, UI_WIDGET_DRAW_BACKGROUND);
     {
         UI_Theme panel_theme = {};
-        panel_theme.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN };
-        panel_theme.semantic_size = {};
+        panel_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
+        panel_theme.semantic_size = { 300, 300 };
         panel_theme.layout_type = UI_LAYOUT_HORIZONTAL;
         panel_theme.position_type = UI_POSITION_FLOAT;
-
-        ui_add_and_push_widget("", panel_theme);
+        panel_theme.shader_type = UI_Shader_Type::HSV;
+        panel_theme.shader_uniforms.hsv.degrees = 50.0f;
+        panel_theme.background_color = rgb_to_vec4(255, 0, 0);
+        
+        ui_add_and_push_widget("", panel_theme, UI_WIDGET_USE_CUSTOM_SHADER | UI_WIDGET_FORCE_TO_TOP_OF_LAYER);
         {
             do_text("color picker");
         }

@@ -3,7 +3,8 @@
 uniform float hue_degrees;
 
 in vec4 frag_color;
-in vec2 uv;
+in vec2 frag_pos;
+in vec2 frag_uv;
 
 out vec4 FragColor;
 
@@ -32,8 +33,8 @@ void main() {
     vec3 hue = mix(color1, color2, segment_percentage);
     vec3 white = vec3(1.0, 1.0, 1.0);
     vec3 black = vec3(0.0);
-    vec3 color = mix(white, hue, uv.x);
-    color = mix(black, color, uv.y);
+    vec3 color = mix(white, hue, frag_uv.x);
+    color = mix(black, color, frag_uv.y);
 
     FragColor = vec4(color, 1.0f);
 }

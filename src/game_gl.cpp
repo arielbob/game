@@ -2920,28 +2920,63 @@ void gl_disable_scissor() {
     }
 }
 
-void gl_draw_ui_commands(uint32 shader_id) {
+uint32 gl_use_ui_shader(UI_Shader_Type type, UI_Shader_Uniforms uniforms) {
+    switch (type) {
+        case UI_Shader_Type::HSV: {
+            uint32 shader_id = gl_use_shader("hsv");
+            gl_set_uniform_float(shader_id, "hue_degrees", uniforms.hsv.degrees);
+            return shader_id;
+        } break;
+        case UI_Shader_Type::NONE: {} break;
+        default: {
+            assert(!"Unhandled UI_Shader_Type!");
+        }
+    }
+
+    return 0;
+}
+
+void gl_draw_ui_commands() {
+    UI_Shader_Type current_shader_type = UI_Shader_Type::NONE;
+    uint32 shader_id = gl_use_shader("ui");
+    gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->ortho_clip_matrix);
+    
     for (int32 i = 0; i < ui_manager->num_render_commands; i++) {
         UI_Render_Command *current = &ui_manager->render_commands[i];
+
+        if (current->shader_type != UI_Shader_Type::NONE) {
+            current_shader_type = current->shader_type;
+            shader_id = gl_use_ui_shader(current_shader_type, current->shader_uniforms);
+            gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->ortho_clip_matrix);
+        } else {
+            if (current_shader_type != UI_Shader_Type::NONE) {
+                current_shader_type = UI_Shader_Type::NONE;
+                shader_id = gl_use_shader("ui");
+                gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->ortho_clip_matrix);
+            }
+        }
 
         if (current->use_scissor) {
             gl_scissor(current->scissor_position, current->scissor_dimensions);
         } else {
             gl_disable_scissor();
         }
-        
-        if (current->texture_type == UI_Texture_Type::UI_TEXTURE_IMAGE) {
-            gl_set_uniform_bool(shader_id, "use_texture", true);
-            gl_set_uniform_bool(shader_id, "is_text", false);
-            gl_use_texture(current->texture_name);
-        } else if (current->texture_type == UI_Texture_Type::UI_TEXTURE_FONT) {
-            gl_set_uniform_bool(shader_id, "use_texture", true);
-            gl_set_uniform_bool(shader_id, "is_text", true);
-            gl_use_font_texture(current->font_name);
-        } else {
-            gl_set_uniform_bool(shader_id, "use_texture", false);
-        }
 
+        if (current_shader_type == UI_Shader_Type::NONE) {
+            // this stuff is only for the default UI shader
+            if (current->texture_type == UI_Texture_Type::UI_TEXTURE_IMAGE) {
+                gl_set_uniform_bool(shader_id, "use_texture", true);
+                gl_set_uniform_bool(shader_id, "is_text", false);
+                gl_use_texture(current->texture_name);
+            } else if (current->texture_type == UI_Texture_Type::UI_TEXTURE_FONT) {
+                gl_set_uniform_bool(shader_id, "use_texture", true);
+                gl_set_uniform_bool(shader_id, "is_text", true);
+                gl_use_font_texture(current->font_name);
+            } else {
+                gl_set_uniform_bool(shader_id, "use_texture", false);
+            }
+        }
+        
         glDrawElements(GL_TRIANGLES, current->num_indices, GL_UNSIGNED_INT,
                        (void *) (current->indices_start * sizeof(uint32)));
         glBindTexture(GL_TEXTURE_2D, 0);
@@ -2955,9 +2990,6 @@ void gl_draw_ui() {
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    
-    uint32 shader_id = gl_use_shader("ui");
-    gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->ortho_clip_matrix);
 
     UI_Render_Data *render_data = &ui_manager->render_data;
     
@@ -2971,7 +3003,7 @@ void gl_draw_ui() {
     glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0,
                     render_data->num_indices*sizeof(uint32), render_data->indices);
     
-    gl_draw_ui_commands(shader_id);
+    gl_draw_ui_commands();
 
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindVertexArray(0);

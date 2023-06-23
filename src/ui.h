@@ -9,6 +9,7 @@
 #define UI_WIDGET_DRAW_BORDER           (1 << 5)
 #define UI_WIDGET_IS_WINDOW             (1 << 6) // should only be active on the window widget in push_window()
 #define UI_WIDGET_FORCE_TO_TOP_OF_LAYER (1 << 7)
+#define UI_WIDGET_USE_CUSTOM_SHADER     (1 << 8)
 
 #define CORNER_TOP_LEFT     (1 << 0)
 #define CORNER_TOP_RIGHT    (1 << 1)
@@ -119,6 +120,19 @@ struct Rect {
     real32 height;
 };
 
+enum class UI_Shader_Type {
+    NONE,
+    HSV
+};
+
+struct UI_Shader_HSV_Uniforms {
+    float degrees;
+};
+
+union UI_Shader_Uniforms {
+    UI_Shader_HSV_Uniforms hsv;
+};
+
 struct UI_Theme {
     Vec4 background_color;
     Vec4 hot_background_color;
@@ -144,6 +158,9 @@ struct UI_Theme {
 
     UI_Scissor_Type scissor_type;
     bool32 force_to_top_of_layer;
+
+    UI_Shader_Type shader_type;
+    UI_Shader_Uniforms shader_uniforms;
 };
 
 struct UI_Window_Theme {
@@ -382,6 +399,9 @@ struct UI_Widget {
     UI_Scissor_Type scissor_type;
     Vec2_int32 computed_scissor_position;
     Vec2_int32 computed_scissor_dimensions;
+
+    UI_Shader_Type shader_type;
+    UI_Shader_Uniforms shader_uniforms;
 };
 
 struct UI_Stack_Widget {
@@ -486,8 +506,9 @@ struct UI_Render_Command {
     
     int32 indices_start;
     int32 num_indices;
-    
-    //UI_Render_Command *next;
+
+    UI_Shader_Type shader_type;
+    UI_Shader_Uniforms shader_uniforms;
 };
 
 #if 0
