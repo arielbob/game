@@ -2621,9 +2621,11 @@ bool32 do_checkbox(bool32 checked,
 
 Vec3 do_color_picker(Vec3 color,
                      char *id_string,
+                     char *panel_id_string,
                      int32 index = 0) {
     UI_id id = make_ui_id(id_string, index);
-
+    UI_id panel_id = make_ui_id(panel_id_string, index);
+    
 #if 0
     UI_Widget_State *state_variant = ui_get_state(dropdown_id);
     UI_Dropdown_State *state;
@@ -2647,6 +2649,7 @@ Vec3 do_color_picker(Vec3 color,
     }
 #endif
 
+    Controller_State *controller_state = Context::controller_state;
     UI_Widget *computed_widget = ui_get_widget_prev_frame(id);
 
 #if 0
@@ -2660,27 +2663,37 @@ Vec3 do_color_picker(Vec3 color,
     // put a container that's in the layout flow, so that the floating panel position
     // is based on where we call do_color_picker()
     UI_Theme container_theme = {};
-    container_theme.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN };
-    container_theme.semantic_size = {};
-
-    ui_add_and_push_widget(id, container_theme, UI_WIDGET_DRAW_BACKGROUND);
+    ui_add_and_push_widget(id, container_theme);
     {
+        real32 panel_size = 300.0f;
+
         UI_Theme panel_theme = {};
         panel_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
-        panel_theme.semantic_size = { 300, 300 };
+        panel_theme.semantic_size = { panel_size, panel_size };
         panel_theme.layout_type = UI_LAYOUT_HORIZONTAL;
         panel_theme.position_type = UI_POSITION_FLOAT;
         panel_theme.shader_type = UI_Shader_Type::HSV;
         panel_theme.shader_uniforms.hsv.degrees = 50.0f;
 
-        ui_add_and_push_widget("", panel_theme, UI_WIDGET_USE_CUSTOM_SHADER | UI_WIDGET_FORCE_TO_TOP_OF_LAYER);
+        UI_Widget *panel = ui_add_and_push_widget(panel_id, panel_theme,
+                                                  UI_WIDGET_USE_CUSTOM_SHADER | UI_WIDGET_FORCE_TO_TOP_OF_LAYER | UI_WIDGET_IS_CLICKABLE);
+        UI_Interact_Result interact = ui_interact(panel);
+
+        real32 cursor_radius = 15.0f;
+        Vec2 relative_panel_cursor_pos = { 0.0f, 0.0f };
+        if (is_active(panel)) {
+            Vec2 relative_mouse = { clamp(interact.relative_mouse.x, 0.0f, panel_size),
+                                    clamp(interact.relative_mouse.y, 0.0f, panel_size) };
+            relative_panel_cursor_pos = relative_mouse - make_vec2(cursor_radius, cursor_radius);
+        }
+        
         {
             UI_Theme circle_theme = {};
             circle_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
-            circle_theme.semantic_size = { 50.0f, 50.0f };
+            circle_theme.semantic_size = { cursor_radius * 2.0f, cursor_radius * 2.0f };
             circle_theme.position_type = UI_POSITION_FLOAT;
-            circle_theme.semantic_position = { 50.0f, 50.0f };
-            circle_theme.background_color = rgb_to_vec4(255, 0, 0);
+            circle_theme.semantic_position = relative_panel_cursor_pos;
+            circle_theme.background_color = rgb_to_vec4(255, 255, 255);
             circle_theme.shape_type = UI_Shape_Type::CIRCLE;
             ui_add_widget("", circle_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_USE_CUSTOM_SHAPE | UI_WIDGET_FORCE_TO_TOP_OF_LAYER);
         }

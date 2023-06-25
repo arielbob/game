@@ -1169,7 +1169,8 @@ void draw_asset_library() {
                         }
 
                         if (asset_library_state->material_albedo_color_picker_open) {
-                            do_color_picker(selected_material->albedo_color, "albedo-color-picker");
+                            do_color_picker(selected_material->albedo_color,
+                                            "albedo-color-picker", "albedo-color-picker-panel");
                         }
                     }
                 }

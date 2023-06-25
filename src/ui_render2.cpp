@@ -149,12 +149,14 @@ void generate_vertices(UI_Widget *widget, Allocator *allocator,
                        Vec4 color,
                        UI_Rendering_Mode *rendering_mode) {
     if ((widget->flags & UI_WIDGET_USE_CUSTOM_SHAPE) && widget->shape_type == UI_Shape_Type::CIRCLE) {
-        *num_vertices = 64;
+        *num_vertices = 32;
         *vertices = (UI_Vertex *) allocate(allocator, (*num_vertices)*sizeof(UI_Vertex));
 
-        *num_indices = 64;
+        *num_indices = *num_vertices;
         *indices = (uint32 *) allocate(allocator, (*num_indices)*sizeof(uint32));
 
+        *rendering_mode = UI_Rendering_Mode::TRIANGLE_FAN;
+        
         real32 angle_delta = 2.0f*PI / (*num_vertices);
         Vec2 center = {
             widget->computed_position.x + widget->computed_size.x / 2.0f,
@@ -179,7 +181,6 @@ void generate_vertices(UI_Widget *widget, Allocator *allocator,
             (*indices)[i] = i;
         }
 
-        *rendering_mode = UI_Rendering_Mode::TRIANGLE_FAN;
     } else {
         *num_vertices = 4;
         *vertices = (UI_Vertex *) allocate(allocator, (*num_vertices)*sizeof(UI_Vertex));
