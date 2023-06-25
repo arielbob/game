@@ -57,6 +57,8 @@ UI_Widget *make_widget(UI_id id, UI_Theme theme, uint32 flags) {
     widget->semantic_size           = theme.semantic_size;
     widget->semantic_position       = theme.semantic_position;
 
+    widget->shape_type              = theme.shape_type;
+    
     widget->scissor_type            = theme.scissor_type;
     widget->shader_type             = theme.shader_type;
     widget->shader_uniforms         = theme.shader_uniforms;
@@ -2670,11 +2672,17 @@ Vec3 do_color_picker(Vec3 color,
         panel_theme.position_type = UI_POSITION_FLOAT;
         panel_theme.shader_type = UI_Shader_Type::HSV;
         panel_theme.shader_uniforms.hsv.degrees = 50.0f;
-        panel_theme.background_color = rgb_to_vec4(255, 0, 0);
-        
+
         ui_add_and_push_widget("", panel_theme, UI_WIDGET_USE_CUSTOM_SHADER | UI_WIDGET_FORCE_TO_TOP_OF_LAYER);
         {
-            do_text("color picker");
+            UI_Theme circle_theme = {};
+            circle_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
+            circle_theme.semantic_size = { 50.0f, 50.0f };
+            circle_theme.position_type = UI_POSITION_FLOAT;
+            circle_theme.semantic_position = { 50.0f, 50.0f };
+            circle_theme.background_color = rgb_to_vec4(255, 0, 0);
+            circle_theme.shape_type = UI_Shape_Type::CIRCLE;
+            ui_add_widget("", circle_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_USE_CUSTOM_SHAPE | UI_WIDGET_FORCE_TO_TOP_OF_LAYER);
         }
         ui_pop_widget();
     }

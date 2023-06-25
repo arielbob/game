@@ -10,6 +10,7 @@
 #define UI_WIDGET_IS_WINDOW             (1 << 6) // should only be active on the window widget in push_window()
 #define UI_WIDGET_FORCE_TO_TOP_OF_LAYER (1 << 7)
 #define UI_WIDGET_USE_CUSTOM_SHADER     (1 << 8)
+#define UI_WIDGET_USE_CUSTOM_SHAPE      (1 << 9)
 
 #define CORNER_TOP_LEFT     (1 << 0)
 #define CORNER_TOP_RIGHT    (1 << 1)
@@ -120,6 +121,11 @@ struct Rect {
     real32 height;
 };
 
+enum class UI_Shape_Type {
+    NONE,
+    CIRCLE
+};
+
 enum class UI_Shader_Type {
     NONE,
     HSV
@@ -159,6 +165,8 @@ struct UI_Theme {
     UI_Scissor_Type scissor_type;
     bool32 force_to_top_of_layer;
 
+    UI_Shape_Type shape_type;
+    
     UI_Shader_Type shader_type;
     UI_Shader_Uniforms shader_uniforms;
 };
@@ -400,6 +408,8 @@ struct UI_Widget {
     Vec2_int32 computed_scissor_position;
     Vec2_int32 computed_scissor_dimensions;
 
+    UI_Shape_Type shape_type;
+    
     UI_Shader_Type shader_type;
     UI_Shader_Uniforms shader_uniforms;
 };
@@ -432,6 +442,11 @@ enum class UI_Texture_Type {
     UI_TEXTURE_NONE,
     UI_TEXTURE_IMAGE,
     UI_TEXTURE_FONT
+};
+
+enum class UI_Rendering_Mode {
+    TRIANGLES,
+    TRIANGLE_FAN
 };
 
 // - vertices and indices need to be pointers and we need to store max vertices/indices per command
@@ -509,6 +524,8 @@ struct UI_Render_Command {
 
     UI_Shader_Type shader_type;
     UI_Shader_Uniforms shader_uniforms;
+
+    UI_Rendering_Mode rendering_mode;
 };
 
 #if 0

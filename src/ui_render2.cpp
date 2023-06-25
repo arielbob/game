@@ -8,6 +8,11 @@ bool32 ui_command_should_coalesce(UI_Render_Command command) {
         int32 last_index = ui_manager->num_render_commands - 1;
         UI_Render_Command *last_command = &ui_manager->render_commands[last_index];
 
+        if ((command.rendering_mode != last_command->rendering_mode) ||
+            command.rendering_mode == UI_Rendering_Mode::TRIANGLE_FAN) {
+            return false;
+        }
+        
         if (command.shader_type != UI_Shader_Type::NONE) {
             // we're using uniforms, and it's annoying to have to check those, so just
             // don't coalesce whenever we use a custom shader
@@ -138,6 +143,81 @@ void set_scissor(UI_Render_Command *command, UI_Widget *widget) {
     }
 }
 
+void generate_vertices(UI_Widget *widget, Allocator *allocator,
+                       UI_Vertex **vertices, int32 *num_vertices,
+                       uint32 **indices, int32 *num_indices,
+                       Vec4 color,
+                       UI_Rendering_Mode *rendering_mode) {
+    if ((widget->flags & UI_WIDGET_USE_CUSTOM_SHAPE) && widget->shape_type == UI_Shape_Type::CIRCLE) {
+        *num_vertices = 64;
+        *vertices = (UI_Vertex *) allocate(allocator, (*num_vertices)*sizeof(UI_Vertex));
+
+        *num_indices = 64;
+        *indices = (uint32 *) allocate(allocator, (*num_indices)*sizeof(uint32));
+
+        real32 angle_delta = 2.0f*PI / (*num_vertices);
+        Vec2 center = {
+            widget->computed_position.x + widget->computed_size.x / 2.0f,
+            widget->computed_position.y + widget->computed_size.y / 2.0f
+        };
+        real32 y_scale = widget->computed_size.y / widget->computed_size.x;
+        real32 radius = widget->computed_size.x / 2.0f;
+
+        for (int32 i = 0; i < *num_vertices; i++) {
+            // do 2*PI - delta*i because winding order needs to be clockwise
+            real32 unit_x = cosf(2*PI - angle_delta * i);
+            real32 x = unit_x * radius;
+            real32 unit_y = sinf(2*PI - angle_delta * i);
+            real32 y = -unit_y * radius * y_scale; // opposite y coordinate-space
+            Vec2 vertex_pos = center + make_vec2(x, y);
+            Vec2 uv = make_vec2((unit_x + 1) / 2.0f, (unit_y + 1) / 2.0f);
+            (*vertices)[i] = {
+                vertex_pos,
+                uv,
+                color
+            };
+            (*indices)[i] = i;
+        }
+
+        *rendering_mode = UI_Rendering_Mode::TRIANGLE_FAN;
+    } else {
+        *num_vertices = 4;
+        *vertices = (UI_Vertex *) allocate(allocator, (*num_vertices)*sizeof(UI_Vertex));
+
+        *num_indices = 6;
+        *indices = (uint32 *) allocate(allocator, (*num_indices)*sizeof(uint32));
+
+        Vec2 computed_position = widget->computed_position;
+        Vec2 computed_size = widget->computed_size;
+        
+        (*vertices)[0] = {
+            { computed_position.x, computed_position.y },
+            { 0.0f, 1.0f },
+            color
+        };
+        (*vertices)[1] = {
+            { computed_position.x + computed_size.x, computed_position.y },
+            { 1.0f, 1.0f },
+            color
+        };
+        (*vertices)[2] = {
+            { computed_position.x + computed_size.x, computed_position.y + computed_size.y },
+            { 1.0f, 0.0f },
+            color
+        };
+        (*vertices)[3] = {
+            { computed_position.x, computed_position.y + computed_size.y },
+            { 0.0f, 0.0f },
+            color
+        };
+
+        uint32 indices_to_copy[] = { 0, 1, 2, 0, 2, 3 };
+        memcpy(*indices, indices_to_copy, *num_indices * sizeof(uint32));
+
+        *rendering_mode = UI_Rendering_Mode::TRIANGLES;
+    }
+}
+
 void ui_render_widget_to_commands(UI_Widget *widget) {
     Vec2 computed_position = widget->computed_position;
     Vec2 computed_size = widget->computed_size;
@@ -150,7 +230,26 @@ void ui_render_widget_to_commands(UI_Widget *widget) {
     // to affect interaction, so i'm pretty sure this is fine.
     
     // TODO: finish this - see gl_draw_ui_widget() for the rest of the stuff
+
     if (widget->flags & UI_WIDGET_USE_CUSTOM_SHADER) {
+        UI_Render_Command command = {};
+
+        command.shader_type = widget->shader_type;
+        command.shader_uniforms = widget->shader_uniforms;
+
+        Marker m = begin_region();
+        UI_Vertex *vertices;
+        int32 num_vertices, num_indices;
+        uint32 *indices;
+        UI_Rendering_Mode rendering_mode;
+
+        generate_vertices(widget, temp_region,
+                          &vertices, &num_vertices,
+                          &indices, &num_indices,
+                          {},
+                          &rendering_mode);
+
+#if 0
         UI_Vertex vertices[4] = {
             {
                 { computed_position.x, computed_position.y },
@@ -174,15 +273,21 @@ void ui_render_widget_to_commands(UI_Widget *widget) {
             }
         };
         uint32 indices[] = { 0, 1, 2, 0, 2, 3 };
+#endif
 
-        UI_Render_Command command = {};
         command.shader_type = widget->shader_type;
         command.shader_uniforms = widget->shader_uniforms;
         
         set_scissor(&command, widget);
-                
-        ui_push_command(command, vertices, 4, indices, 6);
+
+        command.rendering_mode = rendering_mode;
+        
+        ui_push_command(command, vertices, num_vertices, indices, num_indices);
+
+        end_region(m);
     } else if (widget->flags & UI_WIDGET_DRAW_BACKGROUND) {
+        UI_Render_Command command = {};
+        
         // if we're drawing the background, i guess we just ignore the color stuff
         Vec4 color = {};
         if (!(widget->flags & UI_WIDGET_USE_TEXTURE)) {
@@ -205,32 +310,19 @@ void ui_render_widget_to_commands(UI_Widget *widget) {
                 }
             }
         }
-        
-        UI_Vertex vertices[4] = {
-            {
-                { computed_position.x, computed_position.y },
-                { 0.0f, 1.0f },
-                color,
-            },
-            {
-                { computed_position.x + computed_size.x, computed_position.y },
-                { 1.0f, 1.0f },
-                color,
-            },
-            {
-                { computed_position.x + computed_size.x, computed_position.y + computed_size.y },
-                { 1.0f, 0.0f },
-                color,
-            },
-            {
-                { computed_position.x, computed_position.y + computed_size.y },
-                { 0.0f, 0.0f },
-                color
-            }
-        };
-        uint32 indices[] = { 0, 1, 2, 0, 2, 3 };
 
-        UI_Render_Command command = {};
+        Marker m = begin_region();
+        UI_Vertex *vertices;
+        int32 num_vertices, num_indices;
+        uint32 *indices;
+        UI_Rendering_Mode rendering_mode;
+
+        generate_vertices(widget, temp_region,
+                          &vertices, &num_vertices,
+                          &indices, &num_indices,
+                          color,
+                          &rendering_mode);
+
         if (widget->flags & UI_WIDGET_USE_TEXTURE) {
             assert(widget->texture_name);
             Texture *texture = get_texture(make_string(widget->texture_name));
@@ -243,8 +335,12 @@ void ui_render_widget_to_commands(UI_Widget *widget) {
         }
         
         set_scissor(&command, widget);
-                
-        ui_push_command(command, vertices, 4, indices, 6);
+
+        command.rendering_mode = rendering_mode;
+        
+        ui_push_command(command, vertices, num_vertices, indices, num_indices);
+
+        end_region(m);
     }
 
     if (widget->flags & UI_WIDGET_DRAW_TEXT) {

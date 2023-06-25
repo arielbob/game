@@ -2940,7 +2940,7 @@ void gl_draw_ui_commands() {
     UI_Shader_Type current_shader_type = UI_Shader_Type::NONE;
     uint32 shader_id = gl_use_shader("ui");
     gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->ortho_clip_matrix);
-    
+
     for (int32 i = 0; i < ui_manager->num_render_commands; i++) {
         UI_Render_Command *current = &ui_manager->render_commands[i];
 
@@ -2976,9 +2976,15 @@ void gl_draw_ui_commands() {
                 gl_set_uniform_bool(shader_id, "use_texture", false);
             }
         }
-        
-        glDrawElements(GL_TRIANGLES, current->num_indices, GL_UNSIGNED_INT,
-                       (void *) (current->indices_start * sizeof(uint32)));
+
+        if (current->rendering_mode == UI_Rendering_Mode::TRIANGLE_FAN) {
+            glDrawElements(GL_TRIANGLE_FAN, current->num_indices, GL_UNSIGNED_INT,
+                           (void *) (current->indices_start * sizeof(uint32)));
+        } else if (current->rendering_mode == UI_Rendering_Mode::TRIANGLES) {
+            glDrawElements(GL_TRIANGLES, current->num_indices, GL_UNSIGNED_INT,
+                           (void *) (current->indices_start * sizeof(uint32)));
+        }
+
         glBindTexture(GL_TEXTURE_2D, 0);
     }
 
