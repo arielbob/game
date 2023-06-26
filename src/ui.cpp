@@ -2619,10 +2619,44 @@ bool32 do_checkbox(bool32 checked,
     return checked;
 }
 
-Vec3 do_color_picker(Vec3 color,
-                     char *id_string,
-                     char *panel_id_string,
-                     int32 index = 0) {
+// TODO: idk if below is true anymore
+// we only use this procedure for initializing the picker's cursor position since HSV_Color uses ints
+// and as a result the returned cursor position is not very fluid when moving the cursor.
+Vec2 hsv_to_cursor_position_inside_quad(HSV_Color hsv_color,
+                                        Vec2 size) {
+    real32 x_percentage = (real32) hsv_color.s / 100.0f;
+    real32 y_percentage = 1.0f - ((real32) hsv_color.v / 100.0f);
+
+    real32 cursor_x = x_percentage*size.x;
+    real32 cursor_y = y_percentage*size.y;
+
+    return make_vec2(cursor_x, cursor_y);
+}
+
+HSV_Color get_hsv_inside_quad(Vec2 relative_mouse, real32 hue,
+                              Vec2 size) {
+    assert(hue >= 0.0f && hue <= 360.0f);
+    real32 x_percentage = relative_mouse.x / size.x;
+    real32 y_percentage = 1.0f - (relative_mouse.y / size.y); // bottom = 0.0, top = 1.0
+    real32 saturation = x_percentage * 100.0f;
+    real32 value = y_percentage * 100.0f;
+
+    hue = clamp(hue, 0.0f, 360.0f);
+    saturation = clamp(saturation, 0.0f, 100.0f);
+    value = clamp(value, 0.0f, 100.0f);
+            
+    HSV_Color result = { hue, saturation, value };
+    return result;
+}
+
+UI_Color_Picker_Result do_color_picker(Vec3 color,
+                                       char *id_string,
+                                       char *panel_id_string,
+                                       int32 index = 0) {
+    UI_Color_Picker_Result result = {};
+    result.color = color;
+    result.committed = true;
+    
     UI_id id = make_ui_id(id_string, index);
     UI_id panel_id = make_ui_id(panel_id_string, index);
     
@@ -2660,6 +2694,8 @@ Vec3 do_color_picker(Vec3 color,
     column_theme.layout_type = UI_LAYOUT_VERTICAL;
 #endif
 
+    HSV_Color hsv_color = rgb_to_hsv(vec3_to_rgb(color));
+    
     // put a container that's in the layout flow, so that the floating panel position
     // is based on where we call do_color_picker()
     UI_Theme container_theme = {};
@@ -2673,19 +2709,23 @@ Vec3 do_color_picker(Vec3 color,
         panel_theme.layout_type = UI_LAYOUT_HORIZONTAL;
         panel_theme.position_type = UI_POSITION_FLOAT;
         panel_theme.shader_type = UI_Shader_Type::HSV;
-        panel_theme.shader_uniforms.hsv.degrees = 50.0f;
+        panel_theme.shader_uniforms.hsv.degrees = hsv_color.h;
 
         UI_Widget *panel = ui_add_and_push_widget(panel_id, panel_theme,
                                                   UI_WIDGET_USE_CUSTOM_SHADER | UI_WIDGET_FORCE_TO_TOP_OF_LAYER | UI_WIDGET_IS_CLICKABLE);
         UI_Interact_Result interact = ui_interact(panel);
 
         real32 cursor_radius = 15.0f;
-        Vec2 relative_panel_cursor_pos = { 0.0f, 0.0f };
+        Vec2 relative_panel_cursor_pos = hsv_to_cursor_position_inside_quad(hsv_color, panel_theme.semantic_size);
         if (is_active(panel)) {
-            Vec2 relative_mouse = { clamp(interact.relative_mouse.x, 0.0f, panel_size),
-                                    clamp(interact.relative_mouse.y, 0.0f, panel_size) };
-            relative_panel_cursor_pos = relative_mouse - make_vec2(cursor_radius, cursor_radius);
+            relative_panel_cursor_pos = { clamp(interact.relative_mouse.x, 0.0f, panel_size),
+                                          clamp(interact.relative_mouse.y, 0.0f, panel_size) };
+            HSV_Color hsv_result = get_hsv_inside_quad(relative_panel_cursor_pos, hsv_color.h,
+                                                       panel_theme.semantic_size);
+            result.color = rgb_to_vec3(hsv_to_rgb(hsv_result));
         }
+
+        relative_panel_cursor_pos -= make_vec2(cursor_radius, cursor_radius);
         
         {
             UI_Theme circle_theme = {};
@@ -2701,6 +2741,6 @@ Vec3 do_color_picker(Vec3 color,
     }
     ui_pop_widget();
     
-    return color;
+    return result;
 }
 

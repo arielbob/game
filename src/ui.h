@@ -306,6 +306,11 @@ struct UI_Text_Field_Result {
     bool32 committed;
 };
 
+struct UI_Color_Picker_Result {
+    Vec3 color;
+    bool32 committed;
+};
+
 enum class Text_Field_Slider_Mode {
     NONE,
     SLIDING,
