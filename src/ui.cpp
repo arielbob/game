@@ -520,6 +520,9 @@ void deallocate(UI_Widget_State *state) {
         case UI_STATE_DROPDOWN: {
             // nothing to deallocate
         } break;
+        case UI_STATE_COLOR_PICKER: {
+            // nothing to deallocate
+        } break;
         default: {
             assert(!"Unhandled UI widget state type.");
         }
@@ -653,6 +656,53 @@ UI_Dropdown_State *ui_add_dropdown_state(UI_id id) {
     _ui_add_state(state);
 
     return dropdown_state;
+}
+
+// TODO: idk if below is true anymore
+// we only use this procedure for initializing the picker's cursor position since HSV_Color uses ints
+// and as a result the returned cursor position is not very fluid when moving the cursor.
+Vec2 hsv_to_cursor_position_inside_quad(HSV_Color hsv_color,
+                                        Vec2 size) {
+    real32 x_percentage = (real32) hsv_color.s / 100.0f;
+    real32 y_percentage = 1.0f - ((real32) hsv_color.v / 100.0f);
+
+    real32 cursor_x = x_percentage*size.x;
+    real32 cursor_y = y_percentage*size.y;
+
+    return make_vec2(cursor_x, cursor_y);
+}
+
+HSV_Color get_hsv_inside_quad(Vec2 relative_mouse, real32 hue,
+                              Vec2 size) {
+    assert(hue >= 0.0f && hue <= 360.0f);
+    real32 x_percentage = relative_mouse.x / size.x;
+    real32 y_percentage = 1.0f - (relative_mouse.y / size.y); // bottom = 0.0, top = 1.0
+    real32 saturation = x_percentage * 100.0f;
+    real32 value = y_percentage * 100.0f;
+
+    hue = clamp(hue, 0.0f, 360.0f);
+    saturation = clamp(saturation, 0.0f, 100.0f);
+    value = clamp(value, 0.0f, 100.0f);
+            
+    HSV_Color result = { hue, saturation, value };
+    return result;
+}
+
+UI_Color_Picker_State *ui_add_color_picker_state(UI_id id, Vec2 panel_size, Vec3 color) {
+    UI_Widget_State *state = ui_make_widget_state();
+    state->id = id;
+    state->type = UI_STATE_COLOR_PICKER;
+
+    UI_Color_Picker_State *color_picker_state = &state->color_picker;
+    *color_picker_state = {};
+
+    HSV_Color hsv_color = rgb_to_hsv(vec3_to_rgb(color));
+    color_picker_state->relative_cursor_pos = hsv_to_cursor_position_inside_quad(hsv_color, panel_size);
+    color_picker_state->hue = hsv_color.h;
+        
+    _ui_add_state(state);
+
+    return color_picker_state;
 }
 
 void calculate_standalone_size(UI_Widget *widget, UI_Widget_Axis axis) {
@@ -2619,39 +2669,10 @@ bool32 do_checkbox(bool32 checked,
     return checked;
 }
 
-// TODO: idk if below is true anymore
-// we only use this procedure for initializing the picker's cursor position since HSV_Color uses ints
-// and as a result the returned cursor position is not very fluid when moving the cursor.
-Vec2 hsv_to_cursor_position_inside_quad(HSV_Color hsv_color,
-                                        Vec2 size) {
-    real32 x_percentage = (real32) hsv_color.s / 100.0f;
-    real32 y_percentage = 1.0f - ((real32) hsv_color.v / 100.0f);
-
-    real32 cursor_x = x_percentage*size.x;
-    real32 cursor_y = y_percentage*size.y;
-
-    return make_vec2(cursor_x, cursor_y);
-}
-
-HSV_Color get_hsv_inside_quad(Vec2 relative_mouse, real32 hue,
-                              Vec2 size) {
-    assert(hue >= 0.0f && hue <= 360.0f);
-    real32 x_percentage = relative_mouse.x / size.x;
-    real32 y_percentage = 1.0f - (relative_mouse.y / size.y); // bottom = 0.0, top = 1.0
-    real32 saturation = x_percentage * 100.0f;
-    real32 value = y_percentage * 100.0f;
-
-    hue = clamp(hue, 0.0f, 360.0f);
-    saturation = clamp(saturation, 0.0f, 100.0f);
-    value = clamp(value, 0.0f, 100.0f);
-            
-    HSV_Color result = { hue, saturation, value };
-    return result;
-}
-
 UI_Color_Picker_Result do_color_picker(Vec3 color,
                                        char *id_string,
                                        char *panel_id_string,
+                                       bool32 force_reset,
                                        int32 index = 0) {
     UI_Color_Picker_Result result = {};
     result.color = color;
@@ -2659,29 +2680,21 @@ UI_Color_Picker_Result do_color_picker(Vec3 color,
     
     UI_id id = make_ui_id(id_string, index);
     UI_id panel_id = make_ui_id(panel_id_string, index);
-    
-#if 0
-    UI_Widget_State *state_variant = ui_get_state(dropdown_id);
-    UI_Dropdown_State *state;
-    if (!state_variant) {
-        // t is initialized to 1.0
-        state = ui_add_dropdown_state(dropdown_id);
-    } else {
-        state = &state_variant->dropdown;
-    }
-#endif
 
-#if 0
-    if (force_reset) {
-        _ui_delete_state(dropdown_id);
-        UI_Dropdown_State old_state = *state;
-        state = ui_add_dropdown_state(dropdown_id);
-        state->is_open        = old_state.is_open;
-        state->y_offset       = old_state.y_offset;
-        state->start_y_offset = old_state.start_y_offset;
-        state->t              = old_state.t;
+    Vec2 panel_size = make_vec2(300.0f, 300.0f);
+    
+    UI_Widget_State *state_variant = ui_get_state(id);
+    UI_Color_Picker_State *state;
+    if (!state_variant) {
+        state = ui_add_color_picker_state(id, panel_size, color);
+    } else {
+        state = &state_variant->color_picker;
     }
-#endif
+
+    if (force_reset) {
+        _ui_delete_state(id);
+        state = ui_add_color_picker_state(id, panel_size, color);
+    }
 
     Controller_State *controller_state = Context::controller_state;
     UI_Widget *computed_widget = ui_get_widget_prev_frame(id);
@@ -2694,18 +2707,16 @@ UI_Color_Picker_Result do_color_picker(Vec3 color,
     column_theme.layout_type = UI_LAYOUT_VERTICAL;
 #endif
 
-    HSV_Color hsv_color = rgb_to_hsv(vec3_to_rgb(color));
+    HSV_Color hsv_color = get_hsv_inside_quad(state->relative_cursor_pos, state->hue, panel_size);
     
     // put a container that's in the layout flow, so that the floating panel position
     // is based on where we call do_color_picker()
     UI_Theme container_theme = {};
     ui_add_and_push_widget(id, container_theme);
     {
-        real32 panel_size = 300.0f;
-
         UI_Theme panel_theme = {};
         panel_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
-        panel_theme.semantic_size = { panel_size, panel_size };
+        panel_theme.semantic_size = panel_size;
         panel_theme.layout_type = UI_LAYOUT_HORIZONTAL;
         panel_theme.position_type = UI_POSITION_FLOAT;
         panel_theme.shader_type = UI_Shader_Type::HSV;
@@ -2716,13 +2727,15 @@ UI_Color_Picker_Result do_color_picker(Vec3 color,
         UI_Interact_Result interact = ui_interact(panel);
 
         real32 cursor_radius = 15.0f;
-        Vec2 relative_panel_cursor_pos = hsv_to_cursor_position_inside_quad(hsv_color, panel_theme.semantic_size);
+        Vec2 relative_panel_cursor_pos = state->relative_cursor_pos;
         if (is_active(panel)) {
-            relative_panel_cursor_pos = { clamp(interact.relative_mouse.x, 0.0f, panel_size),
-                                          clamp(interact.relative_mouse.y, 0.0f, panel_size) };
-            HSV_Color hsv_result = get_hsv_inside_quad(relative_panel_cursor_pos, hsv_color.h,
-                                                       panel_theme.semantic_size);
+            state->relative_cursor_pos = { clamp(interact.relative_mouse.x, 0.0f, panel_size.x),
+                                           clamp(interact.relative_mouse.y, 0.0f, panel_size.y) };
+            HSV_Color hsv_result = get_hsv_inside_quad(state->relative_cursor_pos, state->hue,
+                                                       panel_size);
             result.color = rgb_to_vec3(hsv_to_rgb(hsv_result));
+        } else {
+            result.color = rgb_to_vec3(hsv_to_rgb(hsv_color));
         }
 
         relative_panel_cursor_pos -= make_vec2(cursor_radius, cursor_radius);
