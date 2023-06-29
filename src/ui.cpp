@@ -2727,7 +2727,6 @@ UI_Color_Picker_Result do_color_picker(Vec3 color,
         UI_Interact_Result interact = ui_interact(panel);
 
         real32 cursor_radius = 15.0f;
-        Vec2 relative_panel_cursor_pos = state->relative_cursor_pos;
         if (is_active(panel)) {
             state->relative_cursor_pos = { clamp(interact.relative_mouse.x, 0.0f, panel_size.x),
                                            clamp(interact.relative_mouse.y, 0.0f, panel_size.y) };
@@ -2737,18 +2736,29 @@ UI_Color_Picker_Result do_color_picker(Vec3 color,
         } else {
             result.color = rgb_to_vec3(hsv_to_rgb(hsv_color));
         }
-
-        relative_panel_cursor_pos -= make_vec2(cursor_radius, cursor_radius);
         
         {
             UI_Theme circle_theme = {};
             circle_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
             circle_theme.semantic_size = { cursor_radius * 2.0f, cursor_radius * 2.0f };
             circle_theme.position_type = UI_POSITION_FLOAT;
-            circle_theme.semantic_position = relative_panel_cursor_pos;
+            circle_theme.semantic_position = state->relative_cursor_pos - make_vec2(cursor_radius, cursor_radius);
             circle_theme.background_color = rgb_to_vec4(255, 255, 255);
             circle_theme.shape_type = UI_Shape_Type::CIRCLE;
-            ui_add_widget("", circle_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_USE_CUSTOM_SHAPE | UI_WIDGET_FORCE_TO_TOP_OF_LAYER);
+            circle_theme.layout_type = UI_LAYOUT_CENTER;
+            ui_add_and_push_widget("", circle_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_USE_CUSTOM_SHAPE | UI_WIDGET_FORCE_TO_TOP_OF_LAYER);
+            {
+                real32 inner_circle_radius = cursor_radius - 2.0f;
+                UI_Theme inner_circle_theme = circle_theme;
+                inner_circle_theme.position_type = UI_POSITION_NONE;
+                inner_circle_theme.semantic_size = { inner_circle_radius * 2.0f, inner_circle_radius * 2.0f };
+                inner_circle_theme.background_color = make_vec4(result.color, 1.0f);
+                inner_circle_theme.semantic_position = state->relative_cursor_pos - make_vec2(inner_circle_radius, inner_circle_radius);
+                ui_add_widget("", inner_circle_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_USE_CUSTOM_SHAPE);
+            }
+            ui_pop_widget();
+
+            
         }
         ui_pop_widget();
     }
