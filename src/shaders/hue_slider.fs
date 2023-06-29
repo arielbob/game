@@ -1,7 +1,10 @@
 #version 420 core
 
+uniform float hue_degrees;
+
 in vec4 frag_color;
-in vec2 uv;
+in vec2 frag_pos;
+in vec2 frag_uv;
 
 out vec4 FragColor;
 
@@ -15,10 +18,10 @@ void main() {
         vec3(1.0, 0.0, 1.0)
     };
     
-    float segment_percentage = mod(uv.y * 6.0, 1.0);
-    //vec3 color = vec3(uv.y);
+    float segment_percentage = mod(frag_uv.y * 6.0, 1.0);
+    //vec3 color = vec3(frag_uv.y);
     //vec3 color = vec3(segment_percentage);
-    int segment = int(uv.y * 6.0);
+    int segment = int(frag_uv.y * 6.0);
     
     vec3 color1 = colors[segment];
     vec3 color2 = colors[(segment + 1) % 6];

@@ -12,7 +12,6 @@ out vec2 frag_uv;
 
 void main() {
     gl_Position = cpv_matrix * vec4(int(vertex_pos.x), int(vertex_pos.y), 0.0, 1.0);
-    frag_color = vertex_color;
 
     frag_uv = vertex_uv;
     frag_color = vertex_color; // unused

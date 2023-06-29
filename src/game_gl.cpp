@@ -2927,6 +2927,11 @@ uint32 gl_use_ui_shader(UI_Shader_Type type, UI_Shader_Uniforms uniforms) {
             gl_set_uniform_float(shader_id, "hue_degrees", uniforms.hsv.degrees);
             return shader_id;
         } break;
+        case UI_Shader_Type::HSV_SLIDER: {
+            uint32 shader_id = gl_use_shader("hue_slider");
+            //gl_set_uniform_float(shader_id, "hue_degrees", uniforms.hsv_slider.hue);
+            return shader_id;
+        } break;
         case UI_Shader_Type::NONE: {} break;
         default: {
             assert(!"Unhandled UI_Shader_Type!");

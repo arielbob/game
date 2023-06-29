@@ -2670,8 +2670,7 @@ bool32 do_checkbox(bool32 checked,
 }
 
 UI_Color_Picker_Result do_color_picker(Vec3 color,
-                                       char *id_string,
-                                       char *panel_id_string,
+                                       char *id_string, char *quad_id_string, char *slider_id_string,
                                        bool32 force_reset,
                                        int32 index = 0) {
     UI_Color_Picker_Result result = {};
@@ -2679,21 +2678,22 @@ UI_Color_Picker_Result do_color_picker(Vec3 color,
     result.committed = true;
     
     UI_id id = make_ui_id(id_string, index);
-    UI_id panel_id = make_ui_id(panel_id_string, index);
+    UI_id quad_id = make_ui_id(quad_id_string, index);
+    UI_id slider_id = make_ui_id(slider_id_string, index);
 
-    Vec2 panel_size = make_vec2(300.0f, 300.0f);
+    Vec2 quad_size = make_vec2(300.0f, 300.0f);
     
     UI_Widget_State *state_variant = ui_get_state(id);
     UI_Color_Picker_State *state;
     if (!state_variant) {
-        state = ui_add_color_picker_state(id, panel_size, color);
+        state = ui_add_color_picker_state(id, quad_size, color);
     } else {
         state = &state_variant->color_picker;
     }
 
     if (force_reset) {
         _ui_delete_state(id);
-        state = ui_add_color_picker_state(id, panel_size, color);
+        state = ui_add_color_picker_state(id, quad_size, color);
     }
 
     Controller_State *controller_state = Context::controller_state;
@@ -2707,60 +2707,80 @@ UI_Color_Picker_Result do_color_picker(Vec3 color,
     column_theme.layout_type = UI_LAYOUT_VERTICAL;
 #endif
 
-    HSV_Color hsv_color = get_hsv_inside_quad(state->relative_cursor_pos, state->hue, panel_size);
+    HSV_Color hsv_color = get_hsv_inside_quad(state->relative_cursor_pos, state->hue, quad_size);
     
     // put a container that's in the layout flow, so that the floating panel position
     // is based on where we call do_color_picker()
     UI_Theme container_theme = {};
-    ui_add_and_push_widget(id, container_theme);
+    ui_add_and_push_widget("", container_theme);
     {
         UI_Theme panel_theme = {};
-        panel_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
-        panel_theme.semantic_size = panel_size;
+        panel_theme.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN };
         panel_theme.layout_type = UI_LAYOUT_HORIZONTAL;
         panel_theme.position_type = UI_POSITION_FLOAT;
-        panel_theme.shader_type = UI_Shader_Type::HSV;
-        panel_theme.shader_uniforms.hsv.degrees = hsv_color.h;
+        UI_Widget *panel = ui_add_and_push_widget(id, panel_theme,
+                                                  UI_WIDGET_FORCE_TO_TOP_OF_LAYER | UI_WIDGET_IS_CLICKABLE);
+        ui_interact(panel);
 
-        UI_Widget *panel = ui_add_and_push_widget(panel_id, panel_theme,
-                                                  UI_WIDGET_USE_CUSTOM_SHADER | UI_WIDGET_FORCE_TO_TOP_OF_LAYER | UI_WIDGET_IS_CLICKABLE);
-        UI_Interact_Result interact = ui_interact(panel);
-
-        real32 cursor_radius = 15.0f;
-        if (is_active(panel)) {
-            state->relative_cursor_pos = { clamp(interact.relative_mouse.x, 0.0f, panel_size.x),
-                                           clamp(interact.relative_mouse.y, 0.0f, panel_size.y) };
-            HSV_Color hsv_result = get_hsv_inside_quad(state->relative_cursor_pos, state->hue,
-                                                       panel_size);
-            result.color = rgb_to_vec3(hsv_to_rgb(hsv_result));
-        } else {
-            result.color = rgb_to_vec3(hsv_to_rgb(hsv_color));
-        }
-        
         {
-            UI_Theme circle_theme = {};
-            circle_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
-            circle_theme.semantic_size = { cursor_radius * 2.0f, cursor_radius * 2.0f };
-            circle_theme.position_type = UI_POSITION_FLOAT;
-            circle_theme.semantic_position = state->relative_cursor_pos - make_vec2(cursor_radius, cursor_radius);
-            circle_theme.background_color = rgb_to_vec4(255, 255, 255);
-            circle_theme.shape_type = UI_Shape_Type::CIRCLE;
-            circle_theme.layout_type = UI_LAYOUT_CENTER;
-            ui_add_and_push_widget("", circle_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_USE_CUSTOM_SHAPE | UI_WIDGET_FORCE_TO_TOP_OF_LAYER);
-            {
-                real32 inner_circle_radius = cursor_radius - 2.0f;
-                UI_Theme inner_circle_theme = circle_theme;
-                inner_circle_theme.position_type = UI_POSITION_NONE;
-                inner_circle_theme.semantic_size = { inner_circle_radius * 2.0f, inner_circle_radius * 2.0f };
-                inner_circle_theme.background_color = make_vec4(result.color, 1.0f);
-                inner_circle_theme.semantic_position = state->relative_cursor_pos - make_vec2(inner_circle_radius, inner_circle_radius);
-                ui_add_widget("", inner_circle_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_USE_CUSTOM_SHAPE);
-            }
-            ui_pop_widget();
+            UI_Theme hsv_quad_theme = {};
+            hsv_quad_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
+            hsv_quad_theme.semantic_size = quad_size;
+            hsv_quad_theme.shader_type = UI_Shader_Type::HSV;
+            hsv_quad_theme.shader_uniforms.hsv.degrees = hsv_color.h;    
 
+            UI_Widget *quad = ui_add_and_push_widget(quad_id, hsv_quad_theme,
+                                                     UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_USE_CUSTOM_SHADER | UI_WIDGET_IS_CLICKABLE);
+            UI_Interact_Result interact = ui_interact(quad);
+
+            {
+                real32 cursor_radius = 15.0f;
+                if (is_active(quad)) {
+                    state->relative_cursor_pos = { clamp(interact.relative_mouse.x, 0.0f, quad_size.x),
+                                                   clamp(interact.relative_mouse.y, 0.0f, quad_size.y) };
+                    HSV_Color hsv_result = get_hsv_inside_quad(state->relative_cursor_pos, state->hue,
+                                                               quad_size);
+                    result.color = rgb_to_vec3(hsv_to_rgb(hsv_result));
+                } else {
+                    result.color = rgb_to_vec3(hsv_to_rgb(hsv_color));
+                }
+        
+                UI_Theme circle_theme = {};
+                circle_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
+                circle_theme.semantic_size = { cursor_radius * 2.0f, cursor_radius * 2.0f };
+                circle_theme.position_type = UI_POSITION_FLOAT;
+                circle_theme.semantic_position = state->relative_cursor_pos - make_vec2(cursor_radius,
+                                                                                        cursor_radius);
+                circle_theme.background_color = rgb_to_vec4(255, 255, 255);
+                circle_theme.shape_type = UI_Shape_Type::CIRCLE;
+                circle_theme.layout_type = UI_LAYOUT_CENTER;
+                ui_add_and_push_widget("", circle_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_USE_CUSTOM_SHAPE | UI_WIDGET_FORCE_TO_TOP_OF_LAYER);
+                {
+                    real32 inner_circle_radius = cursor_radius - 2.0f;
+                    UI_Theme inner_circle_theme = circle_theme;
+                    inner_circle_theme.position_type = UI_POSITION_NONE;
+                    inner_circle_theme.semantic_size = { inner_circle_radius * 2.0f, inner_circle_radius * 2.0f };
+                    inner_circle_theme.background_color = make_vec4(result.color, 1.0f);
+                    inner_circle_theme.semantic_position = state->relative_cursor_pos - make_vec2(inner_circle_radius, inner_circle_radius);
+                    ui_add_widget("", inner_circle_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_USE_CUSTOM_SHAPE);
+                } ui_pop_widget(); // outer circle
+            } ui_pop_widget(); // quad
+
+            ui_x_pad(20.0f);
             
-        }
-        ui_pop_widget();
+            UI_Theme hsv_slider_theme = {};
+            hsv_slider_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_FILL_REMAINING };
+            hsv_slider_theme.semantic_size = { 50.0f, 0.0f };
+            hsv_slider_theme.background_color = rgb_to_vec4(0, 0, 255);
+            hsv_slider_theme.shader_type = UI_Shader_Type::HSV_SLIDER;
+            hsv_slider_theme.shader_uniforms.hsv_slider.hue = hsv_color.h;    
+            UI_Widget *hsv_slider = ui_add_and_push_widget(slider_id, hsv_slider_theme,
+                                                           UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_USE_CUSTOM_SHADER | UI_WIDGET_IS_CLICKABLE);
+            UI_Interact_Result slider_interact = ui_interact(hsv_slider);
+            {
+
+            } ui_pop_widget(); // slider
+        } ui_pop_widget(); // panel
     }
     ui_pop_widget();
     

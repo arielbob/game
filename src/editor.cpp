@@ -1172,6 +1172,7 @@ void draw_asset_library() {
                             UI_Color_Picker_Result result = do_color_picker(selected_material->albedo_color,
                                                                             "albedo-color-picker",
                                                                             "albedo-color-picker-panel",
+                                                                            "albedo-color-picker-slider",
                                                                             false);
                             selected_material->albedo_color = result.color;
                         }

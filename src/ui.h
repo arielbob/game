@@ -128,15 +128,21 @@ enum class UI_Shape_Type {
 
 enum class UI_Shader_Type {
     NONE,
-    HSV
+    HSV,
+    HSV_SLIDER
 };
 
 struct UI_Shader_HSV_Uniforms {
     float degrees;
 };
 
+struct UI_Shader_HSV_Slider_Uniforms {
+    float hue;
+};
+
 union UI_Shader_Uniforms {
     UI_Shader_HSV_Uniforms hsv;
+    UI_Shader_HSV_Slider_Uniforms hsv_slider;
 };
 
 struct UI_Theme {
