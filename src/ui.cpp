@@ -390,6 +390,10 @@ void set_hot_if_above_current_hot(UI_Widget *widget) {
 //       well actually, we want to be able to get the widgets without having to go through the tree. so maybe
 //       just store them in a hash table, keyed by the widget IDs.
 UI_Interact_Result ui_interact(UI_Widget *semantic_widget) {
+    if (!semantic_widget->id.string_ptr || string_equals(semantic_widget->id.string_ptr, "")) {
+        assert(!"Interactable widgets require IDs!");
+    }
+    
     // we don't add widgets with NULL IDs to the table, so to interact with a widget, the widget must have a
     // non-null ID.
     UI_Widget *computed_widget = ui_table_get(ui_manager->last_frame_widget_table, semantic_widget->id);
@@ -1641,7 +1645,7 @@ Vec2_UI_Size_Type get_container_size_type(Vec2_UI_Size_Type theme_size_type) {
     return result;
 }
 
-void ui_push_container(UI_Container_Theme theme, char *id = "") {
+void ui_push_container(UI_Container_Theme theme, char *id = "", uint32 flags = 0) {
     UI_Theme column_theme = {};
     column_theme.size_type = theme.size_type;
     column_theme.semantic_size = theme.size;
@@ -1658,7 +1662,7 @@ void ui_push_container(UI_Container_Theme theme, char *id = "") {
     
     // vertical
     UI_Widget *column = ui_add_and_push_widget(id, column_theme,
-                                               UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
+                                               UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE | flags);
     {
         ui_y_pad(theme.padding.top);
 
@@ -2711,17 +2715,22 @@ UI_Color_Picker_Result do_color_picker(Vec3 color,
     
     // put a container that's in the layout flow, so that the floating panel position
     // is based on where we call do_color_picker()
-    UI_Theme container_theme = {};
-    ui_add_and_push_widget("", container_theme);
+    UI_Theme placeholder_theme = {};
+    ui_add_and_push_widget("", placeholder_theme);
     {
+        UI_Container_Theme content_theme = {};
+        content_theme.padding = { 5.0f, 5.0f, 5.0f, 5.0f };
+        content_theme.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN };
+        content_theme.layout_type = UI_LAYOUT_VERTICAL;
+        content_theme.background_color = DEFAULT_BOX_BACKGROUND;
+        content_theme.position_type = UI_POSITION_FLOAT;
+        // TODO: make a ui_push_container that takes a ui_id object
+        ui_push_container(content_theme, id_string, UI_WIDGET_FORCE_TO_TOP_OF_LAYER);
+        
         UI_Theme panel_theme = {};
-        panel_theme.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN };
-        panel_theme.layout_type = UI_LAYOUT_HORIZONTAL;
-        panel_theme.position_type = UI_POSITION_FLOAT;
-        UI_Widget *panel = ui_add_and_push_widget(id, panel_theme,
-                                                  UI_WIDGET_FORCE_TO_TOP_OF_LAYER | UI_WIDGET_IS_CLICKABLE);
-        ui_interact(panel);
-
+        panel_theme.size_type               = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN };
+        panel_theme.layout_type             = UI_LAYOUT_HORIZONTAL;
+        UI_Widget *panel = ui_add_and_push_widget("", panel_theme);
         {
             UI_Theme hsv_quad_theme = {};
             hsv_quad_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
@@ -2770,7 +2779,7 @@ UI_Color_Picker_Result do_color_picker(Vec3 color,
             
             UI_Theme hsv_slider_theme = {};
             hsv_slider_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_FILL_REMAINING };
-            hsv_slider_theme.semantic_size = { 50.0f, 0.0f };
+            hsv_slider_theme.semantic_size = { 20.0f, 0.0f };
             hsv_slider_theme.background_color = rgb_to_vec4(0, 0, 255);
             hsv_slider_theme.shader_type = UI_Shader_Type::HSV_SLIDER;
             hsv_slider_theme.shader_uniforms.hsv_slider.hue = hsv_color.h;
@@ -2799,6 +2808,7 @@ UI_Color_Picker_Result do_color_picker(Vec3 color,
                 ui_add_widget("", calipers_theme, UI_WIDGET_DRAW_BACKGROUND);
             } ui_pop_widget(); // slider
         } ui_pop_widget(); // panel
+        ui_pop_widget(); // container
     }
     ui_pop_widget();
     
