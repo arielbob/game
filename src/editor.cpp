@@ -1161,9 +1161,11 @@ void draw_asset_library() {
                             replace_contents(&selected_material->albedo_texture_name, texture_names[selected_index]);
                         }
                     } else {
+                        UI_Interact_Result interact_result;
                         bool32 open_color_picker_pressed = do_text_button("Open Color Picker",
                                                                          editor_button_theme,
-                                                                         "open-color-picker");
+                                                                          "open-color-picker", 0,
+                                                                          &interact_result);
                         if (open_color_picker_pressed) {
                             asset_library_state->material_albedo_color_picker_open = !asset_library_state->material_albedo_color_picker_open;
                         }
@@ -1175,7 +1177,7 @@ void draw_asset_library() {
                                                                             "albedo-color-picker-slider",
                                                                             false);
 
-                            if (result.should_hide) {
+                            if (result.should_hide && !interact_result.just_pressed) {
                                 asset_library_state->material_albedo_color_picker_open = false;
                             } else {
                                 selected_material->albedo_color = result.color;

@@ -1549,7 +1549,7 @@ bool32 do_button(UI_id id, UI_Theme theme) {
     return interact_result.released;
 }
 
-bool32 do_text_button(char *text, UI_Button_Theme button_theme, UI_id id) {
+bool32 do_text_button(char *text, UI_Button_Theme button_theme, UI_id id, UI_Interact_Result *interact_out) {
     UI_Theme theme = NULL_THEME;
     theme.semantic_position = button_theme.position;
     theme.size_type = button_theme.size_type;
@@ -1590,11 +1590,16 @@ bool32 do_text_button(char *text, UI_Button_Theme button_theme, UI_id id) {
     
     UI_Interact_Result interact_result = ui_interact(button);
 
+    if (interact_out) {
+        *interact_out = interact_result;
+    }
+
     return interact_result.released;
 }
 
-inline bool32 do_text_button(char *text, UI_Button_Theme button_theme, char *id, int32 index = 0) {
-    return do_text_button(text, button_theme, make_ui_id(id, index));
+inline bool32 do_text_button(char *text, UI_Button_Theme button_theme, char *id, int32 index = 0,
+                             UI_Interact_Result *interact_result = NULL) {
+    return do_text_button(text, button_theme, make_ui_id(id, index), interact_result);
 }
 
 UI_Interact_Result ui_push_empty_button(UI_Button_Theme button_theme, UI_id id) {
