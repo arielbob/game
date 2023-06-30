@@ -1,6 +1,14 @@
 #include "asset.h"
 #include "entity.h"
 
+Material_Info default_material_info = {
+    Material_Type::NONE, 0, make_string(""),
+    0,
+    make_string("texture_default"), make_vec3(0.5f, 0.5f, 0.5f),
+    make_string("texture_default"), 0.0f,
+    make_string("texture_default"), 0.0f
+};
+
 Mesh *get_mesh(String name) {
     uint32 hash = get_hash(name, NUM_MESH_BUCKETS);
 
@@ -653,21 +661,10 @@ void load_default_assets() {
     add_font("calibri24b",      "c:/windows/fonts/calibrib.ttf", 24.0f);
     add_font("lucidaconsole18", "c:/windows/fonts/lucon.ttf",    18.0f);
 
-    Material_Info default_material_info = {};
+    Material_Info material_info = default_material_info;
     
-    default_material_info.name = make_string("default_material");
-    default_material_info.flags = 0;
-
-    default_material_info.albedo_color = make_vec3(0.5f, 0.5f, 0.5f);
-    default_material_info.albedo_texture_name = make_string("texture_default");
-
-    default_material_info.metalness = 0.0f;
-    default_material_info.metalness_texture_name = make_string("texture_default");
-
-    default_material_info.roughness = 0.5f;
-    default_material_info.roughness_texture_name = make_string("texture_default");
-
-    add_material(&default_material_info, Material_Type::DEFAULT);
+    material_info.name = make_string("default_material");
+    add_material(&material_info, Material_Type::DEFAULT);
 }
 
 bool32 generate_asset_name(Allocator *allocator, char *asset_type, int32 max_attempts, String *result) {

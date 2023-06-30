@@ -1052,7 +1052,17 @@ void draw_asset_library() {
                 UI_Button_Theme add_button_theme = editor_button_theme;
                 add_button_theme.size_type.x = UI_SIZE_ABSOLUTE;
                 add_button_theme.size.x = 20.0f;
-                do_text_button("+", add_button_theme, "add_material_button");
+
+                bool32 add_material_clicked = do_text_button("+", add_button_theme, "add_material_button");
+                if (add_material_clicked) {
+                    Material_Info material_info = default_material_info;
+                    Marker m = begin_region();
+                    bool32 gen_result = generate_asset_name(temp_region, "Material", 256, &material_info.name);
+                    assert(gen_result);
+                    
+                    add_material(&material_info, Material_Type::LEVEL);
+                    end_region(m);
+                }
             } ui_pop_widget();
 
             ui_y_pad(5.0f);
