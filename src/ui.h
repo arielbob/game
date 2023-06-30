@@ -314,6 +314,7 @@ struct UI_Text_Field_Result {
 
 struct UI_Color_Picker_State {
     Vec2 relative_cursor_pos;
+    real32 relative_slider_cursor_y; // 0 at top, increases downwards
     real32 hue;
 };
 

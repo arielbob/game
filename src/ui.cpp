@@ -2727,7 +2727,7 @@ UI_Color_Picker_Result do_color_picker(Vec3 color,
             hsv_quad_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
             hsv_quad_theme.semantic_size = quad_size;
             hsv_quad_theme.shader_type = UI_Shader_Type::HSV;
-            hsv_quad_theme.shader_uniforms.hsv.degrees = hsv_color.h;    
+            hsv_quad_theme.shader_uniforms.hsv.degrees = state->hue;
 
             UI_Widget *quad = ui_add_and_push_widget(quad_id, hsv_quad_theme,
                                                      UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_USE_CUSTOM_SHADER | UI_WIDGET_IS_CLICKABLE);
@@ -2773,12 +2773,30 @@ UI_Color_Picker_Result do_color_picker(Vec3 color,
             hsv_slider_theme.semantic_size = { 50.0f, 0.0f };
             hsv_slider_theme.background_color = rgb_to_vec4(0, 0, 255);
             hsv_slider_theme.shader_type = UI_Shader_Type::HSV_SLIDER;
-            hsv_slider_theme.shader_uniforms.hsv_slider.hue = hsv_color.h;    
+            hsv_slider_theme.shader_uniforms.hsv_slider.hue = hsv_color.h;
+            hsv_slider_theme.layout_type = UI_LAYOUT_VERTICAL;
             UI_Widget *hsv_slider = ui_add_and_push_widget(slider_id, hsv_slider_theme,
                                                            UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_USE_CUSTOM_SHADER | UI_WIDGET_IS_CLICKABLE);
             UI_Interact_Result slider_interact = ui_interact(hsv_slider);
+            if (is_active(hsv_slider)) {
+                // only one can be active at a time between slider and hsv quad
+                // have to convert it from top to bottom to bottom to top (bottom is hue_degrees = 0)
+                real32 hue_degrees = 360.0f - 360.0f * (interact.relative_mouse.y / quad_size.y);
+                hue_degrees = clamp(hue_degrees, 0.0f, 360.0f);
+                state->hue = hue_degrees;
+            }
+            
             {
+                // TODO: draw the calipers
+                real32 calipers_relative_y = clamp((1.0f - state->hue / 360.0f) * quad_size.y, 0.0f, quad_size.y);
+                UI_Theme calipers_theme = {};
+                calipers_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_ABSOLUTE };
+                calipers_theme.semantic_size = { 1.0f, 1.0f };
+                calipers_theme.background_color = make_vec4(1.0f, 1.0f, 1.0f, 1.0f);
+                calipers_theme.position_type = UI_POSITION_FLOAT;
+                calipers_theme.semantic_position = { 0.0f, calipers_relative_y };
 
+                ui_add_widget("", calipers_theme, UI_WIDGET_DRAW_BACKGROUND);
             } ui_pop_widget(); // slider
         } ui_pop_widget(); // panel
     }

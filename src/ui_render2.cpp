@@ -13,9 +13,13 @@ bool32 ui_command_should_coalesce(UI_Render_Command command) {
             return false;
         }
         
-        if (command.shader_type != UI_Shader_Type::NONE) {
+        if (command.shader_type != UI_Shader_Type::NONE ||
+            last_command->shader_type != UI_Shader_Type::NONE) {
             // we're using uniforms, and it's annoying to have to check those, so just
-            // don't coalesce whenever we use a custom shader
+            // don't coalesce whenever we use a custom shader.
+            // also, make sure to check previous because even if the current one is
+            // NONE, we don't want to coalesce with the previous and inadvertently
+            // use their shader.
             return false;
         }
 
