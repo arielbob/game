@@ -1174,7 +1174,12 @@ void draw_asset_library() {
                                                                             "albedo-color-picker-panel",
                                                                             "albedo-color-picker-slider",
                                                                             false);
-                            selected_material->albedo_color = result.color;
+
+                            if (result.should_hide) {
+                                asset_library_state->material_albedo_color_picker_open = false;
+                            } else {
+                                selected_material->albedo_color = result.color;
+                            }
                         }
                     }
                 }

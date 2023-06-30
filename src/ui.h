@@ -321,6 +321,7 @@ struct UI_Color_Picker_State {
 struct UI_Color_Picker_Result {
     Vec3 color;
     bool32 committed;
+    bool32 should_hide;
 };
 
 enum class Text_Field_Slider_Mode {
@@ -660,6 +661,7 @@ bool32 in_bounds(Vec2 p, Vec2 widget_position, Vec2 widget_size);
 bool32 in_bounds(Vec2 p, Vec2_int32 widget_position, Vec2_int32 widget_size);
 bool32 in_bounds(Vec2 p, UI_Widget *widget);
 bool32 ui_id_equals(UI_id id1, UI_id id2);
+bool32 ui_id_is_empty(UI_id id);
 real32 get_adjusted_font_height(Font font);
 real32 get_center_x_offset(real32 container_width, real32 element_width);
 real32 get_center_baseline_offset(real32 container_height, real32 text_height);

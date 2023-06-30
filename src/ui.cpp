@@ -390,7 +390,7 @@ void set_hot_if_above_current_hot(UI_Widget *widget) {
 //       well actually, we want to be able to get the widgets without having to go through the tree. so maybe
 //       just store them in a hash table, keyed by the widget IDs.
 UI_Interact_Result ui_interact(UI_Widget *semantic_widget) {
-    if (!semantic_widget->id.string_ptr || string_equals(semantic_widget->id.string_ptr, "")) {
+    if (ui_id_is_empty(semantic_widget->id)) {
         assert(!"Interactable widgets require IDs!");
     }
     
@@ -707,6 +707,25 @@ UI_Color_Picker_State *ui_add_color_picker_state(UI_id id, Vec2 panel_size, Vec3
     _ui_add_state(state);
 
     return color_picker_state;
+}
+
+bool32 ui_widget_is_descendent_of(UI_id child_id, UI_id parent_id) {
+    UI_Widget *child = ui_get_widget(child_id);
+    UI_Widget *parent = ui_get_widget(parent_id);
+
+    assert(child);
+    assert(parent);
+    
+    // returns true if child_id == parent_id as well
+    UI_Widget *current = child;
+    while (current) {
+        if (ui_id_equals(current->id, parent_id)) {
+            return true;
+        }
+        current = current->parent;
+    }
+
+    return false;
 }
 
 void calculate_standalone_size(UI_Widget *widget, UI_Widget_Axis axis) {
@@ -1293,37 +1312,31 @@ void ui_post_update() {
     // window layer should not have any child widgets anymore
     assert(!ui_manager->window_layer->first);
 
-    // now loop through the order to find the highest widget interacted with
-    current = order->first;
-    UI_Widget *highest_widget = NULL;
-    while (current) {
-        UI_Widget *next = current->next;
-        UI_Widget *computed_widget = ui_get_widget_prev_frame(current->id);
-        if (computed_widget) {
-            // TODO: uhh, this doesn't handle stuff that are floating outside of the bounds of the window,
-            //       for example, with dropdowns, but with dropdowns clicking outside hides the dropdown,
-            //       so we would never really be able to click on a dropdown while focused on a different
-            //       window. idk if other things will need this functionality.
-            Vec2 mouse_pos = Context::controller_state->current_mouse;
-            if (just_pressed(Context::controller_state->left_mouse) &&
-                in_bounds(mouse_pos, computed_widget)) {
-                if (highest_widget) {
-                    if (computed_widget->rendering_index > highest_widget->rendering_index) {
-                        highest_widget = current;
-                    }
-                } else {
-                    highest_widget = current;
-                }
+    // find the active widget's window if it exists and move that to the end
+    UI_Widget *active = ui_get_widget(ui_manager->active);
+    UI_Widget *active_window = NULL;
+    if (active) {
+        current = active;
+        while (current) {
+            // note that we check if the parent is the null widget we created because if the widget
+            // was in the widget layer, it'll be a direct child of order now, since we moved them.
+            // if they weren't a child of window layer, then we'll never set active_window, which
+            // is expected since all windows are expected to be under window layer only.
+            if (current->parent && current->parent == order) {
+                active_window = current;
+                break;
             }
-        }
 
-        current = next;
+            current = current->parent;
+        }
     }
 
-    if (highest_widget) {
+    // we only need to do this if we actually find a window. the active widget could
+    // be on the main layer, thus not have a parent window.
+    if (active_window) {
         // add it to the end
-        ui_remove_widget_from_tree(highest_widget);
-        ui_add_existing_widget_to_tree(order, highest_widget);
+        ui_remove_widget_from_tree(active_window);
+        ui_add_existing_widget_to_tree(order, active_window);
     }
 
     // now add all the (ordered) window widgets back to the window layer. also save the order to
@@ -1436,7 +1449,7 @@ inline bool32 ui_has_hot() {
 }
 
 inline bool32 ui_has_active() {
-    return (ui_manager->active.string_ptr != NULL);
+    return !ui_id_is_empty(ui_manager->active);
 }
 
 inline bool32 in_bounds(Vec2 p, real32 x_min, real32 x_max, real32 y_min, real32 y_max) {
@@ -1470,6 +1483,10 @@ inline bool32 in_bounds(Vec2 p, UI_Widget *widget) {
 
 inline bool32 ui_id_equals(UI_id id1, UI_id id2) {
     return ((id1.string_ptr == id2.string_ptr) && (id1.index == id2.index));
+}
+
+inline bool32 ui_id_is_empty(UI_id id) {
+    return (!id.string_ptr || string_equals(id.string_ptr, ""));
 }
 
 inline real32 get_adjusted_font_height(Font font) {
@@ -2084,7 +2101,8 @@ int32 do_dropdown(UI_Dropdown_Theme theme,
         // t is what we use for the transition timing, but it's based on state->t
         real32 t = 1.0f - (1.0f - state->t) * (1.0f - state->t);
 
-        // TODO: idk if we can use t here, since the position won't be the same on both sides of the curve.
+        // we save start_y_offset and just compress the curve for that distance. instead of
+        // trying to convert the position to some t value.
         if (state->is_open) {
             state->y_offset = mix(state->start_y_offset, 0.0f, t);
         } else {
@@ -2141,6 +2159,10 @@ int32 do_dropdown(UI_Dropdown_Theme theme,
     }
     ui_pop_widget();
 
+    // TODO: this can be simplified, right?
+    // - if there's an active widget that's not a child of the parent dropdown widget or
+    // if there's no active widget (all while we just pressed left_mouse), then we hide
+    // the dropdown.
     if (just_pressed(Context::controller_state->left_mouse) &&
         ui_manager->active.string_ptr != button_id_str &&
         ui_manager->active.string_ptr != dropdown_item_id_str &&
@@ -2811,6 +2833,13 @@ UI_Color_Picker_Result do_color_picker(Vec3 color,
         ui_pop_widget(); // container
     }
     ui_pop_widget();
+
+    if (just_pressed(Context::controller_state->left_mouse)) {
+        if (!ui_has_active() || !ui_widget_is_descendent_of(ui_manager->active, id)) {
+            result.should_hide = true;
+        }
+    }
+        
     
     return result;
 }
