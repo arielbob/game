@@ -1036,13 +1036,27 @@ void draw_asset_library() {
     row_theme.semantic_size = { 0.0f, 0.0f };
     row_theme.layout_type = UI_LAYOUT_HORIZONTAL;
 
+    UI_Theme full_row_theme = row_theme;
+    full_row_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
+    full_row_theme.layout_type = UI_LAYOUT_HORIZONTAL_SPACE_BETWEEN;
+    
     ui_push_container(content_theme, "asset-library-content");
     {
         Material *selected_material = NULL;
         
         ui_add_and_push_widget("asset-library-material-list-container", list_container_theme);
         {
-            do_text("Materials");
+            ui_add_and_push_widget("", full_row_theme);
+            {
+                do_y_centered_text("Materials");
+                UI_Button_Theme add_button_theme = editor_button_theme;
+                add_button_theme.size_type.x = UI_SIZE_ABSOLUTE;
+                add_button_theme.size.x = 20.0f;
+                do_text_button("+", add_button_theme, "add_material_button");
+            } ui_pop_widget();
+
+            ui_y_pad(5.0f);
+            
             ui_add_and_push_widget("asset-library-material-list-container", list_theme, UI_WIDGET_DRAW_BACKGROUND);
             {
                 const int32 MAX_MATERIAL_NAMES = 256;
