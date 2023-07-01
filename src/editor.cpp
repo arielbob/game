@@ -1074,6 +1074,7 @@ void draw_asset_library() {
                     
                     Material *new_material = add_material(&material_info, Material_Type::LEVEL);
                     asset_library_state->selected_material_id = new_material->id;
+                    asset_library_state->material_modified = true;
                     
                     end_region(m);
                 }

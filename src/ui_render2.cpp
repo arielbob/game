@@ -112,6 +112,10 @@ void ui_push_command(UI_Render_Command command,
 }
 
 void set_scissor(UI_Render_Command *command, UI_Widget *widget) {
+    if (widget->scissor_type == UI_SCISSOR_NONE) {
+        return;
+    }
+    
     if (widget->scissor_type == UI_SCISSOR_COMPUTED_SIZE) {
         command->use_scissor = true;
         command->scissor_position = make_vec2_int32(widget->computed_position);
@@ -132,7 +136,7 @@ void set_scissor(UI_Render_Command *command, UI_Widget *widget) {
 
                 widget->computed_scissor_position = command->scissor_position;
                 widget->computed_scissor_dimensions = command->scissor_dimensions;
-                return;
+                break;
             } else if (current->scissor_type == UI_SCISSOR_NONE) {
                 assert(!"UI_SCISSOR_INHERIT cannot be used on a widget that does not have a parent with a scissor region.");
                 return;
@@ -142,9 +146,36 @@ void set_scissor(UI_Render_Command *command, UI_Widget *widget) {
 
             current = current->parent;
         }
-        
-        assert(!"UI_SCISSOR_INHERIT cannot be used on root or on a widget that does not have a parent without a scissor region.");
+
+        if (!current) {
+            // this should only be reached if we exit the loop because current is null
+            assert(!"UI_SCISSOR_INHERIT cannot be used on root or on a widget that does not have a parent without a scissor region.");
+            return;
+        }
     }
+
+    // bound the scissor rect to be within the window or else weird things happen
+    Display_Output *display_output = &game_state->render_state.display_output;
+
+    assert(command->scissor_dimensions.x >= 0);
+    assert(command->scissor_dimensions.y >= 0);
+
+    int32 left = command->scissor_position.x;
+    int32 right = command->scissor_position.x + command->scissor_dimensions.x;
+
+    int32 top = command->scissor_position.y;
+    int32 bottom = command->scissor_position.y + command->scissor_dimensions.y;
+
+    left   = clamp(left, 0, display_output->width);
+    right  = clamp(right, 0, display_output->width);
+    top    = clamp(top, 0, display_output->height);
+    bottom = clamp(bottom, 0, display_output->height);
+
+    assert(right >= left);
+    assert(bottom >= top);
+
+    command->scissor_position = { left, top };
+    command->scissor_dimensions = { right - left, bottom - top };
 }
 
 void generate_vertices(UI_Widget *widget, Allocator *allocator,
