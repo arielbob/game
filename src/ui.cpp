@@ -3,6 +3,11 @@
 #define DEFAULT_BUTTON_BACKGROUND rgb_to_vec4(50, 50, 60)
 #define DEFAULT_BUTTON_HOT_BACKGROUND rgb_to_vec4(60, 60, 72)
 #define DEFAULT_BUTTON_ACTIVE_BACKGROUND rgb_to_vec4(9, 9, 10)
+
+#define DANGER_BUTTON_BACKGROUND rgb_to_vec4(199, 45, 18)
+#define DANGER_BUTTON_HOT_BACKGROUND rgb_to_vec4(222, 80, 55)
+#define DANGER_BUTTON_ACTIVE_BACKGROUND rgb_to_vec4(69, 16, 6)
+
 #define DEFAULT_BOX_BACKGROUND rgb_to_vec4(24, 24, 28)
 #define DEFAULT_DARK_BACKGROUND rgb_to_vec4(51, 51, 54)
 

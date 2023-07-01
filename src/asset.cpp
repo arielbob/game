@@ -308,6 +308,45 @@ Material *get_material(int32 id) {
     return NULL;
 }
 
+void delete_material(int32 id) {
+    Material *material = get_material(id);
+
+    if (!material) {
+        assert(!"Material does not exist.");
+        return;
+    }
+    
+    uint32 hash = get_hash(id, NUM_MATERIAL_BUCKETS);
+    
+    if (material->table_prev) {
+        material->table_prev->table_next = material->table_next;
+    } else {
+        // if we're first in list, we need to update bucket array when we delete
+        asset_manager->material_table[hash] = material->table_next;
+    }
+
+    if (material->table_next) {
+        material->table_next->table_prev = material->table_prev;
+    }
+    
+    deallocate(material);
+    deallocate(asset_manager->allocator, material);
+
+    // set entity materials to default if they had the deleted material
+    Material *default_material = get_material(make_string("default_material"));
+    
+    Entity *current = game_state->level.entities;
+    while (current) {
+        if (current->flags & ENTITY_MATERIAL) {
+            if (current->material_id == id) {
+                set_material(current, default_material->id);
+            }
+        }
+
+        current = current->next;
+    }
+}
+
 void get_material_names(Allocator *allocator, char **names, int max_names, int *num_names) {
     int32 num_material_names = 0;
     for (int32 i = 0; i < NUM_MATERIAL_BUCKETS; i++) {

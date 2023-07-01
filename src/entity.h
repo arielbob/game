@@ -59,4 +59,6 @@ void deallocate(Entity *entity) {
     }
 }
 
+void set_material(Entity *entity, int32 material_id);
+
 #endif

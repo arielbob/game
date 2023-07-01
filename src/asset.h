@@ -151,6 +151,10 @@ struct Material {
 
 void deallocate(Material *material) {
     deallocate(material->name);
+
+    deallocate(material->albedo_texture_name);
+    deallocate(material->metalness_texture_name);
+    deallocate(material->roughness_texture_name);
 }
 
 struct Asset_Manager {

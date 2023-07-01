@@ -4,7 +4,9 @@
 #define ASSET_HEAP_SIZE MEGABYTES(128)
 #define LEVEL_HEAP_SIZE MEGABYTES(256)
 
-#define MAX_MATERIALS 64
+// TODO: i'm pretty sure we don't use a lot of these... since we moved to using a hash table
+// with linked lists instead of static arrays
+//#define MAX_MATERIALS 64
 #define MAX_TEXTURES 64
 #define MAX_ENTITIES 64
 #define MAX_POINT_LIGHTS 16

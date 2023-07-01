@@ -99,6 +99,14 @@ void update_entity_scale(Entity *entity, Vec3 new_scale) {
 #endif
 }
 
+void set_material(Entity *entity, int32 material_id) {
+    assert(entity->flags & ENTITY_MATERIAL);
+
+    // i think it's fine to not assert finding the material so that we don't need to
+    // look for it. we'll assert later on anyways since we eventually call get_material(id)
+    entity->material_id = material_id;
+}
+
 void set_material(Entity *entity, String name) {
     assert(entity->flags & ENTITY_MATERIAL);
 
