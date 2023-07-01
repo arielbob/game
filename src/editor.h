@@ -18,15 +18,21 @@
 #define MESH_LIBRARY_WINDOW     1 << 3
 
 struct Asset_Library_State {
+    bool32 material_modified;
+    bool32 material_albedo_color_picker_open;
+    #if 0
     bool32 material_name_modified;
     bool32 material_albedo_texture_modified;
-    bool32 material_albedo_color_picker_open;
+    
     
     bool32 material_metalness_modified;
     bool32 material_metalness_texture_modified;
 
     bool32 material_roughness_modified;
     bool32 material_roughness_texture_modified;
+    #endif
+
+    int32 selected_material_id = -1;
 };
 
 struct Editor_State {

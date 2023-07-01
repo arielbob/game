@@ -64,6 +64,24 @@ UI_Checkbox_Theme editor_checkbox_theme = {
     { 20.0f, 20.0f }
 };
 
+void reset_asset_library_state() {
+    Asset_Library_State *asset_library_state = &game_state->editor_state.asset_library_state;
+
+    asset_library_state->material_modified = true;
+
+#if 0
+    asset_library_state->material_albedo_texture_modified = true;
+
+    asset_library_state->material_metalness_modified = true;
+    asset_library_state->material_metalness_texture_modified = true;
+
+    asset_library_state->material_roughness_modified = true;
+    asset_library_state->material_roughness_texture_modified = true;
+#endif
+
+    asset_library_state->selected_material_id = -1;
+}
+
 void init_editor(Arena_Allocator *editor_arena, Editor_State *editor_state, Display_Output display_output) {
     *editor_state = {};
 
@@ -75,6 +93,8 @@ void init_editor(Arena_Allocator *editor_arena, Editor_State *editor_state, Disp
     editor_state->show_colliders = true;
     editor_state->is_startup = true;
 
+    reset_asset_library_state();
+    
     init_camera(&editor_state->camera, &display_output, CAMERA_FOV);
 
     // init gizmo
@@ -445,15 +465,7 @@ void reset_editor(Editor_State *editor_state) {
     editor_state->selected_entity_id = -1;
     editor_state->last_selected_entity_id = -1;
 
-    Asset_Library_State *asset_library_state = &editor_state->asset_library_state;
-    asset_library_state->material_name_modified = true;
-    asset_library_state->material_albedo_texture_modified = true;
-
-    asset_library_state->material_metalness_modified = true;
-    asset_library_state->material_metalness_texture_modified = true;
-
-    asset_library_state->material_roughness_modified = true;
-    asset_library_state->material_roughness_texture_modified = true;
+    reset_asset_library_state();
 }
 
 #if 0
@@ -1060,7 +1072,9 @@ void draw_asset_library() {
                     bool32 gen_result = generate_asset_name(temp_region, "Material", 256, &material_info.name);
                     assert(gen_result);
                     
-                    add_material(&material_info, Material_Type::LEVEL);
+                    Material *new_material = add_material(&material_info, Material_Type::LEVEL);
+                    asset_library_state->selected_material_id = new_material->id;
+                    
                     end_region(m);
                 }
             } ui_pop_widget();
@@ -1069,42 +1083,47 @@ void draw_asset_library() {
             
             ui_add_and_push_widget("asset-library-material-list-container", list_theme, UI_WIDGET_DRAW_BACKGROUND);
             {
-                const int32 MAX_MATERIAL_NAMES = 256;
-                char *material_names[MAX_MATERIAL_NAMES];
-                int32 num_material_names = 0;
-                int32 selected_index = 0;
-                for (int32 i = 0; i < NUM_MATERIAL_BUCKETS; i++) {
-                    Material *current = asset_manager->material_table[i];
-                    while (current) {
-                        if (current->type == Material_Type::LEVEL) {
-                            assert(num_material_names < MAX_MATERIAL_NAMES);
-                            int32 dropdown_index = num_material_names;
-                            material_names[dropdown_index] = to_char_array((Allocator *) &ui_manager->frame_arena,
-                                                                           current->name);
-                            num_material_names++;
-                        }
-
-                        current = current->table_next;
-                    }
-                }
-
                 UI_Button_Theme item_theme = editor_button_theme;
 
                 UI_Button_Theme selected_item_theme = item_theme;
                 selected_item_theme.background_color = rgb_to_vec4(61, 96, 252);
                 selected_item_theme.hot_background_color = selected_item_theme.background_color;
                 selected_item_theme.active_background_color = selected_item_theme.background_color;
+                
+                // don't use i for the button indices because that's for buckets and
+                // not the actual materials we've visited
+                int32 button_index = 0; 
+                for (int32 i = 0; i < NUM_MATERIAL_BUCKETS; i++) {
+                    Material *current = asset_manager->material_table[i];
+                    while (current) {
+                        if (current->type == Material_Type::LEVEL) {
+                            if (button_index == 0 && asset_library_state->selected_material_id < 0) {
+                                // select the first one by default
+                                asset_library_state->selected_material_id = current->id;
+                            }
+                            
+                            char *material_name = to_char_array((Allocator *) &ui_manager->frame_arena,
+                                                                current->name);
 
-                for(int32 i = 0; i < num_material_names; i++) {
-                    if (i == selected_index) {
-                        Marker m = begin_region();
-                        selected_material = get_material(make_string(temp_region, material_names[i]));
-                        end_region(m);
+                            bool32 is_selected = current->id == asset_library_state->selected_material_id;
+                            bool32 pressed = do_text_button(material_name,
+                                                            is_selected ? selected_item_theme : item_theme,
+                                                            "asset-library-material-list-item", button_index);
+
+                            if (pressed || is_selected) {
+                                if (asset_library_state->selected_material_id != current->id) {
+                                    asset_library_state->selected_material_id = current->id;
+                                    asset_library_state->material_modified = true;
+                                }
+                                
+                                selected_material = current;
+                            }
+                            
+                            button_index++;
+                        }
+
+                        current = current->table_next;
                     }
-                    
-                    do_text_button(material_names[i],
-                                   (i == selected_index) ? selected_item_theme : item_theme,
-                                   "asset-library-material-list-item", i);
                 }
             }
             ui_pop_widget();
@@ -1125,12 +1144,9 @@ void draw_asset_library() {
                     field_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
                     field_theme.size.x = 0.0f;
                     UI_Text_Field_Result name_result = do_text_field(field_theme, selected_material->name,
-                                                                     asset_library_state->material_name_modified,
+                                                                     asset_library_state->material_modified,
                                                                      "material_name_text_field",
                                                                      "material_name_text_field_text");
-            
-                    // this needs to be directly after the above do_text_field because it's what "consumes" it
-                    asset_library_state->material_name_modified = false;
 
                     if (name_result.committed) {
                         if (!string_equals(name_result.text, selected_material->name) && name_result.text.length > 0) {
@@ -1141,7 +1157,7 @@ void draw_asset_library() {
                             }
                         }
 
-                        asset_library_state->material_name_modified = true;
+                        asset_library_state->material_modified = true;
                     }
                 }
 
@@ -1177,9 +1193,7 @@ void draw_asset_library() {
                                                                     "albedo_texture_dropdown",
                                                                     "albedo_texture_dropdown_inner",
                                                                     "albedo_texture_dropdown_item",
-                                                                    asset_library_state->material_albedo_texture_modified);
-                        // i don't think there's any need right now to reset this
-                        asset_library_state->material_albedo_texture_modified = false;
+                                                                    asset_library_state->material_modified);
                         if (dropdown_selected_index != selected_index) {
                             selected_index = dropdown_selected_index;
                             replace_contents(&selected_material->albedo_texture_name, texture_names[selected_index]);
@@ -1237,8 +1251,7 @@ void draw_asset_library() {
                                                                     "metalness_texture_dropdown",
                                                                     "metalness_texture_dropdown_inner",
                                                                     "metalness_texture_dropdown_item",
-                                                                    asset_library_state->material_metalness_texture_modified);
-                        asset_library_state->material_metalness_texture_modified = false;
+                                                                    asset_library_state->material_modified);
                         if (dropdown_selected_index != selected_index) {
                             selected_index = dropdown_selected_index;
                             replace_contents(&selected_material->metalness_texture_name, texture_names[selected_index]);
@@ -1250,7 +1263,7 @@ void draw_asset_library() {
                                                                             editor_slider_theme,
                                                                             "material-metalness-slider",
                                                                             "material-metalness-slider",
-                                                                            asset_library_state->material_metalness_modified);
+                                                                            asset_library_state->material_modified);
                     }
                     ui_y_pad(5.0f);
                 }
@@ -1282,8 +1295,7 @@ void draw_asset_library() {
                                                                     "roughness_texture_dropdown",
                                                                     "roughness_texture_dropdown_inner",
                                                                     "roughness_texture_dropdown_item",
-                                                                    asset_library_state->material_roughness_texture_modified);
-                        asset_library_state->material_roughness_texture_modified = false;
+                                                                    asset_library_state->material_modified);
                         if (dropdown_selected_index != selected_index) {
                             selected_index = dropdown_selected_index;
                             replace_contents(&selected_material->roughness_texture_name, texture_names[selected_index]);
@@ -1295,10 +1307,13 @@ void draw_asset_library() {
                                                                             editor_slider_theme,
                                                                             "material-roughness-slider",
                                                                             "material-roughness-slider",
-                                                                            asset_library_state->material_roughness_modified);
+                                                                            asset_library_state->material_modified);
                     }
                     
                     ui_y_pad(5.0f);
+
+                    // all the consumers of this have ran
+                    asset_library_state->material_modified = false;
                 }
             }
         }
@@ -1518,6 +1533,9 @@ void draw_editor(Controller_State *controller_state) {
 
         UI_Window_Theme window_theme = DEFAULT_WINDOW_THEME;
         if (open_material_library_clicked) {
+            if (!editor_state->is_material_library_window_open) {
+                reset_asset_library_state();
+            }
             editor_state->is_material_library_window_open = !editor_state->is_material_library_window_open;
         }
 
