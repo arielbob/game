@@ -54,8 +54,7 @@ enum UI_Layout_Type {
     UI_LAYOUT_HORIZONTAL,
     UI_LAYOUT_VERTICAL,
     UI_LAYOUT_CENTER,
-    UI_LAYOUT_HORIZONTAL_SPACE_BETWEEN,
-    //UI_LAYOUT_VERTICAL_SPACE_BETWEEN
+    UI_LAYOUT_HORIZONTAL_SPACE_BETWEEN
 };
 
 /*
@@ -272,6 +271,11 @@ struct UI_Checkbox_Theme {
     Vec4 check_color;
     
     Vec2 size;
+};
+
+struct UI_Scrollable_Region_Theme {
+    Vec2_UI_Size_Type size_type;
+    Vec4 background_color;
 };
 
 struct UI_id {

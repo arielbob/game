@@ -1042,7 +1042,7 @@ void draw_asset_library() {
     
     UI_Theme list_theme = NULL_THEME;
     list_theme.layout_type = UI_LAYOUT_VERTICAL;
-    list_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
+    list_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
     list_theme.background_color = { 0.0f, 0.0f, 0.0f, 1.0f };
 
     UI_Dropdown_Theme dropdown_theme = {};
@@ -1094,7 +1094,14 @@ void draw_asset_library() {
             } ui_pop_widget();
 
             ui_y_pad(5.0f);
-            
+
+            UI_Scrollable_Region_Theme list_scroll_region_theme = {};
+            list_scroll_region_theme.background_color = rgb_to_vec4(0, 0, 0);
+            list_scroll_region_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
+
+            push_scrollable_region(list_scroll_region_theme, 0,
+                                   "material-list-scroll-region", "material-list-scroll-region-scrollbar",
+                                   "material-list-scroll-region-handle");
             ui_add_and_push_widget("asset-library-material-list-container", list_theme, UI_WIDGET_DRAW_BACKGROUND);
             {
                 UI_Button_Theme item_theme = editor_button_theme;
@@ -1143,7 +1150,8 @@ void draw_asset_library() {
                     }
                 }
             }
-            ui_pop_widget();
+            ui_pop_widget(); // asset-library-material-list-container
+            ui_pop_widget(); // scrollable region
         }
         ui_pop_widget();
 

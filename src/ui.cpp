@@ -2854,3 +2854,62 @@ UI_Color_Picker_Result do_color_picker(Vec3 color,
     return result;
 }
 
+void push_scrollable_region(UI_Scrollable_Region_Theme theme, bool32 force_reset,
+                            char *id_string, char *scrollbar_id_string, char *handle_id_string,
+                            int32 index = 0) {
+    // we just use the computed size to figure out if we're outside of the scrollable region
+    // on the first run, idk what our scissor region will be... i guess we can just make it blank
+    
+    UI_Theme container_theme = {};
+
+    // TODO: only y is scrollable; if/when we add scrollable x, then we should do this check
+    // with x as well.
+    assert(theme.size_type.y != UI_SIZE_FIT_CHILDREN);
+
+    container_theme.size_type = theme.size_type;
+    container_theme.layout_type = UI_LAYOUT_HORIZONTAL;
+    container_theme.background_color = theme.background_color;
+    container_theme.hot_background_color = theme.background_color;
+    container_theme.active_background_color = theme.background_color;
+
+    UI_Widget *inner_widget = NULL;
+    
+    UI_id id = make_ui_id(id_string, index);
+    UI_id handle_id = make_ui_id(handle_id_string, index);
+    UI_id scrollbar_id = make_ui_id(scrollbar_id_string, index);
+    
+    UI_Widget *container = ui_add_and_push_widget(id, container_theme,
+                                                  UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
+    ui_interact(container);
+
+    {
+        UI_Theme inner_theme = {};
+        inner_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
+        // this doesn't really matter; it's just that it can't be UI_LAYOUT_NONE or else its children will
+        // not be laid out inside it
+        inner_theme.layout_type = UI_LAYOUT_VERTICAL; 
+
+        inner_widget = ui_add_widget("", inner_theme);
+
+        UI_Theme scrollbar_theme = {};
+        scrollbar_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_FILL_REMAINING };
+        scrollbar_theme.layout_type = UI_LAYOUT_VERTICAL;
+        scrollbar_theme.semantic_size = { 20.0f, 0.0f };
+
+        ui_add_and_push_widget(scrollbar_id, scrollbar_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
+        {
+            UI_Theme handle_theme = {};
+            handle_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
+            handle_theme.semantic_size = { 0.0f, 30.0f };
+            handle_theme.background_color = rgb_to_vec4(0, 0, 255);
+            handle_theme.hot_background_color = rgb_to_vec4(0, 255, 0);
+            handle_theme.active_background_color = rgb_to_vec4(255, 0, 0);
+            
+            UI_Widget *handle = ui_add_widget(handle_id, handle_theme,
+                                              UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
+            ui_interact(handle);
+        } ui_pop_widget(); // scrollbar
+    } ui_pop_widget(); // container
+
+    ui_push_existing_widget(inner_widget);
+}
