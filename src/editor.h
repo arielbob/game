@@ -35,6 +35,15 @@ struct Asset_Library_State {
     int32 selected_material_id = -1;
 };
 
+struct Entity_Properties_State {
+    // this is mainly to save heading/pitch/roll so that we don't end up
+    // overwriting values with their canonical values. for example, pitch
+    // should be allowed to go past 90 degs and below -90 degs, at least
+    // when sliding, for a better UX.
+    Euler_Transform transform;
+    bool32 is_rotation_being_modified;
+};
+
 struct Editor_State {
     Arena_Allocator *arena;
     
@@ -58,6 +67,7 @@ struct Editor_State {
     Gizmo_State gizmo_state;
 
     Asset_Library_State asset_library_state;
+    Entity_Properties_State entity_properties_state;
     
     bool32 is_material_library_window_open;
 };

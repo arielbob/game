@@ -76,19 +76,16 @@ void reset_asset_library_state() {
     Asset_Library_State *asset_library_state = &game_state->editor_state.asset_library_state;
 
     asset_library_state->material_modified = true;
-
-#if 0
-    asset_library_state->material_albedo_texture_modified = true;
-
-    asset_library_state->material_metalness_modified = true;
-    asset_library_state->material_metalness_texture_modified = true;
-
-    asset_library_state->material_roughness_modified = true;
-    asset_library_state->material_roughness_texture_modified = true;
-#endif
-
     asset_library_state->selected_material_id = -1;
 }
+
+void reset_entity_properties_state() {
+    // TODO: we don't really have a situation where the rotation can change while you're
+    //       interacting with a text field slider, and i don't really feel like writing
+    //       something to test it right now.. so behaviour might be weird in that case.
+    Entity_Properties_State *entity_properties_state = &game_state->editor_state.entity_properties_state;
+    entity_properties_state->is_rotation_being_modified = false;
+};
 
 void init_editor(Arena_Allocator *editor_arena, Editor_State *editor_state, Display_Output display_output) {
     *editor_state = {};
@@ -102,6 +99,7 @@ void init_editor(Arena_Allocator *editor_arena, Editor_State *editor_state, Disp
     editor_state->is_startup = true;
 
     reset_asset_library_state();
+    reset_entity_properties_state();
     
     init_camera(&editor_state->camera, &display_output, CAMERA_FOV);
 
@@ -474,6 +472,7 @@ void reset_editor(Editor_State *editor_state) {
     editor_state->last_selected_entity_id = -1;
 
     reset_asset_library_state();
+    reset_entity_properties_state();
 }
 
 #if 0
@@ -755,6 +754,8 @@ void draw_entity_box_2(bool32 force_reset) {
     assert(editor_state->selected_entity_id > -1);
     Entity *entity = get_entity(&game_state->level, editor_state->selected_entity_id);
 
+    Entity_Properties_State *properties_state = &editor_state->entity_properties_state;
+    
     UI_Container_Theme content_theme = {
         { 5.0f, 5.0f, 5.0f, 5.0f },
         DEFAULT_BOX_BACKGROUND,
@@ -806,9 +807,10 @@ void draw_entity_box_2(bool32 force_reset) {
             ui_pop_widget();
             
             ui_x_pad(1.0f);
-            new_position.x = do_text_field_slider(transform->position.x, slider_theme,
-                                                  "position-x-slider", "position-x-slider-text",
-                                                  force_reset);
+            UI_Text_Field_Slider_Result result = do_text_field_slider(transform->position.x, slider_theme,
+                                                                      "position-x-slider",
+                                                                      "position-x-slider-text");
+            new_position.x = result.value;
         } ui_pop_widget();
 
         ui_y_pad(1.0f);
@@ -819,9 +821,11 @@ void draw_entity_box_2(bool32 force_reset) {
             ui_pop_widget();
 
             ui_x_pad(1.0f);
-            new_position.y = do_text_field_slider(transform->position.y, slider_theme,
-                                                  "position-y-slider", "position-y-slider-text",
-                                                  force_reset);
+
+            UI_Text_Field_Slider_Result result = do_text_field_slider(transform->position.y, slider_theme,
+                                                                      "position-y-slider",
+                                                                      "position-y-slider-text");
+            new_position.y = result.value;
         } ui_pop_widget();
 
         ui_y_pad(1.0f);
@@ -832,9 +836,10 @@ void draw_entity_box_2(bool32 force_reset) {
             ui_pop_widget();
 
             ui_x_pad(1.0f);
-            new_position.z = do_text_field_slider(transform->position.z, slider_theme,
-                                                  "position-z-slider", "position-z-slider-text",
-                                                  force_reset);
+            UI_Text_Field_Slider_Result result = do_text_field_slider(transform->position.z, slider_theme,
+                                                                      "position-z-slider",
+                                                                      "position-z-slider-text");
+            new_position.z = result.value;
         } ui_pop_widget();
 
         update_entity_position(entity, new_position);
@@ -844,9 +849,17 @@ void draw_entity_box_2(bool32 force_reset) {
         // i think usually if you're doing rotations, you'll just use the gizmos.
         // they're weird because you have to be aware of the euler rotation order (roll, pitch, heading
         // or z, x, y) to know what the result of your inputs will be.
-        Vec3 euler_rotation;
-        get_euler_angles_from_quaternion(transform->rotation, &euler_rotation);
-        real32 roll_degs, pitch_degs, heading_degs;
+
+        if (editor_state->selected_entity_modified && !properties_state->is_rotation_being_modified) {
+            Vec3 euler_rotation;
+            get_euler_angles_from_quaternion(transform->rotation, &euler_rotation);
+
+            properties_state->transform.roll = rads_to_degs(euler_rotation.z);
+            properties_state->transform.pitch = rads_to_degs(euler_rotation.x);
+            properties_state->transform.heading = rads_to_degs(euler_rotation.y);
+        } else {
+            properties_state->is_rotation_being_modified = false;
+        }
         
         do_text("Rotation");
         ui_y_pad(1.0f);
@@ -858,9 +871,14 @@ void draw_entity_box_2(bool32 force_reset) {
             ui_pop_widget();
             
             ui_x_pad(1.0f);
-            pitch_degs = do_text_field_slider(rads_to_degs(euler_rotation.x), slider_theme,
-                                              "rotation-x-slider", "rotation-x-slider-text",
-                                              force_reset);
+            UI_Text_Field_Slider_Result result = do_text_field_slider(properties_state->transform.pitch,
+                                                                      slider_theme,
+                                                                      "rotation-x-slider",
+                                                                      "rotation-x-slider-text");
+            properties_state->transform.pitch = result.value;
+            if (result.mode != UI_Text_Field_Slider_Mode::NONE) {
+                properties_state->is_rotation_being_modified = true;
+            }
         } ui_pop_widget();
 
         ui_y_pad(1.0f);
@@ -871,9 +889,14 @@ void draw_entity_box_2(bool32 force_reset) {
             ui_pop_widget();
 
             ui_x_pad(1.0f);
-            heading_degs = do_text_field_slider(rads_to_degs(euler_rotation.y), slider_theme,
-                                                "rotation-y-slider", "rotation-y-slider-text",
-                                                force_reset);
+            UI_Text_Field_Slider_Result result = do_text_field_slider(properties_state->transform.heading,
+                                                                      slider_theme,
+                                                                      "rotation-y-slider",
+                                                                      "rotation-y-slider-text");
+            properties_state->transform.heading = result.value;
+            if (result.mode != UI_Text_Field_Slider_Mode::NONE) {
+                properties_state->is_rotation_being_modified = true;
+            }
         } ui_pop_widget();
 
         ui_y_pad(1.0f);
@@ -884,12 +907,19 @@ void draw_entity_box_2(bool32 force_reset) {
             ui_pop_widget();
 
             ui_x_pad(1.0f);
-            roll_degs = do_text_field_slider(rads_to_degs(euler_rotation.z), slider_theme,
-                                             "rotation-z-slider", "rotation-z-slider-text",
-                                             force_reset);
+            UI_Text_Field_Slider_Result result = do_text_field_slider(properties_state->transform.roll,
+                                                                      slider_theme,
+                                                                      "rotation-z-slider",
+                                                                      "rotation-z-slider-text");
+            properties_state->transform.roll = result.value;
+            if (result.mode != UI_Text_Field_Slider_Mode::NONE) {
+                properties_state->is_rotation_being_modified = true;
+            }
         } ui_pop_widget();
 
-        Quaternion new_rotation = make_quaternion(roll_degs, pitch_degs, heading_degs);
+        Quaternion new_rotation = make_quaternion(properties_state->transform.roll,
+                                                  properties_state->transform.pitch,
+                                                  properties_state->transform.heading);
         update_entity_rotation(entity, new_rotation);
         ui_y_pad(5.0f);
 
@@ -905,9 +935,10 @@ void draw_entity_box_2(bool32 force_reset) {
             ui_pop_widget();
             
             ui_x_pad(1.0f);
-            new_scale.x = do_text_field_slider(transform->scale.x, slider_theme,
-                                               "scale-x-slider", "scale-x-slider-text",
-                                               force_reset);
+            UI_Text_Field_Slider_Result result = do_text_field_slider(transform->scale.x, slider_theme,
+                                                                      "scale-x-slider",
+                                                                      "scale-x-slider-text");
+            new_scale.x = result.value;
         } ui_pop_widget();
 
         ui_y_pad(1.0f);
@@ -918,9 +949,10 @@ void draw_entity_box_2(bool32 force_reset) {
             ui_pop_widget();
 
             ui_x_pad(1.0f);
-            new_scale.y = do_text_field_slider(transform->scale.y, slider_theme,
-                                               "scale-y-slider", "scale-y-slider-text",
-                                               force_reset);
+            UI_Text_Field_Slider_Result result = do_text_field_slider(transform->scale.y, slider_theme,
+                                                                      "scale-y-slider",
+                                                                      "scale-y-slider-text");
+            new_scale.y = result.value;
         } ui_pop_widget();
 
         ui_y_pad(1.0f);
@@ -931,9 +963,10 @@ void draw_entity_box_2(bool32 force_reset) {
             ui_pop_widget();
 
             ui_x_pad(1.0f);
-            new_scale.z = do_text_field_slider(transform->scale.z, slider_theme,
-                                               "scale-z-slider", "scale-z-slider-text",
-                                               force_reset);
+            UI_Text_Field_Slider_Result result = do_text_field_slider(transform->scale.z, slider_theme,
+                                                                      "scale-z-slider",
+                                                                      "scale-z-slider-text");
+            new_scale.z = result.value;
         } ui_pop_widget();
 
         update_entity_scale(entity, new_scale);
@@ -1218,6 +1251,7 @@ void draw_asset_library() {
                             int32 selected_index = get_selected_name_index(selected_material->albedo_texture_name,
                                                                            texture_names, num_texture_names);
                             assert(selected_index >= 0);
+
                             int32 dropdown_selected_index = do_dropdown(dropdown_theme,
                                                                         texture_names, num_texture_names,
                                                                         selected_index,
@@ -1290,12 +1324,12 @@ void draw_asset_library() {
                             }
                         } else {
                             do_text("Metalness");
-                            selected_material->metalness = do_text_field_slider(selected_material->metalness,
-                                                                                0.0f, 1.0f,
-                                                                                editor_slider_theme,
-                                                                                "material-metalness-slider",
-                                                                                "material-metalness-slider",
-                                                                                asset_library_state->material_modified);
+                            UI_Text_Field_Slider_Result result = do_text_field_slider(selected_material->metalness,
+                                                                                      0.0f, 1.0f,
+                                                                                      editor_slider_theme,
+                                                                                      "material-metalness-slider",
+                                                                                      "material-metalness-slider");
+                            selected_material->metalness = result.value;
                         }
                         ui_y_pad(5.0f);
                     }
@@ -1334,12 +1368,12 @@ void draw_asset_library() {
                             }
                         } else {
                             do_text("Roughness");
-                            selected_material->roughness = do_text_field_slider(selected_material->roughness,
-                                                                                0.0f, 1.0f,
-                                                                                editor_slider_theme,
-                                                                                "material-roughness-slider",
-                                                                                "material-roughness-slider",
-                                                                                asset_library_state->material_modified);
+                            UI_Text_Field_Slider_Result result = do_text_field_slider(selected_material->roughness,
+                                                                                      0.0f, 1.0f,
+                                                                                      editor_slider_theme,
+                                                                                      "material-roughness-slider",
+                                                                                      "material-roughness-slider");
+                            selected_material->roughness = result.value;
                         }
                     
                         ui_y_pad(5.0f);

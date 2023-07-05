@@ -2402,12 +2402,12 @@ void ui_add_slider_bar(UI_Slider_Theme theme, real32 value, real32 min, real32 m
     ui_add_widget("", slider_theme, UI_WIDGET_DRAW_BACKGROUND);
 }
 
-real32 do_text_field_slider(real32 value,
-                            real32 min_value, real32 max_value,
-                            UI_Text_Field_Slider_Theme theme,
-                            char *id_string, char *text_id_string,
-                            bool32 force_reset,
-                            bool32 check_bounds = true, int32 index = 0) {
+UI_Text_Field_Slider_Result do_text_field_slider(real32 value,
+                                                 real32 min_value, real32 max_value,
+                                                 UI_Text_Field_Slider_Theme theme,
+                                                 char *id_string, char *text_id_string,
+                                                 bool32 force_reset = false,
+                                                 bool32 check_bounds = true, int32 index = 0) {
     UI_id id = make_ui_id(id_string, index);
     UI_Widget_State *state_variant = ui_get_state(id);
     UI_Text_Field_Slider_State *state;
@@ -2423,7 +2423,7 @@ real32 do_text_field_slider(real32 value,
     }
     
     UI_Text_Field_State *text_field_state = &state->text_field_state;
-    
+
     UI_Theme textbox_theme = {};
     textbox_theme.layout_type             = UI_LAYOUT_HORIZONTAL;
     textbox_theme.size_type               = theme.size_type;
@@ -2457,28 +2457,29 @@ real32 do_text_field_slider(real32 value,
     }
 
     if (interact.holding) {
-        if (state->mode == Text_Field_Slider_Mode::NONE) {
+        if (state->mode == UI_Text_Field_Slider_Mode::NONE) {
             real32 x_delta = fabsf((interact.relative_mouse - state->mouse_press_start_relative_pos).x);
         
             if (x_delta > deadzone) {
-                state->mode = Text_Field_Slider_Mode::SLIDING;
+                state->mode = UI_Text_Field_Slider_Mode::SLIDING;
             }
             // maybe if we hold it long enough in the deadzone, we just turn into typing?
         }
     } else if (interact.released) {
-        if (state->mode != Text_Field_Slider_Mode::SLIDING) {
-            state->mode = Text_Field_Slider_Mode::TYPING;
+        if (state->mode != UI_Text_Field_Slider_Mode::SLIDING) {
+            state->mode = UI_Text_Field_Slider_Mode::TYPING;
             set_string_buffer_text(&text_field_state->buffer, make_string(state->current_text));
         }
     }
 
-    real32 result = 0.0f;
-    
+    // below sets current_text to the correct value.
+
     // we need to use is_focus and is_active for handling changing states when the mouse is not
     // on top of the textbox.
-    // these blocks are for when we just exited typing or sliding state
-    if (state->mode == Text_Field_Slider_Mode::TYPING && !is_focus(textbox)) {
-        state->mode = Text_Field_Slider_Mode::NONE;
+    // these blocks are for when we just exited typing or sliding state. we just set current_text
+    // to the correct strings. later, we convert current_text to the value we return.
+    if (state->mode == UI_Text_Field_Slider_Mode::TYPING && !is_focus(textbox)) {
+        state->mode = UI_Text_Field_Slider_Mode::NONE;
 
         // validate the text_field_state buffer and if it's fine, we set the current_text buffer to
         // its value
@@ -2494,17 +2495,26 @@ real32 do_text_field_slider(real32 value,
             set_string_buffer_text(&state->current_text, value_text);
             end_region(m);
         }
-    } else if (state->mode == Text_Field_Slider_Mode::SLIDING && !is_active(textbox)) {
-        state->mode = Text_Field_Slider_Mode::NONE;
-        bool32 conversion_result = string_to_real32(make_string(state->current_text), &result);
-        assert(conversion_result);
+    } else if (state->mode == UI_Text_Field_Slider_Mode::SLIDING && !is_active(textbox)) {
+        state->mode = UI_Text_Field_Slider_Mode::NONE;
+    } else {
+        // if we're sliding, current_text is the actual slider value, so we don't set it to
+        // whatever we pass in.
+        if (state->mode != UI_Text_Field_Slider_Mode::SLIDING) {
+            Marker m = begin_region();
+            char *value_text = string_format(temp_region, "%f", value);
+            set_string_buffer_text(&state->current_text, value_text);
+            end_region(m);
+        }
     }
 
+    // below handles typing/sliding interaction.
+    
     // below is based on code from do_text_field(). it is ran when we're currently focused on
     // the text field when we're in typing mode, or when the widget is active and in sliding
     // mode.
     real32 x_padding = 5.0f;
-    if (state->mode == Text_Field_Slider_Mode::TYPING) {
+    if (state->mode == UI_Text_Field_Slider_Mode::TYPING) {
         if (interact.just_pressed || interact.released || interact.holding) {
             int32 last_index = 0;
         
@@ -2520,7 +2530,7 @@ real32 do_text_field_slider(real32 value,
             text_field_state->cursor_timer = 0.0f;
             text_field_state->cursor_index = last_index;
         }
-    } else if (state->mode == Text_Field_Slider_Mode::SLIDING) {
+    } else if (state->mode == UI_Text_Field_Slider_Mode::SLIDING) {
         Vec2 mouse_delta = get_mouse_delta();
         real32 x_delta = mouse_delta.x;
 
@@ -2535,6 +2545,8 @@ real32 do_text_field_slider(real32 value,
         
         slider_value += x_delta;
 
+        debug_print("slider_value: %f\n", slider_value);
+        
         if (check_bounds) {
             slider_value = clamp(slider_value, min_value, max_value);
         }
@@ -2543,21 +2555,15 @@ real32 do_text_field_slider(real32 value,
         char *value_text = string_format(temp_region, "%f", slider_value);
         set_string_buffer_text(&state->current_text, value_text);
         end_region(m);
-
-        result = slider_value;
     }
 
-    if (state->mode != Text_Field_Slider_Mode::SLIDING) {
-        // if we just exited either typing or sliding state, we'll be in NONE mode and
-        // we'll set the result value here. we only ever use current_text to set the
-        // value because current_text has the validated text. i.e. we don't set
-        // current_text while we're typing. we only set it once we've unfocused the text
-        // field and we validate the text.
+    // current_text holds the truth about the value we return.
+    real32 result;
+    bool32 conversion_result = string_to_real32(make_string(state->current_text), &result);
+    assert(conversion_result);
 
-        // when in SLIDING mode, we set result above, since that doesn't need validation
-        // and can be done in realtime. and it's a nicer UX.
-        bool32 conversion_result = string_to_real32(make_string(state->current_text), &result);
-        assert(conversion_result);
+    if (state->mode == UI_Text_Field_Slider_Mode::SLIDING) {
+        debug_print("result: %f\n", result);
     }
 
     if (is_focus(textbox)) {
@@ -2567,7 +2573,7 @@ real32 do_text_field_slider(real32 value,
     UI_id text_widget_id = make_ui_id(text_id_string, index);
     char *str;
 
-    if (state->mode == Text_Field_Slider_Mode::TYPING) {
+    if (state->mode == UI_Text_Field_Slider_Mode::TYPING) {
         str = to_char_array((Allocator *) &ui_manager->frame_arena, text_field_state->buffer);
     } else {
         str = to_char_array((Allocator *) &ui_manager->frame_arena, state->current_text);
@@ -2586,7 +2592,7 @@ real32 do_text_field_slider(real32 value,
         inner_field_theme.layout_type   = UI_LAYOUT_CENTER;
         inner_field_theme.semantic_size = { 0.0f, 1.0f };
 
-        if (state->mode == Text_Field_Slider_Mode::SLIDING && theme.show_slider && check_bounds) {
+        if (state->mode == UI_Text_Field_Slider_Mode::SLIDING && theme.show_slider && check_bounds) {
             real32 percentage = (result - min_value) / (max_value - min_value);
             
             UI_Theme slider_theme = {};
@@ -2627,7 +2633,7 @@ real32 do_text_field_slider(real32 value,
                 text_theme.scissor_type = UI_SCISSOR_INHERIT;
                 do_text(str, "", text_theme);
                 
-                if (state->mode == Text_Field_Slider_Mode::TYPING) {
+                if (state->mode == UI_Text_Field_Slider_Mode::TYPING) {
                     // draw cursor
                     UI_Theme cursor_theme = {};
                     cursor_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_PERCENTAGE };
@@ -2652,14 +2658,18 @@ real32 do_text_field_slider(real32 value,
     }
     ui_pop_widget();
 
-    return result;
+    UI_Text_Field_Slider_Result ret;
+    ret.mode = state->mode;
+    ret.value = result;
+
+    return ret;
 }
 
-real32 do_text_field_slider(real32 value,
-                            UI_Text_Field_Slider_Theme theme,
-                            char *id_string, char *text_id_string,
-                            bool32 force_reset,
-                            int32 index = 0) {
+UI_Text_Field_Slider_Result do_text_field_slider(real32 value,
+                                                 UI_Text_Field_Slider_Theme theme,
+                                                 char *id_string, char *text_id_string,
+                                                 bool32 force_reset = false,
+                                                 int32 index = 0) {
     return do_text_field_slider(value,
                                 0.0f, 0.0f,
                                 theme,

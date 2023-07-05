@@ -329,7 +329,7 @@ struct UI_Color_Picker_Result {
     bool32 should_hide;
 };
 
-enum class Text_Field_Slider_Mode {
+enum class UI_Text_Field_Slider_Mode {
     NONE,
     SLIDING,
     TYPING
@@ -337,13 +337,18 @@ enum class Text_Field_Slider_Mode {
 
 struct UI_Text_Field_Slider_State {
     UI_Text_Field_State text_field_state;
-    Text_Field_Slider_Mode mode;
+    UI_Text_Field_Slider_Mode mode;
     Vec2 mouse_press_start_relative_pos;
     real64 mouse_press_start_t;
 
     // we show this when not in typing mode and only set it to what's in the
     // text_field_state buffer once text_field_state's buffer is validated by us.
     String_Buffer current_text; 
+};
+
+struct UI_Text_Field_Slider_Result {
+    UI_Text_Field_Slider_Mode mode;
+    real32 value;
 };
 
 struct UI_Dropdown_State {

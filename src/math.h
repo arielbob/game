@@ -154,6 +154,7 @@ struct Transform {
     Vec3 scale;
 };
 
+// rotation members are in degrees
 struct Euler_Transform {
     Vec3 position;
     real32 heading;
