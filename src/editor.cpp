@@ -851,6 +851,10 @@ void draw_entity_box_2(bool32 force_reset) {
         // or z, x, y) to know what the result of your inputs will be.
 
         if (editor_state->selected_entity_modified && !properties_state->is_rotation_being_modified) {
+            // note that we also check selected_entity_modified because it allows us to have a smoother
+            // UX where the rotation values don't get changed when we let go of the slider and instead
+            // we wait for the entity to be modified elsewhere before updating the rotations with the
+            // new values.
             Vec3 euler_rotation;
             get_euler_angles_from_quaternion(transform->rotation, &euler_rotation);
 
