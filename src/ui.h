@@ -84,7 +84,8 @@ enum UI_Widget_State_Type {
     UI_STATE_TEXT_FIELD,
     UI_STATE_TEXT_FIELD_SLIDER,
     UI_STATE_DROPDOWN,
-    UI_STATE_COLOR_PICKER
+    UI_STATE_COLOR_PICKER,
+    UI_STATE_SCROLLABLE_REGION
 };
 
 struct Vec2_UI_Size_Type {
@@ -278,6 +279,15 @@ struct UI_Scrollable_Region_Theme {
     Vec4 background_color;
 };
 
+/*
+  window size / child height * window_size = scrollbar height
+  
+ */
+struct UI_Scrollable_Region_State {
+    real32 relative_y;
+    real32 relative_start_y;
+};
+
 struct UI_id {
     // NOTE: we use a pointer to some unique data, such as a constant string specific to a button, to
     //       identify UI elements
@@ -379,6 +389,7 @@ struct UI_Widget_State {
         UI_Text_Field_Slider_State text_field_slider;
         UI_Dropdown_State dropdown;
         UI_Color_Picker_State color_picker;
+        UI_Scrollable_Region_State scrollable_region;
     };
 
     UI_Widget_State *next;

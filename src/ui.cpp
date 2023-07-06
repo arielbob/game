@@ -532,6 +532,9 @@ void deallocate(UI_Widget_State *state) {
         case UI_STATE_COLOR_PICKER: {
             // nothing to deallocate
         } break;
+        case UI_STATE_SCROLLABLE_REGION: {
+            // nothing
+        } break;
         default: {
             assert(!"Unhandled UI widget state type.");
         }
@@ -712,6 +715,19 @@ UI_Color_Picker_State *ui_add_color_picker_state(UI_id id, Vec2 panel_size, Vec3
     _ui_add_state(state);
 
     return color_picker_state;
+}
+
+UI_Scrollable_Region_State *ui_add_scrollable_region_state(UI_id id) {
+    UI_Widget_State *state = ui_make_widget_state();
+    state->id = id;
+    state->type = UI_STATE_SCROLLABLE_REGION;
+
+    UI_Scrollable_Region_State *scorllable_region_state = &state->scrollable_region;
+    *scorllable_region_state = {};
+
+    _ui_add_state(state);
+
+    return scorllable_region_state;
 }
 
 bool32 ui_widget_is_descendent_of(UI_id child_id, UI_id parent_id) {
@@ -2887,6 +2903,21 @@ void push_scrollable_region(UI_Scrollable_Region_Theme theme, bool32 force_reset
     UI_id id = make_ui_id(id_string, index);
     UI_id handle_id = make_ui_id(handle_id_string, index);
     UI_id scrollbar_id = make_ui_id(scrollbar_id_string, index);
+
+    UI_Widget_State *state_variant = ui_get_state(id);
+    UI_Scrollable_Region_State *state;
+    if (!state_variant) {
+        state = ui_add_scrollable_region_state(id);
+    } else {
+        state = &state_variant->scrollable_region;
+    }
+
+#if 0
+    if (force_reset) {
+        _ui_delete_state(id);
+        state = ui_add_scrollable_region_state(id);
+    }
+#endif
     
     UI_Widget *container = ui_add_and_push_widget(id, container_theme,
                                                   UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
@@ -2908,16 +2939,35 @@ void push_scrollable_region(UI_Scrollable_Region_Theme theme, bool32 force_reset
 
         ui_add_and_push_widget(scrollbar_id, scrollbar_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
         {
+            real32 handle_height = 30.0f;
             UI_Theme handle_theme = {};
             handle_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
-            handle_theme.semantic_size = { 0.0f, 30.0f };
+            handle_theme.semantic_size = { 0.0f, handle_height };
             handle_theme.background_color = rgb_to_vec4(0, 0, 255);
             handle_theme.hot_background_color = rgb_to_vec4(0, 255, 0);
             handle_theme.active_background_color = rgb_to_vec4(255, 0, 0);
+            handle_theme.position_type = UI_POSITION_RELATIVE;
             
             UI_Widget *handle = ui_add_widget(handle_id, handle_theme,
                                               UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
-            ui_interact(handle);
+
+            UI_Interact_Result interact = ui_interact(handle);
+            if (interact.just_pressed) {
+                state->relative_start_y = interact.relative_mouse.y;
+            }
+            
+            if (interact.holding) {
+                UI_Widget *computed_scrollbar = ui_get_widget_prev_frame(scrollbar_id);
+                // i'm pretty sure computed_scrollbar will have to be non-null here or else the interact
+                // would always be false, so don't need to check
+                
+                real32 y_delta = interact.relative_mouse.y - state->relative_start_y;
+                state->relative_y += y_delta;
+                state->relative_y = clamp(state->relative_y, 0.0f,
+                                          computed_scrollbar->computed_size.y - handle_height);
+            }
+
+            handle->semantic_position = { 0.0f, state->relative_y };
         } ui_pop_widget(); // scrollbar
     } ui_pop_widget(); // container
 
