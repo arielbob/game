@@ -2000,7 +2000,7 @@ int32 do_dropdown(UI_Dropdown_Theme theme,
                  char *button_id_str, char *dropdown_id_str,
                  char *dropdown_inner_id_str, // this is for the content that actually moves
                  char *dropdown_item_id_str,
-                 bool32 force_reset,
+                 bool32 force_reset = false,
                  int32 index = 0) {
     // TODO: do we check that id is actually valid when creating states?
     // TODO: it's annoying having to pass in 3 different strings. i wish the ui_ids didn't use

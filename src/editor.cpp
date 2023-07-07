@@ -1125,7 +1125,6 @@ void draw_asset_library() {
                     
                     Material *new_material = add_material(&material_info, Material_Type::LEVEL);
                     asset_library_state->selected_material_id = new_material->id;
-                    asset_library_state->material_modified = true;
                     
                     end_region(m);
                 }
@@ -1176,11 +1175,7 @@ void draw_asset_library() {
                                                             num_materials_listed);
 
                             if (pressed || is_selected) {
-                                if (asset_library_state->selected_material_id != current->id) {
-                                    asset_library_state->selected_material_id = current->id;
-                                    asset_library_state->material_modified = true;
-                                }
-
+                                asset_library_state->selected_material_id = current->id;
                                 selected_material = current;
                             }
 
@@ -1228,8 +1223,6 @@ void draw_asset_library() {
                                     add_message(Context::message_manager, make_string("Material name already exists!"));
                                 }
                             }
-
-                            asset_library_state->material_modified = true;
                         }
                     }
 
@@ -1265,8 +1258,7 @@ void draw_asset_library() {
                                                                         "albedo_texture_dropdown_button",
                                                                         "albedo_texture_dropdown",
                                                                         "albedo_texture_dropdown_inner",
-                                                                        "albedo_texture_dropdown_item",
-                                                                        asset_library_state->material_modified);
+                                                                        "albedo_texture_dropdown_item");
                             if (dropdown_selected_index != selected_index) {
                                 selected_index = dropdown_selected_index;
                                 replace_contents(&selected_material->albedo_texture_name, texture_names[selected_index]);
@@ -1323,8 +1315,7 @@ void draw_asset_library() {
                                                                         "metalness_texture_dropdown_button",
                                                                         "metalness_texture_dropdown",
                                                                         "metalness_texture_dropdown_inner",
-                                                                        "metalness_texture_dropdown_item",
-                                                                        asset_library_state->material_modified);
+                                                                        "metalness_texture_dropdown_item");
                             if (dropdown_selected_index != selected_index) {
                                 selected_index = dropdown_selected_index;
                                 replace_contents(&selected_material->metalness_texture_name, texture_names[selected_index]);
@@ -1367,8 +1358,7 @@ void draw_asset_library() {
                                                                         "roughness_texture_dropdown_button",
                                                                         "roughness_texture_dropdown",
                                                                         "roughness_texture_dropdown_inner",
-                                                                        "roughness_texture_dropdown_item",
-                                                                        asset_library_state->material_modified);
+                                                                        "roughness_texture_dropdown_item");
                             if (dropdown_selected_index != selected_index) {
                                 selected_index = dropdown_selected_index;
                                 replace_contents(&selected_material->roughness_texture_name, texture_names[selected_index]);
@@ -1432,7 +1422,6 @@ void draw_asset_library() {
 
                         delete_material(id_to_delete);
                         num_materials_listed = max(num_materials_listed--, 0);
-                        asset_library_state->material_modified = true;
                     }
                 }
             } ui_pop_widget(); // footer
