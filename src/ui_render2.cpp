@@ -112,6 +112,10 @@ void ui_push_command(UI_Render_Command command,
 }
 
 void set_scissor(UI_Render_Command *command, UI_Widget *widget) {
+    // note that this currently only gets called if you have the flag UI_WIDGET_DRAW or
+    // UI_WIDGET_USE_CUSTOM_SHADER. i.e. only if the widget makes the renderer add
+    // vertices.
+    
     if (widget->scissor_type == UI_SCISSOR_NONE) {
         return;
     }

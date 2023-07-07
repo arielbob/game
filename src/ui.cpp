@@ -2881,7 +2881,8 @@ UI_Color_Picker_Result do_color_picker(Vec3 color,
 }
 
 void push_scrollable_region(UI_Scrollable_Region_Theme theme, bool32 force_reset,
-                            char *id_string, char *scrollbar_id_string, char *handle_id_string,
+                            char *id_string, char *inner_id_string,
+                            char *scrollbar_id_string, char *handle_id_string,
                             int32 index = 0) {
     // we just use the computed size to figure out if we're outside of the scrollable region
     // on the first run, idk what our scissor region will be... i guess we can just make it blank
@@ -2897,10 +2898,12 @@ void push_scrollable_region(UI_Scrollable_Region_Theme theme, bool32 force_reset
     container_theme.background_color = theme.background_color;
     container_theme.hot_background_color = theme.background_color;
     container_theme.active_background_color = theme.background_color;
-
+    container_theme.scissor_type = UI_SCISSOR_COMPUTED_SIZE;
+    
     UI_Widget *inner_widget = NULL;
     
     UI_id id = make_ui_id(id_string, index);
+    UI_id inner_id = make_ui_id(inner_id_string, index);
     UI_id handle_id = make_ui_id(handle_id_string, index);
     UI_id scrollbar_id = make_ui_id(scrollbar_id_string, index);
 
@@ -2925,12 +2928,14 @@ void push_scrollable_region(UI_Scrollable_Region_Theme theme, bool32 force_reset
 
     {
         UI_Theme inner_theme = {};
-        inner_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
+        inner_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
+        inner_theme.position_type = UI_POSITION_RELATIVE;
         // this doesn't really matter; it's just that it can't be UI_LAYOUT_NONE or else its children will
         // not be laid out inside it
-        inner_theme.layout_type = UI_LAYOUT_VERTICAL; 
+        inner_theme.layout_type = UI_LAYOUT_VERTICAL;
+        inner_theme.scissor_type = UI_SCISSOR_INHERIT;
 
-        inner_widget = ui_add_widget("", inner_theme);
+        inner_widget = ui_add_widget(inner_id, inner_theme);
 
         UI_Theme scrollbar_theme = {};
         scrollbar_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_FILL_REMAINING };
@@ -2939,9 +2944,22 @@ void push_scrollable_region(UI_Scrollable_Region_Theme theme, bool32 force_reset
 
         ui_add_and_push_widget(scrollbar_id, scrollbar_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
         {
-            real32 handle_height = 30.0f;
+            UI_Widget *computed_scrollbar = ui_get_widget_prev_frame(scrollbar_id);
+            UI_Widget *computed_inner = ui_get_widget_prev_frame(inner_id);
+
+            // default values
+            UI_Size_Type handle_size_type = UI_SIZE_FILL_REMAINING;
+            real32 handle_height = 0.0f;
+            if (computed_scrollbar && computed_inner) {
+                handle_size_type = UI_SIZE_ABSOLUTE;
+
+                real32 view_height = computed_scrollbar->computed_size.y;
+                real32 content_height = computed_inner->computed_size.y;
+                handle_height = clamp(view_height / content_height, 0.0f, 1.0f) * view_height;
+            }
+            
             UI_Theme handle_theme = {};
-            handle_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
+            handle_theme.size_type = { UI_SIZE_FILL_REMAINING, handle_size_type };
             handle_theme.semantic_size = { 0.0f, handle_height };
             handle_theme.background_color = rgb_to_vec4(0, 0, 255);
             handle_theme.hot_background_color = rgb_to_vec4(0, 255, 0);
@@ -2955,21 +2973,34 @@ void push_scrollable_region(UI_Scrollable_Region_Theme theme, bool32 force_reset
             if (interact.just_pressed) {
                 state->relative_start_y = interact.relative_mouse.y;
             }
+
+            real32 handle_offset = 0.0f;
+            if (computed_scrollbar) {
+                real32 scrollbar_scrollable_height = computed_scrollbar->computed_size.y - handle_height;
+                real32 actual_scrollable_height = (computed_inner->computed_size.y -
+                                                   computed_scrollbar->computed_size.y);
             
-            if (interact.holding) {
-                UI_Widget *computed_scrollbar = ui_get_widget_prev_frame(scrollbar_id);
-                // i'm pretty sure computed_scrollbar will have to be non-null here or else the interact
-                // would always be false, so don't need to check
+                if (interact.holding) {
+                    // i'm pretty sure computed_scrollbar will have to be non-null here or else the interact
+                    // would always be false, so don't need to check
+
+                    real32 scrollbar_y_delta = interact.relative_mouse.y - state->relative_start_y;
+                    real32 actual_y_delta = ((scrollbar_y_delta / scrollbar_scrollable_height) *
+                                             actual_scrollable_height);
                 
-                real32 y_delta = interact.relative_mouse.y - state->relative_start_y;
-                state->relative_y += y_delta;
-                state->relative_y = clamp(state->relative_y, 0.0f,
-                                          computed_scrollbar->computed_size.y - handle_height);
+                    state->y_offset += actual_y_delta;
+                }
+
+                state->y_offset = clamp(state->y_offset, 0.0f, actual_scrollable_height);
+
+                handle_offset = (state->y_offset / actual_scrollable_height) * scrollbar_scrollable_height;
             }
 
-            handle->semantic_position = { 0.0f, state->relative_y };
+            handle->semantic_position = { 0.0f, handle_offset };
         } ui_pop_widget(); // scrollbar
     } ui_pop_widget(); // container
 
+    inner_widget->semantic_position.y = -state->y_offset;
+    
     ui_push_existing_widget(inner_widget);
 }

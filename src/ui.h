@@ -284,8 +284,8 @@ struct UI_Scrollable_Region_Theme {
   
  */
 struct UI_Scrollable_Region_State {
-    real32 relative_y;
-    real32 relative_start_y;
+    real32 y_offset;         // offset of the inner region
+    real32 relative_start_y; // start position of the click on the handle
 };
 
 struct UI_id {

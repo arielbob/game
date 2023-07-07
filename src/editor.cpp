@@ -1081,6 +1081,7 @@ void draw_asset_library() {
     list_theme.layout_type = UI_LAYOUT_VERTICAL;
     list_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
     list_theme.background_color = { 0.0f, 0.0f, 0.0f, 1.0f };
+    list_theme.scissor_type = UI_SCISSOR_INHERIT;
 
     UI_Dropdown_Theme dropdown_theme = {};
     dropdown_theme.button_theme = editor_button_theme;
@@ -1137,11 +1138,14 @@ void draw_asset_library() {
             list_scroll_region_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
 
             push_scrollable_region(list_scroll_region_theme, 0,
-                                   "material-list-scroll-region", "material-list-scroll-region-scrollbar",
+                                   "material-list-scroll-region",
+                                   "material-list-scroll-region-inner",
+                                   "material-list-scroll-region-scrollbar",
                                    "material-list-scroll-region-handle");
             ui_add_and_push_widget("asset-library-material-list-container", list_theme, UI_WIDGET_DRAW_BACKGROUND);
             {
                 UI_Button_Theme item_theme = editor_button_theme;
+                item_theme.scissor_type = UI_SCISSOR_INHERIT;
 
                 UI_Button_Theme selected_item_theme = item_theme;
                 selected_item_theme.background_color = rgb_to_vec4(61, 96, 252);
