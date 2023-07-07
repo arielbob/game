@@ -2269,7 +2269,7 @@ void handle_text_field_cursor(UI_id text_widget_id, UI_Text_Field_State *state,
 }
 
 UI_Text_Field_Result do_text_field(UI_Text_Field_Theme theme,
-                                   String value, bool32 force_reset,
+                                   String value,
                                    char *id_string, char *text_id_string,
                                    int32 index = 0) {
     UI_id id = make_ui_id(id_string, index);
@@ -2281,10 +2281,12 @@ UI_Text_Field_Result do_text_field(UI_Text_Field_Theme theme,
         state = &state_variant->text_field;
     }
 
+#if 0
     if (force_reset) {
         _ui_delete_state(id);
         state = ui_add_text_field_state(id, value);
     }
+#endif
 
     UI_Theme textbox_theme = {};
     textbox_theme.layout_type             = UI_LAYOUT_HORIZONTAL;
@@ -2308,6 +2310,12 @@ UI_Text_Field_Result do_text_field(UI_Text_Field_Theme theme,
     UI_Interact_Result interact = ui_interact(textbox);
     Font *font = get_font(textbox->font);
 
+    if (!is_focus(textbox)) {
+        // only change the text based on the passed in value if we're not currently
+        // using it
+        set_string_buffer_text(&state->buffer, value);
+    }
+    
     state->cursor_timer += game_state->dt;
     
     real32 x_padding = 5.0f;

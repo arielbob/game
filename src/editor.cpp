@@ -1217,7 +1217,6 @@ void draw_asset_library() {
                         field_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
                         field_theme.size.x = 0.0f;
                         UI_Text_Field_Result name_result = do_text_field(field_theme, selected_material->name,
-                                                                         asset_library_state->material_modified,
                                                                          "material_name_text_field",
                                                                          "material_name_text_field_text");
 
@@ -1395,38 +1394,46 @@ void draw_asset_library() {
 
             ui_add_and_push_widget("", footer_theme);
             {
-                UI_Theme push_right = {};
-                push_right.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
-                ui_add_widget("", push_right);
+                if (selected_material) {
+                    UI_Theme push_right = {};
+                    push_right.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
+                    ui_add_widget("", push_right);
 
-                UI_Button_Theme delete_theme = editor_button_danger_theme;
-                delete_theme.size_type.x = UI_SIZE_ABSOLUTE;
-                delete_theme.size.x = 120.0f;
+                    UI_Button_Theme delete_theme = editor_button_danger_theme;
+                    delete_theme.size_type.x = UI_SIZE_ABSOLUTE;
+                    delete_theme.size.x = 120.0f;
                 
-                bool32 delete_pressed = do_text_button("Delete Material", delete_theme, "delete-material");
+                    bool32 delete_pressed = do_text_button("Delete Material", delete_theme, "delete-material");
 
-                if (delete_pressed) {
-                    // find material id in list
-                    int32 id_to_delete = selected_material->id;
+                    if (delete_pressed) {
+                        // find material id in list
+                        int32 id_to_delete = selected_material->id;
 
-                    for (int32 i = 0; i < num_materials_listed; i++) {
-                        if (material_ids[i] == id_to_delete) {
-                            if (num_materials_listed >= 1) {
-                                asset_library_state->selected_material_id = material_ids[max(i - 1, 0)];
-                            } else {
-                                // we're deleting the last one
-                                asset_library_state->selected_material_id = -1;
+                        for (int32 i = 0; i < num_materials_listed; i++) {
+                            if (material_ids[i] == id_to_delete) {
+                                if (num_materials_listed >= 1) {
+                                    int32 new_index;
+                                    if (i == 0) {
+                                        new_index = i + 1;
+                                    } else {
+                                        new_index = max(i - 1, 0);
+                                    }
+                                    asset_library_state->selected_material_id = material_ids[new_index];
+                                } else {
+                                    // we're deleting the last one
+                                    asset_library_state->selected_material_id = -1;
+                                }
+
+                                break;
                             }
-
-                            break;
                         }
+
+                        selected_material = get_material(asset_library_state->selected_material_id);
+
+                        delete_material(id_to_delete);
+                        num_materials_listed = max(num_materials_listed--, 0);
+                        asset_library_state->material_modified = true;
                     }
-
-                    selected_material = get_material(asset_library_state->selected_material_id);
-
-                    delete_material(id_to_delete);
-                    num_materials_listed = max(num_materials_listed--, 0);
-                    asset_library_state->material_modified = true;
                 }
             } ui_pop_widget(); // footer
         }
@@ -1517,7 +1524,6 @@ void draw_level_box() {
             field_theme.size = { 1.0f, editor_button_theme.size.y };
 
             UI_Text_Field_Result name_result = do_text_field(field_theme, game_state->level.name,
-                                                             just_changed_level,
                                                              "level_name_text_field",
                                                              "level_name_text_field_text");
             replace_contents(&game_state->level.name, name_result.text);
