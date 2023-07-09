@@ -30,7 +30,8 @@ bool32 ui_command_should_coalesce(UI_Render_Command command) {
         if (last_command->use_scissor) {
             if (command.use_scissor) {
                 // if both use scissor regions, make sure that they're equal
-                if (last_command->scissor_position != command.scissor_position) {
+                if ((last_command->scissor_position != command.scissor_position) ||
+                    (last_command->scissor_dimensions != command.scissor_dimensions)) {
                     return false;
                 } else {
                     // they're equal, so we go on to the texture_type checks
@@ -440,7 +441,27 @@ void ui_render_widget_to_commands(UI_Widget *widget) {
     }
 }
 
+struct UI_Scissor_State {
+    Vec2 position;
+    Vec2 dimensions;
+};
+
 void ui_create_render_commands() {
+    const int MAX_SCISSOR_STATES = 64;
+    UI_Scissor_State scissor_stack[MAX_SCISSOR_STATES];
+
+    // TODO: what if the default scissor state is UI_SCISSOR_INHERIT?
+    // - but what if we want to not scissor something?
+    // - i guess UI_SCISSOR_NONE can put in a special entry
+    //   - and then any UI_SCISSOR_INHERIT's will also not be scissored
+    // if it's computed, we push onto the stack
+    // if it's inherited, we get the last on the stack
+    // if it's none, we push a special "none" state on the stack
+    // when we go up, if it was computed or none, we pop off the stack
+    // if it's NONE, then COMPUTED, uh, maybe just assert?
+    // if it's COMPUTED, then COMPUTED, we get the intersected area between the two
+    // if it's (NONE | COMPUTED), then INHERIT, we just get last on the stack
+    
     UI_Widget *current = ui_manager->root;
 
     int32 num_visited = 0;

@@ -2905,6 +2905,8 @@ void gl_scissor(Vec2_int32 position, Vec2_int32 dimensions) {
     if (!g_gl_state->scissor_enabled) {
         g_gl_state->scissor_enabled = true;
         glEnable(GL_SCISSOR_TEST);
+    } else {
+        
     }
 
     glScissor(position.x, position.y, dimensions.x, dimensions.y);
