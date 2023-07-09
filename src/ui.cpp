@@ -33,6 +33,28 @@ UI_Window_Theme DEFAULT_WINDOW_THEME = {
     { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN }
 };
 
+inline UI_id make_ui_id(String name, int32 index) {
+    //if (!id || string_equals(name, "")) id = NULL;
+    UI_id ui_id = { copy((Allocator *) &ui_manager->frame_arena, name), index };
+    return ui_id;
+}
+
+inline UI_id make_ui_id(String name) {
+    return make_ui_id(name, 0);
+}
+
+// name should be a static string
+inline UI_id make_ui_id(char *name, int32 index = 0) {
+    return make_ui_id(make_string(name), index);
+}
+
+UI_id copy(Allocator *allocator, UI_id id) {
+    UI_id result;
+    result.name = copy(allocator, id.name);
+    result.index = id.index;
+    return result;
+}
+
 UI_Widget *make_widget(UI_id id, UI_Theme theme, uint32 flags) {
     UI_Widget *widget = (UI_Widget *) allocate(&ui_manager->frame_arena, sizeof(UI_Widget));
 
@@ -71,13 +93,17 @@ UI_Widget *make_widget(UI_id id, UI_Theme theme, uint32 flags) {
     return widget;
 }
 
-inline UI_Widget *make_widget(char *id_string, UI_Theme theme, uint32 flags) {
-    return make_widget(make_ui_id(id_string, 0), theme, flags);
+inline UI_Widget *make_widget(String name, UI_Theme theme, uint32 flags) {
+    return make_widget(make_ui_id(name, 0), theme, flags);
+}
+
+inline UI_Widget *make_widget(char *name, UI_Theme theme, uint32 flags) {
+    return make_widget(make_ui_id(name, 0), theme, flags);
 }
 
 uint32 get_hash(UI_id id, uint32 bucket_size) {
     // don't use the pointer here for hashing, since that'll always be even
-    String_Iterator it = make_string_iterator(make_string(id.string_ptr));
+    String_Iterator it = make_string_iterator(id.name);
     uint32 sum = 0;
     char c = get_next_char(&it);
     while (c) {
@@ -109,7 +135,7 @@ uint32 get_hash(UI_id id, uint32 bucket_size) {
 }
 
 UI_Widget *ui_table_get(UI_Widget **table, UI_id id) {
-    if (!id.string_ptr) return NULL;
+    if (ui_id_is_empty(id)) return NULL;
     
     uint32 hash = get_hash(id, NUM_WIDGET_BUCKETS);
 
@@ -136,7 +162,7 @@ inline UI_Widget *ui_get_widget_prev_frame(UI_id id) {
 }
 
 void ui_table_add(UI_Widget **table, UI_Widget *widget) {
-    if (!widget->id.string_ptr) return;
+    if (ui_id_is_empty(widget->id)) return;
     
     uint32 hash = get_hash(widget->id, NUM_WIDGET_BUCKETS);
 
@@ -224,14 +250,20 @@ UI_Widget *ui_add_widget(UI_id id, uint32 flags) {
 }
 #endif
 
-UI_Widget *ui_add_widget(char *id_string_ptr, UI_Theme theme, uint32 flags = 0) {
-    UI_Widget *widget = make_widget(make_ui_id(id_string_ptr, 0), theme, flags);
+UI_Widget *ui_add_widget(String name, UI_Theme theme, uint32 flags = 0) {
+    UI_Widget *widget = make_widget(make_ui_id(name, 0), theme, flags);
     ui_add_widget(widget);
     return widget;
 }
 
 UI_Widget *ui_add_widget(UI_id id, UI_Theme theme, uint32 flags = 0) {
     UI_Widget *widget = make_widget(id, theme, flags);
+    ui_add_widget(widget);
+    return widget;
+}
+
+UI_Widget *ui_add_widget(char *name, UI_Theme theme, uint32 flags = 0) {
+    UI_Widget *widget = make_widget(make_ui_id(name, 0), theme, flags);
     ui_add_widget(widget);
     return widget;
 }
@@ -312,8 +344,12 @@ UI_Widget *ui_push_widget(UI_id id, UI_Theme theme,uint32 flags = 0) {
     return ui_push_existing_widget(widget);
 }
 
-UI_Widget *ui_push_widget(char *id_string_ptr, UI_Theme theme, uint32 flags = 0) {
-    return ui_push_widget(make_ui_id(id_string_ptr), theme, flags);
+UI_Widget *ui_push_widget(String name, UI_Theme theme, uint32 flags = 0) {
+    return ui_push_widget(make_ui_id(name), theme, flags);
+}
+
+UI_Widget *ui_push_widget(char *name, UI_Theme theme, uint32 flags = 0) {
+    return ui_push_widget(make_ui_id(name), theme, flags);
 }
 
 UI_Widget *ui_add_and_push_widget(UI_Widget *widget) {
@@ -322,8 +358,8 @@ UI_Widget *ui_add_and_push_widget(UI_Widget *widget) {
     return widget;
 }
 
-UI_Widget *ui_add_and_push_widget(char *id_string_ptr, UI_Theme theme, uint32 flags = 0) {
-    UI_Widget *widget = make_widget(id_string_ptr, theme, flags);
+UI_Widget *ui_add_and_push_widget(String name, UI_Theme theme, uint32 flags = 0) {
+    UI_Widget *widget = make_widget(name, theme, flags);
     ui_add_widget(widget);
     ui_push_existing_widget(widget);
     return widget;
@@ -334,6 +370,10 @@ UI_Widget *ui_add_and_push_widget(UI_id id, UI_Theme theme, uint32 flags = 0) {
     ui_add_widget(widget);
     ui_push_existing_widget(widget);
     return widget;
+}
+
+inline UI_Widget *ui_add_and_push_widget(char *name, UI_Theme theme, uint32 flags = 0) {
+    return ui_add_and_push_widget(make_ui_id(name), theme, flags);
 }
 
 void ui_pop_widget() {
@@ -542,7 +582,7 @@ void deallocate(UI_Widget_State *state) {
 }
 
 void _ui_add_state(UI_Widget_State *state) {
-    if (!state->id.string_ptr) return;
+    if (ui_id_is_empty(state->id)) return;
 
     uint32 hash = get_hash(state->id, NUM_WIDGET_BUCKETS);
 
@@ -573,7 +613,7 @@ void _ui_add_state(UI_Widget_State *state) {
 }
 
 void _ui_delete_state(UI_id id) {
-    assert(id.string_ptr);
+    assert(!ui_id_is_empty(id));
 
     uint32 hash = get_hash(id, NUM_WIDGET_BUCKETS);
 
@@ -601,16 +641,17 @@ void _ui_delete_state(UI_id id) {
     assert(!"Widget state does not exist.");
 }
 
-UI_Widget_State *ui_make_widget_state() {
+UI_Widget_State *ui_make_widget_state(UI_id id, UI_Widget_State_Type type) {
     UI_Widget_State *result = (UI_Widget_State *) heap_allocate(&ui_manager->persistent_heap,
                                                                 sizeof(UI_Widget_State), true);
+    result->id = copy((Allocator *) &ui_manager->persistent_heap, id);
+    result->type = type;
+
     return result;
 }
 
 UI_Window_State *ui_add_window_state(UI_id id, Vec2 position) {
-    UI_Widget_State *state = ui_make_widget_state();
-    state->id = id;
-    state->type = UI_STATE_WINDOW;
+    UI_Widget_State *state = ui_make_widget_state(id, UI_STATE_WINDOW);
     state->window = { position };
 
     _ui_add_state(state);
@@ -619,9 +660,8 @@ UI_Window_State *ui_add_window_state(UI_id id, Vec2 position) {
 }
 
 UI_Text_Field_State *ui_add_text_field_state(UI_id id, String value) {
-    UI_Widget_State *state = ui_make_widget_state();
-    state->id = id;
-    state->type = UI_STATE_TEXT_FIELD;
+    UI_Widget_State *state = ui_make_widget_state(id, UI_STATE_TEXT_FIELD);
+
     String_Buffer buffer = make_string_buffer((Allocator *) &ui_manager->persistent_heap, value, 64);
     state->text_field = { buffer, false, 0.0f, 0.0f };
     
@@ -631,9 +671,7 @@ UI_Text_Field_State *ui_add_text_field_state(UI_id id, String value) {
 }
 
 UI_Text_Field_Slider_State *ui_add_text_field_slider_state(UI_id id, real32 value) {
-    UI_Widget_State *state = ui_make_widget_state();
-    state->id = id;
-    state->type = UI_STATE_TEXT_FIELD_SLIDER;
+    UI_Widget_State *state = ui_make_widget_state(id, UI_STATE_TEXT_FIELD_SLIDER);
 
     Marker m = begin_region();
     char *value_text = string_format(temp_region, "%f", value);
@@ -657,9 +695,7 @@ UI_Text_Field_Slider_State *ui_add_text_field_slider_state(UI_id id, real32 valu
 }
 
 UI_Dropdown_State *ui_add_dropdown_state(UI_id id) {
-    UI_Widget_State *state = ui_make_widget_state();
-    state->id = id;
-    state->type = UI_STATE_DROPDOWN;
+    UI_Widget_State *state = ui_make_widget_state(id, UI_STATE_DROPDOWN);
 
     UI_Dropdown_State *dropdown_state = &state->dropdown;
     *dropdown_state = {};
@@ -701,9 +737,7 @@ HSV_Color get_hsv_inside_quad(Vec2 relative_mouse, real32 hue,
 }
 
 UI_Color_Picker_State *ui_add_color_picker_state(UI_id id, Vec2 panel_size, Vec3 color) {
-    UI_Widget_State *state = ui_make_widget_state();
-    state->id = id;
-    state->type = UI_STATE_COLOR_PICKER;
+    UI_Widget_State *state = ui_make_widget_state(id, UI_STATE_COLOR_PICKER);
 
     UI_Color_Picker_State *color_picker_state = &state->color_picker;
     *color_picker_state = {};
@@ -718,9 +752,7 @@ UI_Color_Picker_State *ui_add_color_picker_state(UI_id id, Vec2 panel_size, Vec3
 }
 
 UI_Scrollable_Region_State *ui_add_scrollable_region_state(UI_id id) {
-    UI_Widget_State *state = ui_make_widget_state();
-    state->id = id;
-    state->type = UI_STATE_SCROLLABLE_REGION;
+    UI_Widget_State *state = ui_make_widget_state(id, UI_STATE_SCROLLABLE_REGION);
 
     UI_Scrollable_Region_State *scorllable_region_state = &state->scrollable_region;
     *scorllable_region_state = {};
@@ -1130,7 +1162,7 @@ void ui_force_widgets_to_top_of_layers() {
     UI_Widget *current_layer = NULL;
 
     // defer appending so that we don't end up in an infinite loop
-    UI_Widget *to_append_to_end = make_widget("", NULL_THEME, 0);
+    UI_Widget *to_append_to_end = make_widget(make_string(""), NULL_THEME, 0);
     
     // pre-order traversal
     
@@ -1457,6 +1489,14 @@ inline bool32 is_hot(UI_Widget *widget) {
     return ui_id_equals(ui_manager->hot, widget->id);
 }
 
+inline bool32 is_active(UI_id id) {
+    return ui_id_equals(ui_manager->active, id);
+}
+
+inline bool32 is_any_active(String name) {
+    return string_equals(ui_manager->active.name, name);
+}
+
 inline bool32 is_active(UI_Widget *widget) {
     return ui_id_equals(ui_manager->active, widget->id);
 }
@@ -1466,7 +1506,7 @@ inline bool32 is_focus(UI_Widget *widget) {
 }
 
 inline bool32 ui_has_hot() {
-    return (ui_manager->hot.string_ptr != NULL);
+    return (!ui_id_is_empty(ui_manager->hot));
 }
 
 inline bool32 ui_has_active() {
@@ -1503,11 +1543,11 @@ inline bool32 in_bounds(Vec2 p, UI_Widget *widget) {
 }
 
 inline bool32 ui_id_equals(UI_id id1, UI_id id2) {
-    return ((id1.string_ptr == id2.string_ptr) && (id1.index == id2.index));
+    return (string_equals(id1.name, id2.name) && (id1.index == id2.index));
 }
 
 inline bool32 ui_id_is_empty(UI_id id) {
-    return (!id.string_ptr || string_equals(id.string_ptr, ""));
+    return string_equals(id.name, "");
 }
 
 inline real32 get_adjusted_font_height(Font font) {
@@ -1809,396 +1849,6 @@ void push_window(char *title, UI_Window_Theme theme, char *id_str, char *title_b
 
     ui_push_existing_widget(window);
 }
-
-void set_is_open(UI_Dropdown_State *state, bool32 is_open) {
-    state->t = 0;
-    state->start_y_offset = state->y_offset;
-    state->is_open = is_open;
-}
-
-// TODO: don't know if we still need this
-void ui_push_dropdown(UI_Dropdown_Theme theme, char *button_text,
-                      char *button_id_str, char *dropdown_id_str,
-                      char *dropdown_inner_id_str, // this is for the content that actually moves
-                      bool32 force_reset,
-                      int32 index = 0) {
-    // TODO: do we check that id is actually valid when creating states?
-    // TODO: it's annoying having to pass in 3 different strings. i wish the ui_ids didn't use
-    //       pointers, so we can dynamically create the strings. maybe use hashes?
-    UI_id button_id         = make_ui_id(button_id_str, index);
-    UI_id dropdown_id       = make_ui_id(dropdown_id_str, index);
-    UI_id dropdown_inner_id = make_ui_id(dropdown_inner_id_str, index);
-
-    UI_Widget_State *state_variant = ui_get_state(dropdown_id);
-    UI_Dropdown_State *state;
-    if (!state_variant) {
-        // t is initialized to 1.0
-        state = ui_add_dropdown_state(dropdown_id);
-    } else {
-        state = &state_variant->dropdown;
-    }
-
-    if (force_reset) {
-        _ui_delete_state(dropdown_id);
-        UI_Dropdown_State old_state = *state;
-        state = ui_add_dropdown_state(dropdown_id);
-        state->is_open        = old_state.is_open;
-        state->y_offset       = old_state.y_offset;
-        state->start_y_offset = old_state.start_y_offset;
-        state->t              = old_state.t;
-    }
-
-    UI_Widget *computed_widget = ui_get_widget_prev_frame(dropdown_id);
-    real32 dropdown_height = 0.0f;
-    if (computed_widget) {
-        dropdown_height = computed_widget->computed_size.y;
-    }
-
-    state->t += game_state->dt;
-    
-    UI_Theme column_theme = {};
-    // these are for the container, basically that holds the button and the dropdown
-    column_theme.size_type = theme.size_type;
-    column_theme.semantic_size = theme.size;
-    column_theme.layout_type = UI_LAYOUT_VERTICAL;
-
-#if 0
-    column_theme.position_type = theme.position_type;
-    column_theme.semantic_position = theme.position;
-    column_theme.background_color = theme.background_color;
-    column_theme.hot_background_color = theme.background_color;
-    column_theme.active_background_color = theme.background_color;
-#endif
-    
-    UI_Widget *inner;
-
-    // vertical
-    UI_Widget *column = ui_add_and_push_widget("", column_theme,
-                                               UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
-    // just so we get hot state, so that it gets clicks instead of whatever's behind it
-    //ui_interact(column);
-    {
-        UI_Interact_Result dropdown_button_result = ui_push_empty_button(theme.button_theme, button_id);
-        bool32 dropdown_button_clicked = dropdown_button_result.released;
-        {
-            UI_Theme row_theme = NULL_THEME;
-            row_theme.layout_type = UI_LAYOUT_HORIZONTAL;
-            row_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
-            
-            ui_push_widget("", row_theme);
-            {
-                ui_x_pad(5.0f);
-                
-                UI_Theme text_container = {};
-                text_container.layout_type = UI_LAYOUT_CENTER;
-                text_container.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
-                text_container.scissor_type = UI_SCISSOR_COMPUTED_SIZE;
-                
-                ui_push_widget("", text_container);
-                {
-                    UI_Theme text_theme = NULL_THEME;
-                    text_theme.text_color = theme.button_theme.text_color;
-                    text_theme.font = theme.button_theme.font;
-                    text_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_TEXT };
-                    text_theme.scissor_type = UI_SCISSOR_INHERIT;
-                    do_text(button_text, text_theme);
-                }
-                ui_pop_widget();
-
-                ui_x_pad(10.0f);
-
-                UI_Theme arrow_container = {};
-                arrow_container.layout_type = UI_LAYOUT_CENTER;
-                arrow_container.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FILL_REMAINING };
-
-                ui_push_widget("", arrow_container);
-                {
-                    UI_Theme arrow_theme = {};
-                    arrow_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
-                    arrow_theme.semantic_size = { 10.0f, 10.0f };
-                    arrow_theme.texture_name = "texture_default";
-
-                    ui_add_widget("", arrow_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_USE_TEXTURE);
-                } ui_pop_widget();
-
-                ui_x_pad(5.0f);
-            }
-            ui_pop_widget();
-        }
-        ui_pop_widget();
-        //bool32 dropdown_button_clicked = do_text_button(button_text, theme.button_theme, button_id);
-
-        if (dropdown_button_clicked) {
-            set_is_open(state, !state->is_open);
-        }
-
-#if 0
-        // the widget that moves
-        UI_Widget *computed_inner_widget = ui_get_widget_prev_frame(dropdown_inner_id);
-        Vec2 mouse_pos = Context::controller_state->current_mouse;
-        if (state->is_open &&
-            just_pressed(Context::controller_state->left_mouse) &&
-            !in_bounds(mouse_pos, computed_inner_widget)) {
-            set_is_open(state, false);
-        }
-#endif
-        
-        real32 transition_time = 0.9f;
-        // state->t is just the linear percentage we've made it through the transition_time
-        state->t = min(state->t / transition_time, 1.0f);
-        // t is what we use for the transition timing, but it's based on state->t
-        real32 t = 1.0f - (1.0f - state->t) * (1.0f - state->t);
-
-        // TODO: idk if we can use t here, since the position won't be the same on both sides of the curve.
-        if (state->is_open) {
-            state->y_offset = mix(state->start_y_offset, 0.0f, t);
-        } else {
-            state->y_offset = mix(state->start_y_offset, -dropdown_height, t);
-        }
-
-        // this container is just so that the float container doesn't get put on top of the button.
-        UI_Theme content_container_theme = {};
-        content_container_theme.layout_type = UI_LAYOUT_VERTICAL;
-        content_container_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
-        content_container_theme.semantic_size = { 1.0f, 0.0f }; 
-        
-        #if 1
-        ui_add_and_push_widget("", content_container_theme);
-        {
-            UI_Theme list_container_theme = {};
-            list_container_theme.position_type = UI_POSITION_FLOAT;
-            list_container_theme.layout_type = UI_LAYOUT_VERTICAL;
-            list_container_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
-            list_container_theme.semantic_size = { 1.0f, 0.0f }; 
-            list_container_theme.scissor_type = UI_SCISSOR_COMPUTED_SIZE;
-            list_container_theme.background_color = rgb_to_vec4(255, 0, 0);
-
-            UI_Widget *list_container = ui_add_and_push_widget(dropdown_id, list_container_theme);
-            {
-                UI_Theme inner_theme = {};
-                inner_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
-                inner_theme.layout_type = UI_LAYOUT_VERTICAL;
-                inner_theme.semantic_size = { 1.0f, 0.0f };
-                inner_theme.position_type = UI_POSITION_RELATIVE;
-                inner_theme.semantic_position = { 0.0f, state->y_offset };
-                inner_theme.scissor_type = UI_SCISSOR_INHERIT;
-                inner = ui_add_widget(dropdown_inner_id, inner_theme, 0);
-            }
-            ui_pop_widget();
-        }
-        ui_pop_widget();
-        #endif
-    }
-    ui_pop_widget();
-    
-    ui_push_existing_widget(inner);
-}
-
-int32 do_dropdown(UI_Dropdown_Theme theme,
-                 char **items, int32 num_items,
-                 int32 selected_index,
-                 char *button_id_str, char *dropdown_id_str,
-                 char *dropdown_inner_id_str, // this is for the content that actually moves
-                 char *dropdown_item_id_str,
-                 bool32 force_reset = false,
-                 int32 index = 0) {
-    // TODO: do we check that id is actually valid when creating states?
-    // TODO: it's annoying having to pass in 3 different strings. i wish the ui_ids didn't use
-    //       pointers, so we can dynamically create the strings. maybe use hashes?
-    UI_id button_id         = make_ui_id(button_id_str, index);
-    UI_id dropdown_id       = make_ui_id(dropdown_id_str, index);
-    UI_id dropdown_inner_id = make_ui_id(dropdown_inner_id_str, index);
-
-    UI_Widget_State *state_variant = ui_get_state(dropdown_id);
-    UI_Dropdown_State *state;
-    if (!state_variant) {
-        // t is initialized to 1.0
-        state = ui_add_dropdown_state(dropdown_id);
-    } else {
-        state = &state_variant->dropdown;
-    }
-
-    if (force_reset) {
-        _ui_delete_state(dropdown_id);
-        UI_Dropdown_State old_state = *state;
-        state = ui_add_dropdown_state(dropdown_id);
-        state->is_open        = old_state.is_open;
-        state->y_offset       = old_state.y_offset;
-        state->start_y_offset = old_state.start_y_offset;
-        state->t              = old_state.t;
-    }
-
-    UI_Widget *computed_widget = ui_get_widget_prev_frame(dropdown_id);
-    real32 dropdown_height = 0.0f;
-    if (computed_widget) {
-        dropdown_height = computed_widget->computed_size.y;
-    }
-
-    state->t += game_state->dt;
-    
-    UI_Theme column_theme = {};
-    // these are for the container, basically that holds the button and the dropdown
-    column_theme.size_type = theme.size_type;
-    column_theme.semantic_size = theme.size;
-    column_theme.layout_type = UI_LAYOUT_VERTICAL;
-
-    assert(selected_index < num_items);
-    int32 selected_item_index = selected_index;
-
-    Controller_State *controller_state = Context::controller_state;
-    if (state->is_open) {
-        if (just_pressed_or_repeated(controller_state->key_down)) {
-            selected_item_index++;
-        }
-
-        if (just_pressed_or_repeated(controller_state->key_up)) {
-            selected_item_index--;
-        }
-
-        if (just_pressed(controller_state->key_enter)) {
-            set_is_open(state, false);
-        }
-    }
-
-    selected_item_index = clamp(selected_item_index, 0, num_items - 1);
-
-    // vertical
-    UI_Widget *column = ui_add_and_push_widget("", column_theme,
-                                               UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
-    {
-        UI_Interact_Result dropdown_button_result = ui_push_empty_button(theme.button_theme, button_id);
-        {
-            UI_Theme row_theme = NULL_THEME;
-            row_theme.layout_type = UI_LAYOUT_HORIZONTAL;
-            row_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
-            
-            ui_push_widget("", row_theme);
-            {
-                ui_x_pad(5.0f);
-                
-                UI_Theme text_container = {};
-                text_container.layout_type = UI_LAYOUT_CENTER;
-                text_container.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
-                text_container.scissor_type = UI_SCISSOR_COMPUTED_SIZE;
-                
-                ui_push_widget("", text_container);
-                {
-                    UI_Theme text_theme = NULL_THEME;
-                    text_theme.text_color = theme.button_theme.text_color;
-                    text_theme.font = theme.button_theme.font;
-                    text_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_TEXT };
-                    text_theme.scissor_type = UI_SCISSOR_INHERIT;
-                    if (selected_index > -1) {
-                        do_text(items[selected_index], text_theme);
-                    }
-                }
-                ui_pop_widget();
-
-                ui_x_pad(10.0f);
-
-                UI_Theme arrow_container = {};
-                arrow_container.layout_type = UI_LAYOUT_CENTER;
-                arrow_container.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FILL_REMAINING };
-
-                ui_push_widget("", arrow_container);
-                {
-                    UI_Theme arrow_theme = {};
-                    arrow_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
-                    arrow_theme.semantic_size = { 15.0f, 15.0f };
-                    arrow_theme.texture_name = "editor_down_arrow";
-                    arrow_theme.background_color = rgb_to_vec4(255, 0, 0);
-                    
-                    ui_add_widget("", arrow_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_USE_TEXTURE);
-                } ui_pop_widget();
-
-                ui_x_pad(5.0f);
-            }
-            ui_pop_widget();
-        }
-        ui_pop_widget();
-
-        if (dropdown_button_result.just_pressed) {
-            set_is_open(state, !state->is_open);
-        }
-
-        real32 transition_time = 0.9f;
-        // state->t is just the linear percentage we've made it through the transition_time
-        state->t = min(state->t / transition_time, 1.0f);
-        // t is what we use for the transition timing, but it's based on state->t
-        real32 t = 1.0f - (1.0f - state->t) * (1.0f - state->t);
-
-        // we save start_y_offset and just compress the curve for that distance. instead of
-        // trying to convert the position to some t value.
-        if (state->is_open) {
-            state->y_offset = mix(state->start_y_offset, 0.0f, t);
-        } else {
-            state->y_offset = mix(state->start_y_offset, -dropdown_height, t);
-        }
-
-        // this container is just so that the float container doesn't get put on top of the button.
-        UI_Theme content_container_theme = {};
-        content_container_theme.layout_type = UI_LAYOUT_VERTICAL;
-        content_container_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
-        content_container_theme.semantic_size = { 1.0f, 0.0f }; 
-        
-        ui_add_and_push_widget("", content_container_theme);
-        {
-            UI_Theme list_container_theme = {};
-            list_container_theme.position_type = UI_POSITION_FLOAT;
-            list_container_theme.layout_type = UI_LAYOUT_VERTICAL;
-            list_container_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
-            list_container_theme.semantic_size = { 1.0f, 0.0f }; 
-            list_container_theme.scissor_type = UI_SCISSOR_COMPUTED_SIZE;
-            list_container_theme.background_color = rgb_to_vec4(255, 0, 0);
-
-            UI_Widget *list_container = ui_add_and_push_widget(dropdown_id, list_container_theme,
-                                                               UI_WIDGET_FORCE_TO_TOP_OF_LAYER);
-            {
-                UI_Theme inner_theme = {};
-                inner_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
-                inner_theme.layout_type = UI_LAYOUT_VERTICAL;
-                inner_theme.semantic_size = { 1.0f, 0.0f };
-                inner_theme.position_type = UI_POSITION_RELATIVE;
-                inner_theme.semantic_position = { 0.0f, state->y_offset };
-                inner_theme.scissor_type = UI_SCISSOR_INHERIT;
-                ui_add_and_push_widget(dropdown_inner_id, inner_theme, 0);
-                {
-                    bool32 an_item_was_clicked = false;
-                    for (int32 i = 0; i < num_items; i++) {
-                        bool32 item_clicked = do_text_button(items[i],
-                                                             (i == selected_index) ? theme.selected_item_theme : theme.item_theme,
-                                                             dropdown_item_id_str, i);
-                        if (item_clicked) {
-                            selected_item_index = i;
-                            an_item_was_clicked = true;
-                        }
-                    }
-
-                    if (an_item_was_clicked) {
-                        set_is_open(state, false);
-                    }
-                } ui_pop_widget();
-            }
-            ui_pop_widget();
-        }
-        ui_pop_widget();
-    }
-    ui_pop_widget();
-
-    // TODO: this can be simplified, right?
-    // - if there's an active widget that's not a child of the parent dropdown widget or
-    // if there's no active widget (all while we just pressed left_mouse), then we hide
-    // the dropdown.
-    if (just_pressed(Context::controller_state->left_mouse) &&
-        ui_manager->active.string_ptr != button_id_str &&
-        ui_manager->active.string_ptr != dropdown_item_id_str &&
-        ui_manager->active.string_ptr != dropdown_id_str) {
-        set_is_open(state, false);
-    }
-    
-    return selected_item_index;
-}
-
 
 void handle_text_field_input(UI_Text_Field_State *state) {
     Controller_State *controller_state = Context::controller_state;
@@ -2883,37 +2533,23 @@ UI_Color_Picker_Result do_color_picker(Vec3 color,
             result.should_hide = true;
         }
     }
-        
     
     return result;
 }
 
-void push_scrollable_region(UI_Scrollable_Region_Theme theme, bool32 force_reset,
-                            char *id_string, char *inner_id_string,
-                            char *scrollbar_id_string, char *handle_id_string,
-                            int32 index = 0) {
-    // we just use the computed size to figure out if we're outside of the scrollable region
-    // on the first run, idk what our scissor region will be... i guess we can just make it blank
-    
-    UI_Theme container_theme = {};
-
-    // TODO: only y is scrollable; if/when we add scrollable x, then we should do this check
-    // with x as well.
-    assert(theme.size_type.y != UI_SIZE_FIT_CHILDREN);
-
-    container_theme.size_type = theme.size_type;
-    container_theme.layout_type = UI_LAYOUT_HORIZONTAL;
-    container_theme.background_color = theme.background_color;
-    container_theme.hot_background_color = theme.background_color;
-    container_theme.active_background_color = theme.background_color;
-    container_theme.scissor_type = UI_SCISSOR_COMPUTED_SIZE;
-    
-    UI_Widget *inner_widget = NULL;
+void push_scrollable_region(UI_Scrollable_Region_Theme theme,
+                            String id_string,
+                            real32 max_height = -1.0f,
+                            int32 index = 0,
+                            bool32 force_reset = false) {
+    Marker m = begin_region();
     
     UI_id id = make_ui_id(id_string, index);
-    UI_id inner_id = make_ui_id(inner_id_string, index);
-    UI_id handle_id = make_ui_id(handle_id_string, index);
-    UI_id scrollbar_id = make_ui_id(scrollbar_id_string, index);
+    UI_id inner_id = make_ui_id(append_string(temp_region, id_string, "-inner"), index);
+    UI_id handle_id = make_ui_id(append_string(temp_region, id_string, "-handle"), index);
+    UI_id scrollbar_id = make_ui_id(append_string(temp_region, id_string, "-scrollbar"), index);
+
+    end_region(m);
 
     UI_Widget_State *state_variant = ui_get_state(id);
     UI_Scrollable_Region_State *state;
@@ -2922,6 +2558,36 @@ void push_scrollable_region(UI_Scrollable_Region_Theme theme, bool32 force_reset
     } else {
         state = &state_variant->scrollable_region;
     }
+    
+    UI_Theme container_theme = {};
+
+    // TODO: actually, what if if it's UI_SIZE_FIT_CHILDREN, we require there be a passed in
+    //       max_height, and at that point, we add the scrollbar. that seems alright.
+    // TODO: only y is scrollable for now; if/when we add x, then we should do this for that
+    //       axis as well
+    if (theme.size_type.y == UI_SIZE_FIT_CHILDREN) {
+        assert(max_height >= 0.0f);
+
+        UI_Widget *computed_inner = ui_get_widget_prev_frame(inner_id);
+        if (computed_inner) {
+            if (computed_inner->computed_size.y >= max_height) {
+                theme.size_type.y = UI_SIZE_ABSOLUTE;
+                theme.semantic_size.y = max_height;
+            }
+        }
+    }
+    
+    container_theme.position_type = theme.position_type;
+    container_theme.semantic_position = theme.semantic_position;
+    container_theme.size_type = theme.size_type;
+    container_theme.semantic_size = theme.semantic_size;
+    container_theme.layout_type = UI_LAYOUT_HORIZONTAL;
+    container_theme.background_color = theme.background_color;
+    container_theme.hot_background_color = theme.background_color;
+    container_theme.active_background_color = theme.background_color;
+    container_theme.scissor_type = UI_SCISSOR_COMPUTED_SIZE;
+    
+    UI_Widget *inner_widget = NULL;
 
 #if 0
     if (force_reset) {
@@ -2944,7 +2610,6 @@ void push_scrollable_region(UI_Scrollable_Region_Theme theme, bool32 force_reset
         inner_theme.scissor_type = UI_SCISSOR_INHERIT;
 
         inner_widget = ui_add_widget(inner_id, inner_theme);
-
         UI_Theme scrollbar_theme = {};
         scrollbar_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_FILL_REMAINING };
         scrollbar_theme.layout_type = UI_LAYOUT_VERTICAL;
@@ -3011,4 +2676,234 @@ void push_scrollable_region(UI_Scrollable_Region_Theme theme, bool32 force_reset
     inner_widget->semantic_position.y = -state->y_offset;
     
     ui_push_existing_widget(inner_widget);
+}
+
+void set_is_open(UI_Dropdown_State *state, bool32 is_open) {
+    state->t = 0;
+    state->start_y_offset = state->y_offset;
+    state->is_open = is_open;
+}
+
+int32 do_dropdown(UI_Dropdown_Theme theme,
+                  char **items, int32 num_items,
+                  int32 selected_index,
+                  char *button_id_str, char *dropdown_id_str,
+                  char *dropdown_inner_id_str, // this is for the content that actually moves
+                  char *dropdown_item_id_str,
+                  bool32 force_reset = false,
+                  int32 index = 0) {
+    Marker m = begin_region();
+    char *scroll_region_id_c_str = append_string(temp_region, dropdown_id_str, "-scrollable-region");
+    String scroll_region_id_str = make_string(temp_region, scroll_region_id_c_str);
+    
+    // TODO: do we check that id is actually valid when creating states?
+    // TODO: it's annoying having to pass in 3 different strings. i wish the ui_ids didn't use
+    //       pointers, so we can dynamically create the strings. maybe use hashes?
+    UI_id button_id         = make_ui_id(button_id_str, index);
+    UI_id dropdown_id       = make_ui_id(dropdown_id_str, index);
+    UI_id dropdown_inner_id = make_ui_id(dropdown_inner_id_str, index);
+    UI_id scroll_region_id  = make_ui_id(scroll_region_id_str, index);
+    
+    UI_Widget_State *state_variant = ui_get_state(dropdown_id);
+    UI_Dropdown_State *state;
+    if (!state_variant) {
+        // t is initialized to 1.0
+        state = ui_add_dropdown_state(dropdown_id);
+    } else {
+        state = &state_variant->dropdown;
+    }
+
+    if (force_reset) {
+        _ui_delete_state(dropdown_id);
+        UI_Dropdown_State old_state = *state;
+        state = ui_add_dropdown_state(dropdown_id);
+        state->is_open        = old_state.is_open;
+        state->y_offset       = old_state.y_offset;
+        state->start_y_offset = old_state.start_y_offset;
+        state->t              = old_state.t;
+    }
+
+    UI_Widget *computed_scroll_region = ui_get_widget_prev_frame(scroll_region_id);
+    real32 dropdown_height = 0.0f;
+    if (computed_scroll_region) {
+        dropdown_height = computed_scroll_region->computed_size.y;
+    }
+
+    state->t += game_state->dt;
+    
+    UI_Theme column_theme = {};
+    // these are for the container, basically that holds the button and the dropdown
+    column_theme.size_type = theme.size_type;
+    column_theme.semantic_size = theme.size;
+    column_theme.layout_type = UI_LAYOUT_VERTICAL;
+
+    assert(selected_index < num_items);
+    int32 selected_item_index = selected_index;
+
+    Controller_State *controller_state = Context::controller_state;
+    if (state->is_open) {
+        if (just_pressed_or_repeated(controller_state->key_down)) {
+            selected_item_index++;
+        }
+
+        if (just_pressed_or_repeated(controller_state->key_up)) {
+            selected_item_index--;
+        }
+
+        if (just_pressed(controller_state->key_enter)) {
+            set_is_open(state, false);
+        }
+    }
+
+    selected_item_index = clamp(selected_item_index, 0, num_items - 1);
+
+    // vertical
+    UI_Widget *column = ui_add_and_push_widget("", column_theme,
+                                               UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
+    {
+        UI_Interact_Result dropdown_button_result = ui_push_empty_button(theme.button_theme, button_id);
+        {
+            UI_Theme row_theme = NULL_THEME;
+            row_theme.layout_type = UI_LAYOUT_HORIZONTAL;
+            row_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
+            
+            ui_push_widget("", row_theme);
+            {
+                ui_x_pad(5.0f);
+                
+                UI_Theme text_container = {};
+                text_container.layout_type = UI_LAYOUT_CENTER;
+                text_container.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
+                text_container.scissor_type = UI_SCISSOR_COMPUTED_SIZE;
+                
+                ui_push_widget("", text_container);
+                {
+                    UI_Theme text_theme = NULL_THEME;
+                    text_theme.text_color = theme.button_theme.text_color;
+                    text_theme.font = theme.button_theme.font;
+                    text_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_TEXT };
+                    text_theme.scissor_type = UI_SCISSOR_INHERIT;
+                    if (selected_index > -1) {
+                        do_text(items[selected_index], text_theme);
+                    }
+                }
+                ui_pop_widget();
+
+                ui_x_pad(10.0f);
+
+                UI_Theme arrow_container = {};
+                arrow_container.layout_type = UI_LAYOUT_CENTER;
+                arrow_container.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FILL_REMAINING };
+
+                ui_push_widget("", arrow_container);
+                {
+                    UI_Theme arrow_theme = {};
+                    arrow_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
+                    arrow_theme.semantic_size = { 15.0f, 15.0f };
+                    arrow_theme.texture_name = "editor_down_arrow";
+                    arrow_theme.background_color = rgb_to_vec4(255, 0, 0);
+                    
+                    ui_add_widget("", arrow_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_USE_TEXTURE);
+                } ui_pop_widget();
+
+                ui_x_pad(5.0f);
+            }
+            ui_pop_widget();
+        }
+        ui_pop_widget();
+
+        if (dropdown_button_result.just_pressed) {
+            set_is_open(state, !state->is_open);
+        }
+
+        real32 transition_time = 0.9f;
+        // state->t is just the linear percentage we've made it through the transition_time
+        state->t = min(state->t / transition_time, 1.0f);
+        // t is what we use for the transition timing, but it's based on state->t
+        real32 t = 1.0f - (1.0f - state->t) * (1.0f - state->t);
+
+        // we save start_y_offset and just compress the curve for that distance. instead of
+        // trying to convert the position to some t value.
+        if (state->is_open) {
+            state->y_offset = mix(state->start_y_offset, 0.0f, t);
+        } else {
+            state->y_offset = mix(state->start_y_offset, -dropdown_height, t);
+        }
+
+        // this container is just so that the float container doesn't get put on top of the button.
+        UI_Theme content_container_theme = {};
+        content_container_theme.layout_type = UI_LAYOUT_VERTICAL;
+        content_container_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
+        content_container_theme.semantic_size = { 1.0f, 0.0f }; 
+        
+        ui_add_and_push_widget("", content_container_theme);
+        {
+            UI_Theme list_container_theme = {};
+            list_container_theme.position_type = UI_POSITION_FLOAT;
+            list_container_theme.layout_type = UI_LAYOUT_VERTICAL;
+            list_container_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_ABSOLUTE };
+            list_container_theme.semantic_size = { 1.0f, 200.0f };
+            list_container_theme.scissor_type = UI_SCISSOR_COMPUTED_SIZE;
+            list_container_theme.background_color = rgb_to_vec4(255, 0, 0);
+
+            UI_Widget *list_container = ui_add_and_push_widget(dropdown_id, list_container_theme,
+                                                               UI_WIDGET_FORCE_TO_TOP_OF_LAYER | UI_WIDGET_DRAW_BACKGROUND);
+            {
+                UI_Scrollable_Region_Theme scroll_theme = {};
+                scroll_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
+                scroll_theme.background_color = rgb_to_vec4(0, 0, 0);
+                scroll_theme.position_type = UI_POSITION_RELATIVE;
+                scroll_theme.semantic_position = { 0.0f, state->y_offset };
+
+                push_scrollable_region(scroll_theme, scroll_region_id_str, 200.0f, index);
+                {
+                    UI_Theme inner_theme = {};
+                    inner_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
+                    inner_theme.layout_type = UI_LAYOUT_VERTICAL;
+                    inner_theme.semantic_size = { 1.0f, 0.0f };
+                    //inner_theme.position_type = UI_POSITION_RELATIVE;
+                    //inner_theme.semantic_position = { 0.0f, state->y_offset };
+                    inner_theme.scissor_type = UI_SCISSOR_INHERIT;
+                    ui_add_and_push_widget(dropdown_inner_id, inner_theme, 0);
+                    {
+                        bool32 an_item_was_clicked = false;
+                        for (int32 i = 0; i < num_items; i++) {
+                            bool32 item_clicked = do_text_button(items[i],
+                                                                 (i == selected_index) ? theme.selected_item_theme : theme.item_theme,
+                                                                 dropdown_item_id_str, i);
+                            if (item_clicked) {
+                                selected_item_index = i;
+                                an_item_was_clicked = true;
+                            }
+                        }
+
+                        if (an_item_was_clicked) {
+                            set_is_open(state, false);
+                        }
+                    } ui_pop_widget();
+                } ui_pop_widget(); // scrollable region
+            }
+            ui_pop_widget();
+        }
+        ui_pop_widget();
+    }
+    ui_pop_widget();
+
+    // TODO: this can be simplified, right?
+    // - if there's an active widget that's not a child of the parent dropdown widget or
+    // if there's no active widget (all while we just pressed left_mouse), then we hide
+    // the dropdown.
+    // - actually the simple version is kind of annoying to do here because we don't
+    // have a container that contains the button and the dropdown like with the color
+    // picker
+    if (just_pressed(Context::controller_state->left_mouse) &&
+        !is_active(button_id) &&
+        !is_any_active(make_string(dropdown_item_id_str)) &&
+        !is_active(dropdown_id)) {
+        set_is_open(state, false);
+    }
+
+    end_region(m);
+    
+    return selected_item_index;
 }

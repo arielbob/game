@@ -409,6 +409,19 @@ char *append_string(Allocator *allocator, char *base, char *to_append) {
     return buffer;
 }
 
+char *append_string(Allocator *allocator, String base, char *to_append) {
+    int32 n_base = base.length;
+    int32 n_to_append = string_length(to_append);
+
+    char *buffer = (char *) allocate(allocator, n_base + n_to_append + 1);
+
+    memcpy(buffer, base.contents, n_base);
+    memcpy(buffer + n_base, to_append, n_to_append);
+    buffer[n_base + n_to_append] = '\0';
+
+    return buffer;
+}
+
 // removes the character at index
 void splice(String_Buffer *buffer, int32 index) {
     if (index < 0 || index >= buffer->current_length) return;

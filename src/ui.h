@@ -102,7 +102,7 @@ struct Vec2_UI_Size_Type {
 inline UI_Size_Type &Vec2_UI_Size_Type::operator[](int32 index) {
     return (*this).values[index];
 }
-
+    
 struct Vec4_UI_Padding {
     union {
         real32 values[4];
@@ -165,7 +165,7 @@ struct UI_Theme {
     UI_Layout_Type layout_type;
     Vec2_UI_Size_Type size_type;
     UI_Position_Type position_type;
-    
+
     Vec2 semantic_size;
     Vec2 semantic_position;
 
@@ -275,7 +275,10 @@ struct UI_Checkbox_Theme {
 };
 
 struct UI_Scrollable_Region_Theme {
+    UI_Position_Type position_type;
+    Vec2 semantic_position;
     Vec2_UI_Size_Type size_type;
+    Vec2 semantic_size;
     Vec4 background_color;
 };
 
@@ -291,7 +294,7 @@ struct UI_Scrollable_Region_State {
 struct UI_id {
     // NOTE: we use a pointer to some unique data, such as a constant string specific to a button, to
     //       identify UI elements
-    char *string_ptr;
+    String name;
     // this can be used to differentiate between UI_ids that use the same string_ptr.
     // sometimes elements have the same string_ptr since we want to save time and we are creating a large
     // amount of UI elements such that having a unique string ID is not tenable. these ID strings should
@@ -299,16 +302,6 @@ struct UI_id {
     // this is why we use constant char arrays whose addresses point to some place in the executable.
     int32 index;
 };
-
-inline UI_id make_ui_id(char *id, int32 index) {
-    if (!id || string_equals(id, "")) id = NULL;
-    UI_id ui_id = { id, index };
-    return ui_id;
-}
-
-inline UI_id make_ui_id(char *id) {
-    return make_ui_id(id, 0);
-}
 
 struct UI_Window_State {
     Vec2 position;

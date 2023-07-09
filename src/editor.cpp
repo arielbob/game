@@ -1136,12 +1136,10 @@ void draw_asset_library() {
             list_scroll_region_theme.background_color = rgb_to_vec4(0, 0, 0);
             list_scroll_region_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
 
-            push_scrollable_region(list_scroll_region_theme, 0,
-                                   "material-list-scroll-region",
-                                   "material-list-scroll-region-inner",
-                                   "material-list-scroll-region-scrollbar",
-                                   "material-list-scroll-region-handle");
-            ui_add_and_push_widget("asset-library-material-list-container", list_theme, UI_WIDGET_DRAW_BACKGROUND);
+            push_scrollable_region(list_scroll_region_theme,
+                                   make_string("material-list-scroll-region"));
+            ui_add_and_push_widget("asset-library-material-list-container2", list_theme,
+                                   UI_WIDGET_DRAW_BACKGROUND);
             {
                 UI_Button_Theme item_theme = editor_button_theme;
                 item_theme.scissor_type = UI_SCISSOR_INHERIT;
@@ -1326,7 +1324,7 @@ void draw_asset_library() {
                                                                                       0.0f, 1.0f,
                                                                                       editor_slider_theme,
                                                                                       "material-metalness-slider",
-                                                                                      "material-metalness-slider");
+                                                                                      "material-metalness-slider-text");
                             selected_material->metalness = result.value;
                         }
                         ui_y_pad(5.0f);
@@ -1369,7 +1367,7 @@ void draw_asset_library() {
                                                                                       0.0f, 1.0f,
                                                                                       editor_slider_theme,
                                                                                       "material-roughness-slider",
-                                                                                      "material-roughness-slider");
+                                                                                      "material-roughness-slider-text");
                             selected_material->roughness = result.value;
                         }
                     
