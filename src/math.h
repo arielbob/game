@@ -176,6 +176,13 @@ struct HSV_Color {
     real32 v;
 };
 
+struct LRTB_Rect_int32 {
+    int32 left;
+    int32 right;
+    int32 top;
+    int32 bottom;
+};
+
 inline Vec3 make_vec3(real32 x, real32 y, real32 z);
 inline Vec4 make_vec4(real32 x, real32 y, real32 z, real32 w);
 inline Vec4 make_vec4(Vec3 v, real32 w);

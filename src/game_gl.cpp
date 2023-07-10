@@ -2951,6 +2951,17 @@ void gl_draw_ui_commands() {
     for (int32 i = 0; i < ui_manager->num_render_commands; i++) {
         UI_Render_Command *current = &ui_manager->render_commands[i];
 
+        if (current->use_scissor) {
+            gl_scissor(current->scissor_position, current->scissor_dimensions);
+        } else {
+            gl_disable_scissor();
+        }
+
+        if (current->num_indices == 0) {
+            // we can have empty render commands that just set a scissor region
+            continue;
+        }
+        
         if (current->shader_type != UI_Shader_Type::NONE) {
             current_shader_type = current->shader_type;
             shader_id = gl_use_ui_shader(current_shader_type, current->shader_uniforms);
@@ -2961,12 +2972,6 @@ void gl_draw_ui_commands() {
                 shader_id = gl_use_shader("ui");
                 gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->ortho_clip_matrix);
             }
-        }
-
-        if (current->use_scissor) {
-            gl_scissor(current->scissor_position, current->scissor_dimensions);
-        } else {
-            gl_disable_scissor();
         }
 
         if (current_shader_type == UI_Shader_Type::NONE) {

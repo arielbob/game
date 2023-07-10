@@ -1285,7 +1285,7 @@ void ui_frame_init(real32 dt) {
         UI_POSITION_NONE,
         { (real32) display_output->width, (real32) display_output->height },
         { 0.0f, 0.0f },
-        UI_SCISSOR_NONE
+        UI_SCISSOR_INHERIT
     };
 
     UI_Theme layer_theme = root_theme;
@@ -2045,6 +2045,7 @@ UI_Text_Field_Result do_text_field(UI_Text_Field_Theme theme,
                     cursor_theme.semantic_size = { 1.0f, 1.0f };
                     cursor_theme.position_type = UI_POSITION_FLOAT;
                     cursor_theme.background_color = theme.cursor_color;
+                    cursor_theme.scissor_type = UI_SCISSOR_NONE;
                     
                     cursor_theme.semantic_position = { floorf(width_to_cursor_index - state->x_offset), 0.0f };    
                     
@@ -2314,6 +2315,7 @@ UI_Text_Field_Slider_Result do_text_field_slider(real32 value,
                     cursor_theme.semantic_size = { 1.0f, 1.0f };
                     cursor_theme.position_type = UI_POSITION_FLOAT;
                     cursor_theme.background_color = theme.cursor_color;
+                    cursor_theme.scissor_type = UI_SCISSOR_NONE;
                     
                     cursor_theme.semantic_position = { floorf(width_to_cursor_index - text_field_state->x_offset), 0.0f };    
                     

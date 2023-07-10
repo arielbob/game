@@ -112,15 +112,34 @@ void ui_push_command(UI_Render_Command command,
     }
 }
 
-void set_scissor(UI_Render_Command *command, UI_Widget *widget) {
+UI_Scissor_Rect get_current_scissor(UI_Scissor_State *scissor_state) {
+    assert(scissor_state->num_scissors > 0);
+    return scissor_state->stack[scissor_state->num_scissors - 1];
+}
+
+void set_scissor(UI_Render_Command *command, UI_Widget *widget,
+                 UI_Scissor_State *scissor_state) {
     // note that this currently only gets called if you have the flag UI_WIDGET_DRAW or
     // UI_WIDGET_USE_CUSTOM_SHADER. i.e. only if the widget makes the renderer add
     // vertices.
     
     if (widget->scissor_type == UI_SCISSOR_NONE) {
+        command->use_scissor = false;
         return;
     }
+
+    // the current scissor is set based on whether the widget is computed or inherited before
+    // this function (set_scissor()) is called
+    UI_Scissor_Rect scissor_rect = get_current_scissor(scissor_state);
     
+    command->use_scissor = true;
+    command->scissor_position = scissor_rect.position;
+    command->scissor_dimensions = scissor_rect.dimensions;
+
+    widget->computed_scissor_position = command->scissor_position;
+    widget->computed_scissor_dimensions = command->scissor_dimensions;
+
+#if 0
     if (widget->scissor_type == UI_SCISSOR_COMPUTED_SIZE) {
         command->use_scissor = true;
         command->scissor_position = make_vec2_int32(widget->computed_position);
@@ -158,7 +177,9 @@ void set_scissor(UI_Render_Command *command, UI_Widget *widget) {
             return;
         }
     }
+#endif
 
+#if 0
     // bound the scissor rect to be within the window or else weird things happen
     Display_Output *display_output = &game_state->render_state.display_output;
 
@@ -181,6 +202,7 @@ void set_scissor(UI_Render_Command *command, UI_Widget *widget) {
 
     command->scissor_position = { left, top };
     command->scissor_dimensions = { right - left, bottom - top };
+#endif
 }
 
 void generate_vertices(UI_Widget *widget, Allocator *allocator,
@@ -259,7 +281,7 @@ void generate_vertices(UI_Widget *widget, Allocator *allocator,
     }
 }
 
-void ui_render_widget_to_commands(UI_Widget *widget) {
+void ui_render_widget_to_commands(UI_Widget *widget, UI_Scissor_State *scissor_state) {
     Vec2 computed_position = widget->computed_position;
     Vec2 computed_size = widget->computed_size;
 
@@ -269,6 +291,13 @@ void ui_render_widget_to_commands(UI_Widget *widget) {
     // scissor correctly. i'm pretty sure we won't ever need to scissor without drawing. scissoring is
     // handled for user input before rendering, i.e. we don't have to wait for rendering for the scissor
     // to affect interaction, so i'm pretty sure this is fine.
+
+    // ok, instead we can update scissor_state based on the widget, then set_scissor() sets it on
+    // the command.
+    // the GL drawing is really basic and basically just sets the scissor if the command has use_scissor
+    // and sets the scissor to whatever's in it. we might be able to make it so the GL code knows about
+    // the scissor stack so we don't scissor unnecessarily, but the way we're doing it now seems simpler
+    // for now.
     
     // TODO: finish this - see gl_draw_ui_widget() for the rest of the stuff
 
@@ -318,8 +347,8 @@ void ui_render_widget_to_commands(UI_Widget *widget) {
 
         command.shader_type = widget->shader_type;
         command.shader_uniforms = widget->shader_uniforms;
-        
-        set_scissor(&command, widget);
+
+        set_scissor(&command, widget, scissor_state);
 
         command.rendering_mode = rendering_mode;
         
@@ -375,7 +404,7 @@ void ui_render_widget_to_commands(UI_Widget *widget) {
             command.texture_type = UI_Texture_Type::UI_TEXTURE_NONE;
         }
         
-        set_scissor(&command, widget);
+        set_scissor(&command, widget, scissor_state);
 
         command.rendering_mode = rendering_mode;
         
@@ -427,7 +456,7 @@ void ui_render_widget_to_commands(UI_Widget *widget) {
                 UI_Render_Command command = {};
                 command.texture_type = UI_Texture_Type::UI_TEXTURE_FONT;
                 command.font_name = font->name;
-                set_scissor(&command, widget);
+                set_scissor(&command, widget, scissor_state);
 
                 ui_push_command(command, vertices, 4, indices, 6);
             } else if (*text == '\n') {
@@ -441,15 +470,84 @@ void ui_render_widget_to_commands(UI_Widget *widget) {
     }
 }
 
-struct UI_Scissor_State {
-    Vec2 position;
-    Vec2 dimensions;
+LRTB_Rect_int32 get_lrtb_rect(UI_Scissor_Rect scissor_rect) {
+    assert(!scissor_rect.empty);
+    assert(scissor_rect.dimensions.x >= 0);
+    assert(scissor_rect.dimensions.y >= 0);
+    
+    int32 left = scissor_rect.position.x;
+    int32 right = left + scissor_rect.dimensions.x;
+
+    int32 top = scissor_rect.position.y;
+    int32 bottom = top + scissor_rect.dimensions.y;
+
+    return { left, right, top, bottom };
 };
 
-void ui_create_render_commands() {
-    const int MAX_SCISSOR_STATES = 64;
-    UI_Scissor_State scissor_stack[MAX_SCISSOR_STATES];
+void push_scissor(UI_Scissor_State *scissor_state, Vec2_int32 position, Vec2_int32 dimensions) {
+    assert(scissor_state->num_scissors < UI_MAX_SCISSOR_STATES);
 
+    UI_Scissor_Rect rect_to_add = {};
+
+    bool cut_rect = false;
+    if (scissor_state->num_scissors > 0) {
+        UI_Scissor_Rect current_scissor = get_current_scissor(scissor_state);
+        if (!current_scissor.empty) {
+            cut_rect = true;
+        }
+    }
+    
+    if (cut_rect) {
+        // cut into the current one
+        LRTB_Rect_int32 current_rect = get_lrtb_rect(get_current_scissor(scissor_state));
+        LRTB_Rect_int32 new_rect = get_lrtb_rect({ false, position, dimensions });
+
+        int32 left = max(current_rect.left, new_rect.left);
+        int32 right = min(current_rect.right, new_rect.right);
+
+        int32 top = max(current_rect.top, new_rect.top);
+        int32 bottom = min(current_rect.bottom, new_rect.bottom);
+
+        if (left > right || top > bottom) {
+            // the rects aren't intersecting at all, so just set everything to 0
+            rect_to_add.position = {};
+            rect_to_add.dimensions = {};
+        } else {
+            rect_to_add.position = { left, top };
+            rect_to_add.dimensions = { right - left, bottom - top };
+        }
+    } else {
+        // we either don't have a scissor, or the current scissor is an empty one,
+        // so just push whatever was passed in.
+        rect_to_add.position = position;
+        rect_to_add.dimensions = dimensions;
+    }
+
+    scissor_state->stack[scissor_state->num_scissors++] = rect_to_add;
+}
+
+void push_null_scissor(UI_Scissor_State *scissor_state) {
+    assert(scissor_state->num_scissors < UI_MAX_SCISSOR_STATES);
+    scissor_state->stack[scissor_state->num_scissors++] = { true, {}, {} };
+}
+
+void pop_scissor(UI_Scissor_State *scissor_state) {
+    assert(scissor_state->num_scissors > 0);
+    scissor_state->num_scissors--;
+}
+
+void pop_scissor_if_necessary(UI_Scissor_State *scissor_state, UI_Widget *widget) {
+    if (widget->scissor_type != UI_SCISSOR_INHERIT) {
+        pop_scissor(scissor_state);
+    }
+}
+
+void ui_create_render_commands() {
+    UI_Scissor_State scissor_state = {};
+
+    Display_Output *display_output = &game_state->render_state.display_output;
+    push_scissor(&scissor_state, {}, { display_output->width, display_output->height });
+    
     // TODO: what if the default scissor state is UI_SCISSOR_INHERIT?
     // - but what if we want to not scissor something?
     // - i guess UI_SCISSOR_NONE can put in a special entry
@@ -473,14 +571,23 @@ void ui_create_render_commands() {
         
         // don't add anything if the current node is root
         if (current != ui_manager->root) {
-            //assert(current_command);
-            ui_render_widget_to_commands(current);
+            if (current->scissor_type == UI_SCISSOR_COMPUTED_SIZE) {
+                push_scissor(&scissor_state,
+                             make_vec2_int32(current->computed_position),
+                             make_vec2_int32(current->computed_size));
+            } else if (current->scissor_type == UI_SCISSOR_NONE) {
+                push_null_scissor(&scissor_state);
+            }
+
+            ui_render_widget_to_commands(current, &scissor_state);
         }
         
         if (current->first) {
             current = current->first;
         } else {
             if (current->next) {
+                // we're done with current, so pop its scissor if it pushed one
+                pop_scissor_if_necessary(&scissor_state, current);
                 current = current->next;
             } else {
                 // if there's no sibling, then go up the tree until we find a node
@@ -492,8 +599,11 @@ void ui_create_render_commands() {
                 UI_Widget *current_ancestor = current;
 
                 do {
-                    current_ancestor = current_ancestor->parent;
+                    // note that we do this before we go up
+                    pop_scissor_if_necessary(&scissor_state, current_ancestor);
 
+                    current_ancestor = current_ancestor->parent;
+                    
                     if (!current_ancestor->parent) {
                         // root
                         // this will break out of outer loop as well, since root->next is NULL
@@ -501,9 +611,11 @@ void ui_create_render_commands() {
                     }
                 } while (!current_ancestor->next);
 
+                pop_scissor_if_necessary(&scissor_state, current_ancestor);
                 current = current_ancestor->next;
             }
         }
     }
-};
 
+    assert(scissor_state.num_scissors == 1); // the window scissor
+};

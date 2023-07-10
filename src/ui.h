@@ -31,6 +31,8 @@
 #define UI_MAX_WINDOWS 128
 #define NUM_WIDGET_BUCKETS 128
 
+#define UI_MAX_SCISSOR_STATES 64
+    
 #define UI_MAX_STATES_TO_DELETE 256
 
 struct UI_Widget;
@@ -69,14 +71,13 @@ enum UI_Position_Type {
 };
 
 /*
-  UI_SCISSOR_COMPUTED_SIZE: scissor based on computed size (and position) of the widget
-  UI_SCISSOR_INHERIT: scissor based on parent; if parent is also inherit, keeps going until we hit a
-                      UI_SCISSOR_COMPUTED_SIZE widget
+  COMPUTED_SIZE and NONE add entries on the scissor stack.
+  the default is INHERIT, i.e. we just use whatever's on the top of the stack
  */
 enum UI_Scissor_Type {
-    UI_SCISSOR_NONE,
+    UI_SCISSOR_INHERIT,
     UI_SCISSOR_COMPUTED_SIZE,
-    UI_SCISSOR_INHERIT
+    UI_SCISSOR_NONE
 };
 
 enum UI_Widget_State_Type {
@@ -480,6 +481,18 @@ enum class UI_Texture_Type {
 enum class UI_Rendering_Mode {
     TRIANGLES,
     TRIANGLE_FAN
+};
+
+// this and UI_Scissor_State are used for creating the render commands
+struct UI_Scissor_Rect {
+    bool32 empty;
+    Vec2_int32 position;
+    Vec2_int32 dimensions;
+};
+
+struct UI_Scissor_State {
+    UI_Scissor_Rect stack[UI_MAX_SCISSOR_STATES];
+    int32 num_scissors;
 };
 
 // - vertices and indices need to be pointers and we need to store max vertices/indices per command
