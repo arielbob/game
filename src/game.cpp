@@ -437,11 +437,13 @@ void draw_messages(Message_Manager *manager, real32 y_start) {
     message_container.position_type = UI_POSITION_FLOAT;
     message_container.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
     message_container.semantic_size = { 1.0f, 0.0f };
-    message_container.layout_type = { UI_LAYOUT_CENTER };
+    message_container.layout_type = UI_LAYOUT_CENTER;
     
     UI_Theme text_theme = NULL_THEME;
+    text_theme.size_type = { UI_SIZE_FIT_TEXT, UI_SIZE_FIT_TEXT };
     text_theme.text_color = make_vec4(1.0f, 1.0f, 1.0f, 1.0f);
     text_theme.font = "calibri24b";
+    text_theme.background_color = make_vec4(0.0f, 0.0f, 0.0f, 0.5f);
     
     for (int32 messages_visited = 0; messages_visited < manager->num_messages; messages_visited++) {
         Message *message = &messages[index];
@@ -453,11 +455,12 @@ void draw_messages(Message_Manager *manager, real32 y_start) {
 
         // TODO: does this need to be done in linear-space?
         text_theme.text_color.w = opacity;
+        text_theme.background_color.w *= opacity;
 
         message_container.semantic_position = { 0.0f, y_start + messages_visited*y_offset };
-        ui_add_and_push_widget("", message_container);
+        ui_add_and_push_widget("", message_container, UI_WIDGET_DRAW_BACKGROUND);
         {
-            do_text(string, text_theme);
+            do_text(string, text_theme, UI_WIDGET_DRAW_BACKGROUND);
         }
         ui_pop_widget();
         

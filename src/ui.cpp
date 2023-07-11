@@ -1595,6 +1595,7 @@ void do_text(char *text, char *id, UI_Theme theme, uint32 flags = 0, int32 index
     text_theme.font = theme.font;
     text_theme.scissor_type = theme.scissor_type;
     text_theme.position_type = theme.position_type;
+    text_theme.background_color = theme.background_color;
     
     UI_Widget *text_widget = ui_add_widget(make_ui_id(id, index), text_theme, UI_WIDGET_DRAW_TEXT | flags);
     text_widget->text = text;
@@ -1965,9 +1966,17 @@ UI_Text_Field_Result do_text_field(UI_Text_Field_Theme theme,
     UI_Interact_Result interact = ui_interact(textbox);
     Font *font = get_font(textbox->font);
 
-    if (!is_focus(textbox)) {
+    UI_Text_Field_Result result = {};
+    result.text = make_string(state->buffer);
+    // idk if we want to always have it be this way, for example, we might want to commit with a
+    // "submit" button, but this interface allows the user to do it that way. they can just ignore
+    // the committed member and do whatever, really.
+    result.committed = interact.lost_focus;
+    
+    if (!interact.lost_focus && !is_focus(textbox)) {
         // only change the text based on the passed in value if we're not currently
-        // using it
+        // using it and only if we didn't just lose focus (because we're sending the buffer and
+        // shouldn't modify it)
         set_string_buffer_text(&state->buffer, value);
     }
     
@@ -1998,13 +2007,6 @@ UI_Text_Field_Result do_text_field(UI_Text_Field_Theme theme,
         handle_text_field_input(state);
     }
 
-    UI_Text_Field_Result result = {};
-    result.text = make_string(state->buffer);
-    // idk if we want to always have it be this way, for example, we might want to commit with a
-    // "submit" button, but this interface allows the user to do it that way. they can just ignore
-    // the committed member and do whatever, really.
-    result.committed = interact.lost_focus; 
-    
     UI_id text_widget_id = make_ui_id(text_id_string, index);
     char *str = to_char_array((Allocator *) &ui_manager->frame_arena, state->buffer);
     real32 width_to_cursor_index;
