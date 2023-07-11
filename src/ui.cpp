@@ -766,8 +766,9 @@ bool32 ui_widget_is_descendent_of(UI_id child_id, UI_id parent_id) {
     UI_Widget *child = ui_get_widget(child_id);
     UI_Widget *parent = ui_get_widget(parent_id);
 
-    assert(child);
-    assert(parent);
+    if (!child || !parent) {
+        return false;
+    }
     
     // returns true if child_id == parent_id as well
     UI_Widget *current = child;
@@ -1530,6 +1531,10 @@ inline bool32 in_bounds(Vec2 p, Vec2_int32 widget_position, Vec2_int32 widget_si
 }
 
 inline bool32 in_bounds(Vec2 p, UI_Widget *widget) {
+    if (widget->flags & UI_WIDGET_HIDE) {
+        return false;
+    }
+    
     bool32 in_computed_bounds = in_bounds(p,
                                           widget->computed_position, widget->computed_size);
     bool32 in_scissor_bounds = true;
@@ -2563,18 +2568,31 @@ void push_scrollable_region(UI_Scrollable_Region_Theme theme,
     
     UI_Theme container_theme = {};
 
+    UI_Widget *computed_inner = ui_get_widget_prev_frame(inner_id);
+    UI_Widget *computed_container = ui_get_widget_prev_frame(id);
+    
     // TODO: actually, what if if it's UI_SIZE_FIT_CHILDREN, we require there be a passed in
     //       max_height, and at that point, we add the scrollbar. that seems alright.
     // TODO: only y is scrollable for now; if/when we add x, then we should do this for that
     //       axis as well
-    if (theme.size_type.y == UI_SIZE_FIT_CHILDREN) {
-        assert(max_height >= 0.0f);
-
-        UI_Widget *computed_inner = ui_get_widget_prev_frame(inner_id);
-        if (computed_inner) {
-            if (computed_inner->computed_size.y >= max_height) {
+    bool32 show_scrollbar = true;
+    
+    if (computed_inner && computed_container) {
+        if (theme.size_type.y == UI_SIZE_FIT_CHILDREN) {
+            assert(max_height >= 0.0f);
+            if (computed_inner->computed_size.y > max_height) {
                 theme.size_type.y = UI_SIZE_ABSOLUTE;
                 theme.semantic_size.y = max_height;
+            } else {
+                if (theme.hide_scrollbar_until_necessary) {
+                    show_scrollbar = false;
+                }
+            }
+        } else {
+            if (computed_inner->computed_size.y <= computed_container->computed_size.y) {
+                if (theme.hide_scrollbar_until_necessary) {
+                    show_scrollbar = false;
+                }
             }
         }
     }
@@ -2612,67 +2630,69 @@ void push_scrollable_region(UI_Scrollable_Region_Theme theme,
         inner_theme.scissor_type = UI_SCISSOR_INHERIT;
 
         inner_widget = ui_add_widget(inner_id, inner_theme);
+
         UI_Theme scrollbar_theme = {};
         scrollbar_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_FILL_REMAINING };
         scrollbar_theme.layout_type = UI_LAYOUT_VERTICAL;
         scrollbar_theme.semantic_size = { 20.0f, 0.0f };
 
-        ui_add_and_push_widget(scrollbar_id, scrollbar_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
-        {
-            UI_Widget *computed_scrollbar = ui_get_widget_prev_frame(scrollbar_id);
-            UI_Widget *computed_inner = ui_get_widget_prev_frame(inner_id);
+        if (show_scrollbar) {
+            ui_add_and_push_widget(scrollbar_id, scrollbar_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
+            {
+                UI_Widget *computed_scrollbar = ui_get_widget_prev_frame(scrollbar_id);
 
-            // default values
-            UI_Size_Type handle_size_type = UI_SIZE_FILL_REMAINING;
-            real32 handle_height = 0.0f;
-            if (computed_scrollbar && computed_inner) {
-                handle_size_type = UI_SIZE_ABSOLUTE;
+                // default values
+                UI_Size_Type handle_size_type = UI_SIZE_FILL_REMAINING;
+                real32 handle_height = 0.0f;
+                if (computed_scrollbar && computed_inner) {
+                    handle_size_type = UI_SIZE_ABSOLUTE;
 
-                real32 view_height = computed_scrollbar->computed_size.y;
-                real32 content_height = computed_inner->computed_size.y;
-                handle_height = clamp(view_height / content_height, 0.0f, 1.0f) * view_height;
-            }
+                    real32 view_height = computed_scrollbar->computed_size.y;
+                    real32 content_height = computed_inner->computed_size.y;
+                    handle_height = clamp(view_height / content_height, 0.0f, 1.0f) * view_height;
+                }
             
-            UI_Theme handle_theme = {};
-            handle_theme.size_type = { UI_SIZE_FILL_REMAINING, handle_size_type };
-            handle_theme.semantic_size = { 0.0f, handle_height };
-            handle_theme.background_color = rgb_to_vec4(0, 0, 255);
-            handle_theme.hot_background_color = rgb_to_vec4(0, 255, 0);
-            handle_theme.active_background_color = rgb_to_vec4(255, 0, 0);
-            handle_theme.position_type = UI_POSITION_RELATIVE;
+                UI_Theme handle_theme = {};
+                handle_theme.size_type = { UI_SIZE_FILL_REMAINING, handle_size_type };
+                handle_theme.semantic_size = { 0.0f, handle_height };
+                handle_theme.background_color = rgb_to_vec4(0, 0, 255);
+                handle_theme.hot_background_color = rgb_to_vec4(0, 255, 0);
+                handle_theme.active_background_color = rgb_to_vec4(255, 0, 0);
+                handle_theme.position_type = UI_POSITION_RELATIVE;
             
-            UI_Widget *handle = ui_add_widget(handle_id, handle_theme,
-                                              UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
+                UI_Widget *handle = ui_add_widget(handle_id, handle_theme,
+                                                  UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
 
-            UI_Interact_Result interact = ui_interact(handle);
-            if (interact.just_pressed) {
-                state->relative_start_y = interact.relative_mouse.y;
-            }
-
-            real32 handle_offset = 0.0f;
-            if (computed_scrollbar) {
-                real32 scrollbar_scrollable_height = computed_scrollbar->computed_size.y - handle_height;
-                real32 actual_scrollable_height = (computed_inner->computed_size.y -
-                                                   computed_scrollbar->computed_size.y);
-            
-                if (interact.holding) {
-                    // i'm pretty sure computed_scrollbar will have to be non-null here or else the interact
-                    // would always be false, so don't need to check
-
-                    real32 scrollbar_y_delta = interact.relative_mouse.y - state->relative_start_y;
-                    real32 actual_y_delta = ((scrollbar_y_delta / scrollbar_scrollable_height) *
-                                             actual_scrollable_height);
-                
-                    state->y_offset += actual_y_delta;
+                UI_Interact_Result interact = ui_interact(handle);
+                if (interact.just_pressed) {
+                    state->relative_start_y = interact.relative_mouse.y;
                 }
 
-                state->y_offset = clamp(state->y_offset, 0.0f, actual_scrollable_height);
+                real32 handle_offset = 0.0f;
+                if (computed_scrollbar) {
+                    real32 scrollbar_scrollable_height = computed_scrollbar->computed_size.y - handle_height;
+                    real32 actual_scrollable_height = (computed_inner->computed_size.y -
+                                                       computed_scrollbar->computed_size.y);
+            
+                    if (interact.holding) {
+                        // i'm pretty sure computed_scrollbar will have to be non-null here or else the interact
+                        // would always be false, so don't need to check
 
-                handle_offset = (state->y_offset / actual_scrollable_height) * scrollbar_scrollable_height;
-            }
+                        real32 scrollbar_y_delta = interact.relative_mouse.y - state->relative_start_y;
+                        real32 actual_y_delta = ((scrollbar_y_delta / scrollbar_scrollable_height) *
+                                                 actual_scrollable_height);
+                
+                        state->y_offset += actual_y_delta;
+                    }
 
-            handle->semantic_position = { 0.0f, handle_offset };
-        } ui_pop_widget(); // scrollbar
+                    state->y_offset = clamp(state->y_offset, 0.0f, actual_scrollable_height);
+
+                    handle_offset = (state->y_offset / actual_scrollable_height) * scrollbar_scrollable_height;
+                }
+
+                handle->semantic_position = { 0.0f, handle_offset };
+            } ui_pop_widget(); // scrollbar
+        } // if (show_scrollbar)
     } ui_pop_widget(); // container
 
     inner_widget->semantic_position.y = -state->y_offset;
@@ -2689,36 +2709,34 @@ void set_is_open(UI_Dropdown_State *state, bool32 is_open) {
 int32 do_dropdown(UI_Dropdown_Theme theme,
                   char **items, int32 num_items,
                   int32 selected_index,
-                  char *button_id_str, char *dropdown_id_str,
-                  char *dropdown_inner_id_str, // this is for the content that actually moves
-                  char *dropdown_item_id_str,
+                  char *id,
                   bool32 force_reset = false,
                   int32 index = 0) {
     Marker m = begin_region();
-    char *scroll_region_id_c_str = append_string(temp_region, dropdown_id_str, "-scrollable-region");
-    String scroll_region_id_str = make_string(temp_region, scroll_region_id_c_str);
-    
-    // TODO: do we check that id is actually valid when creating states?
-    // TODO: it's annoying having to pass in 3 different strings. i wish the ui_ids didn't use
-    //       pointers, so we can dynamically create the strings. maybe use hashes?
+    String button_id_str = make_string(temp_region, id, "-button");
+    String dropdown_inner_id_str = make_string(temp_region, id, "-inner");
+    String scroll_region_id_str = make_string(temp_region, id, "-scrollable-region");
+    char *dropdown_item_id_str = append_string(temp_region, id, "-item");
+
+    UI_id dropdown_id       = make_ui_id(id, index);
     UI_id button_id         = make_ui_id(button_id_str, index);
-    UI_id dropdown_id       = make_ui_id(dropdown_id_str, index);
     UI_id dropdown_inner_id = make_ui_id(dropdown_inner_id_str, index);
     UI_id scroll_region_id  = make_ui_id(scroll_region_id_str, index);
-    
-    UI_Widget_State *state_variant = ui_get_state(dropdown_id);
+
+    // we use the button_id for the state because that's always shown
+    UI_Widget_State *state_variant = ui_get_state(button_id);
     UI_Dropdown_State *state;
     if (!state_variant) {
         // t is initialized to 1.0
-        state = ui_add_dropdown_state(dropdown_id);
+        state = ui_add_dropdown_state(button_id);
     } else {
         state = &state_variant->dropdown;
     }
 
     if (force_reset) {
-        _ui_delete_state(dropdown_id);
+        _ui_delete_state(button_id);
         UI_Dropdown_State old_state = *state;
-        state = ui_add_dropdown_state(dropdown_id);
+        state = ui_add_dropdown_state(button_id);
         state->is_open        = old_state.is_open;
         state->y_offset       = old_state.y_offset;
         state->start_y_offset = old_state.start_y_offset;
@@ -2784,7 +2802,6 @@ int32 do_dropdown(UI_Dropdown_Theme theme,
                     text_theme.text_color = theme.button_theme.text_color;
                     text_theme.font = theme.button_theme.font;
                     text_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_TEXT };
-                    text_theme.scissor_type = UI_SCISSOR_INHERIT;
                     if (selected_index > -1) {
                         do_text(items[selected_index], text_theme);
                     }
@@ -2804,7 +2821,7 @@ int32 do_dropdown(UI_Dropdown_Theme theme,
                     arrow_theme.semantic_size = { 15.0f, 15.0f };
                     arrow_theme.texture_name = "editor_down_arrow";
                     arrow_theme.background_color = rgb_to_vec4(255, 0, 0);
-                    
+
                     ui_add_widget("", arrow_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_USE_TEXTURE);
                 } ui_pop_widget();
 
@@ -2836,8 +2853,8 @@ int32 do_dropdown(UI_Dropdown_Theme theme,
         UI_Theme content_container_theme = {};
         content_container_theme.layout_type = UI_LAYOUT_VERTICAL;
         content_container_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
-        content_container_theme.semantic_size = { 1.0f, 0.0f }; 
-        
+        content_container_theme.semantic_size = { 1.0f, 0.0f };
+
         ui_add_and_push_widget("", content_container_theme);
         {
             UI_Theme list_container_theme = {};
@@ -2848,8 +2865,23 @@ int32 do_dropdown(UI_Dropdown_Theme theme,
             list_container_theme.scissor_type = UI_SCISSOR_COMPUTED_SIZE;
             list_container_theme.background_color = rgb_to_vec4(255, 0, 0);
 
-            UI_Widget *list_container = ui_add_and_push_widget(dropdown_id, list_container_theme,
-                                                               UI_WIDGET_FORCE_TO_TOP_OF_LAYER | UI_WIDGET_DRAW_BACKGROUND);
+            // hide the dropdown if it's not showing at all. dropdown_height is the dropdown height
+            // from the previous frame. if we add something to the dropdown in the current frame
+            // (before this runs), then we can sometimes see a flash of that new item peeking
+            // past the offset. for example, height from last frame is 100, so y_offset is -100, but
+            // a 20px high item got added, so that item goes past the end and gets show inside the
+            // scissor region. to see the effect if this, you can add UI_WIDGET_DRAW_BACKGROUND to
+            // list_container and add a bg color to list_container_theme.
+            bool32 show_dropdown = state->y_offset > -dropdown_height;
+
+            // note that we put UI_WIDGET_HIDE on this one and not the one above because
+            // UI_WIDGET_FORCE_TO_TOP_OF_LAYER will force it up the tree and UI_WIDGET_HIDE
+            // won't do anything to it since it's not below it
+            uint32 dropdown_flags = UI_WIDGET_FORCE_TO_TOP_OF_LAYER;
+            if (!show_dropdown) {
+                dropdown_flags |= UI_WIDGET_HIDE;
+            }
+            UI_Widget *list_container = ui_add_and_push_widget(dropdown_id, list_container_theme, dropdown_flags);
             {
                 UI_Scrollable_Region_Theme scroll_theme = {};
                 scroll_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
@@ -2863,8 +2895,6 @@ int32 do_dropdown(UI_Dropdown_Theme theme,
                     inner_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
                     inner_theme.layout_type = UI_LAYOUT_VERTICAL;
                     inner_theme.semantic_size = { 1.0f, 0.0f };
-                    //inner_theme.position_type = UI_POSITION_RELATIVE;
-                    //inner_theme.semantic_position = { 0.0f, state->y_offset };
                     inner_theme.scissor_type = UI_SCISSOR_INHERIT;
                     ui_add_and_push_widget(dropdown_inner_id, inner_theme, 0);
                     {
@@ -2884,25 +2914,18 @@ int32 do_dropdown(UI_Dropdown_Theme theme,
                         }
                     } ui_pop_widget();
                 } ui_pop_widget(); // scrollable region
-            }
-            ui_pop_widget();
-        }
-        ui_pop_widget();
+            } ui_pop_widget(); // list_container
+        } ui_pop_widget(); // content container (the scissor region for dropdown)
     }
     ui_pop_widget();
 
-    // TODO: this can be simplified, right?
-    // - if there's an active widget that's not a child of the parent dropdown widget or
-    // if there's no active widget (all while we just pressed left_mouse), then we hide
-    // the dropdown.
-    // - actually the simple version is kind of annoying to do here because we don't
-    // have a container that contains the button and the dropdown like with the color
-    // picker
-    if (just_pressed(Context::controller_state->left_mouse) &&
-        !is_active(button_id) &&
-        !is_any_active(make_string(dropdown_item_id_str)) &&
-        !is_active(dropdown_id)) {
-        set_is_open(state, false);
+    // try checking if it's a descendent of the scroll region or if the button's active
+    if (just_pressed(Context::controller_state->left_mouse)) {
+        if (!ui_has_active() ||
+            (!ui_widget_is_descendent_of(ui_manager->active, scroll_region_id) &&
+             !is_active(button_id))) {
+            set_is_open(state, false);
+        }
     }
 
     end_region(m);

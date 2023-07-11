@@ -253,6 +253,45 @@ String make_string(Allocator *allocator, char *contents) {
     return result;
 }
 
+// appends
+String make_string(Allocator *allocator, String base, char *to_append) {
+    int32 n_base = base.length;
+    int32 n_to_append = string_length(to_append);
+
+    int32 length = n_base + n_to_append;
+    char *buffer = (char *) allocate(allocator, length);
+
+    memcpy(buffer, base.contents, n_base);
+    memcpy(buffer + n_base, to_append, n_to_append);
+    // no need for null terminator, since it's a String
+
+    String result;
+    result.allocator = allocator;
+    result.contents = buffer;
+    result.length = length;
+
+    return result;
+}
+
+String make_string(Allocator *allocator, char *base, char *to_append) {
+    int32 n_base = string_length(base);
+    int32 n_to_append = string_length(to_append);
+
+    int32 length = n_base + n_to_append;
+    char *buffer = (char *) allocate(allocator, length);
+
+    memcpy(buffer, base, n_base);
+    memcpy(buffer + n_base, to_append, n_to_append);
+    // no need for null terminator, since it's a String
+
+    String result;
+    result.allocator = allocator;
+    result.contents = buffer;
+    result.length = length;
+
+    return result;
+}
+
 void deallocate(String string) {
     deallocate(string.allocator, string.contents);
 }

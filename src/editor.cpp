@@ -1005,8 +1005,7 @@ void draw_entity_box_2(bool32 force_reset) {
             int32 dropdown_selected_index = do_dropdown(dropdown_theme,
                                                         material_names, num_material_names,
                                                         selected_index,
-                                                        "material_dropdown_button", "material_dropdown",
-                                                        "material_dropdown_inner", "material_dropdown_item",
+                                                        "material_dropdown",
                                                         force_reset);
             if (dropdown_selected_index != selected_index) {
                 selected_index = dropdown_selected_index;
@@ -1253,10 +1252,7 @@ void draw_asset_library() {
                             int32 dropdown_selected_index = do_dropdown(dropdown_theme,
                                                                         texture_names, num_texture_names,
                                                                         selected_index,
-                                                                        "albedo_texture_dropdown_button",
-                                                                        "albedo_texture_dropdown",
-                                                                        "albedo_texture_dropdown_inner",
-                                                                        "albedo_texture_dropdown_item");
+                                                                        "albedo_texture_dropdown");
                             if (dropdown_selected_index != selected_index) {
                                 selected_index = dropdown_selected_index;
                                 replace_contents(&selected_material->albedo_texture_name, texture_names[selected_index]);
@@ -1310,10 +1306,7 @@ void draw_asset_library() {
                             int32 dropdown_selected_index = do_dropdown(dropdown_theme,
                                                                         texture_names, num_texture_names,
                                                                         selected_index,
-                                                                        "metalness_texture_dropdown_button",
-                                                                        "metalness_texture_dropdown",
-                                                                        "metalness_texture_dropdown_inner",
-                                                                        "metalness_texture_dropdown_item");
+                                                                        "metalness_texture_dropdown");
                             if (dropdown_selected_index != selected_index) {
                                 selected_index = dropdown_selected_index;
                                 replace_contents(&selected_material->metalness_texture_name, texture_names[selected_index]);
@@ -1350,13 +1343,11 @@ void draw_asset_library() {
                             int32 selected_index = get_selected_name_index(selected_material->roughness_texture_name,
                                                                            texture_names, num_texture_names);
                             assert(selected_index >= 0);
+
                             int32 dropdown_selected_index = do_dropdown(dropdown_theme,
                                                                         texture_names, num_texture_names,
                                                                         selected_index,
-                                                                        "roughness_texture_dropdown_button",
-                                                                        "roughness_texture_dropdown",
-                                                                        "roughness_texture_dropdown_inner",
-                                                                        "roughness_texture_dropdown_item");
+                                                                        "roughness_texture_dropdown");
                             if (dropdown_selected_index != selected_index) {
                                 selected_index = dropdown_selected_index;
                                 replace_contents(&selected_material->roughness_texture_name, texture_names[selected_index]);

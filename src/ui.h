@@ -7,10 +7,11 @@
 #define UI_WIDGET_USE_TEXTURE           (1 << 3)
 #define UI_WIDGET_IS_FOCUSABLE          (1 << 4)
 #define UI_WIDGET_DRAW_BORDER           (1 << 5)
-#define UI_WIDGET_IS_WINDOW             (1 << 6) // should only be active on the window widget in push_window()
+#define UI_WIDGET_IS_WINDOW             (1 << 6)  // should only be active on the window widget in push_window()
 #define UI_WIDGET_FORCE_TO_TOP_OF_LAYER (1 << 7)
 #define UI_WIDGET_USE_CUSTOM_SHADER     (1 << 8)
 #define UI_WIDGET_USE_CUSTOM_SHAPE      (1 << 9)
+#define UI_WIDGET_HIDE                  (1 << 10) // doesn't render it, but still does layout
 
 #define CORNER_TOP_LEFT     (1 << 0)
 #define CORNER_TOP_RIGHT    (1 << 1)
@@ -281,6 +282,7 @@ struct UI_Scrollable_Region_Theme {
     Vec2_UI_Size_Type size_type;
     Vec2 semantic_size;
     Vec4 background_color;
+    bool32 hide_scrollbar_until_necessary = true;
 };
 
 /*

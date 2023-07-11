@@ -568,9 +568,15 @@ void ui_create_render_commands() {
     while (current) {
         current->rendering_index = num_visited;
         num_visited++;
+
+        bool32 skip_widget_and_children = false;
+
+        if (current->flags & UI_WIDGET_HIDE) {
+            skip_widget_and_children = true;
+        }
         
         // don't add anything if the current node is root
-        if (current != ui_manager->root) {
+        if (current != ui_manager->root && !skip_widget_and_children) {
             if (current->scissor_type == UI_SCISSOR_COMPUTED_SIZE) {
                 push_scissor(&scissor_state,
                              make_vec2_int32(current->computed_position),
@@ -582,12 +588,14 @@ void ui_create_render_commands() {
             ui_render_widget_to_commands(current, &scissor_state);
         }
         
-        if (current->first) {
+        if (current->first && !skip_widget_and_children) {
             current = current->first;
         } else {
             if (current->next) {
                 // we're done with current, so pop its scissor if it pushed one
-                pop_scissor_if_necessary(&scissor_state, current);
+                if (!skip_widget_and_children) {
+                    pop_scissor_if_necessary(&scissor_state, current);
+                }
                 current = current->next;
             } else {
                 // if there's no sibling, then go up the tree until we find a node
@@ -600,9 +608,15 @@ void ui_create_render_commands() {
 
                 do {
                     // note that we do this before we go up
-                    pop_scissor_if_necessary(&scissor_state, current_ancestor);
+                    if (!skip_widget_and_children) {
+                        pop_scissor_if_necessary(&scissor_state, current_ancestor);
+                    }
 
                     current_ancestor = current_ancestor->parent;
+
+                    // we only ever visit the hidden node itself and none if its children, so if
+                    // we go up, we have to set skip_widget_and_children to false
+                    skip_widget_and_children = false;
                     
                     if (!current_ancestor->parent) {
                         // root
