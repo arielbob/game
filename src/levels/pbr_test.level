@@ -38,28 +38,62 @@ roughness 0.010563
 }
 
 material {
-name "New Material"
-albedo_color 0.500000 0.500000 0.500000
+name "pink check"
+albedo_color 1.000000 0.143333 0.777266
+use_metalness_texture 1
+metalness_texture "debug"
 metalness 0.000000
-roughness 0.000000
+roughness 0.021126
+}
+
+material {
+name "beige"
+albedo_color 1.000000 0.503133 0.143333
+metalness 0.000000
+use_roughness_texture 1
+roughness_texture "texture_default"
+roughness 0.035210
 }
 
 }
 
 entities {
 entity {
-position -1.741156 0.000000 -1.354605
+position -0.380305 0.937249 2.148195
+rotation 0.988753 -0.037446 -0.144693 0.005480
+scale 1.573280 1.440001 1.292996
+mesh "suzanne2"
+material "matte green"
+}
+entity {
+position 1.110038 0.000000 -2.989490
+rotation 0.879762 -0.466592 -0.080534 -0.042712
+scale 1.000000 1.000000 1.000000
+mesh "cube"
+material "shiny blue"
+}
+entity {
+position 3.480953 0.000000 0.000000
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
 mesh "cube"
 material "default_material"
 }
 entity {
-position 0.747548 0.659598 -0.546931
-rotation 0.921624 0.255085 0.281875 -0.078017
-scale 1.000000 1.000000 1.000000
+position -1.083288 0.528036 -0.122449
+rotation 0.903185 0.393827 -0.156521 0.068250
+scale 0.518848 0.558422 0.551765
 mesh "suzanne2"
-material "matte green"
+material "shiny red"
+}
+entity {
+position -2.071458 3.283484 2.876131
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+light_type point
+light_color 0.220000 0.220000 0.220000
+falloff_start 0.000000
+falloff_end 5.000000
 }
 entity {
 position 0.219617 2.049393 -1.493652
@@ -71,34 +105,18 @@ falloff_start 0.000000
 falloff_end 0.000000
 }
 entity {
-position -2.071458 2.134163 2.876131
+position 1.322851 0.185360 0.105213
+rotation 0.865635 0.321438 0.341537 -0.175232
+scale 1.000000 1.000000 1.000000
+mesh "suzanne"
+material "pink check"
+}
+entity {
+position -1.271802 0.000000 -2.001059
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
-light_type point
-light_color 0.220000 0.220000 0.220000
-falloff_start 0.000000
-falloff_end 5.000000
-}
-entity {
-position -1.083288 0.528036 -0.122449
-rotation 0.903185 0.393827 -0.156521 0.068250
-scale 0.518848 0.558422 0.551765
-mesh "suzanne2"
-material "shiny red"
-}
-entity {
-position 3.480953 0.000000 0.000000
-rotation 1.000000 0.000000 0.000000 0.000000
-scale 1.000000 1.000000 1.000000
-mesh "cube"
-material "default_material"
-}
-entity {
-position 1.110038 0.000000 -2.989490
-rotation 0.879762 -0.466592 -0.080534 -0.042712
-scale 1.000000 1.000000 1.000000
-mesh "cube"
-material "shiny blue"
+mesh "gizmo_sphere"
+material "beige"
 }
 }
 

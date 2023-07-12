@@ -136,3 +136,21 @@ void set_mesh(Entity *entity, int32 id) {
     entity->mesh_id = mesh->id;
     entity->transformed_aabb = transform_aabb(mesh->aabb, entity->transform);
 }
+
+void set_mesh(Entity *entity, String name) {
+    assert(entity->flags & ENTITY_MESH);
+
+    Mesh *mesh = get_mesh(name);
+    assert(mesh);
+
+    entity->mesh_id = mesh->id;
+}
+
+void set_mesh(Entity *entity, char *name) {
+    Marker m = begin_region();
+
+    String mesh_name = make_string(temp_region, name);
+    set_mesh(entity, mesh_name);
+    
+    end_region(m);
+}

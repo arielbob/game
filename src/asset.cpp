@@ -423,6 +423,34 @@ void get_material_names(Allocator *allocator, char **names, int max_names, int *
     *num_names = num_material_names;
 }
 
+void get_mesh_names(Allocator *allocator, Mesh_Type type, char **names, int max_names, int *num_names) {
+    int32 num_mesh_names = 0;
+    for (int32 i = 0; i < NUM_MESH_BUCKETS; i++) {
+        Mesh *current = asset_manager->mesh_table[i];
+        bool32 should_exit = false;
+        while (current) {
+            if (num_mesh_names >= max_names) {
+                assert(num_mesh_names < max_names);
+                should_exit = true;
+                break;
+            }
+            #if 0
+            if (current->type == type) {
+                names[num_mesh_names++] = to_char_array(allocator, current->name);
+            }
+            #endif
+            names[num_mesh_names++] = to_char_array(allocator, current->name);
+            current = current->table_next;
+        }
+
+        if (should_exit) {
+            break;
+        }
+    }
+
+    *num_names = num_mesh_names;
+}
+
 Font_File *get_font_file(char *filename) {
     uint32 hash = get_hash(make_string(filename), NUM_FONT_FILE_BUCKETS);
 
