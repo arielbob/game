@@ -28,6 +28,8 @@ enum class Material_Type  { NONE, LEVEL, DEFAULT };
 //       doesn't need UVs. and something like a rock mesh won't need joint data. we will also need to modify
 //       our mesh loading filetype and loading to acommodate these different types.
 struct Mesh {
+    int32 id;
+    
     Mesh_Type type;
     String name;
     String filename;
@@ -161,6 +163,8 @@ struct Asset_Manager {
     Allocator *allocator;
 
     Mesh      *mesh_table[NUM_MESH_BUCKETS];
+    int32     total_meshes_added_ever;
+    
     Texture   *texture_table[NUM_TEXTURE_BUCKETS];
     
     Material  *material_table[NUM_MATERIAL_BUCKETS];

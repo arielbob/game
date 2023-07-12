@@ -218,7 +218,7 @@ Entity *pick_entity(Editor_State *editor_state, Ray cursor_ray) {
             }
         } else if (current->flags & ENTITY_MESH) {
             real32 aabb_t;
-            Mesh *mesh = get_mesh(current->mesh_name);
+            Mesh *mesh = get_mesh(current->mesh_id);
             if (ray_intersects_aabb(cursor_ray, current->transformed_aabb, &aabb_t) && (aabb_t < t_min)) {
                 Ray_Intersects_Mesh_Result result;
                 if (ray_intersects_mesh(cursor_ray, mesh, current->transform, true, &result) &&
@@ -1013,6 +1013,47 @@ void draw_entity_box_2(bool32 force_reset) {
                 editor_state->selected_entity_modified = true;
             }
         }
+
+#if 0
+        if (entity->flags & ENTITY_MESH) {
+            ui_y_pad(10.0f);
+            do_text("Mesh");
+            ui_y_pad(1.0f);
+        
+            Mesh *material = get_mesh(entity->material_id);
+
+            const int32 MAX_MATERIAL_NAMES = 256;
+            char *material_names[MAX_MATERIAL_NAMES];
+            int32 num_material_names;
+            get_material_names((Allocator *) &ui_manager->frame_arena, material_names, MAX_MATERIAL_NAMES,
+                               &num_material_names);
+
+            int32 selected_index = -1;
+            for (int32 i = 0; i < num_material_names; i++) {
+                if (string_equals(material->name, material_names[i])) {
+                    selected_index = i;
+                }
+            }
+
+            UI_Dropdown_Theme dropdown_theme = {};
+            dropdown_theme.button_theme = editor_button_theme;
+            dropdown_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
+            dropdown_theme.size = { 1.0f, 0.0f };
+            dropdown_theme.item_theme = editor_dropdown_item_theme;
+            dropdown_theme.selected_item_theme = editor_selected_dropdown_item_theme;
+        
+            int32 dropdown_selected_index = do_dropdown(dropdown_theme,
+                                                        material_names, num_material_names,
+                                                        selected_index,
+                                                        "material_dropdown",
+                                                        force_reset);
+            if (dropdown_selected_index != selected_index) {
+                selected_index = dropdown_selected_index;
+                set_material(entity, material_names[dropdown_selected_index]);
+                editor_state->selected_entity_modified = true;
+            }
+        }
+#endif
     }
     ui_pop_widget();
     

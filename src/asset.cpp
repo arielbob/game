@@ -10,11 +10,25 @@ Material_Info default_material_info = {
 };
 
 Mesh *get_mesh(String name) {
-    uint32 hash = get_hash(name, NUM_MESH_BUCKETS);
+    for (int32 i = 0; i < NUM_MESH_BUCKETS; i++) {
+        Mesh *current = asset_manager->mesh_table[i];
+        while (current) {
+            if (string_equals(current->name, name)) {
+                return current;
+            }
+            current = current->table_next;
+        }
+    }
+
+    return NULL;
+}
+
+Mesh *get_mesh(int32 id) {
+    uint32 hash = get_hash(id, NUM_MESH_BUCKETS);
 
     Mesh *current = asset_manager->mesh_table[hash];
     while (current) {
-        if (string_equals(current->name, name)) {
+        if (current->id == id) {
             return current;
         }
 
@@ -24,7 +38,45 @@ Mesh *get_mesh(String name) {
     return NULL;
 }
 
-void delete_mesh(String name) {
+void delete_mesh(int32 id) {
+    Mesh *mesh = get_mesh(id);
+
+    if (!mesh) {
+        assert(!"Mesh does not exist.");
+        return;
+    }
+    
+    uint32 hash = get_hash(id, NUM_MESH_BUCKETS);
+    
+    if (mesh->table_prev) {
+        mesh->table_prev->table_next = mesh->table_next;
+    } else {
+        // if we're first in list, we need to update bucket array when we delete
+        asset_manager->mesh_table[hash] = mesh->table_next;
+    }
+
+    if (mesh->table_next) {
+        mesh->table_next->table_prev = mesh->table_prev;
+    }
+    
+    deallocate(mesh);
+    deallocate(asset_manager->allocator, mesh);
+
+    // set entity meshes to default if they had the deleted mesh
+    Mesh *default_mesh = get_mesh(make_string("cube"));
+    
+    Entity *current = game_state->level.entities;
+    while (current) {
+        if (current->flags & ENTITY_MESH) {
+            if (current->mesh_id == id) {
+                set_mesh(current, default_mesh->id);
+            }
+        }
+
+        current = current->next;
+    }
+    
+#if 0
     uint32 hash = get_hash(name, NUM_MESH_BUCKETS);
 
     Mesh *current = asset_manager->mesh_table[hash];
@@ -51,7 +103,7 @@ void delete_mesh(String name) {
 
         current = current->table_next;
     }
-
+#endif
     assert(!"Mesh does not exist.");
 }
 
@@ -94,8 +146,9 @@ Mesh *add_mesh(String name, String filename, Mesh_Type type) {
 
     Mesh *mesh = (Mesh *) allocate(asset_manager->allocator, sizeof(Mesh));
     *mesh = load_mesh(asset_manager->allocator, type, name, filename);
+    mesh->id = asset_manager->total_meshes_added_ever++;
     
-    uint32 hash = get_hash(name, NUM_MESH_BUCKETS);
+    uint32 hash = get_hash(mesh->id, NUM_MESH_BUCKETS);
 
     Mesh *current = asset_manager->mesh_table[hash];
     mesh->table_next = current;
@@ -105,7 +158,7 @@ Mesh *add_mesh(String name, String filename, Mesh_Type type) {
     }
     asset_manager->mesh_table[hash] = mesh;
 
-    r_load_mesh(mesh->name);
+    r_load_mesh(mesh->id);
     
     return mesh;
 }
@@ -548,7 +601,7 @@ void unload_level_meshes() {
                     current->table_next->table_prev = current->table_prev;
                 }
 
-                r_unload_mesh(current->name);
+                r_unload_mesh(current->id);
                 deallocate(current);
                 deallocate(asset_manager->allocator, current);
 

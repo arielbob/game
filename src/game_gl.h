@@ -172,6 +172,7 @@ struct GL_Mesh {
     uint32 vbo;
     uint32 num_triangles;
 
+    int32 id;
     String name;
     GL_Mesh *table_prev;
     GL_Mesh *table_next;
@@ -248,9 +249,11 @@ struct GL_UI_Data {
 struct GL_State {
     Heap_Allocator heap;
     
-    // we just use the same keys across GL and game code. GL rendering meshes should be added in game code
-    // with mesh type of Mesh_Type::RENDERING
+    // we just use the same keys across GL and game code.
     GL_Mesh    *mesh_table[NUM_MESH_BUCKETS];
+    // for non-level meshes, their IDs are negative starting at -1
+    int32 num_non_level_meshes_added;
+    
     GL_Texture *texture_table[NUM_TEXTURE_BUCKETS];
     GL_Font    *font_table[NUM_FONT_BUCKETS];
     GL_Shader  *shader_table[NUM_SHADER_BUCKETS];

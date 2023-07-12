@@ -8,8 +8,10 @@ Entity make_entity_from_info(Allocator *allocator, Entity_Info *info) {
     result.transform        = info->transform;
 
     if (info->flags & ENTITY_MESH) {
-        result.mesh_name        = copy(allocator, info->mesh_name);
+        Mesh *mesh = get_mesh(info->mesh_name);
+        result.mesh_id = mesh->id;
     }
+
     if (info->flags & ENTITY_MATERIAL) {
         Material *material = get_material(info->material_name);
         result.material_id = material->id;
@@ -30,7 +32,7 @@ Entity make_entity_from_info(Allocator *allocator, Entity_Info *info) {
 void update_entity_aabb(Entity *entity) {
     // TODO: not sure if all entities with AABBs necessarily need a mesh
     if (entity->flags & ENTITY_MESH) {
-        Mesh *mesh = get_mesh(entity->mesh_name);
+        Mesh *mesh = get_mesh(entity->mesh_id);
         assert(mesh);
         entity->transformed_aabb = transform_aabb(mesh->aabb, get_model_matrix(entity->transform));
     }
@@ -125,12 +127,12 @@ void set_material(Entity *entity, char *name) {
     end_region(m);
 }
 
-void set_mesh(Entity *entity, String name) {
+void set_mesh(Entity *entity, int32 id) {
     assert(entity->flags & ENTITY_MESH);
 
-    Mesh *mesh = get_mesh(name);
+    Mesh *mesh = get_mesh(id);
     assert(mesh);
 
-    entity->mesh_name = mesh->name;
+    entity->mesh_id = mesh->id;
     entity->transformed_aabb = transform_aabb(mesh->aabb, entity->transform);
 }

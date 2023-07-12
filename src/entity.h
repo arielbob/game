@@ -29,7 +29,7 @@ enum Light_Type {
     uint32 flags;                               \
     Transform transform;                        \
                                                 \
-    String mesh_name;                           \
+    int32 mesh_id;                              \
     int32 material_id;                          \
     AABB transformed_aabb;                      \
                                                 \
@@ -51,7 +51,7 @@ struct Entity {
 
 void deallocate(Entity *entity) {
     if (entity->flags & ENTITY_MESH) {
-        deallocate(entity->mesh_name);
+        // nothing to do
     }
 
     if (entity->flags & ENTITY_MATERIAL) {
@@ -60,5 +60,6 @@ void deallocate(Entity *entity) {
 }
 
 void set_material(Entity *entity, int32 material_id);
+void set_mesh(Entity *entity, int32 id);
 
 #endif

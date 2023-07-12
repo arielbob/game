@@ -169,7 +169,8 @@ void export_level(Level *level, char *filename) {
             append_vec3_property(&working_buffer, "scale", current->transform.scale);
 
             if (current->flags & ENTITY_MESH) {
-                append_string_property(&working_buffer, "mesh", current->mesh_name);
+                Mesh *mesh = get_mesh(current->mesh_id);
+                append_string_property(&working_buffer, "mesh", mesh->name);
             }
 
             if (current->flags & ENTITY_MATERIAL) {

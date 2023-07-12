@@ -15,19 +15,15 @@ void r_load_font(String font_name) {
     r_add_command(command);
 }
 
-void r_load_mesh(String mesh_name) {
-    mesh_name = copy(frame_arena, mesh_name);
-
+void r_load_mesh(int32 mesh_id) {
     Command command = { Command_Type::LOAD_MESH };
-    command.load_mesh = { mesh_name };
+    command.load_mesh = { mesh_id };
     r_add_command(command);
 }
 
-void r_unload_mesh(String mesh_name) {
-    mesh_name = copy(frame_arena, mesh_name);
-
+void r_unload_mesh(int32 mesh_id) {
     Command command = { Command_Type::UNLOAD_MESH };
-    command.unload_mesh = { mesh_name };
+    command.unload_mesh = { mesh_id };
     r_add_command(command);
 }
 

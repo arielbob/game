@@ -1000,15 +1000,16 @@ GL_Font *gl_get_font(String font_name) {
     GL_GET_FONT_DEF
 }
 
+// TODO: replace calls to this to use the gl_get_mesh(int32 mesh_id) version
 GL_Mesh *gl_get_mesh(String mesh_name) {
-    uint32 hash = get_hash(mesh_name, NUM_MESH_BUCKETS);
-    GL_Mesh *current = g_gl_state->mesh_table[hash];
-    while (current) {
-        if (string_equals(current->name, mesh_name)) {
-            return current;
+    for (int32 i = 0; i < NUM_MESH_BUCKETS; i++) {
+        GL_Mesh *current = g_gl_state->mesh_table[i];
+        while (current) {
+            if (string_equals(current->name, mesh_name)) {
+                return current;
+            }
+            current = current->table_next;
         }
-
-        current = current->table_next;
     }
 
     return NULL;
@@ -1017,6 +1018,20 @@ GL_Mesh *gl_get_mesh(String mesh_name) {
 // TODO: maybe just use the macro like GL_GET_TEXTURE_DEF
 inline GL_Mesh *gl_get_mesh(char *mesh_name) {
     return gl_get_mesh(make_string(mesh_name));
+}
+
+GL_Mesh *gl_get_mesh(int32 mesh_id) {
+    uint32 hash = get_hash(mesh_id, NUM_MESH_BUCKETS);
+    GL_Mesh *current = g_gl_state->mesh_table[hash];
+    while (current) {
+        if (current->id == mesh_id) {
+            return current;
+        }
+
+        current = current->table_next;
+    }
+
+    return NULL;
 }
 
 bool32 gl_load_shader(char *vertex_shader_filename, char *fragment_shader_filename, char *shader_name) {
@@ -1219,36 +1234,53 @@ void gl_init_font(Font *font) {
     }
 }
 
-bool32 gl_add_mesh(Mesh_Type type, String name, uint32 vao, uint32 vbo, uint32 num_triangles) {
-    // add gl_mesh to the gl mesh table
-    uint32 hash = get_hash(name, NUM_MESH_BUCKETS);
-    GL_Mesh *current = g_gl_state->mesh_table[hash];
-    GL_Mesh *last_visited = current;
-    while (current) {
-        if (string_equals(current->name, name)) {
-            assert(!"GL_Mesh with this name already exists!");
-            return false;
-        }
-
-        last_visited = current;
-        current = current->table_next;
+bool32 gl_add_mesh(int32 id, Mesh_Type type, String name, uint32 vao, uint32 vbo, uint32 num_triangles) {
+    if (id < 0) { // just pass in -1 for id if you want the ID to be set for you
+        assert(type == Mesh_Type::PRIMITIVE || type == Mesh_Type::ENGINE);
+        id = -(++g_gl_state->num_non_level_meshes_added);
+        assert(id != 0);
+    }
+    
+    GL_Mesh *mesh = gl_get_mesh(id);
+    if (mesh) {
+        assert(!"GL_Mesh with this ID already exists!");
+        return false;
     }
 
+    mesh = gl_get_mesh(name);
+    if (mesh) {
+        assert(!"GL_Mesh with this name already exists!");
+        return false;
+    }
+
+    // add gl_mesh to the gl mesh table
+    uint32 hash = get_hash(id, NUM_MESH_BUCKETS);
+    GL_Mesh *current = g_gl_state->mesh_table[hash];
+    GL_Mesh *last = NULL;
+    while (current) {
+        last = current;
+        current = current->table_next;
+    }
+    
     GL_Mesh *gl_mesh = (GL_Mesh *) allocate(&g_gl_state->heap, sizeof(GL_Mesh));
     *gl_mesh = { type, vao, vbo, num_triangles };
-    // make a copy of the name here instead of passing in a copy, since we would have to delete it if the mesh
-    // name already existed (i.e. if we early-outed and didn't end up adding the mesh)
-    gl_mesh->name = copy((Allocator *) &g_gl_state->heap, name);
-    gl_mesh->table_prev = last_visited;
+    gl_mesh->id         = id;
+    gl_mesh->name       = copy((Allocator *) &g_gl_state->heap, name);
+    gl_mesh->table_prev = last;
     gl_mesh->table_next = NULL;
     
-    if (!last_visited) {
+    if (!last) {
         g_gl_state->mesh_table[hash] = gl_mesh;
     } else {
-        last_visited->table_next = gl_mesh;
+        last->table_next = gl_mesh;
     }
 
     return true;
+}
+
+// for non-level meshes
+inline bool32 gl_add_mesh(Mesh_Type type, String name, uint32 vao, uint32 vbo, uint32 num_triangles) {
+    return gl_add_mesh(-1, type, name, vao, vbo, num_triangles);
 }
 
 bool32 gl_load_mesh(Mesh *mesh) {
@@ -1285,7 +1317,7 @@ bool32 gl_load_mesh(Mesh *mesh) {
     glBindVertexArray(0);
 
     // add gl_mesh to the gl mesh table
-    return gl_add_mesh(mesh->type, mesh->name, vao, vbo, mesh->num_triangles);
+    return gl_add_mesh(mesh->id, mesh->type, mesh->name, vao, vbo, mesh->num_triangles);
 }
 
 uint32 gl_use_shader(char *shader_name) {
@@ -1355,6 +1387,19 @@ GL_Mesh *gl_use_mesh(String mesh_name) {
 
 inline GL_Mesh *gl_use_mesh(char *mesh_name) {
     GL_Mesh *mesh = gl_get_mesh(mesh_name);
+    
+    if (mesh) {
+        glBindVertexArray(mesh->vao);
+    } else {
+        assert(!"Mesh does not exist!");
+        return NULL;
+    }
+
+    return mesh;
+}
+
+inline GL_Mesh *gl_use_mesh(int32 mesh_id) {
+    GL_Mesh *mesh = gl_get_mesh(mesh_id);
     
     if (mesh) {
         glBindVertexArray(mesh->vao);
@@ -1438,12 +1483,12 @@ void gl_draw_mesh(GL_State *gl_state, Render_State *render_state,
 }
 #endif
 
-void gl_draw_mesh(String mesh_name,
+void gl_draw_mesh(int32 mesh_id,
                   Material *material,
                   Transform transform) {
     uint32 shader_id = gl_use_shader("pbr");
 
-    GL_Mesh *gl_mesh = gl_use_mesh(mesh_name);
+    GL_Mesh *gl_mesh = gl_use_mesh(mesh_id);
     gl_use_texture(material->albedo_texture_name,    0);
     gl_use_texture(material->metalness_texture_name, 1);
     gl_use_texture(material->roughness_texture_name, 2);
@@ -1492,10 +1537,10 @@ void gl_draw_textured_mesh(char *mesh_name, char *texture_name, Transform transf
     glBindVertexArray(0);
 }
 
-void gl_draw_wireframe(String mesh_name, Vec4 color, Transform transform) {
+void gl_draw_wireframe(int32 mesh_id, Vec4 color, Transform transform) {
     uint32 shader_id = gl_use_shader("debug_wireframe");
 
-    GL_Mesh *gl_mesh = gl_use_mesh(mesh_name);
+    GL_Mesh *gl_mesh = gl_use_mesh(mesh_id);
 
     Mat4 model_matrix = get_model_matrix(transform);
     gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
@@ -1512,8 +1557,8 @@ void gl_draw_wireframe(String mesh_name, Vec4 color, Transform transform) {
     glBindVertexArray(0);
 }
 
-inline void gl_draw_wireframe(String mesh_name, Transform transform) {
-    gl_draw_wireframe(mesh_name, make_vec4(1.0f, 1.0f, 0.0f, 1.0f), transform);
+inline void gl_draw_wireframe(int32 mesh_id, Transform transform) {
+    gl_draw_wireframe(mesh_id, make_vec4(1.0f, 1.0f, 0.0f, 1.0f), transform);
 }
 
 void gl_draw_circle(Vec4 color, Transform transform) {
@@ -1901,12 +1946,12 @@ void gl_delete_framebuffer(GL_Framebuffer framebuffer) {
     glDeleteRenderbuffers(1, &framebuffer.render_buffer);
 }
 
-void gl_unload_mesh(String name) {
-    uint32 hash = get_hash(name, NUM_MESH_BUCKETS);
+void gl_unload_mesh(int32 id) {
+    uint32 hash = get_hash(id, NUM_MESH_BUCKETS);
 
     GL_Mesh *current = g_gl_state->mesh_table[hash];
     while (current) {
-        if (string_equals(current->name, name)) {
+        if (current->id == id) {
             if (current->table_prev) {
                 current->table_prev->table_next = current->table_next;
             } else {
@@ -3338,13 +3383,13 @@ void gl_render_editor(GL_Framebuffer framebuffer,
         if (has_mesh && has_material) {
             Material *material = get_material(current->material_id);
             assert(material);
-            gl_draw_mesh(current->mesh_name, material, current->transform);
+            gl_draw_mesh(current->mesh_id, material, current->transform);
         }
 
         if (editor_state->show_wireframe &&
             (selected_entity == current) &&
             has_mesh) {
-            gl_draw_wireframe(current->mesh_name, current->transform);
+            gl_draw_wireframe(current->mesh_id, current->transform);
         }
 
         if (editor_state->show_colliders && has_collider) {
@@ -3570,12 +3615,12 @@ void gl_render(Controller_State *controller_state,
                 // a mesh, we delete it from the asset manager, then add a command to the
                 // command queue to unload the mesh from our gl state.
                 Command_Load_Mesh c = command->load_mesh;
-                Mesh *mesh = get_mesh(c.mesh_name);
+                Mesh *mesh = get_mesh(c.mesh_id);
                 gl_load_mesh(mesh);
             } break;
             case Command_Type::UNLOAD_MESH: {
                 Command_Unload_Mesh c = command->unload_mesh;
-                gl_unload_mesh(c.mesh_name);
+                gl_unload_mesh(c.mesh_id);
             } break;
             case Command_Type::LOAD_TEXTURE: {
                 Command_Load_Texture c = command->load_texture;

@@ -32,7 +32,10 @@ struct Material_Info {
 
 struct Entity_Info {
     // we use this to get the material, then set the entity's material_id from it
-    String material_name; 
+    String material_name;
+    // same for meshes
+    String mesh_name;
+
     ENTITY_FIELDS
 };
 

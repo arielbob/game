@@ -36,11 +36,11 @@ struct Command_Load_Font {
 };
 
 struct Command_Load_Mesh {
-    String mesh_name;
+    int32 mesh_id;
 };
 
 struct Command_Unload_Mesh {
-    String mesh_name;
+    int32 mesh_id;
 };
 
 struct Command_Load_Texture {

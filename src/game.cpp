@@ -634,7 +634,7 @@ bool32 move_player_to_closest_ground(Player *player, real32 max_drop_distance) {
         while (current) {
             if (current->flags & ENTITY_MESH) {
                 Mat4 object_to_world = get_model_matrix(current->transform);
-                Mesh *mesh = get_mesh(current->mesh_name);
+                Mesh *mesh = get_mesh(current->mesh_id);
 
                 // TODO: check against AABB first?
                 Ray_Intersects_Mesh_Result result;
@@ -694,7 +694,7 @@ void do_collisions(Player *player, Vec3 initial_move) {
             }
 
             Mat4 object_to_world = get_model_matrix(entity->transform);
-            Mesh *mesh = get_mesh(entity->mesh_name);
+            Mesh *mesh = get_mesh(entity->mesh_id);
 
             for (int32 triangle_index = 0; triangle_index < (int32) mesh->num_triangles; triangle_index++) {
                 Vec3 triangle[3];
