@@ -1966,19 +1966,19 @@ UI_Text_Field_Result do_text_field(UI_Text_Field_Theme theme,
     UI_Interact_Result interact = ui_interact(textbox);
     Font *font = get_font(textbox->font);
 
-    UI_Text_Field_Result result = {};
-    result.text = make_string(state->buffer);
-    // idk if we want to always have it be this way, for example, we might want to commit with a
-    // "submit" button, but this interface allows the user to do it that way. they can just ignore
-    // the committed member and do whatever, really.
-    result.committed = interact.lost_focus;
-    
     if (!interact.lost_focus && !is_focus(textbox)) {
         // only change the text based on the passed in value if we're not currently
         // using it and only if we didn't just lose focus (because we're sending the buffer and
         // shouldn't modify it)
         set_string_buffer_text(&state->buffer, value);
     }
+
+    UI_Text_Field_Result result = {};
+    result.text = make_string(state->buffer);
+    // idk if we want to always have it be this way, for example, we might want to commit with a
+    // "submit" button, but this interface allows the user to do it that way. they can just ignore
+    // the committed member and do whatever, really.
+    result.committed = interact.lost_focus;
     
     state->cursor_timer += game_state->dt;
     
