@@ -1015,7 +1015,6 @@ void draw_entity_box_2(bool32 force_reset) {
             }
         }
 
-#if 1
         if (entity->flags & ENTITY_MESH) {
             ui_y_pad(10.0f);
             do_text("Mesh");
@@ -1049,7 +1048,6 @@ void draw_entity_box_2(bool32 force_reset) {
                 editor_state->selected_entity_modified = true;
             }
         }
-#endif
     }
     ui_pop_widget();
     
