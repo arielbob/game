@@ -33,6 +33,7 @@ struct Asset_Library_State {
     #endif
 
     int32 selected_material_id = -1;
+    int32 selected_mesh_id = -1;
 };
 
 struct Entity_Properties_State {

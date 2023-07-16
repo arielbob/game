@@ -30,7 +30,100 @@ int32 get_selected_name_index(String name, char **names, int32 num_names) {
 }
 
 void draw_mesh_library() {
+    using namespace Asset_Library_Themes;
+
+    Editor_State *editor_state = &game_state->editor_state;
+    Asset_Library_State *asset_library_state = &editor_state->asset_library_state;
+
+    const int32 MAX_MESHES = 256;
+    int32 mesh_ids[MAX_MESHES];
+    int32 num_meshes_listed = 0;
     
+    Mesh *selected_mesh = NULL;
+        
+    ui_add_and_push_widget("asset-library-mesh-list-container", list_container_theme);
+    {
+        ui_add_and_push_widget("", full_row_theme);
+        {
+            do_y_centered_text("Meshes");
+            UI_Button_Theme add_button_theme = editor_button_theme;
+            add_button_theme.size_type.x = UI_SIZE_ABSOLUTE;
+            add_button_theme.size.x = 20.0f;
+
+            bool32 add_mesh_clicked = do_text_button("+", add_button_theme, "add_mesh_button");
+            if (add_mesh_clicked) {
+#if 0
+                Mesh_Info mesh_info = default_mesh_info;
+                Marker m = begin_region();
+                bool32 gen_result = generate_asset_name(temp_region, "Mesh", 256, &mesh_info.name);
+                assert(gen_result);
+                    
+                Mesh *new_mesh = add_mesh(&mesh_info, Mesh_Type::LEVEL);
+                asset_library_state->selected_mesh_id = new_mesh->id;
+                    
+                end_region(m);
+#endif
+            }
+        } ui_pop_widget();
+
+        ui_y_pad(5.0f);
+
+        UI_Scrollable_Region_Theme list_scroll_region_theme = {};
+        list_scroll_region_theme.background_color = rgb_to_vec4(0, 0, 0);
+        list_scroll_region_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
+
+        push_scrollable_region(list_scroll_region_theme,
+                               make_string("mesh-list-scroll-region"));
+        ui_add_and_push_widget("asset-library-mesh-list-container2", list_theme,
+                               UI_WIDGET_DRAW_BACKGROUND);
+        {
+            UI_Button_Theme item_theme = editor_button_theme;
+            item_theme.scissor_type = UI_SCISSOR_INHERIT;
+
+            UI_Button_Theme selected_item_theme = item_theme;
+            selected_item_theme.background_color = rgb_to_vec4(61, 96, 252);
+            selected_item_theme.hot_background_color = selected_item_theme.background_color;
+            selected_item_theme.active_background_color = selected_item_theme.background_color;
+                
+            // don't use i for the button indices because that's for buckets and
+            // not the actual meshes we've visited
+            for (int32 i = 0; i < NUM_MESH_BUCKETS; i++) {
+                Mesh *current = asset_manager->mesh_table[i];
+                while (current) {
+                    if (current->type == Mesh_Type::LEVEL) {
+                        assert(num_meshes_listed < MAX_MESHES);
+                        mesh_ids[num_meshes_listed] = current->id;
+                            
+                        if (num_meshes_listed == 0 && asset_library_state->selected_mesh_id < 0) {
+                            // select the first one by default
+                            asset_library_state->selected_mesh_id = current->id;
+                        }
+                            
+                        char *mesh_name = to_char_array((Allocator *) &ui_manager->frame_arena,
+                                                            current->name);
+
+                        bool32 is_selected = current->id == asset_library_state->selected_mesh_id;
+                        bool32 pressed = do_text_button(mesh_name,
+                                                        is_selected ? selected_item_theme : item_theme,
+                                                        "asset-library-mesh-list-item",
+                                                        num_meshes_listed);
+
+                        if (pressed || is_selected) {
+                            asset_library_state->selected_mesh_id = current->id;
+                            selected_mesh = current;
+                        }
+
+                        num_meshes_listed++;
+                    }
+
+                    current = current->table_next;
+                }
+            }
+        }
+        ui_pop_widget(); // asset-library-mesh-list-container
+        ui_pop_widget(); // scrollable region
+    }
+    ui_pop_widget();
 }
 
 void draw_material_library() {
@@ -402,7 +495,8 @@ void draw_asset_library() {
     
     ui_push_container(content_theme, "asset-library-content");
     {
-        draw_material_library();
+        //draw_material_library();
+        draw_mesh_library();
     } ui_pop_widget(); // asset-library-contentcontainer
 
     ui_pop_widget(); // window
