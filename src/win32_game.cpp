@@ -314,6 +314,15 @@ void platform_get_relative_path(char *absolute_path,
     assert(path_relative_path_to_result);
 }
 
+void platform_get_absolute_path(char *relative_path,
+                                char *absolute_path_buffer, int32 absolute_path_buffer_size) {
+    assert(absolute_path_buffer_size >= MAX_PATH);
+
+    DWORD path_length_without_null = GetFullPathNameA(relative_path,
+                                                      absolute_path_buffer_size, absolute_path_buffer, NULL);
+    assert(path_length_without_null > 0 && path_length_without_null < MAX_PATH);
+}
+
 // NOTE: we create a file handle so that we deny other processes from writing to it before we're done with it.
 //       this is done with the FILE_SHARE_READ flag. other processes can only read it, but not write or delete it
 //       until we close the file.

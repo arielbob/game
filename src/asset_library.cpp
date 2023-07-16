@@ -124,6 +124,127 @@ void draw_mesh_library() {
         ui_pop_widget(); // scrollable region
     }
     ui_pop_widget();
+
+    ui_x_pad(10.0f);
+
+    ui_add_and_push_widget("asset-library-mesh-info-container", properties_container_theme);
+    {
+
+        UI_Theme section_theme = {};
+        section_theme.layout_type = UI_LAYOUT_VERTICAL;
+        section_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
+
+        ui_add_and_push_widget("", section_theme);
+        {
+            do_text("Properties");
+
+            if (selected_mesh) {
+                ui_y_pad(10.0f);
+                {
+                    do_text("Mesh Name");
+                    UI_Text_Field_Theme field_theme = editor_text_field_theme;
+                    field_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
+                    field_theme.size.x = 0.0f;
+                    UI_Text_Field_Result name_result = do_text_field(field_theme, selected_mesh->name,
+                                                                     "mesh_name_text_field",
+                                                                     "mesh_name_text_field_text");
+
+                    if (name_result.committed) {
+                        if (!string_equals(name_result.text, selected_mesh->name) && name_result.text.length > 0) {
+                            if (!mesh_exists(name_result.text)) {
+                                replace_contents(&selected_mesh->name, name_result.text);
+                            } else {
+                                add_message(Context::message_manager, make_string("Mesh name already exists!"));
+                            }
+                        }
+                    }
+                }
+
+                ui_y_pad(5.0f);
+                
+                {
+                    do_text("Filepath");
+                    UI_Text_Field_Theme field_theme = editor_text_field_theme;
+                    field_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
+                    field_theme.size.x = 0.0f;
+
+                    Marker m = begin_region();
+
+                    char absolute_path_buffer[PLATFORM_MAX_PATH];
+                    char *relative_path = to_char_array(temp_region, selected_mesh->filename);
+                    platform_get_absolute_path(relative_path, absolute_path_buffer, PLATFORM_MAX_PATH);
+
+                    String absolute_path = make_string(temp_region, absolute_path_buffer);
+                    
+                    UI_Text_Field_Result name_result = do_text_field(field_theme, absolute_path,
+                                                                     "mesh_filepath_text_field",
+                                                                     "mesh_filepath_text_field_text",
+                                                                     PLATFORM_MAX_PATH - 1);
+
+                    end_region(m);
+#if 0
+                    if (name_result.committed) {
+                        if (!string_equals(name_result.text, selected_mesh->name) && name_result.text.length > 0) {
+                            if (!mesh_exists(name_result.text)) {
+                                replace_contents(&selected_mesh->name, name_result.text);
+                            } else {
+                                add_message(Context::message_manager, make_string("Mesh name already exists!"));
+                            }
+                        }
+                    }
+#endif
+                }
+            } // if (selected_mesh)
+        } ui_pop_widget(); // section
+
+        UI_Theme footer_theme = {};
+        footer_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
+        footer_theme.layout_type = UI_LAYOUT_HORIZONTAL;
+
+        ui_add_and_push_widget("", footer_theme);
+        {
+            if (selected_mesh) {
+                UI_Theme push_right = {};
+                push_right.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
+                ui_add_widget("", push_right);
+
+                UI_Button_Theme delete_theme = editor_button_danger_theme;
+                delete_theme.size_type.x = UI_SIZE_ABSOLUTE;
+                delete_theme.size.x = 120.0f;
+                
+                bool32 delete_pressed = do_text_button("Delete Mesh", delete_theme, "delete-mesh");
+
+                if (delete_pressed) {
+                    // find mesh id in list
+                    int32 id_to_delete = selected_mesh->id;
+
+                    for (int32 i = 0; i < num_meshes_listed; i++) {
+                        if (mesh_ids[i] == id_to_delete) {
+                            if (num_meshes_listed >= 1) {
+                                int32 new_index;
+                                if (i == 0) {
+                                    new_index = i + 1;
+                                } else {
+                                    new_index = max(i - 1, 0);
+                                }
+                                asset_library_state->selected_mesh_id = mesh_ids[new_index];
+                            } else {
+                                // we're deleting the last one
+                                asset_library_state->selected_mesh_id = -1;
+                            }
+
+                            break;
+                        }
+                    }
+
+                    selected_mesh = get_mesh(asset_library_state->selected_mesh_id);
+
+                    delete_mesh(id_to_delete);
+                    num_meshes_listed = max(num_meshes_listed--, 0);
+                }
+            }
+        } ui_pop_widget(); // footer
+    } ui_pop_widget(); // asset-library-mesh-info-container
 }
 
 void draw_material_library() {
@@ -497,7 +618,7 @@ void draw_asset_library() {
     {
         //draw_material_library();
         draw_mesh_library();
-    } ui_pop_widget(); // asset-library-contentcontainer
+    } ui_pop_widget(); // asset-library-content-container
 
     ui_pop_widget(); // window
 

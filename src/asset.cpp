@@ -124,18 +124,8 @@ Mesh load_mesh(Allocator *allocator, Mesh_Type type, String name, String filenam
 }
 
 bool32 mesh_exists(String name) {
-    uint32 hash = get_hash(name, NUM_MESH_BUCKETS);
-
-    Mesh *current = asset_manager->mesh_table[hash];
-    while (current) {
-        if (string_equals(current->name, name)) {
-            return true;
-        }
-
-        current = current->table_next;
-    }
-
-    return false;
+    Mesh *mesh = get_mesh(name);
+    return mesh != NULL;
 }
 
 Mesh *add_mesh(String name, String filename, Mesh_Type type) {

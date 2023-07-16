@@ -626,10 +626,10 @@ UI_Window_State *ui_add_window_state(UI_id id, Vec2 position) {
     return &state->window;
 }
 
-UI_Text_Field_State *ui_add_text_field_state(UI_id id, String value) {
+UI_Text_Field_State *ui_add_text_field_state(UI_id id, String value, int32 max_length) {
     UI_Widget_State *state = ui_make_widget_state(id, UI_STATE_TEXT_FIELD);
 
-    String_Buffer buffer = make_string_buffer((Allocator *) &ui_manager->persistent_heap, value, 64);
+    String_Buffer buffer = make_string_buffer((Allocator *) &ui_manager->persistent_heap, value, max_length);
     state->text_field = { buffer, false, 0.0f, 0.0f };
     
     _ui_add_state(state);
@@ -1905,12 +1905,13 @@ void handle_text_field_cursor(UI_id text_widget_id, UI_Text_Field_State *state,
 UI_Text_Field_Result do_text_field(UI_Text_Field_Theme theme,
                                    String value,
                                    char *id_string, char *text_id_string,
+                                   int32 max_length = 64,
                                    int32 index = 0) {
     UI_id id = make_ui_id(id_string, index);
     UI_Widget_State *state_variant = ui_get_state(id);
     UI_Text_Field_State *state;
     if (!state_variant) {
-        state = ui_add_text_field_state(id, value);
+        state = ui_add_text_field_state(id, value, max_length);
     } else {
         state = &state_variant->text_field;
     }
