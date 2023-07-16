@@ -1703,8 +1703,6 @@ UI_Size_Type get_container_size_type(UI_Size_Type size_type) {
 Vec2_UI_Size_Type get_container_size_type(Vec2_UI_Size_Type theme_size_type) {
     Vec2_UI_Size_Type result = {};
 
-    assert(theme_size_type.x != UI_SIZE_NONE);
-    assert(theme_size_type.y != UI_SIZE_NONE);
     assert(theme_size_type.x != UI_SIZE_FIT_TEXT);
     assert(theme_size_type.y != UI_SIZE_FIT_TEXT);
 

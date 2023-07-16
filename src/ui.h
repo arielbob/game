@@ -44,10 +44,10 @@ enum UI_Widget_Axis {
 };
 
 enum UI_Size_Type {
-    UI_SIZE_NONE,
+    //UI_SIZE_NONE,
+    UI_SIZE_FIT_CHILDREN,
     UI_SIZE_PERCENTAGE,
     UI_SIZE_ABSOLUTE,
-    UI_SIZE_FIT_CHILDREN,
     UI_SIZE_FIT_TEXT,
     UI_SIZE_FILL_REMAINING
 };
