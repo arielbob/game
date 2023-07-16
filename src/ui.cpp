@@ -1,38 +1,5 @@
 #include "ui.h"
 
-#define DEFAULT_BUTTON_BACKGROUND rgb_to_vec4(50, 50, 60)
-#define DEFAULT_BUTTON_HOT_BACKGROUND rgb_to_vec4(60, 60, 72)
-#define DEFAULT_BUTTON_ACTIVE_BACKGROUND rgb_to_vec4(9, 9, 10)
-
-#define DANGER_BUTTON_BACKGROUND rgb_to_vec4(199, 45, 18)
-#define DANGER_BUTTON_HOT_BACKGROUND rgb_to_vec4(222, 80, 55)
-#define DANGER_BUTTON_ACTIVE_BACKGROUND rgb_to_vec4(69, 16, 6)
-
-#define DEFAULT_BOX_BACKGROUND rgb_to_vec4(24, 24, 28)
-#define DEFAULT_DARK_BACKGROUND rgb_to_vec4(51, 51, 54)
-
-char *default_font = "calibri14";
-UI_Theme NULL_THEME = {
-    {}, {}, {}, "texture_default",
-    {}, default_font, NULL,
-    {}, 0, 0, 0, 0,
-    UI_LAYOUT_NONE,
-    { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN },
-    UI_POSITION_NONE,
-    { 0.0f, 0.0f },
-    { 0.0f, 0.0f }
-};
-
-UI_Window_Theme DEFAULT_WINDOW_THEME = {
-    { 200.0f, 200.0f },
-    rgb_to_vec4(24, 24, 28),
-    rgb_to_vec4(255, 255, 255),
-    DEFAULT_BUTTON_BACKGROUND, DEFAULT_BUTTON_HOT_BACKGROUND, DEFAULT_BUTTON_ACTIVE_BACKGROUND,
-    CORNER_ALL, 5.0f, BORDER_ALL,
-    DEFAULT_BUTTON_BACKGROUND, 1.0f, { 200.0f, 0.0f },
-    { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN }
-};
-
 inline UI_id make_ui_id(String name, int32 index) {
     //if (!id || string_equals(name, "")) id = NULL;
     UI_id ui_id = { copy((Allocator *) &ui_manager->frame_arena, name), index };
@@ -1607,6 +1574,19 @@ void do_text(char *text, uint32 flags = 0) {
 
 void do_text(char *text, UI_Theme theme, uint32 flags = 0) {
     return do_text(text, "", theme, flags);
+}
+
+void do_y_centered_text(char *text) {
+    UI_Theme y_center_text_theme = {};
+    y_center_text_theme.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FILL_REMAINING };
+    y_center_text_theme.semantic_size = { 0.0f, 1.0f };
+    y_center_text_theme.layout_type = UI_LAYOUT_CENTER;
+    
+    ui_add_and_push_widget("", y_center_text_theme);
+    {
+        do_text(text);
+    }
+    ui_pop_widget();
 }
 
 bool32 do_button(UI_id id, UI_Theme theme) {

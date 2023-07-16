@@ -113,4 +113,76 @@ void delete_entity(Editor_State *editor_state, int32 id);
 Entity *get_entity(Editor_State *editor_state, int32 id);
 #endif
 
+UI_Button_Theme editor_button_theme = {
+    { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE },
+    { 0.0f, 20.0f }, { 0.0f, 0.0f },
+    DEFAULT_BUTTON_BACKGROUND, DEFAULT_BUTTON_HOT_BACKGROUND, DEFAULT_BUTTON_ACTIVE_BACKGROUND,
+    { 1.0f, 1.0f, 1.0f, 1.0f },
+    default_font
+};
+
+
+UI_Button_Theme editor_button_danger_theme = {
+    { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE },
+    { 0.0f, 20.0f }, { 0.0f, 0.0f },
+    DANGER_BUTTON_BACKGROUND, DANGER_BUTTON_HOT_BACKGROUND, DANGER_BUTTON_ACTIVE_BACKGROUND,
+    { 1.0f, 1.0f, 1.0f, 1.0f },
+    default_font
+};
+
+UI_Text_Field_Theme editor_text_field_theme = {
+    editor_button_theme.background_color,
+    editor_button_theme.hot_background_color,
+    editor_button_theme.active_background_color,
+    rgb_to_vec4(0, 255, 0),
+    0.0f, 0, 0, { 1.0f, 1.0f, 1.0f, 1.0f }, 0.0f,
+    default_font,
+    { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE },
+    { 0.0f, editor_button_theme.size.y }
+};
+
+UI_Button_Theme editor_dropdown_item_theme = {
+    editor_button_theme.size_type,
+    editor_button_theme.size, editor_button_theme.position,
+    rgb_to_vec4(19, 19, 23), rgb_to_vec4(36, 36, 43), rgb_to_vec4(8, 8, 10),
+    editor_button_theme.text_color,
+    editor_button_theme.font,
+    UI_SCISSOR_INHERIT
+};
+
+UI_Button_Theme editor_selected_dropdown_item_theme = {
+    editor_button_theme.size_type,
+    editor_button_theme.size, editor_button_theme.position,
+    rgb_to_vec4(61, 96, 252), rgb_to_vec4(61, 96, 252), rgb_to_vec4(61, 96, 252),
+    editor_button_theme.text_color,
+    editor_button_theme.font,
+    UI_SCISSOR_INHERIT
+};
+
+UI_Text_Field_Slider_Theme editor_slider_theme = {
+    DEFAULT_BUTTON_BACKGROUND,
+    DEFAULT_BUTTON_HOT_BACKGROUND,
+    DEFAULT_BUTTON_ACTIVE_BACKGROUND,
+    
+    rgb_to_vec4(61, 73, 60),
+    rgb_to_vec4(0, 255, 0),
+    true,
+
+    0.0f, 0, 0, {}, 0.0f,
+
+    default_font,
+
+    { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE },
+    { 0.0f, 20.0f }
+};
+
+UI_Checkbox_Theme editor_checkbox_theme = {
+    DEFAULT_BUTTON_BACKGROUND,
+    DEFAULT_BUTTON_HOT_BACKGROUND,
+    DEFAULT_BUTTON_ACTIVE_BACKGROUND,
+
+    rgb_to_vec4(255, 255, 255),
+    { 20.0f, 20.0f }
+};
+
 #endif

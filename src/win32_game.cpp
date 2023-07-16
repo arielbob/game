@@ -68,6 +68,7 @@ global_variable Render_State *render_state;
 #include "gizmo.cpp"
 //#include "editor_actions.cpp"
 //#include "editor_ui.cpp"
+#include "asset_library.cpp"
 #include "editor.cpp"
 #include "game.cpp"
 
