@@ -17,6 +17,7 @@ namespace Asset_Library_Themes {
     UI_Dropdown_Theme dropdown_theme = {};
     UI_Theme row_theme = {};
     UI_Theme full_row_theme = {};
+    UI_Theme space_between_row_theme = {};
 };
 
 int32 get_selected_name_index(String name, char **names, int32 num_names) {
@@ -43,7 +44,7 @@ void draw_mesh_library() {
         
     ui_add_and_push_widget("asset-library-mesh-list-container", list_container_theme);
     {
-        ui_add_and_push_widget("", full_row_theme);
+        ui_add_and_push_widget("", space_between_row_theme);
         {
             do_y_centered_text("Meshes");
             UI_Button_Theme add_button_theme = editor_button_theme;
@@ -168,20 +169,55 @@ void draw_mesh_library() {
                     field_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
                     field_theme.size.x = 0.0f;
 
-                    Marker m = begin_region();
+                    ui_add_and_push_widget("", full_row_theme);
+                    {
+                        Marker m = begin_region();
 
-                    char absolute_path_buffer[PLATFORM_MAX_PATH];
-                    char *relative_path = to_char_array(temp_region, selected_mesh->filename);
-                    platform_get_absolute_path(relative_path, absolute_path_buffer, PLATFORM_MAX_PATH);
+#if 0
+                        char absolute_path_buffer[PLATFORM_MAX_PATH];
+                        char *relative_path = to_char_array(temp_region, selected_mesh->filename);
+                        platform_get_absolute_path(relative_path, absolute_path_buffer, PLATFORM_MAX_PATH);
 
-                    String absolute_path = make_string(temp_region, absolute_path_buffer);
+                        String absolute_path = make_string(temp_region, absolute_path_buffer);
+#endif
+
+                        UI_Text_Field_Result name_result = do_text_field(field_theme, selected_mesh->filename,
+                                                                         "mesh_filepath_text_field",
+                                                                         "mesh_filepath_text_field_text",
+                                                                         PLATFORM_MAX_PATH - 1);
+
+                        ui_x_pad(5.0f);
+
+                        UI_Button_Theme browse_theme = editor_button_theme;
+                        browse_theme.size_type.x = UI_SIZE_ABSOLUTE;
+                        browse_theme.size.x = 80.0f;
+
+                        bool32 browse_clicked = do_text_button("Browse", browse_theme, "mesh_browse_button");
+                        if (browse_clicked) {
+                            char *absolute_filename = (char *) allocate(temp_region, PLATFORM_MAX_PATH);
+        
+                            if (platform_open_file_dialog(absolute_filename,
+                                                          LEVEL_FILE_FILTER_TITLE, LEVEL_FILE_FILTER_TYPE,
+                                                          PLATFORM_MAX_PATH)) {
+
+                                // TODO: convert this absolute filepath into a relative filepath
+                                #if 0
+                                unload_level(&game_state->level);
+                                bool32 result = read_and_load_level(&game_state->level, absolute_filename);
+                                if (result) {
+                                    reset_editor(editor_state);
+                                    editor_state->is_new_level = false;
+                                    just_changed_level = true;
+                                }
+                                #endif
+                            }
+
+                            end_region(m);
+                        }
+
+                        end_region(m);
+                    } ui_pop_widget();
                     
-                    UI_Text_Field_Result name_result = do_text_field(field_theme, absolute_path,
-                                                                     "mesh_filepath_text_field",
-                                                                     "mesh_filepath_text_field_text",
-                                                                     PLATFORM_MAX_PATH - 1);
-
-                    end_region(m);
 #if 0
                     if (name_result.committed) {
                         if (!string_equals(name_result.text, selected_mesh->name) && name_result.text.length > 0) {
@@ -261,7 +297,7 @@ void draw_material_library() {
         
     ui_add_and_push_widget("asset-library-material-list-container", list_container_theme);
     {
-        ui_add_and_push_widget("", full_row_theme);
+        ui_add_and_push_widget("", space_between_row_theme);
         {
             do_y_centered_text("Materials");
             UI_Button_Theme add_button_theme = editor_button_theme;
@@ -609,7 +645,9 @@ void draw_asset_library() {
 
     full_row_theme = row_theme;
     full_row_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
-    full_row_theme.layout_type = UI_LAYOUT_HORIZONTAL_SPACE_BETWEEN;
+
+    space_between_row_theme = full_row_theme;
+    space_between_row_theme.layout_type = UI_LAYOUT_HORIZONTAL_SPACE_BETWEEN;
     
     push_window("Asset Library", window_theme,
                 "asset-library-window", "asset-library-window-title-bar");
