@@ -1,12 +1,12 @@
 #ifndef EDITOR_H
 #define EDITOR_H
 
-//#include "editor_actions.h"
-
-// for some reason putting these defines after the includes breaks emacs indenting
 #define LEVEL_FILE_FILTER_TITLE "Levels (*.level)"
 #define LEVEL_FILE_FILTER_TYPE  "level"
 #define SAVE_SUCCESS_MESSAGE    "Level saved!"
+
+#define MESH_FILE_FILTER_TITLE "Meshes (*.mesh)"
+#define MESH_FILE_FILTER_TYPE  "mesh"
 
 #include "linked_list.h"
 #include "level.h"

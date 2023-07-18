@@ -38,7 +38,24 @@ Mesh *get_mesh(int32 id) {
     return NULL;
 }
 
-void delete_mesh(int32 id) {
+// replace any entities with mesh_id with default mesh id
+void replace_entity_meshes(int32 mesh_id_to_replace, int32 new_mesh_id) {
+    Mesh *default_mesh = get_mesh(make_string("cube"));
+    
+    Entity *current = game_state->level.entities;
+    while (current) {
+        if (current->flags & ENTITY_MESH) {
+            if (current->mesh_id == mesh_id_to_replace) {
+                set_mesh(current, new_mesh_id);
+            }
+        }
+
+        current = current->next;
+    }
+}
+
+// delete a mesh without replacing entities with that mesh
+void delete_mesh_no_replace(int32 id) {
     Mesh *mesh = get_mesh(id);
 
     if (!mesh) {
@@ -62,49 +79,16 @@ void delete_mesh(int32 id) {
     deallocate(mesh);
     deallocate(asset_manager->allocator, mesh);
 
+    r_unload_mesh(id);
+}
+
+void delete_mesh(int32 id) {
+    delete_mesh_no_replace(id);
+
     // set entity meshes to default if they had the deleted mesh
     Mesh *default_mesh = get_mesh(make_string("cube"));
-    
-    Entity *current = game_state->level.entities;
-    while (current) {
-        if (current->flags & ENTITY_MESH) {
-            if (current->mesh_id == id) {
-                set_mesh(current, default_mesh->id);
-            }
-        }
-
-        current = current->next;
-    }
-    
-#if 0
-    uint32 hash = get_hash(name, NUM_MESH_BUCKETS);
-
-    Mesh *current = asset_manager->mesh_table[hash];
-    while (current) {
-        if (string_equals(current->name, name)) {
-            if (current->table_prev) {
-                current->table_prev->table_next = current->table_next;
-            } else {
-                // if we're first in list, we need to update bucket array when we delete
-                asset_manager->mesh_table[hash] = current->table_next;
-            }
-            
-            if (current->table_next) {
-                current->table_next->table_prev = current->table_prev;
-            }
-
-            deallocate(current);
-            deallocate(asset_manager->allocator, current);
-
-            r_unload_mesh(name);
-            
-            return;
-        }
-
-        current = current->table_next;
-    }
-#endif
-    assert(!"Mesh does not exist.");
+    assert(default_mesh);
+    replace_entity_meshes(id, default_mesh->id);
 }
 
 Mesh load_mesh(Allocator *allocator, Mesh_Type type, String name, String filename) {
@@ -128,7 +112,7 @@ bool32 mesh_exists(String name) {
     return mesh != NULL;
 }
 
-Mesh *add_mesh(String name, String filename, Mesh_Type type) {
+Mesh *add_mesh(String name, String filename, Mesh_Type type, int32 id = -1) {
     if (mesh_exists(name)) {
         assert(!"Mesh with name already exists.");
         return NULL;
@@ -136,7 +120,16 @@ Mesh *add_mesh(String name, String filename, Mesh_Type type) {
 
     Mesh *mesh = (Mesh *) allocate(asset_manager->allocator, sizeof(Mesh));
     *mesh = load_mesh(asset_manager->allocator, type, name, filename);
-    mesh->id = asset_manager->total_meshes_added_ever++;
+    if (id < 0) {
+        mesh->id = asset_manager->total_meshes_added_ever++;
+    } else {
+        Mesh *found_mesh = get_mesh(id);
+        if (found_mesh) {
+            assert(!"Mesh with ID already exists!");
+        } else {
+            mesh->id = id;
+        }
+    }
     
     uint32 hash = get_hash(mesh->id, NUM_MESH_BUCKETS);
 
@@ -155,6 +148,24 @@ Mesh *add_mesh(String name, String filename, Mesh_Type type) {
 
 inline Mesh *add_mesh(char *name, char *filename, Mesh_Type type) {
     return add_mesh(make_string(name), make_string(filename), type);
+}
+
+void set_mesh_file(int32 id, String new_filename) {
+    Mesh *mesh = get_mesh(id);
+    assert(mesh);
+
+    Marker m = begin_region();
+    String name = copy(temp_region, mesh->name);
+    Mesh_Type type = mesh->type;
+
+    // delete it, then add it back. we keep the mesh id the same because
+    // we don't want any lists to change order, i.e., it should basically
+    // appear like we're really modifying the mesh. also this allows us
+    // not to have to replace any entity meshes with a new ID
+    delete_mesh_no_replace(id);
+    add_mesh(name, new_filename, type, id);
+
+    end_region(m);
 }
 
 Texture *get_texture(String name) {

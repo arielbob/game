@@ -194,22 +194,17 @@ void draw_mesh_library() {
 
                         bool32 browse_clicked = do_text_button("Browse", browse_theme, "mesh_browse_button");
                         if (browse_clicked) {
-                            char *absolute_filename = (char *) allocate(temp_region, PLATFORM_MAX_PATH);
-        
-                            if (platform_open_file_dialog(absolute_filename,
-                                                          LEVEL_FILE_FILTER_TITLE, LEVEL_FILE_FILTER_TYPE,
+                            char absolute_path[PLATFORM_MAX_PATH];
+                            if (platform_open_file_dialog(absolute_path,
+                                                          MESH_FILE_FILTER_TITLE, MESH_FILE_FILTER_TYPE,
                                                           PLATFORM_MAX_PATH)) {
 
-                                // TODO: convert this absolute filepath into a relative filepath
-                                #if 0
-                                unload_level(&game_state->level);
-                                bool32 result = read_and_load_level(&game_state->level, absolute_filename);
-                                if (result) {
-                                    reset_editor(editor_state);
-                                    editor_state->is_new_level = false;
-                                    just_changed_level = true;
-                                }
-                                #endif
+                                char relative_path[PLATFORM_MAX_PATH];
+                                platform_get_relative_path(absolute_path, relative_path, PLATFORM_MAX_PATH);
+
+                                String relative_path_string = make_string(temp_region, relative_path);
+
+                                set_mesh_file(selected_mesh->id, relative_path_string);
                             }
 
                             end_region(m);
