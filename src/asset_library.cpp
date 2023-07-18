@@ -173,18 +173,20 @@ void draw_mesh_library() {
                     {
                         Marker m = begin_region();
 
-#if 0
-                        char absolute_path_buffer[PLATFORM_MAX_PATH];
-                        char *relative_path = to_char_array(temp_region, selected_mesh->filename);
-                        platform_get_absolute_path(relative_path, absolute_path_buffer, PLATFORM_MAX_PATH);
-
-                        String absolute_path = make_string(temp_region, absolute_path_buffer);
-#endif
-
-                        UI_Text_Field_Result name_result = do_text_field(field_theme, selected_mesh->filename,
+                        UI_Text_Field_Result filepath_result = do_text_field(field_theme, selected_mesh->filename,
                                                                          "mesh_filepath_text_field",
                                                                          "mesh_filepath_text_field_text",
                                                                          PLATFORM_MAX_PATH - 1);
+
+                        if (filepath_result.committed) {
+                            if (filepath_result.text.length > 0) {
+                                if (platform_file_exists(filepath_result.text)) {
+                                    set_mesh_file(selected_mesh->id, filepath_result.text);
+                                } else {
+                                    add_message(Context::message_manager, make_string("File does not exist!"));
+                                }
+                            }
+                        }
 
                         ui_x_pad(5.0f);
 
@@ -212,18 +214,6 @@ void draw_mesh_library() {
 
                         end_region(m);
                     } ui_pop_widget();
-                    
-#if 0
-                    if (name_result.committed) {
-                        if (!string_equals(name_result.text, selected_mesh->name) && name_result.text.length > 0) {
-                            if (!mesh_exists(name_result.text)) {
-                                replace_contents(&selected_mesh->name, name_result.text);
-                            } else {
-                                add_message(Context::message_manager, make_string("Mesh name already exists!"));
-                            }
-                        }
-                    }
-#endif
                 }
             } // if (selected_mesh)
         } ui_pop_widget(); // section

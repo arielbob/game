@@ -388,6 +388,29 @@ void platform_close_file(Platform_File platform_file) {
     CloseHandle(platform_file.file_handle);
 }
 
+bool32 platform_file_exists(char *filename) {
+    Platform_File file;
+
+    bool32 result = platform_open_file(filename, &file);
+
+    if (result) {
+        platform_close_file(file);
+    }
+
+    return result;
+}
+
+bool32 platform_file_exists(String filename) {
+    Marker m = begin_region();
+
+    char *filename_c_str = to_char_array(temp_region, filename);
+    bool32 result = platform_file_exists(filename_c_str);
+    
+    end_region(m);
+    
+    return result;
+}
+
 File_Data platform_open_and_read_file(Allocator *allocator, char *filename) {
     Platform_File platform_file;
     bool32 file_exists = platform_open_file(filename, &platform_file);
