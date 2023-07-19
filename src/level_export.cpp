@@ -33,7 +33,7 @@ void append_quaternion_property(String_Buffer *buffer, char *label, Quaternion q
 void append_default_entity_info(Level *level, String_Buffer *buffer, Entity *entity) {
     int32 temp_buffer_size = 128;
 
-    Marker m = begin_region();
+    Allocator *temp_region = begin_region();
 
     Transform transform = entity->transform;
 
@@ -58,11 +58,11 @@ void append_default_entity_info(Level *level, String_Buffer *buffer, Entity *ent
     append_string(buffer, scale_string);
     append_string(buffer, "\n");
 
-    end_region(m);
+    end_region(temp_region);
 }
 
 void export_level(Level *level, char *filename) {
-    Marker m = begin_region();
+    Allocator *temp_region = begin_region();
 
     uint32 buffer_size = MEGABYTES(8); // should be a fine size
     String_Buffer working_buffer = make_string_buffer(temp_region, buffer_size);
@@ -201,5 +201,5 @@ void export_level(Level *level, char *filename) {
     bool32 write_result = platform_write_file(filename, working_buffer.contents, working_buffer.current_length, true);
     assert(write_result);
 
-    end_region(m);
+    end_region(temp_region);
 }

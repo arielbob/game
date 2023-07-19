@@ -36,7 +36,7 @@
 #include "utils.h"
 #include "memory.h"
 
-global_variable Allocator *temp_region;
+//global_variable Allocator *temp_region;
 global_variable Allocator *frame_arena;
 
 #include "string.h"
@@ -213,14 +213,14 @@ void debug_print(char *format, ...) {
     int32 num_chars_no_null = vsnprintf(NULL, 0, format, args);
     int32 n = num_chars_no_null + 1;
 
-    Marker m = begin_region();
+    Allocator *temp_region = begin_region();
     char *buf = (char *) allocate(temp_region, n);
 
     int32 num_chars_outputted = vsnprintf(buf, n, format, args);
     assert(num_chars_outputted > 0 && num_chars_outputted < n);
 
     OutputDebugStringA(buf);
-    end_region(m);
+    end_region(temp_region);
     
     va_end(args);
 }
@@ -276,7 +276,7 @@ void string_format(String_Buffer *buffer, char *format, ...) {
     int32 num_chars_no_null = vsnprintf(NULL, 0, format, args);
     int32 n = num_chars_no_null + 1;
 
-    Marker m = begin_region();
+    Allocator *temp_region = begin_region();
     char *temp_buf = (char *) allocate(temp_region, n);
 
     int32 num_chars_outputted = vsnprintf(temp_buf, n, format, args);
@@ -286,7 +286,7 @@ void string_format(String_Buffer *buffer, char *format, ...) {
     // note that this will assert if there isn't enough space.
     set_string_buffer_text(buffer, temp_buf);
 
-    end_region(m);
+    end_region(temp_region);
 
     va_end(args);
 }
@@ -401,12 +401,12 @@ bool32 platform_file_exists(char *filename) {
 }
 
 bool32 platform_file_exists(String filename) {
-    Marker m = begin_region();
+    Allocator *temp_region = begin_region();
 
     char *filename_c_str = to_char_array(temp_region, filename);
     bool32 result = platform_file_exists(filename_c_str);
     
-    end_region(m);
+    end_region(temp_region);
     
     return result;
 }
@@ -428,10 +428,10 @@ File_Data platform_open_and_read_file(Allocator *allocator, char *filename) {
 }
 
 File_Data platform_open_and_read_file(Allocator *allocator, String filename) {
-    Marker m = begin_region();
+    Allocator *temp_region = begin_region();
     char *filename_c_string = to_char_array(temp_region, filename);
     File_Data result = platform_open_and_read_file(allocator, filename_c_string);
-    end_region(m);
+    end_region(temp_region);
     return result;
 }
 
@@ -850,10 +850,6 @@ bool32 win32_init_memory() {
         memory.global_stack = global_stack;
         base = (uint8 *) base + global_stack_size;
 
-        Stack_Allocator hash_table_stack = make_stack_allocator(base, hash_table_stack_size);
-        memory.hash_table_stack = hash_table_stack;
-        base = (uint8 *) base + hash_table_stack_size;
-
         Arena_Allocator game_data_arena = make_arena_allocator(base, game_data_arena_size);
         memory.game_data = game_data_arena;
         base = (uint8 *) base + game_data_arena_size;
@@ -876,7 +872,6 @@ bool32 win32_init_memory() {
         base = (uint8 *) base + editor_arena_size;
 
         memory.is_initted = true;
-        temp_region = (Allocator *) &memory.global_stack;
         frame_arena = (Allocator *) &memory.frame_arena;
 
         return true;

@@ -407,7 +407,7 @@ void append_string(String_Buffer *buffer, String to_append) {
 // of valid printf arg types. if you pass in a String type, then you'll
 // just get garbage and it'll be confusing.
 void append_string(String_Buffer *buffer, char *format, ...) {
-    Marker m = begin_region();
+    Allocator *temp_region = begin_region();
 
     va_list args;
     va_start(args, format);
@@ -427,7 +427,7 @@ void append_string(String_Buffer *buffer, char *format, ...) {
     buffer->current_length += num_chars_no_null;
     
     va_end(args);
-    end_region(m);    
+    end_region(temp_region);
 }
 
 inline void append_string(String_Buffer *buffer, String_Buffer to_append_buffer) {
@@ -474,14 +474,14 @@ void splice_insert(String_Buffer *buffer, int32 index, char c) {
     assert(index >= 0);
     assert(index <= buffer->current_length);
 
-    Marker m = begin_region();
+    Allocator *temp_region = begin_region();
     String after = substring_after(temp_region, *buffer, index);
     buffer->contents[index] = c;
 
     memcpy(&buffer->contents[index + 1], after.contents, after.length);
     buffer->current_length++;
     
-    end_region(m);
+    end_region(temp_region);
 }
 
 // TODO: rename these to to_c_string or something

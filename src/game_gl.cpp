@@ -1035,7 +1035,7 @@ GL_Mesh *gl_get_mesh(int32 mesh_id) {
 }
 
 bool32 gl_load_shader(char *vertex_shader_filename, char *fragment_shader_filename, char *shader_name) {
-    Marker m = begin_region();
+    Allocator *temp_region = begin_region();
 
     // NOTE: vertex shader
     Platform_File platform_file;
@@ -1063,7 +1063,7 @@ bool32 gl_load_shader(char *vertex_shader_filename, char *fragment_shader_filena
                                                    fragment_shader_file_data.contents,
                                                    fragment_shader_file_data.size);
 
-    end_region(m);
+    end_region(temp_region);
 
     // add shader to gl shader table
     uint32 hash = get_hash(make_string(shader_name), NUM_SHADER_BUCKETS);
@@ -1096,7 +1096,7 @@ bool32 gl_load_shader(char *vertex_shader_filename, char *fragment_shader_filena
 
 #if 0
 GL_Texture gl_load_texture(GL_State *gl_state, char *texture_filename, bool32 has_alpha=false) {
-    Marker m = begin_region();
+    Allocator *temp_region = begin_region();
     File_Data texture_file_data = platform_open_and_read_file((Allocator *) &memory.global_stack,
                                                               texture_filename);
 
@@ -1122,7 +1122,7 @@ GL_Texture gl_load_texture(GL_State *gl_state, char *texture_filename, bool32 ha
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    end_region(m);
+    end_region(temp_region);
 
     GL_Texture gl_texture = { texture_id, width, height, num_channels };
     return gl_texture;
@@ -1130,7 +1130,7 @@ GL_Texture gl_load_texture(GL_State *gl_state, char *texture_filename, bool32 ha
 #endif
 
 bool32 gl_load_texture(Texture *texture, bool32 has_alpha=false) {
-    Marker m = begin_region();
+    Allocator *temp_region = begin_region();
     Allocator *temp_allocator = (Allocator *) &memory.global_stack;
     char *temp_texture_filename = to_char_array(temp_allocator, texture->filename);
     File_Data texture_file_data = platform_open_and_read_file(temp_allocator,
@@ -1158,7 +1158,7 @@ bool32 gl_load_texture(Texture *texture, bool32 has_alpha=false) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    end_region(m);
+    end_region(temp_region);
 
     // add gl_texture to the gl texture table
     uint32 hash = get_hash(texture->name, NUM_TEXTURE_BUCKETS);
@@ -1193,7 +1193,7 @@ bool32 gl_load_texture(Texture *texture, bool32 has_alpha=false) {
 // we don't have per-level fonts right now, so we don't have an unloading font procedure.
 // not sure if we ever will need per-level fonts.
 void gl_init_font(Font *font) {
-    Marker m = begin_region();
+    Allocator *temp_region = begin_region();
 
     assert(font->is_baked);
     
@@ -1205,7 +1205,7 @@ void gl_init_font(Font *font) {
                  0, GL_ALPHA, GL_UNSIGNED_BYTE, font->bitmap);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
-    end_region(m);
+    end_region(temp_region);
 
     // add baked font to the gl_font table
     uint32 hash = get_hash(font->name, NUM_FONT_BUCKETS);
@@ -1685,7 +1685,7 @@ void gl_draw_text(char *font_name,
     real32 line_advance = font->scale_for_pixel_height * (font->ascent - font->descent + font->line_gap);
     real32 start_x_pos_pixels = x_pos_pixels;
 
-    Marker m = begin_region();
+    Allocator *temp_region = begin_region();
 
     uint32 text_buffer_size = sizeof(Vec2)*GL_MAX_TEXT_CHARACTERS;
     Vec2 *glyph_positions = (Vec2 *) allocate(temp_region, text_buffer_size);
@@ -1742,7 +1742,7 @@ void gl_draw_text(char *font_name,
 
     glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, num_chars_added);
     
-    end_region(m);
+    end_region(temp_region);
     
     //glEnable(GL_DEPTH_TEST);
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -3049,7 +3049,7 @@ void gl_draw_ui_commands() {
 }
 
 void gl_draw_ui() {
-    Marker m = begin_region();
+    Allocator *temp_region = begin_region();
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -3071,7 +3071,7 @@ void gl_draw_ui() {
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindVertexArray(0);
 
-    end_region(m);
+    end_region(temp_region);
 }
 
 #if 0
@@ -3081,7 +3081,7 @@ void gl_draw_ui() {
     // while doing this, update the commands with an indices_start member
     // go through the render groups again and this time go through the command lists and draw the indices
 
-    Marker m = begin_region();
+    Allocator *temp_region = begin_region();
 
     int32 total_num_vertices = 0;
     int32 total_num_indices  = 0;
@@ -3136,7 +3136,7 @@ void gl_draw_ui() {
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindVertexArray(0);
 
-    end_region(m);
+    end_region(temp_region);
 }
 #endif
 
@@ -3324,7 +3324,7 @@ void gl_render_editor(GL_Framebuffer framebuffer,
                       Editor_State *editor_state) {
     Display_Output display_output = render_state->display_output;
     
-    Marker m = begin_region();
+    Allocator *temp_region = begin_region();
 
     Level *level = &game_state->level;
 
@@ -3432,7 +3432,7 @@ void gl_render_editor(GL_Framebuffer framebuffer,
     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.fbo);
     gl_draw_framebuffer(g_gl_state->gizmo_framebuffer);
     
-    end_region(m);
+    end_region(temp_region);
 }
 
 #if 0
@@ -3441,7 +3441,7 @@ void gl_render_game(GL_State *gl_state, Render_State *render_state, GL_Framebuff
     Asset_Manager *asset_manager = &game_state->asset_manager;
     Display_Output display_output = render_state->display_output;
     
-    Marker m = begin_region();
+    Allocator *temp_region = begin_region();
 
     // TODO: if we ever change levels in the game, we should clear its GPU data, but since everything in the game
     //       is static right now, we only handle loading and not unloading.
@@ -3587,7 +3587,7 @@ void gl_render_game(GL_State *gl_state, Render_State *render_state, GL_Framebuff
     gl_draw_circle(gl_state, render_state, player_circle_transform, make_vec4(0.0f, 1.0f, 1.0f, 1.0f));
     glEnable(GL_DEPTH_TEST);    
 
-    end_region(m);    
+    end_region(temp_region);    
 }
 #endif
 

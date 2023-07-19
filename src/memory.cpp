@@ -106,6 +106,7 @@ Stack_Allocator make_stack_allocator(void *base, uint32 size) {
     stack.base = base;
     stack.top = base;
     stack.size = size;
+    stack.top_region = NULL;
     return stack;
 }
 
@@ -113,6 +114,7 @@ internal void verify(Stack_Allocator *stack) {
     assert(stack->base == stack->top);
 }
 
+#if 0
 Marker begin_region() {
     assert(memory.is_initted);
 
@@ -125,7 +127,9 @@ void end_region(Marker marker) {
     assert(marker.start <= memory.global_stack.top);
     memory.global_stack.top = marker.start;
 }
+#endif
 
+#if 0
 Marker begin_region(Stack_Allocator *stack) {
     Marker marker;
     marker.start = stack->top;
@@ -136,6 +140,7 @@ void end_region(Stack_Allocator *stack, Marker marker) {
     assert(marker.start <= stack->top);
     stack->top = marker.start;
 }
+#endif
 
 void *region_push(Stack_Allocator *stack, uint32 size, bool32 zero_memory = true, uint32 alignment_bytes = 8) {
     assert(((alignment_bytes) & (alignment_bytes - 1)) == 0);
@@ -162,6 +167,61 @@ void *region_push(Stack_Allocator *stack, uint32 size, bool32 zero_memory = true
 
 inline void *region_push(uint32 size, bool32 zero_memory = true, uint32 alignment_bytes = 8) {
     return region_push(&memory.global_stack, size, zero_memory, alignment_bytes);
+}
+
+
+Allocator *begin_region(uint32 size) {
+    assert(memory.is_initted);
+
+    void *base = memory.global_stack.top;
+    Stack_Region *region = (Stack_Region *) region_push(&memory.global_stack, sizeof(Stack_Region), false);
+
+    uint32 info_struct_size = (uint32) ((uint8 *) memory.global_stack.top - (uint8 *) base);
+    size += info_struct_size;
+
+    region->type = STACK_REGION_ALLOCATOR;
+    region->base = base;
+    region->size = size;
+    region->used = info_struct_size;
+    
+    region->stack = &memory.global_stack;
+    region->prev = memory.global_stack.top_region;
+    memory.global_stack.top_region = region;
+
+    Allocator *region_allocator = (Allocator *) region;
+    return region_allocator;
+}
+
+#if 0
+void end_region(Stack_Region *region) {
+    assert(memory.global_stack.top_region == region);
+
+    memory.global_stack.top_region = region->prev;
+
+    Stack_Region *top_region = memory.global_stack.top_region;
+    if (top_region) {
+        memory.global_stack.top = (uint8 *) top_region->base + top_region->used;
+    } else {
+        memory.global_stack.top = memory.global_stack.base;
+    }
+}
+#endif
+
+void end_region(Allocator *allocator) {
+    assert(allocator->type == STACK_REGION_ALLOCATOR);
+    Stack_Region *region = (Stack_Region *) allocator;
+    
+    assert(memory.global_stack.top_region == region);
+
+    memory.global_stack.top_region = region->prev;
+
+    Stack_Region *top_region = memory.global_stack.top_region;
+    if (top_region) {
+        memory.global_stack.top = (uint8 *) top_region->base + top_region->used;
+    } else {
+        memory.global_stack.top = memory.global_stack.base;
+    }
+    
 }
 
 // NOTE: block_size is assumed to be obtained by using sizeof(some struct), so we don't have to worry
@@ -540,12 +600,59 @@ void clear_heap(Heap_Allocator *heap) {
     heap->first_block = first_block;
 }
 
+// this is basically the same as arena_push()
+void *stack_region_allocate(Stack_Region *region, uint32 size, bool32 zero_memory = false,
+                            uint32 alignment_bytes = 8) {
+    assert(((alignment_bytes) & (alignment_bytes - 1)) == 0); // ensure that alignment_bytes is a power of 2
+
+    uint32 align_mask = alignment_bytes - 1;
+    uint32 misalignment = ((uint64) ((uint8 *) region->base + region->used)) & align_mask;
+    uint32 align_offset = 0;
+    if (misalignment) {
+        align_offset = alignment_bytes - misalignment;
+    }
+    
+    size += align_offset;
+
+    assert(region->stack);
+
+    Stack_Allocator *stack = region->stack;
+    
+    if (region->used + size > region->size) {
+        if (stack->top_region == region) {
+            uint32 size_delta = (region->used + size) - region->size;
+
+            assert(((uint8 *) stack->top + size_delta) <= ((uint8 *) stack->base + stack->size));
+
+            stack->top = (uint8 *) stack->top + size_delta;
+            region->size += size_delta;
+        } else {
+            assert(!"Region size limit reached!");
+        }
+    }
+    
+    // get the start of the aligned allocated memory, which is just base + used + the amount of bytes we
+    // added for alignment
+    void *start_byte = (void *) ((uint8 *) region->base + region->used + align_offset);
+    region->used += size;
+
+    if (zero_memory) {
+        platform_zero_memory(start_byte, size);
+    } 
+
+    return start_byte;
+}
+
 inline void *allocate(Arena_Allocator *arena, uint32 size, bool32 zero_memory = false) {
     return arena_push(arena, size, zero_memory);
 }
 
 inline void *allocate(Heap_Allocator *heap, uint32 size, bool32 zero_memory = false) {
     return heap_allocate(heap, size, zero_memory);
+}
+
+inline void *allocate(Stack_Region *region, uint32 size, bool32 zero_memory) {
+    return stack_region_allocate(region, size, zero_memory);
 }
 
 // TODO: should have alignment parameter too, i think
@@ -574,6 +681,11 @@ void *allocate(Allocator *allocator, uint32 size, bool32 zero_memory) {
         {
             Heap_Allocator *heap = (Heap_Allocator *) allocator;
             return heap_allocate(heap, size, zero_memory);
+        }
+        case STACK_REGION_ALLOCATOR:
+        {
+            Stack_Region *region = (Stack_Region *) allocator;
+            return stack_region_allocate(region, size, zero_memory);
         }
         default:
         {

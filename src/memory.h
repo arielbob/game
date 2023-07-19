@@ -10,6 +10,7 @@ enum Allocator_Type {
     READ_ONLY_ALLOCATOR, 
     STACK_ALLOCATOR,
     ARENA_ALLOCATOR,
+    STACK_REGION_ALLOCATOR, // regions created by a stack allocator
     POOL_ALLOCATOR,
     HEAP_ALLOCATOR
 };
@@ -25,11 +26,24 @@ struct Read_Only_Allocator {
 Read_Only_Allocator _read_only_allocator = { READ_ONLY_ALLOCATOR };
 Allocator *read_only_allocator = (Allocator *) &_read_only_allocator;
 
+struct Stack_Allocator;
+
+struct Stack_Region {
+    Allocator_Type type;
+    void *base;
+    uint32 size; // will increase if at the top of the global temp allocator's stack when allocating
+    uint32 used;
+
+    Stack_Allocator *stack;
+    Stack_Region *prev; // for setting stack's top_region when popping regions off
+};
+
 struct Stack_Allocator {
     Allocator_Type type;
     void *base;
     void *top;
     uint32 size;
+    Stack_Region *top_region;
 };
 
 struct Marker {
@@ -73,9 +87,6 @@ struct Memory {
     uint32 used;
     
     Stack_Allocator global_stack;
-    // i'm not exactly sure why hash_table_stack is a stack; this can be an arena, but either way, it'll
-    // probably be replaced
-    Stack_Allocator hash_table_stack;
 
     Arena_Allocator game_data;
     Arena_Allocator font_arena;
@@ -85,9 +96,12 @@ struct Memory {
     Arena_Allocator editor_arena;
 };
 
-Marker begin_region();
-void end_region(Marker marker);
+//Marker begin_region();
+//void end_region(Marker marker);
+Allocator *begin_region(uint32 size = 0);
+void end_region(Allocator *region);
 void *allocate(Allocator *allocator, uint32 size, bool32 zero_memory = true);
 void deallocate(Allocator *allocator, void *address);
+inline void *allocate(Stack_Region *region, uint32 size, bool32 zero_memory = false);
 
 #endif

@@ -92,7 +92,7 @@ void delete_mesh(int32 id) {
 }
 
 Mesh load_mesh(Allocator *allocator, Mesh_Type type, String name, String filename) {
-    Marker m = begin_region();
+    Allocator *temp_region = begin_region();
 
     char *c_filename = to_char_array(temp_region, filename);
     File_Data file_data = platform_open_and_read_file(temp_region, filename);
@@ -102,7 +102,7 @@ Mesh load_mesh(Allocator *allocator, Mesh_Type type, String name, String filenam
     mesh.name     = copy(allocator, name);
     mesh.filename = copy(allocator, filename);
 
-    end_region(m);
+    end_region(temp_region);
 
     return mesh;
 }
@@ -154,7 +154,7 @@ void set_mesh_file(int32 id, String new_filename) {
     Mesh *mesh = get_mesh(id);
     assert(mesh);
 
-    Marker m = begin_region();
+    Allocator *temp_region = begin_region();
     String name = copy(temp_region, mesh->name);
     Mesh_Type type = mesh->type;
 
@@ -165,7 +165,7 @@ void set_mesh_file(int32 id, String new_filename) {
     delete_mesh_no_replace(id);
     add_mesh(name, new_filename, type, id);
 
-    end_region(m);
+    end_region(temp_region);
 }
 
 Texture *get_texture(String name) {
@@ -788,9 +788,12 @@ void load_default_assets() {
     add_material(&material_info, Material_Type::DEFAULT);
 }
 
-bool32 generate_asset_name(Allocator *allocator, char *asset_type, int32 max_attempts, String *result) {
+bool32 generate_asset_name(Allocator *allocator, char *asset_type, int32 max_attempts, String *result,
+                           bool32 (*exists_fn)(String)) {
+    assert(exists_fn);
+    
     int32 num_attempts = 0;
-    Marker m = begin_region();
+    Allocator *temp_region = begin_region();
 
     String_Buffer buffer = make_string_buffer(temp_region, 256);
     bool success = false;
@@ -801,7 +804,7 @@ bool32 generate_asset_name(Allocator *allocator, char *asset_type, int32 max_att
     while (num_attempts < max_attempts) {
         char *format = (num_attempts == 0) ? zero_format : n_format;
         string_format(&buffer, format, num_attempts + 1);
-        if (!material_exists(make_string(buffer))) {
+        if (!exists_fn(make_string(buffer))) {
             success = true;
             break;
         }
@@ -815,7 +818,7 @@ bool32 generate_asset_name(Allocator *allocator, char *asset_type, int32 max_att
         assert(!"Could not generate material name.");
     }
 
-    end_region(m);
+    end_region(temp_region);
 
     return success;
 }

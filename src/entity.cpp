@@ -119,12 +119,12 @@ void set_material(Entity *entity, String name) {
 }
 
 void set_material(Entity *entity, char *name) {
-    Marker m = begin_region();
+    Allocator *temp_region = begin_region();
 
     String material_name = make_string(temp_region, name);
     set_material(entity, material_name);
     
-    end_region(m);
+    end_region(temp_region);
 }
 
 void set_mesh(Entity *entity, int32 id) {
@@ -147,10 +147,10 @@ void set_mesh(Entity *entity, String name) {
 }
 
 void set_mesh(Entity *entity, char *name) {
-    Marker m = begin_region();
+    Allocator *temp_region = begin_region();
 
     String mesh_name = make_string(temp_region, name);
     set_mesh(entity, mesh_name);
     
-    end_region(m);
+    end_region(temp_region);
 }

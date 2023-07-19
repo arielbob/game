@@ -640,7 +640,7 @@ UI_Text_Field_State *ui_add_text_field_state(UI_id id, String value, int32 max_l
 UI_Text_Field_Slider_State *ui_add_text_field_slider_state(UI_id id, real32 value) {
     UI_Widget_State *state = ui_make_widget_state(id, UI_STATE_TEXT_FIELD_SLIDER);
 
-    Marker m = begin_region();
+    Allocator *temp_region = begin_region();
     char *value_text = string_format(temp_region, "%f", value);
     
     UI_Text_Field_Slider_State *main_widget_state = &state->text_field_slider;
@@ -656,7 +656,7 @@ UI_Text_Field_Slider_State *ui_add_text_field_slider_state(UI_id id, real32 valu
     
     _ui_add_state(state);
 
-    end_region(m);
+    end_region(temp_region);
 
     return main_widget_state;
 }
@@ -2151,10 +2151,10 @@ UI_Text_Field_Slider_Result do_text_field_slider(real32 value,
                 slider_value = clamp(slider_value, min_value, max_value);
             }
 
-            Marker m = begin_region();
+            Allocator *temp_region = begin_region();
             char *value_text = string_format(temp_region, "%f", slider_value);
             set_string_buffer_text(&state->current_text, value_text);
-            end_region(m);
+            end_region(temp_region);
         }
     } else if (state->mode == UI_Text_Field_Slider_Mode::SLIDING && !is_active(textbox)) {
         state->mode = UI_Text_Field_Slider_Mode::NONE;
@@ -2162,10 +2162,10 @@ UI_Text_Field_Slider_Result do_text_field_slider(real32 value,
         // if we're sliding, current_text is the actual slider value, so we don't set it to
         // whatever we pass in.
         if (state->mode != UI_Text_Field_Slider_Mode::SLIDING) {
-            Marker m = begin_region();
+            Allocator *temp_region = begin_region();
             char *value_text = string_format(temp_region, "%f", value);
             set_string_buffer_text(&state->current_text, value_text);
-            end_region(m);
+            end_region(temp_region);
         }
     }
 
@@ -2212,10 +2212,10 @@ UI_Text_Field_Slider_Result do_text_field_slider(real32 value,
             slider_value = clamp(slider_value, min_value, max_value);
         }
 
-        Marker m = begin_region();
+        Allocator *temp_region = begin_region();
         char *value_text = string_format(temp_region, "%f", slider_value);
         set_string_buffer_text(&state->current_text, value_text);
-        end_region(m);
+        end_region(temp_region);
     }
 
     // current_text holds the truth about the value we return.
@@ -2530,14 +2530,14 @@ void push_scrollable_region(UI_Scrollable_Region_Theme theme,
                             real32 max_height = -1.0f,
                             int32 index = 0,
                             bool32 force_reset = false) {
-    Marker m = begin_region();
+    Allocator *temp_region = begin_region();
     
     UI_id id = make_ui_id(id_string, index);
     UI_id inner_id = make_ui_id(append_string(temp_region, id_string, "-inner"), index);
     UI_id handle_id = make_ui_id(append_string(temp_region, id_string, "-handle"), index);
     UI_id scrollbar_id = make_ui_id(append_string(temp_region, id_string, "-scrollbar"), index);
 
-    end_region(m);
+    end_region(temp_region);
 
     UI_Widget_State *state_variant = ui_get_state(id);
     UI_Scrollable_Region_State *state;
@@ -2693,7 +2693,7 @@ int32 do_dropdown(UI_Dropdown_Theme theme,
                   char *id,
                   bool32 force_reset = false,
                   int32 index = 0) {
-    Marker m = begin_region();
+    Allocator *temp_region = begin_region();
     String button_id_str = make_string(temp_region, id, "-button");
     String dropdown_inner_id_str = make_string(temp_region, id, "-inner");
     String scroll_region_id_str = make_string(temp_region, id, "-scrollable-region");
@@ -2909,7 +2909,7 @@ int32 do_dropdown(UI_Dropdown_Theme theme,
         }
     }
 
-    end_region(m);
+    end_region(temp_region);
     
     return selected_item_index;
 }

@@ -307,7 +307,7 @@ void ui_render_widget_to_commands(UI_Widget *widget, UI_Scissor_State *scissor_s
         command.shader_type = widget->shader_type;
         command.shader_uniforms = widget->shader_uniforms;
 
-        Marker m = begin_region();
+        Allocator *temp_region = begin_region();
         UI_Vertex *vertices;
         int32 num_vertices, num_indices;
         uint32 *indices;
@@ -354,7 +354,7 @@ void ui_render_widget_to_commands(UI_Widget *widget, UI_Scissor_State *scissor_s
         
         ui_push_command(command, vertices, num_vertices, indices, num_indices);
 
-        end_region(m);
+        end_region(temp_region);
     } else if (widget->flags & UI_WIDGET_DRAW_BACKGROUND) {
         UI_Render_Command command = {};
         
@@ -381,7 +381,7 @@ void ui_render_widget_to_commands(UI_Widget *widget, UI_Scissor_State *scissor_s
             }
         }
 
-        Marker m = begin_region();
+        Allocator *temp_region = begin_region();
         UI_Vertex *vertices;
         int32 num_vertices, num_indices;
         uint32 *indices;
@@ -410,7 +410,7 @@ void ui_render_widget_to_commands(UI_Widget *widget, UI_Scissor_State *scissor_s
         
         ui_push_command(command, vertices, num_vertices, indices, num_indices);
 
-        end_region(m);
+        end_region(temp_region);
     }
 
     if (widget->flags & UI_WIDGET_DRAW_TEXT) {

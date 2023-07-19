@@ -1023,7 +1023,7 @@ void draw_level_box() {
         
             bool32 open_level_clicked = do_text_button("Open", theme, "open_level");
             if (open_level_clicked) {
-                Marker m = begin_region();
+                Allocator *temp_region = begin_region();
                 char *absolute_filename = (char *) region_push(PLATFORM_MAX_PATH);
         
                 if (platform_open_file_dialog(absolute_filename,
@@ -1038,7 +1038,7 @@ void draw_level_box() {
                     }
                 }
 
-                end_region(m);
+                end_region(temp_region);
             }
 
             
@@ -1072,7 +1072,7 @@ void draw_level_box() {
             bool32 save_level_clicked = do_text_button("Save", theme, "save_level");
 
             if (save_level_clicked) {
-                Marker m = begin_region();
+                Allocator *temp_region = begin_region();
                 
                 if (editor_state->is_new_level) {
                     char *filename = (char *) region_push(PLATFORM_MAX_PATH);
@@ -1091,7 +1091,7 @@ void draw_level_box() {
                     add_message(&game_state->message_manager, make_string(SAVE_SUCCESS_MESSAGE));
                 }
 
-                end_region(m);
+                end_region(temp_region);
             }
             
             ui_x_pad(1.0f);
@@ -1100,7 +1100,7 @@ void draw_level_box() {
             if (save_as_level_clicked) {
                 assert(!is_empty(game_state->level.name));
 
-                Marker m = begin_region();
+                Allocator *temp_region = begin_region();
                 char *filename = (char *) region_push(PLATFORM_MAX_PATH);
 
                 bool32 has_filename = platform_open_save_file_dialog(filename,
@@ -1113,7 +1113,7 @@ void draw_level_box() {
                     add_message(&game_state->message_manager, make_string(SAVE_SUCCESS_MESSAGE));
                 }
         
-                end_region(m);
+                end_region(temp_region);
             }
         }
         ui_pop_widget();
@@ -1174,7 +1174,7 @@ void draw_editor(Controller_State *controller_state) {
 
         bool32 add_entity_clicked = do_text_button("Add Entity", editor_button_theme, "add_entity");
         if (add_entity_clicked) {
-            Marker m = begin_region();
+            Allocator *temp_region = begin_region();
             Entity_Info info = {};
             info.flags = ENTITY_MESH | ENTITY_MATERIAL;
             info.transform = make_transform();
@@ -1182,7 +1182,7 @@ void draw_editor(Controller_State *controller_state) {
             info.material_name = make_string("default_material");
             
             make_and_add_entity(&game_state->level, info);
-            end_region(m);
+            end_region(temp_region);
         }
 
         ui_y_pad(10.0f);
@@ -1387,10 +1387,10 @@ void draw_editor(Controller_State *controller_state) {
 
     Heap_Block *block = history_heap->first_block;
     while (block) {
-        Marker m = begin_region();
+        Allocator *temp_region = begin_region();
         char *whatever = string_format((Allocator *) &memory.global_stack, 16, "| %d | ", block->size);
         append_string(&history_buf, whatever);
-        end_region(m);
+        end_region(temp_region);
 
         block = block->next;
     }

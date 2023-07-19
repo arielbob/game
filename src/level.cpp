@@ -21,7 +21,7 @@ void new_level(Level *level) {
 }
 
 bool32 read_and_load_level(Level *level, char *filename) {
-    Marker m = begin_region();
+    Allocator *temp_region = begin_region();
 
     Level_Info *level_info = (Level_Info *) allocate(temp_region, sizeof(Level_Info), true);
     level_info->filename = make_string(filename);
@@ -41,7 +41,7 @@ bool32 read_and_load_level(Level *level, char *filename) {
     
     load_level(level, level_info);
     
-    end_region(m);
+    end_region(temp_region);
 
     return true;
 }

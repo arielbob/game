@@ -525,17 +525,6 @@ void init_game(Sound_Output *sound_output, uint32 num_samples) {
     // init ui state
     ui_manager = &game_state->ui_manager;
     ui_init(&memory.ui_arena);
-#if 0
-    UI_Push_Buffer ui_push_buffer = {};
-    ui_push_buffer.size = MEGABYTES(1);
-    ui_push_buffer.base = allocate((Allocator *) game_data_arena, ui_push_buffer.size);
-    ui_push_buffer.used = 0;
-    ui_manager->push_buffer = ui_push_buffer;
-    ui_manager->current_layer = 0;
-    ui_manager->heap_pointer = &memory.ui_state_heap;
-    ui_manager->state_table = make_hash_table<UI_id, UI_Element_State *>((Allocator *) &memory.hash_table_stack,
-                                                                         HASH_TABLE_SIZE, &ui_id_equals);
-#endif
 
     // init editor
     init_editor(&memory.editor_arena, &game_state->editor_state, *display_output);
