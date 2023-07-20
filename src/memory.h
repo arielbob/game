@@ -100,7 +100,8 @@ struct Memory {
 //void end_region(Marker marker);
 Allocator *begin_region(uint32 size = 0);
 void end_region(Allocator *region);
-void *allocate(Allocator *allocator, uint32 size, bool32 zero_memory = true);
+// TODO: does this need to be default true?
+void *allocate(Allocator *allocator, uint32 size, bool32 zero_memory = true); 
 void deallocate(Allocator *allocator, void *address);
 inline void *allocate(Stack_Region *region, uint32 size, bool32 zero_memory = false);
 

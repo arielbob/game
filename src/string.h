@@ -62,7 +62,7 @@ void copy_string(char *dest, char *src, int32 max_size) {
 }
 
 void copy_string(String_Buffer *dest, String_Buffer *src) {
-    assert(dest->size >= src->size);
+    assert(dest->size >= src->current_length);
 
     for (int32 i = 0; i < src->current_length; i++) {
         dest->contents[i] = src->contents[i];
@@ -225,7 +225,8 @@ String make_string(String_Buffer string_buffer) {
 }
 
 String make_string(Allocator *allocator, String_Buffer string_buffer) {
-    String_Buffer buffer_copy = copy(allocator, string_buffer);
+    String_Buffer buffer_copy = make_string_buffer(allocator, string_buffer.current_length);
+    copy_string(&buffer_copy, &string_buffer);
     return make_string(buffer_copy);
 }
 

@@ -428,10 +428,8 @@ File_Data platform_open_and_read_file(Allocator *allocator, char *filename) {
 }
 
 File_Data platform_open_and_read_file(Allocator *allocator, String filename) {
-    Allocator *temp_region = begin_region();
-    char *filename_c_string = to_char_array(temp_region, filename);
+    char *filename_c_string = to_char_array(allocator, filename);
     File_Data result = platform_open_and_read_file(allocator, filename_c_string);
-    end_region(temp_region);
     return result;
 }
 

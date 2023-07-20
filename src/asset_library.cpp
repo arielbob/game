@@ -53,10 +53,11 @@ void draw_mesh_library() {
 
             bool32 add_mesh_clicked = do_text_button("+", add_button_theme, "add_mesh_button");
             if (add_mesh_clicked) {
-                Allocator *temp_region = begin_region();
+                Allocator *temp_region = begin_region(256);
 
                 String new_mesh_name;
-                bool32 gen_result = generate_asset_name(temp_region, "Mesh", 256, &new_mesh_name, mesh_exists);
+                bool32 gen_result = generate_asset_name(temp_region, "Mesh", 256, get_remaining(temp_region),
+                                                        &new_mesh_name, mesh_exists);
                 assert(gen_result);
 
                 Mesh *new_mesh = add_mesh(new_mesh_name, make_string("blender/cube.mesh"), Mesh_Type::LEVEL);
@@ -208,8 +209,6 @@ void draw_mesh_library() {
 
                                 set_mesh_file(selected_mesh->id, relative_path_string);
                             }
-
-                            end_region(temp_region);
                         }
 
                         end_region(temp_region);
@@ -292,9 +291,9 @@ void draw_material_library() {
             bool32 add_material_clicked = do_text_button("+", add_button_theme, "add_material_button");
             if (add_material_clicked) {
                 Material_Info material_info = default_material_info;
-                Allocator *temp_region = begin_region();
-                bool32 gen_result = generate_asset_name(temp_region, "Material", 256, &material_info.name,
-                                                        material_exists);
+                Allocator *temp_region = begin_region(256);
+                bool32 gen_result = generate_asset_name(temp_region, "Material", 256, get_remaining(temp_region),
+                                                        &material_info.name, material_exists);
                 assert(gen_result);
                     
                 Material *new_material = add_material(&material_info, Material_Type::LEVEL);

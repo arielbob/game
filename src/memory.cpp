@@ -187,6 +187,7 @@ Allocator *begin_region(uint32 size) {
     region->stack = &memory.global_stack;
     region->prev = memory.global_stack.top_region;
     memory.global_stack.top_region = region;
+    memory.global_stack.top = (uint8 *) region->base + region->size;
 
     Allocator *region_allocator = (Allocator *) region;
     return region_allocator;
@@ -210,8 +211,10 @@ void end_region(Stack_Region *region) {
 void end_region(Allocator *allocator) {
     assert(allocator->type == STACK_REGION_ALLOCATOR);
     Stack_Region *region = (Stack_Region *) allocator;
-    
-    assert(memory.global_stack.top_region == region);
+
+    if (memory.global_stack.top_region != region) {
+        assert(!"A region was not closed by end_region() or you are trying to end a stack region that was already ended. Regions should be closed in the reverse order that they are created.");
+    }
 
     memory.global_stack.top_region = region->prev;
 
@@ -618,7 +621,7 @@ void *stack_region_allocate(Stack_Region *region, uint32 size, bool32 zero_memor
 
     Stack_Allocator *stack = region->stack;
     
-    if (region->used + size > region->size) {
+    if (region->used + size >= region->size) {
         if (stack->top_region == region) {
             uint32 size_delta = (region->used + size) - region->size;
 
@@ -769,3 +772,34 @@ void *arena_alloc(Arena *arena, uint32 size_to_allocate) {
     return start_byte;
 }
 #endif
+
+uint32 get_remaining(Allocator *allocator) {
+    switch (allocator->type) {
+        case STACK_ALLOCATOR: {
+            Stack_Allocator *stack = (Stack_Allocator *) allocator;
+            uint32 used = (uint32) ((uint8 *) stack->top - (uint8 *) stack->base);
+            return stack->size - used;
+        }
+        case ARENA_ALLOCATOR: {
+            Arena_Allocator *arena = (Arena_Allocator *) allocator;
+            return arena->size - arena->used;
+        }
+        case POOL_ALLOCATOR: {
+            Pool_Allocator *pool = (Pool_Allocator *) allocator;
+            uint32 used = pool->blocks_used * pool->block_size;
+            return pool->size - used;
+        }
+        case HEAP_ALLOCATOR: {
+            Heap_Allocator *heap = (Heap_Allocator *) allocator;
+            return heap->size - heap->used;
+        }
+        case STACK_REGION_ALLOCATOR: {
+            Stack_Region *region = (Stack_Region *) allocator;
+            return region->size - region->used;
+        }
+        default: {
+            assert(!"Unhandled allocator type.");
+            return 0;
+        } break;
+    }
+}

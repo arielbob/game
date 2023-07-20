@@ -788,14 +788,14 @@ void load_default_assets() {
     add_material(&material_info, Material_Type::DEFAULT);
 }
 
-bool32 generate_asset_name(Allocator *allocator, char *asset_type, int32 max_attempts, String *result,
-                           bool32 (*exists_fn)(String)) {
+bool32 generate_asset_name(Allocator *allocator, char *asset_type, int32 max_attempts, int32 buffer_size,
+                           String *result, bool32 (*exists_fn)(String)) {
     assert(exists_fn);
     
     int32 num_attempts = 0;
     Allocator *temp_region = begin_region();
 
-    String_Buffer buffer = make_string_buffer(temp_region, 256);
+    String_Buffer buffer = make_string_buffer(temp_region, buffer_size);
     bool success = false;
 
     char *zero_format = string_format(temp_region, "New %s", asset_type);
@@ -815,7 +815,7 @@ bool32 generate_asset_name(Allocator *allocator, char *asset_type, int32 max_att
     if (success) {
         *result = make_string(allocator, buffer);
     } else {
-        assert(!"Could not generate material name.");
+        assert(!"Could not generate new asset name.");
     }
 
     end_region(temp_region);
