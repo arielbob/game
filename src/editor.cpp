@@ -1186,18 +1186,18 @@ void draw_editor(Controller_State *controller_state) {
         }
 
         ui_y_pad(10.0f);
-        bool32 open_material_library_clicked = do_text_button("Material Library", editor_button_theme,
-                                                              "open_material_library");
+        bool32 open_asset_library_clicked = do_text_button("Asset Library", editor_button_theme,
+                                                           "open_asset_library");
 
         UI_Window_Theme window_theme = DEFAULT_WINDOW_THEME;
-        if (open_material_library_clicked) {
-            if (!editor_state->is_material_library_window_open) {
+        if (open_asset_library_clicked) {
+            if (!editor_state->is_asset_library_window_open) {
                 reset_asset_library_state();
             }
-            editor_state->is_material_library_window_open = !editor_state->is_material_library_window_open;
+            editor_state->is_asset_library_window_open = !editor_state->is_asset_library_window_open;
         }
 
-        if (editor_state->is_material_library_window_open) {
+        if (editor_state->is_asset_library_window_open) {
             draw_asset_library();
         }
     }

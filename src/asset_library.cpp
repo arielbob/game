@@ -1,16 +1,20 @@
 #include "editor.h"
 
 namespace Asset_Library_Themes {
-    UI_Container_Theme content_theme = {
+    UI_Container_Theme container_theme = {
         { 5.0f, 5.0f, 5.0f, 5.0f },
         DEFAULT_BOX_BACKGROUND,
         UI_POSITION_NONE,
         {},
         { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING },
         {},
-        UI_LAYOUT_HORIZONTAL
+        UI_LAYOUT_VERTICAL
     };
 
+    UI_Button_Theme item_theme = {};
+
+    UI_Button_Theme selected_item_theme = {};
+        
     UI_Theme list_container_theme = {};
     UI_Theme properties_container_theme = {};
     UI_Theme list_theme = {};
@@ -79,14 +83,6 @@ void draw_mesh_library() {
         ui_add_and_push_widget("asset-library-mesh-list-container2", list_theme,
                                UI_WIDGET_DRAW_BACKGROUND);
         {
-            UI_Button_Theme item_theme = editor_button_theme;
-            item_theme.scissor_type = UI_SCISSOR_INHERIT;
-
-            UI_Button_Theme selected_item_theme = item_theme;
-            selected_item_theme.background_color = rgb_to_vec4(61, 96, 252);
-            selected_item_theme.hot_background_color = selected_item_theme.background_color;
-            selected_item_theme.active_background_color = selected_item_theme.background_color;
-                
             // don't use i for the button indices because that's for buckets and
             // not the actual meshes we've visited
             for (int32 i = 0; i < NUM_MESH_BUCKETS; i++) {
@@ -127,7 +123,7 @@ void draw_mesh_library() {
     }
     ui_pop_widget();
 
-    ui_x_pad(10.0f);
+    ui_x_pad(5.0f);
 
     ui_add_and_push_widget("asset-library-mesh-info-container", properties_container_theme);
     {
@@ -138,10 +134,16 @@ void draw_mesh_library() {
 
         ui_add_and_push_widget("", section_theme);
         {
-            do_text("Properties");
+            UI_Theme properties_header_theme = {};
+            properties_header_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
+            properties_header_theme.semantic_size = {  0.0f, editor_button_theme.size.y };
+            properties_header_theme.layout_type = UI_LAYOUT_VERTICAL;
+            ui_add_and_push_widget("", properties_header_theme); {
+                do_y_centered_text("Properties");
+            } ui_pop_widget();
 
             if (selected_mesh) {
-                ui_y_pad(10.0f);
+                ui_y_pad(5.0f);
                 {
                     do_text("Mesh Name");
                     UI_Text_Field_Theme field_theme = editor_text_field_theme;
@@ -314,14 +316,6 @@ void draw_material_library() {
         ui_add_and_push_widget("asset-library-material-list-container2", list_theme,
                                UI_WIDGET_DRAW_BACKGROUND);
         {
-            UI_Button_Theme item_theme = editor_button_theme;
-            item_theme.scissor_type = UI_SCISSOR_INHERIT;
-
-            UI_Button_Theme selected_item_theme = item_theme;
-            selected_item_theme.background_color = rgb_to_vec4(61, 96, 252);
-            selected_item_theme.hot_background_color = selected_item_theme.background_color;
-            selected_item_theme.active_background_color = selected_item_theme.background_color;
-                
             // don't use i for the button indices because that's for buckets and
             // not the actual materials we've visited
             for (int32 i = 0; i < NUM_MATERIAL_BUCKETS; i++) {
@@ -362,7 +356,7 @@ void draw_material_library() {
     }
     ui_pop_widget();
 
-    ui_x_pad(10.0f);
+    ui_x_pad(5.0f);
 
     ui_add_and_push_widget("asset-library-material-info-container", properties_container_theme);
     {
@@ -373,10 +367,16 @@ void draw_material_library() {
 
         ui_add_and_push_widget("", section_theme);
         {
-            do_text("Properties");
+            UI_Theme properties_header_theme = {};
+            properties_header_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
+            properties_header_theme.semantic_size = {  0.0f, editor_button_theme.size.y };
+            properties_header_theme.layout_type = UI_LAYOUT_VERTICAL;
+            ui_add_and_push_widget("", properties_header_theme); {
+                do_y_centered_text("Properties");
+            } ui_pop_widget();
 
             if (selected_material) {
-                ui_y_pad(10.0f);
+                ui_y_pad(5.0f);
                 {
                     do_text("Material Name");
                     UI_Text_Field_Theme field_theme = editor_text_field_theme;
@@ -592,6 +592,23 @@ void draw_material_library() {
     ui_pop_widget();
 }
 
+UI_Button_Theme get_tab_theme(Asset_Library_Tab tab) {
+    using namespace Asset_Library_Themes;
+    
+    UI_Button_Theme tab_theme = item_theme;
+    tab_theme.size_type.x = UI_SIZE_FIT_CHILDREN;
+    tab_theme.padding.x = 5.0f;
+
+    UI_Button_Theme selected_tab_theme = selected_item_theme;
+    selected_tab_theme.size_type.x = UI_SIZE_FIT_CHILDREN;
+    selected_tab_theme.padding.x = 5.0f;
+    
+    Editor_State *editor_state = &game_state->editor_state;
+    Asset_Library_State *asset_library_state = &editor_state->asset_library_state;
+    UI_Button_Theme result = asset_library_state->selected_tab == tab ? selected_tab_theme : tab_theme;
+    return result;
+}
+
 void draw_asset_library() {
     using namespace Asset_Library_Themes;
     
@@ -633,14 +650,61 @@ void draw_asset_library() {
 
     space_between_row_theme = full_row_theme;
     space_between_row_theme.layout_type = UI_LAYOUT_HORIZONTAL_SPACE_BETWEEN;
+
+    item_theme = editor_button_theme;
+    item_theme.scissor_type = UI_SCISSOR_INHERIT;
+
+    selected_item_theme = item_theme;
+    selected_item_theme.background_color = rgb_to_vec4(61, 96, 252);
+    selected_item_theme.hot_background_color = selected_item_theme.background_color;
+    selected_item_theme.active_background_color = selected_item_theme.background_color;
     
     push_window("Asset Library", window_theme,
                 "asset-library-window", "asset-library-window-title-bar");
+
+    UI_Theme inner_column = {};
+    inner_column.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
+    inner_column.layout_type = UI_LAYOUT_VERTICAL;
+
+    UI_Theme inner_row = {};
+    inner_row.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
+    inner_row.layout_type = UI_LAYOUT_HORIZONTAL;
     
-    ui_push_container(content_theme, "asset-library-content");
+    ui_push_container(container_theme, "asset-library-content");
     {
+        ui_add_and_push_widget("asset-library-inner", inner_column);
+        {
+            ui_add_and_push_widget("asset-library-tab-row", row_theme);
+            {
+                if (do_text_button("Materials", get_tab_theme(Asset_Library_Tab::MATERIALS),
+                                   "asset-library-materials-tab")) {
+                    asset_library_state->selected_tab = Asset_Library_Tab::MATERIALS;
+                }
+                ui_x_pad(5.0f);
+                if (do_text_button("Meshes", get_tab_theme(Asset_Library_Tab::MESHES),
+                                   "asset-library-meshes-tab")) {
+                    asset_library_state->selected_tab = Asset_Library_Tab::MESHES;
+                }
+            } ui_pop_widget(); // asset-library-tab-row
+
+            ui_y_pad(5.0f);
+            
+            ui_add_and_push_widget("asset-library-inner-inner", inner_row);
+            {
+                switch (asset_library_state->selected_tab) {
+                    case Asset_Library_Tab::MATERIALS: {
+                        draw_material_library();
+                    } break;
+                    case Asset_Library_Tab::MESHES: {
+                        draw_mesh_library();
+                    } break;
+                    default: {
+                        assert(!"Unhandled Asset_Library_State type!");
+                    } break;
+                }
+            } ui_pop_widget(); // asset-library-inner-inner
+        } ui_pop_widget(); // asset-library-inner
         //draw_material_library();
-        draw_mesh_library();
     } ui_pop_widget(); // asset-library-content-container
 
     ui_pop_widget(); // window

@@ -1596,6 +1596,20 @@ bool32 do_button(UI_id id, UI_Theme theme) {
     return interact_result.released;
 }
 
+void ui_x_pad(real32 width) {
+    UI_Theme theme = {};
+    theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
+    theme.semantic_size = { width, 0.0f };
+    ui_add_widget("", theme);
+}
+
+void ui_y_pad(real32 height) {
+    UI_Theme theme = {};
+    theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
+    theme.semantic_size = { 0.0f, height };
+    ui_add_widget("", theme);
+}
+
 bool32 do_text_button(char *text, UI_Button_Theme button_theme, UI_id id, UI_Interact_Result *interact_out) {
     UI_Theme theme = NULL_THEME;
     theme.semantic_position = button_theme.position;
@@ -1613,23 +1627,46 @@ bool32 do_text_button(char *text, UI_Button_Theme button_theme, UI_id id, UI_Int
                                        UI_WIDGET_DRAW_BORDER | UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
 
     {
-        UI_Theme row_theme = NULL_THEME;
-        row_theme.layout_type = UI_LAYOUT_CENTER;
-        row_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
+        UI_Theme center_theme = NULL_THEME;
+        center_theme.layout_type = UI_LAYOUT_CENTER;
+        center_theme.size_type = button_theme.size_type;
+        center_theme.semantic_size = button_theme.size;
         // TODO: uhh, this doesn't assert because we never run set_scissor with it because this widget
         //       doesn't have any flags. set_scissor does run with this, however, when button_theme has
         //       a non-NONE scissor type, but in that case, we will eventually hit a SCISSOR_COMPUTED, as
         //       long as we laid our stuff out correctly.
-        row_theme.scissor_type = UI_SCISSOR_INHERIT;
+        center_theme.scissor_type = UI_SCISSOR_INHERIT;
         
-        ui_push_widget("", row_theme);
+        ui_push_widget("", center_theme);
         {
-            UI_Theme text_theme = NULL_THEME;
-            text_theme.text_color = button_theme.text_color;
-            text_theme.font = button_theme.font;
-            text_theme.size_type = { UI_SIZE_FIT_TEXT, UI_SIZE_FIT_TEXT };
-            text_theme.scissor_type = button_theme.scissor_type;
-            do_text(text, text_theme);
+            UI_Theme row_theme = {};
+            row_theme.layout_type = UI_LAYOUT_HORIZONTAL;
+            row_theme.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN };
+
+            ui_push_widget("", row_theme);
+            {
+                ui_x_pad(button_theme.padding.x);
+
+                UI_Theme column_theme = {};
+                column_theme.layout_type = UI_LAYOUT_VERTICAL;
+                column_theme.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN };
+
+                ui_push_widget("", column_theme);
+                {
+                    ui_y_pad(button_theme.padding.y);
+
+                    UI_Theme text_theme = NULL_THEME;
+                    text_theme.text_color = button_theme.text_color;
+                    text_theme.font = button_theme.font;
+                    text_theme.size_type = { UI_SIZE_FIT_TEXT, UI_SIZE_FIT_TEXT };
+                    text_theme.scissor_type = button_theme.scissor_type;
+                    do_text(text, text_theme);
+
+                    ui_y_pad(button_theme.padding.y);
+                } ui_pop_widget();
+
+                ui_x_pad(button_theme.padding.x);
+            } ui_pop_widget();
         }
         ui_pop_widget();
     }
@@ -1667,20 +1704,6 @@ UI_Interact_Result ui_push_empty_button(UI_Button_Theme button_theme, UI_id id) 
     UI_Interact_Result interact_result = ui_interact(button);
 
     return interact_result;
-}
-
-void ui_x_pad(real32 width) {
-    UI_Theme theme = {};
-    theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
-    theme.semantic_size = { width, 0.0f };
-    ui_add_widget("", theme);
-}
-
-void ui_y_pad(real32 height) {
-    UI_Theme theme = {};
-    theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
-    theme.semantic_size = { 0.0f, height };
-    ui_add_widget("", theme);
 }
 
 UI_Size_Type get_container_size_type(UI_Size_Type size_type) {

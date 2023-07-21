@@ -220,6 +220,8 @@ struct UI_Button_Theme {
     char *font;
 
     UI_Scissor_Type scissor_type;
+
+    Vec2 padding;
 };
 
 struct UI_Slider_Theme {

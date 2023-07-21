@@ -17,10 +17,15 @@
 #define TEXTURE_LIBRARY_WINDOW  1 << 2
 #define MESH_LIBRARY_WINDOW     1 << 3
 
+enum class Asset_Library_Tab {
+    MATERIALS,
+    MESHES
+};
+
 struct Asset_Library_State {
     bool32 material_modified;
     bool32 material_albedo_color_picker_open;
-    #if 0
+#if 0
     bool32 material_name_modified;
     bool32 material_albedo_texture_modified;
     
@@ -34,6 +39,8 @@ struct Asset_Library_State {
 
     int32 selected_material_id = -1;
     int32 selected_mesh_id = -1;
+
+    Asset_Library_Tab selected_tab = Asset_Library_Tab::MATERIALS;
 };
 
 struct Entity_Properties_State {
@@ -70,7 +77,7 @@ struct Editor_State {
     Asset_Library_State asset_library_state;
     Entity_Properties_State entity_properties_state;
     
-    bool32 is_material_library_window_open;
+    bool32 is_asset_library_window_open;
 };
 
 namespace Editor_Constants {
