@@ -9,8 +9,8 @@ struct Point_Light {
     vec4 color;
     // this attenuation formula isn't very physically accurate, but it allows us to easily bound the light.
     // it also allows for more intuitive artistic control.
-    float d_min;
-    float d_max;
+    float falloff_start;
+    float falloff_end;
 };
 
 layout (std140) uniform shader_globals {
@@ -129,7 +129,12 @@ void main() {
         vec3 h = normalize(v + l);
         
         Point_Light point_light = point_lights[i];
-        float attenuation = 1.0 / (fragment_to_light_distance * fragment_to_light_distance);
+        //float attenuation = 1.0 / (fragment_to_light_distance * fragment_to_light_distance);
+
+        float attenuation = 1.0 - ((fragment_to_light_distance - point_light.falloff_start) /
+                                   (point_light.falloff_end - point_light.falloff_start));
+        attenuation = clamp(attenuation, 0.0f, 1.0f);
+        //attenuation = max(attenuation, 0.0f);
 
         vec3 light_color = pow(vec3(point_light.color), vec3(1.0 / gamma)) * 200.0;
         vec3 radiance = attenuation * light_color;

@@ -1005,6 +1005,40 @@ void draw_entity_box_2(bool32 force_reset) {
                     entity->light_color = result.color;
                 }
             }
+
+            ui_y_pad(5.0f);
+            do_text("Light Falloff");
+            ui_y_pad(1.0f);
+            
+            label_theme.semantic_size.x = 35.0f;
+            
+            ui_add_and_push_widget("", row_theme);
+            {
+                ui_push_widget("", label_theme, UI_WIDGET_DRAW_BACKGROUND);
+                { do_text("Start"); }
+                ui_pop_widget();
+            
+                ui_x_pad(1.0f);
+                UI_Text_Field_Slider_Result result = do_text_field_slider(entity->falloff_start, slider_theme,
+                                                                          "entity-falloff-start-slider",
+                                                                          "entity-falloff-start-slider-text");
+                entity->falloff_start = result.value;
+            } ui_pop_widget();
+
+            ui_y_pad(1.0f);
+
+            ui_add_and_push_widget("", row_theme);
+            {
+                ui_push_widget("", label_theme, UI_WIDGET_DRAW_BACKGROUND);
+                { do_text("End"); }
+                ui_pop_widget();
+            
+                ui_x_pad(1.0f);
+                UI_Text_Field_Slider_Result result = do_text_field_slider(entity->falloff_end, slider_theme,
+                                                                          "entity-falloff-end-slider",
+                                                                          "entity-falloff-end-slider-text");
+                entity->falloff_end = result.value;
+            } ui_pop_widget();
         }
     }
     ui_pop_widget();
