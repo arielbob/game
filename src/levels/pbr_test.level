@@ -60,32 +60,27 @@ roughness 0.035210
 
 entities {
 entity {
-position -0.380305 0.937249 2.148195
-rotation 0.963133 0.260742 -0.060243 0.027560
-scale 2.000000 2.000000 2.000000
-mesh "suzanne2"
-material "default_material"
-}
-entity {
-position 1.983263 0.000000 -2.828268
-rotation 0.879763 -0.466592 -0.080534 -0.042712
-scale 1.000000 1.000000 1.000000
-mesh "cube"
-material "shiny blue"
-}
-entity {
-position 3.183504 0.000000 -0.193760
+position -0.709515 0.000000 -2.470970
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
-mesh "cube"
-material "default_material"
+mesh "gizmo_sphere"
+material "beige"
 }
 entity {
-position -3.136914 0.480708 -1.265053
-rotation 0.888306 0.153929 -0.418817 0.108676
+position 2.510092 0.073614 1.411166
+rotation 0.381343 -0.009363 -0.922670 0.056304
 scale 1.000000 1.000000 1.000000
-mesh "low-poly suzanne"
-material "shiny red"
+mesh "tree"
+material "beige"
+}
+entity {
+position 0.177281 5.683138 -3.576767
+rotation 0.919117 0.000000 -0.393984 0.000000
+scale 1.000000 1.000000 1.000000
+light_type point
+light_color 0.017189 0.025084 0.056667
+falloff_start 0.000000
+falloff_end 7.500000
 }
 entity {
 position -3.558386 3.283484 2.876131
@@ -97,27 +92,32 @@ falloff_start 0.000000
 falloff_end 10.000000
 }
 entity {
-position 0.177281 5.276955 -3.002483
-rotation 0.919117 0.000000 -0.393984 0.000000
+position -3.136914 0.480708 -1.265053
+rotation 0.888306 0.153929 -0.418817 0.108676
 scale 1.000000 1.000000 1.000000
-light_type point
-light_color 0.017700 0.032160 0.090000
-falloff_start 0.000000
-falloff_end 8.000000
+mesh "low-poly suzanne"
+material "shiny red"
 }
 entity {
-position 2.510092 0.073614 1.411166
-rotation 0.381343 -0.009363 -0.922670 0.056304
-scale 1.000000 1.000000 1.000000
-mesh "tree"
-material "beige"
-}
-entity {
-position -0.709515 0.000000 -2.470970
+position 3.183504 0.000000 -0.193760
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
-mesh "gizmo_sphere"
-material "beige"
+mesh "cube"
+material "default_material"
+}
+entity {
+position 1.983263 0.000000 -2.828268
+rotation 0.879763 -0.466592 -0.080534 -0.042712
+scale 1.000000 1.000000 1.000000
+mesh "cube"
+material "shiny blue"
+}
+entity {
+position -0.380305 0.937249 2.148195
+rotation 0.963133 0.260742 -0.060243 0.027560
+scale 2.000000 2.000000 2.000000
+mesh "suzanne2"
+material "default_material"
 }
 }
 

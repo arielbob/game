@@ -10,10 +10,6 @@ namespace Asset_Library_Themes {
         {},
         UI_LAYOUT_VERTICAL
     };
-
-    UI_Button_Theme item_theme = {};
-
-    UI_Button_Theme selected_item_theme = {};
         
     UI_Theme list_container_theme = {};
     UI_Theme properties_container_theme = {};
@@ -435,7 +431,7 @@ void draw_material_library() {
                         UI_Interact_Result interact_result;
                         bool32 open_color_picker_pressed = do_text_button("Open Color Picker",
                                                                           editor_button_theme,
-                                                                          "open-color-picker", 0,
+                                                                          "albedo-open-color-picker", 0,
                                                                           &interact_result);
                         if (open_color_picker_pressed) {
                             asset_library_state->material_albedo_color_picker_open = !asset_library_state->material_albedo_color_picker_open;
@@ -651,6 +647,7 @@ void draw_asset_library() {
     space_between_row_theme = full_row_theme;
     space_between_row_theme.layout_type = UI_LAYOUT_HORIZONTAL_SPACE_BETWEEN;
 
+#if 0
     item_theme = editor_button_theme;
     item_theme.scissor_type = UI_SCISSOR_INHERIT;
 
@@ -658,6 +655,7 @@ void draw_asset_library() {
     selected_item_theme.background_color = rgb_to_vec4(61, 96, 252);
     selected_item_theme.hot_background_color = selected_item_theme.background_color;
     selected_item_theme.active_background_color = selected_item_theme.background_color;
+#endif
     
     push_window("Asset Library", window_theme,
                 "asset-library-window", "asset-library-window-title-bar");

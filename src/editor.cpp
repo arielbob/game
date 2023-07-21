@@ -671,6 +671,22 @@ void update_editor(Controller_State *controller_state, real32 dt) {
     #endif
 }
 
+UI_Button_Theme get_entity_flags_button_theme(uint32 flag, Entity *entity) {
+    UI_Button_Theme unselected_theme = item_theme;
+    unselected_theme.size_type.x = UI_SIZE_FIT_CHILDREN;
+    unselected_theme.size.x = 0.0f;
+    unselected_theme.padding.x = 5.0f;
+    UI_Button_Theme selected_theme = selected_item_theme;
+    selected_theme.size_type.x = UI_SIZE_FIT_CHILDREN;
+    selected_theme.size.x = 0.0f;
+    selected_theme.padding.x = 5.0f;
+    if (entity->flags & flag) {
+        return selected_theme;
+    } else {
+        return unselected_theme;
+    }
+}
+
 void draw_entity_box_2(bool32 force_reset) {
     UI_Window_Theme window_theme = DEFAULT_WINDOW_THEME;
     window_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_FIT_CHILDREN };
@@ -723,9 +739,35 @@ void draw_entity_box_2(bool32 force_reset) {
         //label_theme.border_color = rgb_to_vec4(24, 24, 28);
         //label_theme.border_width = 1.0f;
 
+        do_text("Flags");
+        ui_y_pad(1.0f);
+        ui_add_and_push_widget("", row_theme);
+        {
+            if (do_text_button("MESH", get_entity_flags_button_theme(ENTITY_MESH, entity),
+                               "entity-flag-mesh")) {
+                entity->flags = set_bits(entity->flags, ENTITY_MESH, !(entity->flags & ENTITY_MESH));
+            }
+            ui_x_pad(1.0f);
+            
+            if (do_text_button("MATERIAL", get_entity_flags_button_theme(ENTITY_MATERIAL, entity),
+                               "entity-flag-material")) {
+                entity->flags = set_bits(entity->flags, ENTITY_MATERIAL, !(entity->flags & ENTITY_MATERIAL));
+            }
+            ui_x_pad(1.0f);
+
+            if (do_text_button("LIGHT", get_entity_flags_button_theme(ENTITY_LIGHT, entity),
+                               "entity-flag-light")) {
+                entity->flags = set_bits(entity->flags, ENTITY_LIGHT, !(entity->flags & ENTITY_LIGHT));
+            }
+            ui_x_pad(1.0f);
+        }
+        ui_pop_widget();
+
+        ui_y_pad(5.0f);
+        
         Transform *transform = &entity->transform;
         Vec3 new_position = transform->position;
-
+        
         do_text("Position");
         ui_y_pad(1.0f);
 
@@ -986,7 +1028,7 @@ void draw_entity_box_2(bool32 force_reset) {
             UI_Interact_Result interact_result;
             bool32 open_color_picker_pressed = do_text_button("Open Color Picker",
                                                               editor_button_theme,
-                                                              "open-color-picker", 0,
+                                                              "entity-light-open-color-picker", 0,
                                                               &interact_result);
             if (open_color_picker_pressed) {
                 properties_state->light_color_picker_open = !properties_state->light_color_picker_open;

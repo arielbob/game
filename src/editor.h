@@ -130,7 +130,6 @@ UI_Button_Theme editor_button_theme = {
     default_font
 };
 
-
 UI_Button_Theme editor_button_danger_theme = {
     { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE },
     { 0.0f, 20.0f }, { 0.0f, 0.0f },
@@ -163,6 +162,19 @@ UI_Button_Theme editor_selected_dropdown_item_theme = {
     editor_button_theme.size_type,
     editor_button_theme.size, editor_button_theme.position,
     rgb_to_vec4(61, 96, 252), rgb_to_vec4(61, 96, 252), rgb_to_vec4(61, 96, 252),
+    editor_button_theme.text_color,
+    editor_button_theme.font,
+    UI_SCISSOR_INHERIT
+};
+
+UI_Button_Theme item_theme = editor_button_theme;
+
+UI_Button_Theme selected_item_theme = {
+    editor_button_theme.size_type,
+    editor_button_theme.size, editor_button_theme.position,
+    rgb_to_vec4(61, 96, 252),
+    rgb_to_vec4(61, 96, 252),
+    rgb_to_vec4(61, 96, 252),
     editor_button_theme.text_color,
     editor_button_theme.font,
     UI_SCISSOR_INHERIT
