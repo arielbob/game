@@ -977,6 +977,35 @@ void draw_entity_box_2(bool32 force_reset) {
                 editor_state->selected_entity_modified = true;
             }
         }
+
+        if (entity->flags & ENTITY_LIGHT) {
+            ui_y_pad(10.0f);
+            do_text("Light Color");
+            ui_y_pad(1.0f);
+
+            UI_Interact_Result interact_result;
+            bool32 open_color_picker_pressed = do_text_button("Open Color Picker",
+                                                              editor_button_theme,
+                                                              "open-color-picker", 0,
+                                                              &interact_result);
+            if (open_color_picker_pressed) {
+                properties_state->light_color_picker_open = !properties_state->light_color_picker_open;
+            }
+
+            if (properties_state->light_color_picker_open) {
+                UI_Color_Picker_Result result = do_color_picker(entity->light_color,
+                                                                "entity-light-color-picker",
+                                                                "entity-light-color-picker-panel",
+                                                                "entity-light-color-picker-slider",
+                                                                false);
+
+                if (result.should_hide && !interact_result.just_pressed) {
+                    properties_state->light_color_picker_open = false;
+                } else {
+                    entity->light_color = result.color;
+                }
+            }
+        }
     }
     ui_pop_widget();
     

@@ -50,6 +50,7 @@ struct Entity_Properties_State {
     // when sliding, for a better UX.
     Euler_Transform transform;
     bool32 is_rotation_being_modified;
+    bool32 light_color_picker_open;
 };
 
 struct Editor_State {
