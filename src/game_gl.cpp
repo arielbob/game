@@ -3410,7 +3410,6 @@ void gl_render_editor(GL_Framebuffer framebuffer,
     }
 
     // draw light icons
-    glDepthMask(GL_FALSE);
     String light_icon_texture_name = make_string("lightbulb");
     for (int32 i = 0; i < num_point_lights; i++) {
         Vec3 view_space_position = light_positions[i];
@@ -3418,7 +3417,6 @@ void gl_render_editor(GL_Framebuffer framebuffer,
         gl_draw_constant_facing_quad_view_space(view_space_position, Editor_Constants::point_light_side_length,
                                                 light_icon_texture_name);
     }
-    glDepthMask(GL_TRUE);
 
     // draw gizmo
     glBindFramebuffer(GL_FRAMEBUFFER, g_gl_state->gizmo_framebuffer.fbo);
