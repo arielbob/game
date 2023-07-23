@@ -315,7 +315,7 @@ Texture *add_texture(String name, String filename, Texture_Type type, int32 id =
 
     if (type == Texture_Type::LEVEL) {
         assert(id == -1);
-        id = asset_manager->total_meshes_added_ever++;
+        id = asset_manager->total_textures_added_ever++;
     } else {
         // non-level assets have negative IDs
         assert(id < 0);

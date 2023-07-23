@@ -418,13 +418,15 @@ bool32 Level_Loader::parse_material(Allocator *temp_allocator, Tokenizer *tokeni
 
     token = get_token(tokenizer);
 
-    Material_Info material_info;
+    Material_Info material_info = {};
 
+    Texture *default_texture = get_texture(ENGINE_DEBUG_TEXTURE_ID);
+    
     // set defaults
     material_info.flags = 0;
-    material_info.albedo_texture_id = 0;
-    material_info.metalness_texture_id = 0;
-    material_info.roughness_texture_id = 0;
+    material_info.albedo_texture_name = default_texture->name;
+    material_info.metalness_texture_name = default_texture->name;
+    material_info.roughness_texture_name = default_texture->name;
     material_info.albedo_color = make_vec3(1.0f, 0.0f, 0.0f);
     material_info.metalness = 0.5f;
     material_info.roughness = 0.5f;
