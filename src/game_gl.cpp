@@ -3242,7 +3242,7 @@ void gl_draw_framebuffer(GL_Framebuffer framebuffer) {
         glBindTexture(GL_TEXTURE_2D, framebuffer.color_buffer_texture);
     }
     
-    GL_Mesh *gl_mesh = gl_use_mesh("framebuffer_quad");
+    GL_Mesh *gl_mesh = gl_use_mesh(ENGINE_FRAMEBUFFER_QUAD_MESH_ID);
 
     glDrawArrays(GL_TRIANGLES, 0, 6);
 
@@ -3290,10 +3290,9 @@ void gl_draw_gizmo(Gizmo_State *gizmo_state) {
         z_handle_color = z_handle_hover;
     }
 
-    char *arrow_mesh_name = "gizmo_arrow";
-    gl_draw_solid_color_mesh(arrow_mesh_name, x_handle_color, x_transform);
-    gl_draw_solid_color_mesh(arrow_mesh_name, y_handle_color, y_transform);
-    gl_draw_solid_color_mesh(arrow_mesh_name, z_handle_color, z_transform);
+    gl_draw_solid_color_mesh(ENGINE_GIZMO_ARROW_MESH_ID, x_handle_color, x_transform);
+    gl_draw_solid_color_mesh(ENGINE_GIZMO_ARROW_MESH_ID, y_handle_color, y_transform);
+    gl_draw_solid_color_mesh(ENGINE_GIZMO_ARROW_MESH_ID, z_handle_color, z_transform);
 
     // scale handles
     x_handle_color = default_x_handle_color;
@@ -3308,14 +3307,13 @@ void gl_draw_gizmo(Gizmo_State *gizmo_state) {
         z_handle_color = z_handle_hover;
     }
 
-    char *cube_mesh_name = "gizmo_cube";
-    gl_draw_solid_color_mesh(cube_mesh_name, x_handle_color, x_transform);
-    gl_draw_solid_color_mesh(cube_mesh_name, y_handle_color, y_transform);
-    gl_draw_solid_color_mesh(cube_mesh_name, z_handle_color, z_transform);
+    gl_draw_solid_color_mesh(ENGINE_GIZMO_CUBE_MESH_ID, x_handle_color, x_transform);
+    gl_draw_solid_color_mesh(ENGINE_GIZMO_CUBE_MESH_ID, y_handle_color, y_transform);
+    gl_draw_solid_color_mesh(ENGINE_GIZMO_CUBE_MESH_ID, z_handle_color, z_transform);
 
     Transform sphere_mask_transform = gizmo_state->transform;
     glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-    gl_draw_solid_color_mesh("gizmo_sphere",
+    gl_draw_solid_color_mesh(ENGINE_GIZMO_SPHERE_MESH_ID,
                              make_vec4(0.0f, 0.0f, 0.0f, 1.0f), sphere_mask_transform);
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
@@ -3332,10 +3330,9 @@ void gl_draw_gizmo(Gizmo_State *gizmo_state) {
         z_handle_color = z_handle_hover;
     }
 
-    char *ring_mesh_name = "gizmo_ring";
-    gl_draw_solid_color_mesh(ring_mesh_name, x_handle_color, x_transform);
-    gl_draw_solid_color_mesh(ring_mesh_name, y_handle_color, y_transform);
-    gl_draw_solid_color_mesh(ring_mesh_name, z_handle_color, z_transform);
+    gl_draw_solid_color_mesh(ENGINE_GIZMO_RING_MESH_ID, x_handle_color, x_transform);
+    gl_draw_solid_color_mesh(ENGINE_GIZMO_RING_MESH_ID, y_handle_color, y_transform);
+    gl_draw_solid_color_mesh(ENGINE_GIZMO_RING_MESH_ID, z_handle_color, z_transform);
 }
 
 void gl_render_editor(GL_Framebuffer framebuffer,
@@ -3428,12 +3425,11 @@ void gl_render_editor(GL_Framebuffer framebuffer,
     }
 
     // draw light icons
-    String light_icon_texture_name = make_string("lightbulb");
     for (int32 i = 0; i < num_point_lights; i++) {
         Vec3 view_space_position = light_positions[i];
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         gl_draw_constant_facing_quad_view_space(view_space_position, Editor_Constants::point_light_side_length,
-                                                light_icon_texture_name);
+                                                ENGINE_LIGHTBULB_TEXTURE_ID);
     }
 
     // draw gizmo

@@ -942,7 +942,7 @@ bool32 platform_open_file_dialog(char *filepath, char *filetype_name, char *file
     OPENFILENAME ofn = {};       // common dialog box structure
 
     String filetype_name_string = make_string(filetype_name);
-    String file_extensions = make_string(file_extensions);
+    String file_extensions_string = make_string(file_extensions);
 
     char filter_buffer[64];
     // NOTE: we do it this way since string_format is messed up when the string contains null
@@ -951,7 +951,7 @@ bool32 platform_open_file_dialog(char *filepath, char *filetype_name, char *file
     append_string(&working_buffer, filetype_name_string);
     append_string(&working_buffer, make_string("\0", 1));
     //append_string(&working_buffer, make_string("*.", 2));
-    append_string(&working_buffer, file_extension);
+    append_string(&working_buffer, file_extensions_string);
     append_string(&working_buffer, make_string("\0\0", 2));
 
     // Initialize OPENFILENAME

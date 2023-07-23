@@ -122,16 +122,22 @@ Mesh *add_mesh(String name, String filename, Mesh_Type type, int32 id = -1) {
     }
 
     Mesh *mesh = (Mesh *) allocate(asset_manager->allocator, sizeof(Mesh));
-    *mesh = load_mesh(asset_manager->allocator, type, name, filename);
-    if (id < 0) {
-        mesh->id = asset_manager->total_meshes_added_ever++;
+    if (type == Mesh_Type::LEVEL) {
+        assert(id == -1);
+        id = asset_manager->total_meshes_added_ever++;
     } else {
-        Mesh *found_mesh = get_mesh(id);
-        if (found_mesh) {
-            assert(!"Mesh with ID already exists!");
-        } else {
-            mesh->id = id;
-        }
+        assert(id < 0);
+    }
+
+    // note that this should be called before we set mesh->id, or else we would overwrite
+    // the mesh->id value with 0
+    *mesh = load_mesh(asset_manager->allocator, type, name, filename);
+    
+    Mesh *found_mesh = get_mesh(id);
+    if (found_mesh) {
+        assert(!"Mesh with ID already exists!");
+    } else {
+        mesh->id = id;
     }
     
     uint32 hash = get_hash(mesh->id, NUM_MESH_BUCKETS);
@@ -307,17 +313,21 @@ Texture *add_texture(String name, String filename, Texture_Type type, int32 id =
 
     Texture *texture  = (Texture *) allocate(asset_manager->allocator, sizeof(Texture), true);
 
-    if (id < 0) {
-        texture->id = asset_manager->total_textures_added_ever++;
+    if (type == Texture_Type::LEVEL) {
+        assert(id == -1);
+        id = asset_manager->total_meshes_added_ever++;
     } else {
-        Texture *found_texture = get_texture(id);
-        if (found_texture) {
-            assert(!"Texture with ID already exists!");
-        } else {
-            texture->id = id;
-        }
+        // non-level assets have negative IDs
+        assert(id < 0);
     }
-    
+
+    Texture *found_texture = get_texture(id);
+    if (found_texture) {
+        assert(!"Texture with ID already exists!");
+    } else {
+        texture->id = id;
+    }
+
     texture->name     = copy(asset_manager->allocator, name);
     texture->filename = copy(asset_manager->allocator, filename);
     texture->type     = type;
@@ -337,8 +347,8 @@ Texture *add_texture(String name, String filename, Texture_Type type, int32 id =
     return texture;
 }
 
-inline Texture *add_texture(char *name, char *filename, Texture_Type type) {
-    return add_texture(make_string(name), make_string(filename), type);
+inline Texture *add_texture(char *name, char *filename, Texture_Type type, int32 id = -1) {
+    return add_texture(make_string(name), make_string(filename), type, id);
 }
 
 bool32 material_exists(String name) {
@@ -833,12 +843,16 @@ void load_default_assets() {
              Mesh_Type::ENGINE, ENGINE_CAPSULE_CYLINDER_MESH_ID);
     add_mesh("capsule_cap",      "blender/capsule_cap.mesh",
              Mesh_Type::ENGINE, ENGINE_CAPSULE_CAP_MESH_ID);
-    add_mesh("cube",             "blender/cube.mesh",  Mesh_Type::PRIMITIVE);
+    add_mesh("cube",             "blender/cube.mesh",  Mesh_Type::PRIMITIVE, ENGINE_DEFAULT_CUBE_MESH_ID);
     
-    add_texture("texture_default",   "blender/debug-texture.jpg",          Texture_Type::DEFAULT);
-    add_texture("lightbulb",         "src/textures/lightbulb.png",         Texture_Type::ENGINE);
-    add_texture("editor_down_arrow", "src/textures/editor_down_arrow.png", Texture_Type::ENGINE);
-    add_texture("editor_check",      "src/textures/editor_check.png",      Texture_Type::ENGINE);
+    add_texture("texture_default",   "blender/debug-texture.jpg",          Texture_Type::DEFAULT,
+                ENGINE_DEBUG_TEXTURE_ID);
+    add_texture("lightbulb",         "src/textures/lightbulb.png",         Texture_Type::ENGINE,
+                ENGINE_LIGHTBULB_TEXTURE_ID);
+    add_texture("editor_down_arrow", "src/textures/editor_down_arrow.png", Texture_Type::ENGINE,
+                ENGINE_EDITOR_DOWN_ARROW_TEXTURE_ID);
+    add_texture("editor_check",      "src/textures/editor_check.png",      Texture_Type::ENGINE,
+                ENGINE_EDITOR_CHECK_TEXTURE_ID);
 
     add_font("times32",         "c:/windows/fonts/times.ttf",    32.0f);
     add_font("times24",         "c:/windows/fonts/times.ttf",    24.0f);

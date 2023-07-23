@@ -252,9 +252,6 @@ struct GL_State {
     
     // we just use the same keys across GL and game code.
     GL_Mesh    *mesh_table[NUM_MESH_BUCKETS];
-    // for non-level meshes, their IDs are negative starting at -1
-    int32 num_non_level_meshes_added;
-    
     GL_Texture *texture_table[NUM_TEXTURE_BUCKETS];
     GL_Font    *font_table[NUM_FONT_BUCKETS];
     GL_Shader  *shader_table[NUM_SHADER_BUCKETS];
