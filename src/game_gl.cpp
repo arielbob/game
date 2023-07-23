@@ -1154,7 +1154,7 @@ GL_Texture gl_load_texture(GL_State *gl_state, char *texture_filename, bool32 ha
 }
 #endif
 
-bool32 gl_load_texture(Texture *texture, bool32 has_alpha=false) {
+bool32 gl_load_texture(Texture *texture, bool32 has_alpha = false) {
     Allocator *temp_region = begin_region();
     Allocator *temp_allocator = (Allocator *) &memory.global_stack;
     char *temp_texture_filename = to_char_array(temp_allocator, texture->filename);
@@ -2004,7 +2004,7 @@ void gl_unload_texture(int32 id) {
 
     GL_Texture *current = g_gl_state->texture_table[hash];
     while (current) {
-        if (current->id, id) {
+        if (current->id == id) {
             if (current->table_prev) {
                 current->table_prev->table_next = current->table_next;
             } else {
