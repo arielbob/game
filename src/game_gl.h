@@ -161,8 +161,6 @@
 #define FRAMEBUFFER_IS_HDR   (1 << 0)
 #define FRAMEBUFFER_HAS_ALPHA (1 << 1)
 
-#define DEBUG_QUAD_MESH_ID -1
-
 enum Shader_Type {
     VERTEX,
     FRAGMENT

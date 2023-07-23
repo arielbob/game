@@ -399,7 +399,7 @@ void ui_render_widget_to_commands(UI_Widget *widget, UI_Scissor_State *scissor_s
             assert(texture);
 
             command.texture_type = UI_Texture_Type::UI_TEXTURE_IMAGE;
-            command.texture_name = texture->name;
+            command.texture_id = texture->id;
         } else {
             command.texture_type = UI_Texture_Type::UI_TEXTURE_NONE;
         }

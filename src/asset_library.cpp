@@ -473,18 +473,23 @@ void draw_material_library() {
                     ui_y_pad(5.0f);
 
                     if (selected_material->flags & MATERIAL_USE_METALNESS_TEXTURE) {
+
                         do_text("Metalness Texture");
-                        // TODO: do whatever i did with the albedo texture above
-                        int32 selected_index = get_selected_name_index(selected_material->metalness_texture_name,
+                        Texture *metalness_texture = get_texture(selected_material->metalness_texture_id);
+                        int32 selected_index = get_selected_name_index(metalness_texture->name,
                                                                        texture_names, num_texture_names);
                         assert(selected_index >= 0);
+
                         int32 dropdown_selected_index = do_dropdown(dropdown_theme,
                                                                     texture_names, num_texture_names,
                                                                     selected_index,
                                                                     "metalness_texture_dropdown");
                         if (dropdown_selected_index != selected_index) {
+                            Allocator *temp_region = begin_region();
                             selected_index = dropdown_selected_index;
-                            replace_contents(&selected_material->metalness_texture_name, texture_names[selected_index]);
+                            Texture *selected = get_texture(make_string(temp_region, texture_names[selected_index]));
+                            selected_material->metalness_texture_id = selected->id;
+                            end_region(temp_region);
                         }
                     } else {
                         do_text("Metalness");
@@ -515,7 +520,8 @@ void draw_material_library() {
                     
                     if (selected_material->flags & MATERIAL_USE_ROUGHNESS_TEXTURE) {
                         do_text("Roughness Texture");
-                        int32 selected_index = get_selected_name_index(selected_material->roughness_texture_name,
+                        Texture *roughness_texture = get_texture(selected_material->roughness_texture_id);
+                        int32 selected_index = get_selected_name_index(roughness_texture->name,
                                                                        texture_names, num_texture_names);
                         assert(selected_index >= 0);
 
@@ -524,8 +530,11 @@ void draw_material_library() {
                                                                     selected_index,
                                                                     "roughness_texture_dropdown");
                         if (dropdown_selected_index != selected_index) {
+                            Allocator *temp_region = begin_region();
                             selected_index = dropdown_selected_index;
-                            replace_contents(&selected_material->roughness_texture_name, texture_names[selected_index]);
+                            Texture *selected = get_texture(make_string(temp_region, texture_names[selected_index]));
+                            selected_material->roughness_texture_id = selected->id;
+                            end_region(temp_region);
                         }
                     } else {
                         do_text("Roughness");

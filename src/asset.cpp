@@ -149,8 +149,8 @@ Mesh *add_mesh(String name, String filename, Mesh_Type type, int32 id = -1) {
     return mesh;
 }
 
-inline Mesh *add_mesh(char *name, char *filename, Mesh_Type type) {
-    return add_mesh(make_string(name), make_string(filename), type);
+inline Mesh *add_mesh(char *name, char *filename, Mesh_Type type, int32 id = 1) {
+    return add_mesh(make_string(name), make_string(filename), type, id);
 }
 
 void set_mesh_file(int32 id, String new_filename) {
@@ -825,13 +825,15 @@ void load_default_assets() {
     // we don't need default materials. materials reference meshes and textures but materials themselves
     // don't directly require any files.
 
-    add_mesh("gizmo_arrow",      "blender/gizmo_arrow.mesh",      Mesh_Type::ENGINE);
-    add_mesh("gizmo_ring",       "blender/gizmo_ring.mesh",       Mesh_Type::ENGINE);
-    add_mesh("gizmo_sphere",     "blender/gizmo_sphere.mesh",     Mesh_Type::ENGINE);
-    add_mesh("gizmo_cube",       "blender/gizmo_cube.mesh",       Mesh_Type::ENGINE);
-    add_mesh("capsule_cylinder", "blender/capsule_cylinder.mesh", Mesh_Type::ENGINE);
-    add_mesh("capsule_cap",      "blender/capsule_cap.mesh",      Mesh_Type::ENGINE);
-    add_mesh("cube",             "blender/cube.mesh",             Mesh_Type::PRIMITIVE);
+    add_mesh("gizmo_arrow",      "blender/gizmo_arrow.mesh",  Mesh_Type::ENGINE, ENGINE_GIZMO_ARROW_MESH_ID);
+    add_mesh("gizmo_ring",       "blender/gizmo_ring.mesh",   Mesh_Type::ENGINE, ENGINE_GIZMO_RING_MESH_ID);
+    add_mesh("gizmo_sphere",     "blender/gizmo_sphere.mesh", Mesh_Type::ENGINE, ENGINE_GIZMO_SPHERE_MESH_ID);
+    add_mesh("gizmo_cube",       "blender/gizmo_cube.mesh",   Mesh_Type::ENGINE, ENGINE_GIZMO_CUBE_MESH_ID);
+    add_mesh("capsule_cylinder", "blender/capsule_cylinder.mesh",
+             Mesh_Type::ENGINE, ENGINE_CAPSULE_CYLINDER_MESH_ID);
+    add_mesh("capsule_cap",      "blender/capsule_cap.mesh",
+             Mesh_Type::ENGINE, ENGINE_CAPSULE_CAP_MESH_ID);
+    add_mesh("cube",             "blender/cube.mesh",  Mesh_Type::PRIMITIVE);
     
     add_texture("texture_default",   "blender/debug-texture.jpg",          Texture_Type::DEFAULT);
     add_texture("lightbulb",         "src/textures/lightbulb.png",         Texture_Type::ENGINE);

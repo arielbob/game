@@ -551,7 +551,7 @@ struct UI_Render_Command {
     union {
         // for per vertex colors, type will be UI_TEXTURE_NONE. we just ignore this union.
         // however, for text quads, we use the per vertex color data for the text color.
-        String texture_name;
+        int32 texture_id;
         String font_name;
     };
 

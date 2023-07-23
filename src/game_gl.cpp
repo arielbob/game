@@ -1538,11 +1538,11 @@ void gl_draw_mesh(int32 mesh_id,
     glBindVertexArray(0);
 }
 
-void gl_draw_textured_mesh(char *mesh_name, char *texture_name, Transform transform) {
+void gl_draw_textured_mesh(int32 mesh_id, int32 texture_id, Transform transform) {
     uint32 shader_id = gl_use_shader("basic_3d_textured");
-    gl_use_texture(texture_name);
+    gl_use_texture(texture_id);
 
-    GL_Mesh *gl_mesh = gl_use_mesh(mesh_name);
+    GL_Mesh *gl_mesh = gl_use_mesh(mesh_id);
 
     Mat4 model_matrix = get_model_matrix(transform);
     gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
@@ -1581,7 +1581,7 @@ inline void gl_draw_wireframe(int32 mesh_id, Transform transform) {
 
 void gl_draw_circle(Vec4 color, Transform transform) {
     uint32 shader_id = gl_use_shader("line_3d");
-    GL_Mesh *circle_mesh = gl_use_mesh("debug_circle");
+    GL_Mesh *circle_mesh = gl_use_mesh(ENGINE_CIRCLE_MESH_ID);
 
     Mat4 model_matrix = get_model_matrix(transform);
     gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
@@ -1613,7 +1613,7 @@ void gl_draw_capsule(Vec3 base, Vec3 tip, real32 radius,
     Mat4 model_matrix;
 
     // capsule cylinder body
-    gl_mesh = gl_use_mesh("debug_capsule_cylinder");
+    gl_mesh = gl_use_mesh(ENGINE_CAPSULE_CYLINDER_MESH_ID);
     transform = make_transform(a, make_quaternion(), make_vec3(radius, length, radius));
     model_matrix = get_model_matrix(transform);
     gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
@@ -1622,7 +1622,7 @@ void gl_draw_capsule(Vec3 base, Vec3 tip, real32 radius,
     glDrawElements(GL_TRIANGLES, gl_mesh->num_triangles * 3, GL_UNSIGNED_INT, 0);
 
     // capsule cylinder bottom cap
-    gl_mesh = gl_use_mesh("debug_capsule_cap");
+    gl_mesh = gl_use_mesh(ENGINE_CAPSULE_CAP_MESH_ID);
     transform = make_transform(a, make_quaternion(180.0f, x_axis), make_vec3(radius, radius, radius));
     model_matrix = get_model_matrix(transform);
     gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
@@ -1677,7 +1677,7 @@ void gl_draw_text(char *font_name,
                   bool32 has_shadow, Vec4 shadow_color, real32 shadow_offset) {
     uint32 text_shader_id = gl_use_shader("text");
 
-    GL_Mesh *glyph_mesh = gl_use_mesh("glyph_quad");
+    GL_Mesh *glyph_mesh = gl_use_mesh(ENGINE_GLYPH_QUAD_MESH_ID);
 
     gl_set_uniform_mat4(text_shader_id, "cpv_matrix", &render_state->ortho_clip_matrix);
     gl_set_uniform_vec4(text_shader_id, "color", &color);
@@ -2134,7 +2134,7 @@ void gl_init(Arena_Allocator *game_data, Display_Output display_output) {
     
     glBindVertexArray(0);
 
-    gl_add_mesh(Mesh_Type::ENGINE, make_string("debug_triangle"), vao, vbo, 1);
+    gl_add_mesh(ENGINE_TRIANGLE_MESH_ID, Mesh_Type::ENGINE, vao, vbo, 1);
 
     // NOTE: 3D quad mesh
     // we store them separately like this because we use glBufferSubData to send the vertex positions
@@ -2187,7 +2187,7 @@ void gl_init(Arena_Allocator *game_data, Display_Output display_output) {
     
     glBindVertexArray(0);
     
-    gl_add_mesh(DEBUG_QUAD_MESH_ID, Mesh_Type::ENGINE, vao, vbo, 2);
+    gl_add_mesh(ENGINE_QUAD_MESH_ID, Mesh_Type::ENGINE, vao, vbo, 2);
     
     // NOTE: framebuffer mesh
     real32 framebuffer_mesh_data[] = {
@@ -2219,7 +2219,7 @@ void gl_init(Arena_Allocator *game_data, Display_Output display_output) {
     
     glBindVertexArray(0);
     
-    gl_add_mesh(Mesh_Type::ENGINE, make_string("framebuffer_quad"), vao, vbo, 2);
+    gl_add_mesh(ENGINE_FRAMEBUFFER_QUAD_MESH_ID, Mesh_Type::ENGINE, vao, vbo, 2);
     
     // NOTE: glyph quad
     glGenVertexArrays(1, &vao);
@@ -2293,7 +2293,7 @@ void gl_init(Arena_Allocator *game_data, Display_Output display_output) {
 
     glBindVertexArray(0);
     
-    gl_add_mesh(Mesh_Type::ENGINE, make_string("glyph_quad"), vao, vbo, 2);
+    gl_add_mesh(ENGINE_GLYPH_QUAD_MESH_ID, Mesh_Type::ENGINE, vao, vbo, 2);
 
     // line mesh
     real32 line_vertices[] = {
@@ -2314,7 +2314,7 @@ void gl_init(Arena_Allocator *game_data, Display_Output display_output) {
     
     glBindVertexArray(0);
     
-    gl_add_mesh(Mesh_Type::ENGINE, make_string("debug_line"), vao, vbo, 0);
+    gl_add_mesh(ENGINE_DEBUG_LINE_MESH_ID, Mesh_Type::ENGINE, vao, vbo, 0);
 
     // circle mesh
     // add 2, since we need a space for the center of the circle and another space since the final vertex
@@ -2334,7 +2334,7 @@ void gl_init(Arena_Allocator *game_data, Display_Output display_output) {
     
     glBindVertexArray(0);
     
-    gl_add_mesh(Mesh_Type::ENGINE, make_string("debug_circle"), vao, vbo, 0);
+    gl_add_mesh(ENGINE_CIRCLE_MESH_ID, Mesh_Type::ENGINE, vao, vbo, 0);
 
     // NOTE: shaders
     gl_load_shader("src/shaders/basic.vs",                    "src/shaders/basic.fs",
@@ -2420,7 +2420,7 @@ void gl_draw_triangle_p(Vec2 position,
                         real32 width_pixels, real32 height_pixels,
                         Vec4 color) {
     uint32 basic_shader_id = gl_use_shader("basic");
-    GL_Mesh *triangle_mesh = gl_use_mesh("debug_triangle");
+    GL_Mesh *triangle_mesh = gl_use_mesh(ENGINE_TRIANGLE_MESH_ID);
 
     Vec2 clip_space_position = make_vec2(position.x * 2.0f - 1.0f,
                                          position.y * -2.0f + 1.0f);
@@ -2485,7 +2485,7 @@ void gl_draw_line_p(GL_State *gl_state,
 void gl_draw_line(Vec2 start_pixels, Vec2 end_pixels,
                   Vec4 color) {
     uint32 basic_shader_id = gl_use_shader("basic2");
-    GL_Mesh *line_mesh = gl_use_mesh("debug_line");
+    GL_Mesh *line_mesh = gl_use_mesh(ENGINE_DEBUG_LINE_MESH_ID);
 
     real32 line_vertices[] = {
         start_pixels.x + 0.5f, start_pixels.y + 0.5f, 0.0f,
@@ -2505,7 +2505,7 @@ void gl_draw_line(Vec2 start_pixels, Vec2 end_pixels,
 void gl_draw_line(Vec3 start, Vec3 end,
                   Vec4 color) {
     uint32 basic_shader_id = gl_use_shader("line_3d");
-    GL_Mesh *line_mesh = gl_use_mesh("debug_line");
+    GL_Mesh *line_mesh = gl_use_mesh(ENGINE_DEBUG_LINE_MESH_ID);
 
     Mat4 model_matrix = make_mat4_identity();
 
@@ -2565,7 +2565,7 @@ void gl_draw_quad_p(real32 x, real32 y,
                     real32 width_pixels, real32 height_pixels,
                     Vec4 color) {
     uint32 basic_shader_id = gl_use_shader("basic");
-    GL_Mesh *square_mesh = gl_use_mesh(DEBUG_QUAD_MESH_ID);
+    GL_Mesh *square_mesh = gl_use_mesh(ENGINE_QUAD_MESH_ID);
 
     Vec2 clip_space_position = make_vec2(x * 2.0f - 1.0f,
                                          y * -2.0f + 1.0f);
@@ -2588,10 +2588,10 @@ void gl_draw_quad_p(real32 x, real32 y,
 
 void gl_draw_constant_facing_quad_view_space(Vec3 view_space_center_position,
                                              real32 world_space_side_length,
-                                             String texture_name) {
+                                             int32 texture_id) {
     uint32 basic_shader_id = gl_use_shader("constant_facing_quad");
-    GL_Mesh *quad_mesh = gl_use_mesh(DEBUG_QUAD_MESH_ID);
-    gl_use_texture(texture_name);
+    GL_Mesh *quad_mesh = gl_use_mesh(ENGINE_QUAD_MESH_ID);
+    gl_use_texture(texture_id);
     
     // these positions are in view space, i.e., same coordinate system as world-space
     real32 quad_vertices[8] = {
@@ -2615,10 +2615,10 @@ void gl_draw_constant_facing_quad_view_space(Vec3 view_space_center_position,
 
 void gl_draw_quad(real32 x_pos_pixels, real32 y_pos_pixels,
                   real32 width_pixels, real32 height_pixels,
-                  char *texture_name) {
+                  int32 texture_id) {
     uint32 basic_shader_id = gl_use_shader("basic2");
-    GL_Mesh *quad_mesh = gl_use_mesh(DEBUG_QUAD_MESH_ID);
-    gl_use_texture(texture_name);
+    GL_Mesh *quad_mesh = gl_use_mesh(ENGINE_QUAD_MESH_ID);
+    gl_use_texture(texture_id);
     
     real32 quad_vertices[8] = {
         x_pos_pixels, y_pos_pixels,                                // top left
@@ -2640,7 +2640,7 @@ void gl_draw_quad(real32 x_pos_pixels, real32 y_pos_pixels,
                   real32 width_pixels, real32 height_pixels,
                   Vec4 color, bool32 has_alpha = false) {
     uint32 basic_shader_id = gl_use_shader("basic2");
-    GL_Mesh *quad_mesh = gl_use_mesh(DEBUG_QUAD_MESH_ID);
+    GL_Mesh *quad_mesh = gl_use_mesh(ENGINE_QUAD_MESH_ID);
     
     real32 quad_vertices[8] = {
         x_pos_pixels, y_pos_pixels,                                // top left
@@ -2675,7 +2675,7 @@ void gl_draw_rounded_quad(Vec2 position, Vec2 size,
                           Vec4 border_color, real32 border_width, uint32 border_side_flags,
                           bool32 is_alpha_pass = false, bool32 has_alpha = false) {
     uint32 shader_id = gl_use_shader("rounded_quad");
-    GL_Mesh *quad_mesh = gl_use_mesh(DEBUG_QUAD_MESH_ID);
+    GL_Mesh *quad_mesh = gl_use_mesh(ENGINE_QUAD_MESH_ID);
     
     real32 quad_vertices[8] = {
         position.x, position.y + size.y,         // bottom left
@@ -2710,7 +2710,7 @@ void gl_draw_rounded_quad(Vec2 position, Vec2 size,
 void gl_draw_hue_slider_quad(real32 x_pos_pixels, real32 y_pos_pixels,
                              real32 width_pixels, real32 height_pixels) {
     uint32 shader_id = gl_use_shader("hue_slider");
-    GL_Mesh *quad_mesh = gl_use_mesh(DEBUG_QUAD_MESH_ID);
+    GL_Mesh *quad_mesh = gl_use_mesh(ENGINE_QUAD_MESH_ID);
 
     real32 quad_vertices[8] = {
         x_pos_pixels, y_pos_pixels + height_pixels,               // bottom left
@@ -2731,7 +2731,7 @@ void gl_draw_hsv_quad(real32 x_pos_pixels, real32 y_pos_pixels,
                       real32 width_pixels, real32 height_pixels,
                       real32 hue_degrees) {
     uint32 shader_id = gl_use_shader("hsv");
-    GL_Mesh *quad_mesh = gl_use_mesh(DEBUG_QUAD_MESH_ID);
+    GL_Mesh *quad_mesh = gl_use_mesh(ENGINE_QUAD_MESH_ID);
 
     real32 quad_vertices[8] = {
         x_pos_pixels, y_pos_pixels + height_pixels,               // bottom left
@@ -2758,7 +2758,7 @@ void gl_draw_circle(real32 center_x, real32 center_y,
     // would be slower as well.
 
     uint32 shader_id = gl_use_shader("mesh_2d");
-    GL_Mesh *circle_mesh = gl_use_mesh("debug_circle");
+    GL_Mesh *circle_mesh = gl_use_mesh(ENGINE_CIRCLE_MESH_ID);
 
     Transform transform = {
         make_vec3(center_x, center_y, 0.0f),
@@ -3042,7 +3042,7 @@ void gl_draw_ui_commands() {
             if (current->texture_type == UI_Texture_Type::UI_TEXTURE_IMAGE) {
                 gl_set_uniform_bool(shader_id, "use_texture", true);
                 gl_set_uniform_bool(shader_id, "is_text", false);
-                gl_use_texture(current->texture_name);
+                gl_use_texture(current->texture_id);
             } else if (current->texture_type == UI_Texture_Type::UI_TEXTURE_FONT) {
                 gl_set_uniform_bool(shader_id, "use_texture", true);
                 gl_set_uniform_bool(shader_id, "is_text", true);

@@ -16,6 +16,19 @@
 #define MATERIAL_USE_METALNESS_TEXTURE (1 << 1)
 #define MATERIAL_USE_ROUGHNESS_TEXTURE (1 << 2)
 
+#define ENGINE_QUAD_MESH_ID             -1
+#define ENGINE_CIRCLE_MESH_ID           -2
+#define ENGINE_CAPSULE_CYLINDER_MESH_ID -3
+#define ENGINE_FRAMEBUFFER_QUAD_MESH_ID -4
+#define ENGINE_GLYPH_QUAD_MESH_ID       -5
+#define ENGINE_CAPSULE_CAP_MESH_ID      -6
+#define ENGINE_GIZMO_ARROW_MESH_ID      -7
+#define ENGINE_GIZMO_RING_MESH_ID       -8
+#define ENGINE_GIZMO_SPHERE_MESH_ID     -9
+#define ENGINE_GIZMO_CUBE_MESH_ID       -10
+#define ENGINE_TRIANGLE_MESH_ID         -11
+#define ENGINE_DEBUG_LINE_MESH_ID       -12
+
 // LEVEL is for meshes specifically loaded in for a level by the user or by a level file.
 // PRIMITIVE is for meshes you can use in levels, but can't be deleted. also used for default meshes when a
 // mesh can't be found or an entity is just created in the editor.
