@@ -1366,7 +1366,7 @@ uint32 gl_use_texture(int32 texture_id, int32 slot_index = 0) {
         return 0;
     }
 
-    //glActiveTexture(GL_TEXTURE0);
+    glActiveTexture(GL_TEXTURE0);
 
     return texture->gl_texture_id;
 }
@@ -1710,7 +1710,7 @@ void gl_draw_text(char *font_name,
     Vec2 *glyph_sizes     = (Vec2 *) allocate(temp_region, text_buffer_size);
     Vec2 *uv_positions    = (Vec2 *) allocate(temp_region, text_buffer_size);
     Vec2 *uv_sizes        = (Vec2 *) allocate(temp_region, text_buffer_size);
-
+        
     int32 i = 0;
     while (*text && (is_null_terminated || (i < num_chars))) {
         assert(i < GL_MAX_TEXT_CHARACTERS);
@@ -3654,7 +3654,7 @@ void gl_render(Controller_State *controller_state,
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLineWidth(1.0f);
-
+    
     if (game_state->mode == Game_Mode::PLAYING) {
         #if 0
         gl_render_game(gl_state, render_state, gl_state->msaa_framebuffer, game_state);
