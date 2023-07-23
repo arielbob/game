@@ -958,19 +958,41 @@ GL_Shader *gl_get_shader(char *shader_name) {
     return NULL;
 }
 
-#define GL_GET_TEXTURE_DEF                                      \
-    uint32 hash = get_hash(texture_name, NUM_TEXTURE_BUCKETS);  \
-    GL_Texture *current = g_gl_state->texture_table[hash];      \
-    while (current) {                                           \
-        if (string_equals(current->name, texture_name)) {       \
-            return current;                                     \
-        }                                                       \
-                                                                \
-        current = current->table_next;                          \
-    }                                                           \
-                                                                \
-    return NULL;                                                \
+#if 0
+GL_Texture *gl_get_texture(String texture_name) {
+    for (int32 i = 0; i < NUM_TEXTURE_BUCKETS; i++) {
+        GL_Texture *current = g_gl_state->texture_table[i];
+        while (current) {
+            if (string_equals(current->name, texture_name)) {
+                return current;
+            }
+            current = current->table_next;
+        }
+    }
 
+    return NULL;
+}
+
+inline GL_Texture *gl_get_texture(char *texture_name) {
+    return gl_get_texture(make_string(texture_name));
+}
+#endif
+
+GL_Texture *gl_get_texture(int32 texture_id) {
+    uint32 hash = get_hash(texture_id, NUM_TEXTURE_BUCKETS);
+    GL_Texture *current = g_gl_state->texture_table[hash];
+    while (current) {
+        if (current->id == texture_id) {
+            return current;
+        }
+
+        current = current->table_next;
+    }
+
+    return NULL;
+}
+
+#if 0
 GL_Texture *gl_get_texture(char *texture_name) {
     GL_GET_TEXTURE_DEF;
 }
@@ -978,6 +1000,7 @@ GL_Texture *gl_get_texture(char *texture_name) {
 GL_Texture *gl_get_texture(String texture_name) {
     GL_GET_TEXTURE_DEF;
 }
+#endif
 
 #define GL_GET_FONT_DEF                                         \
     uint32 hash = get_hash(font_name, NUM_FONT_BUCKETS);        \
@@ -1001,6 +1024,7 @@ GL_Font *gl_get_font(String font_name) {
 }
 
 // TODO: replace calls to this to use the gl_get_mesh(int32 mesh_id) version
+#if 0
 GL_Mesh *gl_get_mesh(String mesh_name) {
     for (int32 i = 0; i < NUM_MESH_BUCKETS; i++) {
         GL_Mesh *current = g_gl_state->mesh_table[i];
@@ -1019,6 +1043,7 @@ GL_Mesh *gl_get_mesh(String mesh_name) {
 inline GL_Mesh *gl_get_mesh(char *mesh_name) {
     return gl_get_mesh(make_string(mesh_name));
 }
+#endif
 
 GL_Mesh *gl_get_mesh(int32 mesh_id) {
     uint32 hash = get_hash(mesh_id, NUM_MESH_BUCKETS);
@@ -1161,12 +1186,12 @@ bool32 gl_load_texture(Texture *texture, bool32 has_alpha=false) {
     end_region(temp_region);
 
     // add gl_texture to the gl texture table
-    uint32 hash = get_hash(texture->name, NUM_TEXTURE_BUCKETS);
+    uint32 hash = get_hash(texture->id, NUM_TEXTURE_BUCKETS);
     GL_Texture *current = g_gl_state->texture_table[hash];
     GL_Texture *last_visited = current;
     while (current) {
-        if (string_equals(current->name, texture->name)) {
-            assert(!"GL_Texture with this name already exists!");
+        if (current->id == texture->id) {
+            assert(!"GL_Texture with this ID already exists!");
             return false;
         }
 
@@ -1175,8 +1200,8 @@ bool32 gl_load_texture(Texture *texture, bool32 has_alpha=false) {
     }
 
     GL_Texture *gl_texture = (GL_Texture *) allocate(&g_gl_state->heap, sizeof(GL_Texture));
-    *gl_texture = { texture->type, texture_id, width, height, num_channels };
-    gl_texture->name = copy((Allocator *) &g_gl_state->heap, texture->name);
+    *gl_texture = { texture->type, texture->id, texture_id, width, height, num_channels };
+    //gl_texture->name = copy((Allocator *) &g_gl_state->heap, texture->name);
     gl_texture->table_prev = last_visited;
     gl_texture->table_next = NULL;
     
@@ -1234,11 +1259,9 @@ void gl_init_font(Font *font) {
     }
 }
 
-bool32 gl_add_mesh(int32 id, Mesh_Type type, String name, uint32 vao, uint32 vbo, uint32 num_triangles) {
-    if (id < 0) { // just pass in -1 for id if you want the ID to be set for you
-        assert(type == Mesh_Type::PRIMITIVE || type == Mesh_Type::ENGINE);
-        id = -(++g_gl_state->num_non_level_meshes_added);
-        assert(id != 0);
+bool32 gl_add_mesh(int32 id, Mesh_Type type, uint32 vao, uint32 vbo, uint32 num_triangles) {
+    if (type != Mesh_Type::LEVEL) {
+        assert(id < 0);
     }
     
     GL_Mesh *mesh = gl_get_mesh(id);
@@ -1247,11 +1270,13 @@ bool32 gl_add_mesh(int32 id, Mesh_Type type, String name, uint32 vao, uint32 vbo
         return false;
     }
 
+#if 0
     mesh = gl_get_mesh(name);
     if (mesh) {
         assert(!"GL_Mesh with this name already exists!");
         return false;
     }
+#endif
 
     // add gl_mesh to the gl mesh table
     uint32 hash = get_hash(id, NUM_MESH_BUCKETS);
@@ -1265,7 +1290,7 @@ bool32 gl_add_mesh(int32 id, Mesh_Type type, String name, uint32 vao, uint32 vbo
     GL_Mesh *gl_mesh = (GL_Mesh *) allocate(&g_gl_state->heap, sizeof(GL_Mesh));
     *gl_mesh = { type, vao, vbo, num_triangles };
     gl_mesh->id         = id;
-    gl_mesh->name       = copy((Allocator *) &g_gl_state->heap, name);
+    //gl_mesh->name       = copy((Allocator *) &g_gl_state->heap, name);
     gl_mesh->table_prev = last;
     gl_mesh->table_next = NULL;
     
@@ -1276,11 +1301,6 @@ bool32 gl_add_mesh(int32 id, Mesh_Type type, String name, uint32 vao, uint32 vbo
     }
 
     return true;
-}
-
-// for non-level meshes
-inline bool32 gl_add_mesh(Mesh_Type type, String name, uint32 vao, uint32 vbo, uint32 num_triangles) {
-    return gl_add_mesh(-1, type, name, vao, vbo, num_triangles);
 }
 
 bool32 gl_load_mesh(Mesh *mesh) {
@@ -1317,7 +1337,7 @@ bool32 gl_load_mesh(Mesh *mesh) {
     glBindVertexArray(0);
 
     // add gl_mesh to the gl mesh table
-    return gl_add_mesh(mesh->id, mesh->type, mesh->name, vao, vbo, mesh->num_triangles);
+    return gl_add_mesh(mesh->id, mesh->type, vao, vbo, mesh->num_triangles);
 }
 
 uint32 gl_use_shader(char *shader_name) {
@@ -1333,14 +1353,14 @@ uint32 gl_use_shader(char *shader_name) {
     return shader->id;
 }
 
-uint32 gl_use_texture(String texture_name, int32 slot_index = 0) {
-    GL_Texture *texture = gl_get_texture(texture_name);
+uint32 gl_use_texture(int32 texture_id, int32 slot_index = 0) {
+    GL_Texture *texture = gl_get_texture(texture_id);
 
     GLenum slots[3] = { GL_TEXTURE0, GL_TEXTURE1, GL_TEXTURE2 };
     
     if (texture) {
         glActiveTexture(slots[slot_index]);
-        glBindTexture(GL_TEXTURE_2D, texture->id); 
+        glBindTexture(GL_TEXTURE_2D, texture->gl_texture_id);
     } else {
         assert(!"Texture does not exist!");
         return 0;
@@ -1348,11 +1368,7 @@ uint32 gl_use_texture(String texture_name, int32 slot_index = 0) {
 
     //glActiveTexture(GL_TEXTURE0);
 
-    return texture->id;
-}
-
-inline uint32 gl_use_texture(char *texture_name) {
-    return gl_use_texture(make_string(texture_name));
+    return texture->gl_texture_id;
 }
 
 uint32 gl_use_font_texture(String font_name) {
@@ -1372,6 +1388,7 @@ inline uint32 gl_use_font_texture(char *font_name) {
     return gl_use_font_texture(make_string(font_name));
 }
 
+#if 0
 GL_Mesh *gl_use_mesh(String mesh_name) {
     GL_Mesh *mesh = gl_get_mesh(mesh_name);
     
@@ -1397,6 +1414,7 @@ inline GL_Mesh *gl_use_mesh(char *mesh_name) {
 
     return mesh;
 }
+#endif
 
 inline GL_Mesh *gl_use_mesh(int32 mesh_id) {
     GL_Mesh *mesh = gl_get_mesh(mesh_id);
@@ -1411,10 +1429,10 @@ inline GL_Mesh *gl_use_mesh(int32 mesh_id) {
     return mesh;
 }
 
-void gl_draw_solid_color_mesh(char *mesh_name, Vec4 color,
+void gl_draw_solid_color_mesh(int32 mesh_id, Vec4 color,
                               Transform transform) {
     uint32 shader_id = gl_use_shader("solid");
-    GL_Mesh *gl_mesh = gl_use_mesh(mesh_name);
+    GL_Mesh *gl_mesh = gl_use_mesh(mesh_id);
 
     Mat4 model_matrix = get_model_matrix(transform);
     gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
@@ -1489,9 +1507,9 @@ void gl_draw_mesh(int32 mesh_id,
     uint32 shader_id = gl_use_shader("pbr");
 
     GL_Mesh *gl_mesh = gl_use_mesh(mesh_id);
-    gl_use_texture(material->albedo_texture_name,    0);
-    gl_use_texture(material->metalness_texture_name, 1);
-    gl_use_texture(material->roughness_texture_name, 2);
+    gl_use_texture(material->albedo_texture_id,    0);
+    gl_use_texture(material->metalness_texture_id, 1);
+    gl_use_texture(material->roughness_texture_id, 2);
 
     gl_set_uniform_int(shader_id, "albedo_texture", 0);
     gl_set_uniform_int(shader_id, "metalness_texture", 1);
@@ -1981,12 +1999,12 @@ void gl_unload_mesh(int32 id) {
     assert(!"GL mesh does not exist!");
 }
 
-void gl_unload_texture(String name) {
-    uint32 hash = get_hash(name, NUM_TEXTURE_BUCKETS);
+void gl_unload_texture(int32 id) {
+    uint32 hash = get_hash(id, NUM_TEXTURE_BUCKETS);
 
     GL_Texture *current = g_gl_state->texture_table[hash];
     while (current) {
-        if (string_equals(current->name, name)) {
+        if (current->id, id) {
             if (current->table_prev) {
                 current->table_prev->table_next = current->table_next;
             } else {
@@ -1998,7 +2016,7 @@ void gl_unload_texture(String name) {
                 current->table_next->table_prev = current->table_prev;
             }
 
-            glDeleteTextures(1, &current->id);
+            glDeleteTextures(1, &current->gl_texture_id);
             
             deallocate(current);
             deallocate((Allocator *) &g_gl_state->heap, current);
@@ -2169,7 +2187,7 @@ void gl_init(Arena_Allocator *game_data, Display_Output display_output) {
     
     glBindVertexArray(0);
     
-    gl_add_mesh(Mesh_Type::ENGINE, make_string("debug_quad"), vao, vbo, 2);
+    gl_add_mesh(DEBUG_QUAD_MESH_ID, Mesh_Type::ENGINE, vao, vbo, 2);
     
     // NOTE: framebuffer mesh
     real32 framebuffer_mesh_data[] = {
@@ -2547,7 +2565,7 @@ void gl_draw_quad_p(real32 x, real32 y,
                     real32 width_pixels, real32 height_pixels,
                     Vec4 color) {
     uint32 basic_shader_id = gl_use_shader("basic");
-    GL_Mesh *square_mesh = gl_use_mesh("debug_quad");
+    GL_Mesh *square_mesh = gl_use_mesh(DEBUG_QUAD_MESH_ID);
 
     Vec2 clip_space_position = make_vec2(x * 2.0f - 1.0f,
                                          y * -2.0f + 1.0f);
@@ -2572,7 +2590,7 @@ void gl_draw_constant_facing_quad_view_space(Vec3 view_space_center_position,
                                              real32 world_space_side_length,
                                              String texture_name) {
     uint32 basic_shader_id = gl_use_shader("constant_facing_quad");
-    GL_Mesh *quad_mesh = gl_use_mesh("debug_quad");
+    GL_Mesh *quad_mesh = gl_use_mesh(DEBUG_QUAD_MESH_ID);
     gl_use_texture(texture_name);
     
     // these positions are in view space, i.e., same coordinate system as world-space
@@ -2599,7 +2617,7 @@ void gl_draw_quad(real32 x_pos_pixels, real32 y_pos_pixels,
                   real32 width_pixels, real32 height_pixels,
                   char *texture_name) {
     uint32 basic_shader_id = gl_use_shader("basic2");
-    GL_Mesh *quad_mesh = gl_use_mesh("debug_quad");
+    GL_Mesh *quad_mesh = gl_use_mesh(DEBUG_QUAD_MESH_ID);
     gl_use_texture(texture_name);
     
     real32 quad_vertices[8] = {
@@ -2622,7 +2640,7 @@ void gl_draw_quad(real32 x_pos_pixels, real32 y_pos_pixels,
                   real32 width_pixels, real32 height_pixels,
                   Vec4 color, bool32 has_alpha = false) {
     uint32 basic_shader_id = gl_use_shader("basic2");
-    GL_Mesh *quad_mesh = gl_use_mesh("debug_quad");
+    GL_Mesh *quad_mesh = gl_use_mesh(DEBUG_QUAD_MESH_ID);
     
     real32 quad_vertices[8] = {
         x_pos_pixels, y_pos_pixels,                                // top left
@@ -2657,7 +2675,7 @@ void gl_draw_rounded_quad(Vec2 position, Vec2 size,
                           Vec4 border_color, real32 border_width, uint32 border_side_flags,
                           bool32 is_alpha_pass = false, bool32 has_alpha = false) {
     uint32 shader_id = gl_use_shader("rounded_quad");
-    GL_Mesh *quad_mesh = gl_use_mesh("debug_quad");
+    GL_Mesh *quad_mesh = gl_use_mesh(DEBUG_QUAD_MESH_ID);
     
     real32 quad_vertices[8] = {
         position.x, position.y + size.y,         // bottom left
@@ -2692,7 +2710,7 @@ void gl_draw_rounded_quad(Vec2 position, Vec2 size,
 void gl_draw_hue_slider_quad(real32 x_pos_pixels, real32 y_pos_pixels,
                              real32 width_pixels, real32 height_pixels) {
     uint32 shader_id = gl_use_shader("hue_slider");
-    GL_Mesh *quad_mesh = gl_use_mesh("debug_quad");
+    GL_Mesh *quad_mesh = gl_use_mesh(DEBUG_QUAD_MESH_ID);
 
     real32 quad_vertices[8] = {
         x_pos_pixels, y_pos_pixels + height_pixels,               // bottom left
@@ -2713,7 +2731,7 @@ void gl_draw_hsv_quad(real32 x_pos_pixels, real32 y_pos_pixels,
                       real32 width_pixels, real32 height_pixels,
                       real32 hue_degrees) {
     uint32 shader_id = gl_use_shader("hsv");
-    GL_Mesh *quad_mesh = gl_use_mesh("debug_quad");
+    GL_Mesh *quad_mesh = gl_use_mesh(DEBUG_QUAD_MESH_ID);
 
     real32 quad_vertices[8] = {
         x_pos_pixels, y_pos_pixels + height_pixels,               // bottom left
@@ -3622,12 +3640,12 @@ void gl_render(Controller_State *controller_state,
             } break;
             case Command_Type::LOAD_TEXTURE: {
                 Command_Load_Texture c = command->load_texture;
-                Texture *texture = get_texture(c.texture_name);
+                Texture *texture = get_texture(c.texture_id);
                 gl_load_texture(texture);
             } break;
             case Command_Type::UNLOAD_TEXTURE: {
                 Command_Unload_Texture c = command->unload_texture;
-                gl_unload_texture(c.texture_name);
+                gl_unload_texture(c.texture_id);
             } break;
             default: {
                 assert(!"Unhandled command type.");

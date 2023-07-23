@@ -135,20 +135,23 @@ void export_level(Level *level, char *filename) {
                 append_string(&working_buffer, "\n");
 
                 if (current->flags & MATERIAL_USE_ALBEDO_TEXTURE) {
+                    Texture *albedo_texture = get_texture(current->albedo_texture_id);
                     append_string(&working_buffer, "use_albedo_texture %d\n", 1);
-                    append_string_property(&working_buffer, "albedo_texture", current->albedo_texture_name);
+                    append_string_property(&working_buffer, "albedo_texture", albedo_texture->name);
                 }
                 append_vec3_property(&working_buffer, "albedo_color", current->albedo_color);
 
                 if (current->flags & MATERIAL_USE_METALNESS_TEXTURE) {
+                    Texture *metalness_texture = get_texture(current->metalness_texture_id);
                     append_string(&working_buffer, "use_metalness_texture %d\n", 1);
-                    append_string_property(&working_buffer, "metalness_texture", current->metalness_texture_name);
+                    append_string_property(&working_buffer, "metalness_texture", metalness_texture->name);
                 }
                 append_string(&working_buffer, "metalness %f\n", current->metalness);
 
                 if (current->flags & MATERIAL_USE_ROUGHNESS_TEXTURE) {
+                    Texture *roughness_texture = get_texture(current->roughness_texture_id);
                     append_string(&working_buffer, "use_roughness_texture %d\n", 1);
-                    append_string_property(&working_buffer, "roughness_texture", current->roughness_texture_name);
+                    append_string_property(&working_buffer, "roughness_texture", roughness_texture->name);
                 }
                 append_string(&working_buffer, "roughness %f\n", current->roughness);
                 append_string(&working_buffer, "}\n\n");

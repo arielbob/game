@@ -2,11 +2,14 @@
 #include "entity.h"
 
 Material_Info default_material_info = {
+    make_string("texture_default"),
+    make_string("texture_default"),
+    make_string("texture_default"),
     Material_Type::NONE, 0, make_string(""),
     0,
-    make_string("texture_default"), make_vec3(0.5f, 0.5f, 0.5f),
-    make_string("texture_default"), 0.0f,
-    make_string("texture_default"), 0.0f
+    0, make_vec3(0.5f, 0.5f, 0.5f),
+    0, 0.0f,
+    0, 0.0f
 };
 
 Mesh *get_mesh(String name) {
@@ -168,16 +171,30 @@ void set_mesh_file(int32 id, String new_filename) {
     end_region(temp_region);
 }
 
-Texture *get_texture(String name) {
-    uint32 hash = get_hash(name, NUM_TEXTURE_BUCKETS);
+Texture *get_texture(int32 id) {
+    uint32 hash = get_hash(id, NUM_TEXTURE_BUCKETS);
 
     Texture *current = asset_manager->texture_table[hash];
     while (current) {
-        if (string_equals(current->name, name)) {
+        if (current->id == id) {
             return current;
         }
 
         current = current->table_next;
+    }
+
+    return NULL;
+}
+
+Texture *get_texture(String name) {
+    for (int32 i = 0; i < NUM_TEXTURE_BUCKETS; i++) {
+        Texture *current = asset_manager->texture_table[i];
+        while (current) {
+            if (string_equals(current->name, name)) {
+                return current;
+            }
+            current = current->table_next;
+        }
     }
 
     return NULL;
@@ -206,6 +223,34 @@ void get_texture_names(Allocator *allocator, char **names, int max_names, int *n
     *num_names = num_texture_names;
 }
 
+void delete_texture(int32 id) {
+    Texture *texture = get_texture(id);
+
+    if (!texture) {
+        assert(!"Texture does not exist.");
+        return;
+    }
+    
+    uint32 hash = get_hash(id, NUM_TEXTURE_BUCKETS);
+    
+    if (texture->table_prev) {
+        texture->table_prev->table_next = texture->table_next;
+    } else {
+        // if we're first in list, we need to update bucket array when we delete
+        asset_manager->texture_table[hash] = texture->table_next;
+    }
+
+    if (texture->table_next) {
+        texture->table_next->table_prev = texture->table_prev;
+    }
+    
+    deallocate(texture);
+    deallocate(asset_manager->allocator, texture);
+
+    r_unload_texture(id);
+}
+
+#if 0
 void delete_texture(String name) {
     uint32 hash = get_hash(name, NUM_TEXTURE_BUCKETS);
 
@@ -237,6 +282,7 @@ void delete_texture(String name) {
 
     assert(!"Texture does not exist.");
 }
+#endif
 
 bool32 texture_exists(String name) {
     uint32 hash = get_hash(name, NUM_TEXTURE_BUCKETS);
@@ -253,18 +299,30 @@ bool32 texture_exists(String name) {
     return false;
 }
 
-Texture *add_texture(String name, String filename, Texture_Type type) {
+Texture *add_texture(String name, String filename, Texture_Type type, int32 id = -1) {
     if (texture_exists(name)) {
         assert(!"Texture with name already exists.");
         return NULL;
     }
 
     Texture *texture  = (Texture *) allocate(asset_manager->allocator, sizeof(Texture), true);
+
+    if (id < 0) {
+        texture->id = asset_manager->total_textures_added_ever++;
+    } else {
+        Texture *found_texture = get_texture(id);
+        if (found_texture) {
+            assert(!"Texture with ID already exists!");
+        } else {
+            texture->id = id;
+        }
+    }
+    
     texture->name     = copy(asset_manager->allocator, name);
     texture->filename = copy(asset_manager->allocator, filename);
     texture->type     = type;
     
-    uint32 hash = get_hash(name, NUM_TEXTURE_BUCKETS);
+    uint32 hash = get_hash(texture->id, NUM_TEXTURE_BUCKETS);
 
     Texture *current = asset_manager->texture_table[hash];
     texture->table_next = current;
@@ -274,7 +332,7 @@ Texture *add_texture(String name, String filename, Texture_Type type) {
     }
     asset_manager->texture_table[hash] = texture;
 
-    r_load_texture(name);
+    r_load_texture(texture->id);
     
     return texture;
 }
@@ -306,19 +364,25 @@ Material *add_material(Material_Info *material_info, Material_Type type) {
     Allocator *allocator = asset_manager->allocator;
     Material *material = (Material *) allocate(allocator, sizeof(Material), true);
 
-    material->type                   = type;
-    material->id                     = asset_manager->total_materials_added_ever++;
-    material->name                   = copy(allocator, material_info->name);
-    material->flags                  = material_info->flags;
-        
-    material->albedo_texture_name    = copy(allocator, material_info->albedo_texture_name);
-    material->albedo_color           = material_info->albedo_color;
-        
-    material->metalness_texture_name = copy(allocator, material_info->metalness_texture_name);
-    material->metalness              = material_info->metalness;
+    material->type                 = type;
+    material->id                   = asset_manager->total_materials_added_ever++;
+    material->name                 = copy(allocator, material_info->name);
+    material->flags                = material_info->flags;
 
-    material->roughness_texture_name = copy(allocator, material_info->roughness_texture_name);
-    material->roughness              = material_info->roughness;
+    Texture *albedo_texture        = get_texture(material_info->albedo_texture_name);
+    assert(albedo_texture);
+    material->albedo_texture_id    = albedo_texture->id;
+    material->albedo_color         = material_info->albedo_color;
+
+    Texture *metalness_texture     = get_texture(material_info->metalness_texture_name);
+    assert(metalness_texture);
+    material->metalness_texture_id = metalness_texture->id;
+    material->metalness            = material_info->metalness;
+
+    Texture *roughness_texture     = get_texture(material_info->roughness_texture_name);
+    assert(roughness_texture);
+    material->roughness_texture_id = roughness_texture->id;
+    material->roughness            = material_info->roughness;
 
     uint32 hash = get_hash(material->id, NUM_MATERIAL_BUCKETS);
 
@@ -698,7 +762,7 @@ void unload_level_textures() {
                     current->table_next->table_prev = current->table_prev;
                 }
 
-                r_unload_texture(current->name);
+                r_unload_texture(current->id);
                 deallocate(current);
                 deallocate(asset_manager->allocator, current);
 

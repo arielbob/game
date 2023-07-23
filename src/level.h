@@ -27,6 +27,12 @@ struct Texture_Info {
 };
 
 struct Material_Info {
+    // MATERIAL_FIELDS has the texture IDs, but we only use that in the actual Material struct.
+    // we need these texture name strings because that's how we read them in from the level file.
+    String albedo_texture_name;
+    String metalness_texture_name;
+    String roughness_texture_name;
+    
     MATERIAL_FIELDS
 };
 

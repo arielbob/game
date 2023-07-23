@@ -161,6 +161,8 @@
 #define FRAMEBUFFER_IS_HDR   (1 << 0)
 #define FRAMEBUFFER_HAS_ALPHA (1 << 1)
 
+#define DEBUG_QUAD_MESH_ID -1
+
 enum Shader_Type {
     VERTEX,
     FRAGMENT
@@ -173,13 +175,13 @@ struct GL_Mesh {
     uint32 num_triangles;
 
     int32 id;
-    String name;
+    //String name;
     GL_Mesh *table_prev;
     GL_Mesh *table_next;
 };
 
 void deallocate(GL_Mesh *gl_mesh) {
-    deallocate(gl_mesh->name);
+    //deallocate(gl_mesh->name);
 }
 
 struct GL_Font {
@@ -193,19 +195,20 @@ struct GL_Font {
 struct GL_Texture {
     // TODO: not sure if we need to store texture type? same for type in gl_mesh
     Texture_Type type;
-    uint32 id; // gl texture id
+    int32 id; // texture id, same as id for Texture objects in asset.h
+    uint32 gl_texture_id; // gl texture id
 
     int32 width;
     int32 height;
     int32 num_channels;
 
-    String name;
+    //String name;
     GL_Texture *table_prev;
     GL_Texture *table_next;
 };
 
 void deallocate(GL_Texture *gl_texture) {
-    deallocate(gl_texture->name);
+    // nothing to do
 }
 
 // TODO: there are different variations of this (like depth + stencil, instead of just depth).

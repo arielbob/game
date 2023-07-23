@@ -69,8 +69,9 @@ void deallocate(Mesh *mesh) {
 }
 
 struct Texture {
-    Texture_Type type;
+    int32 id;
     
+    Texture_Type type;
     String name;
     String filename;
     
@@ -135,13 +136,13 @@ struct Font {
                                                 \
     uint32 flags;                               \
                                                 \
-    String albedo_texture_name;                 \
+    int32 albedo_texture_id;                    \
     Vec3 albedo_color;                          \
                                                 \
-    String metalness_texture_name;              \
+    int32 metalness_texture_id;                 \
     real32 metalness;                           \
                                                 \
-    String roughness_texture_name;              \
+    int32 roughness_texture_id;                 \
     real32 roughness;                           \
 
 struct Material {
@@ -152,11 +153,7 @@ struct Material {
 };
 
 void deallocate(Material *material) {
-    deallocate(material->name);
-
-    deallocate(material->albedo_texture_name);
-    deallocate(material->metalness_texture_name);
-    deallocate(material->roughness_texture_name);
+    deallocate(material->name);    
 }
 
 struct Asset_Manager {
@@ -166,6 +163,7 @@ struct Asset_Manager {
     int32     total_meshes_added_ever;
     
     Texture   *texture_table[NUM_TEXTURE_BUCKETS];
+    int32      total_textures_added_ever;
     
     Material  *material_table[NUM_MATERIAL_BUCKETS];
     int32     total_materials_added_ever;

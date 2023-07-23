@@ -44,11 +44,11 @@ struct Command_Unload_Mesh {
 };
 
 struct Command_Load_Texture {
-    String texture_name;
+    int32 texture_id;
 };
 
 struct Command_Unload_Texture {
-    String texture_name;
+    int32 texture_id;
 };
 
 struct Command {

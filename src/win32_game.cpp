@@ -937,11 +937,12 @@ bool32 platform_open_file_dialog(char *filepath, uint32 size) {
     return result;
 }
 
-bool32 platform_open_file_dialog(char *filepath, char *filetype_name, char *file_extension_no_dot, uint32 size) {
+// file_extensions should be of format "*.png; *.jpg"
+bool32 platform_open_file_dialog(char *filepath, char *filetype_name, char *file_extensions, uint32 size) {
     OPENFILENAME ofn = {};       // common dialog box structure
 
     String filetype_name_string = make_string(filetype_name);
-    String file_extension_no_dot_string = make_string(file_extension_no_dot);
+    String file_extensions = make_string(file_extensions);
 
     char filter_buffer[64];
     // NOTE: we do it this way since string_format is messed up when the string contains null
@@ -949,8 +950,8 @@ bool32 platform_open_file_dialog(char *filepath, char *filetype_name, char *file
     String_Buffer working_buffer = make_empty_string_buffer(filter_buffer, sizeof(filter_buffer));
     append_string(&working_buffer, filetype_name_string);
     append_string(&working_buffer, make_string("\0", 1));
-    append_string(&working_buffer, make_string("*.", 2));
-    append_string(&working_buffer, file_extension_no_dot_string);
+    //append_string(&working_buffer, make_string("*.", 2));
+    append_string(&working_buffer, file_extension);
     append_string(&working_buffer, make_string("\0\0", 2));
 
     // Initialize OPENFILENAME

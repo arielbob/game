@@ -2,11 +2,14 @@
 #define EDITOR_H
 
 #define LEVEL_FILE_FILTER_TITLE "Levels (*.level)"
-#define LEVEL_FILE_FILTER_TYPE  "level"
+#define LEVEL_FILE_FILTER_TYPE  "*.level"
 #define SAVE_SUCCESS_MESSAGE    "Level saved!"
 
 #define MESH_FILE_FILTER_TITLE "Meshes (*.mesh)"
-#define MESH_FILE_FILTER_TYPE  "mesh"
+#define MESH_FILE_FILTER_TYPE  "*.mesh"
+
+#define TEXTURE_FILE_FILTER_TITLE "Image Files (*.png; *.jpg; *.jpeg)"
+#define TEXTURE_FILE_FILTER_TYPE  "*.png;*.jpg;*.jpeg"
 
 #include "linked_list.h"
 #include "level.h"
@@ -19,7 +22,8 @@
 
 enum class Asset_Library_Tab {
     MATERIALS,
-    MESHES
+    MESHES,
+    TEXTURES
 };
 
 struct Asset_Library_State {
@@ -39,6 +43,7 @@ struct Asset_Library_State {
 
     int32 selected_material_id = -1;
     int32 selected_mesh_id = -1;
+    int32 selected_texture_id = -1;
 
     Asset_Library_Tab selected_tab = Asset_Library_Tab::MATERIALS;
 };

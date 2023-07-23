@@ -7,7 +7,7 @@
 // TODO: i'm pretty sure we don't use a lot of these... since we moved to using a hash table
 // with linked lists instead of static arrays
 //#define MAX_MATERIALS 64
-#define MAX_TEXTURES 64
+//#define MAX_TEXTURES 64
 #define MAX_ENTITIES 64
 #define MAX_POINT_LIGHTS 16
 #define MAX_FONTS 64

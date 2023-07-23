@@ -415,7 +415,8 @@ void draw_material_library() {
 
                     if (selected_material->flags & MATERIAL_USE_ALBEDO_TEXTURE) {
                         do_text("Albedo Texture");
-                        int32 selected_index = get_selected_name_index(selected_material->albedo_texture_name,
+                        Texture *albedo_texture = get_texture(selected_material->albedo_texture_id);
+                        int32 selected_index = get_selected_name_index(albedo_texture->name,
                                                                        texture_names, num_texture_names);
                         assert(selected_index >= 0);
 
@@ -424,8 +425,11 @@ void draw_material_library() {
                                                                     selected_index,
                                                                     "albedo_texture_dropdown");
                         if (dropdown_selected_index != selected_index) {
+                            Allocator *temp_region = begin_region();
                             selected_index = dropdown_selected_index;
-                            replace_contents(&selected_material->albedo_texture_name, texture_names[selected_index]);
+                            Texture *selected = get_texture(make_string(temp_region, texture_names[selected_index]));
+                            selected_material->albedo_texture_id = selected->id;
+                            end_region(temp_region);
                         }
                     } else {
                         UI_Interact_Result interact_result;
@@ -470,6 +474,7 @@ void draw_material_library() {
 
                     if (selected_material->flags & MATERIAL_USE_METALNESS_TEXTURE) {
                         do_text("Metalness Texture");
+                        // TODO: do whatever i did with the albedo texture above
                         int32 selected_index = get_selected_name_index(selected_material->metalness_texture_name,
                                                                        texture_names, num_texture_names);
                         assert(selected_index >= 0);
@@ -588,6 +593,241 @@ void draw_material_library() {
     ui_pop_widget();
 }
 
+void draw_texture_library() {
+    using namespace Asset_Library_Themes;
+
+    Editor_State *editor_state = &game_state->editor_state;
+    Asset_Library_State *asset_library_state = &editor_state->asset_library_state;
+
+    const int32 MAX_TEXTURES = 256;
+    int32 texture_ids[MAX_TEXTURES];
+    int32 num_textures_listed = 0;
+    
+    Texture *selected_texture = NULL;
+        
+    ui_add_and_push_widget("asset-library-texture-list-container", list_container_theme);
+    {
+        ui_add_and_push_widget("", space_between_row_theme);
+        {
+            do_y_centered_text("Textures");
+            UI_Button_Theme add_button_theme = editor_button_theme;
+            add_button_theme.size_type.x = UI_SIZE_ABSOLUTE;
+            add_button_theme.size.x = 20.0f;
+
+            bool32 add_texture_clicked = do_text_button("+", add_button_theme, "add_texture_button");
+            if (add_texture_clicked) {
+                Allocator *temp_region = begin_region(256);
+
+                String new_texture_name;
+                bool32 gen_result = generate_asset_name(temp_region, "Texture", 256, get_remaining(temp_region),
+                                                        &new_texture_name, texture_exists);
+                assert(gen_result);
+
+                Texture *new_texture = add_texture(new_texture_name, make_string("blender/cube.texture"), Texture_Type::LEVEL);
+                assert(new_texture);
+                asset_library_state->selected_texture_id = new_texture->id;
+
+                end_region(temp_region);
+            }
+        } ui_pop_widget();
+
+        ui_y_pad(5.0f);
+
+        UI_Scrollable_Region_Theme list_scroll_region_theme = {};
+        list_scroll_region_theme.background_color = rgb_to_vec4(0, 0, 0);
+        list_scroll_region_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
+
+        push_scrollable_region(list_scroll_region_theme,
+                               make_string("texture-list-scroll-region"));
+        ui_add_and_push_widget("asset-library-texture-list-container2", list_theme,
+                               UI_WIDGET_DRAW_BACKGROUND);
+        {
+            // don't use i for the button indices because that's for buckets and
+            // not the actual textures we've visited
+            for (int32 i = 0; i < NUM_TEXTURE_BUCKETS; i++) {
+                Texture *current = asset_manager->texture_table[i];
+                while (current) {
+                    if (current->type == Texture_Type::LEVEL) {
+                        assert(num_textures_listed < MAX_TEXTURES);
+                        texture_ids[num_textures_listed] = current->id;
+                            
+                        if (num_textures_listed == 0 && asset_library_state->selected_texture_id < 0) {
+                            // select the first one by default
+                            asset_library_state->selected_texture_id = current->id;
+                        }
+                            
+                        char *texture_name = to_char_array((Allocator *) &ui_manager->frame_arena,
+                                                        current->name);
+
+                        bool32 is_selected = current->id == asset_library_state->selected_texture_id;
+                        bool32 pressed = do_text_button(texture_name,
+                                                        is_selected ? selected_item_theme : item_theme,
+                                                        "asset-library-texture-list-item",
+                                                        num_textures_listed);
+
+                        if (pressed || is_selected) {
+                            asset_library_state->selected_texture_id = current->id;
+                            selected_texture = current;
+                        }
+
+                        num_textures_listed++;
+                    }
+
+                    current = current->table_next;
+                }
+            }
+        }
+        ui_pop_widget(); // asset-library-texture-list-container
+        ui_pop_widget(); // scrollable region
+    }
+    ui_pop_widget();
+
+    ui_x_pad(5.0f);
+
+    ui_add_and_push_widget("asset-library-texture-info-container", properties_container_theme);
+    {
+
+        UI_Theme section_theme = {};
+        section_theme.layout_type = UI_LAYOUT_VERTICAL;
+        section_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
+
+        ui_add_and_push_widget("", section_theme);
+        {
+            UI_Theme properties_header_theme = {};
+            properties_header_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
+            properties_header_theme.semantic_size = {  0.0f, editor_button_theme.size.y };
+            properties_header_theme.layout_type = UI_LAYOUT_VERTICAL;
+            ui_add_and_push_widget("", properties_header_theme); {
+                do_y_centered_text("Properties");
+            } ui_pop_widget();
+
+            if (selected_texture) {
+                ui_y_pad(5.0f);
+                {
+                    do_text("Texture Name");
+                    UI_Text_Field_Theme field_theme = editor_text_field_theme;
+                    field_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
+                    field_theme.size.x = 0.0f;
+                    UI_Text_Field_Result name_result = do_text_field(field_theme, selected_texture->name,
+                                                                     "texture_name_text_field",
+                                                                     "texture_name_text_field_text");
+
+                    if (name_result.committed) {
+                        if (!string_equals(name_result.text, selected_texture->name) && name_result.text.length > 0) {
+                            if (!texture_exists(name_result.text)) {
+                                replace_contents(&selected_texture->name, name_result.text);
+                            } else {
+                                add_message(Context::message_manager, make_string("Texture name already exists!"));
+                            }
+                        }
+                    }
+                }
+
+                ui_y_pad(5.0f);
+                
+                {
+                    do_text("Filepath");
+                    UI_Text_Field_Theme field_theme = editor_text_field_theme;
+                    field_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
+                    field_theme.size.x = 0.0f;
+
+                    ui_add_and_push_widget("", full_row_theme);
+                    {
+                        Allocator *temp_region = begin_region();
+
+                        UI_Text_Field_Result filepath_result = do_text_field(field_theme, selected_texture->filename,
+                                                                             "texture_filepath_text_field",
+                                                                             "texture_filepath_text_field_text",
+                                                                             PLATFORM_MAX_PATH - 1);
+
+                        if (filepath_result.committed) {
+                            if (filepath_result.text.length > 0) {
+                                if (platform_file_exists(filepath_result.text)) {
+                                    //set_texture_file(selected_texture->id, filepath_result.text);
+                                } else {
+                                    add_message(Context::message_manager, make_string("File does not exist!"));
+                                }
+                            }
+                        }
+
+                        ui_x_pad(5.0f);
+
+                        UI_Button_Theme browse_theme = editor_button_theme;
+                        browse_theme.size_type.x = UI_SIZE_ABSOLUTE;
+                        browse_theme.size.x = 80.0f;
+
+                        bool32 browse_clicked = do_text_button("Browse", browse_theme, "texture_browse_button");
+                        if (browse_clicked) {
+                            char absolute_path[PLATFORM_MAX_PATH];
+                            if (platform_open_file_dialog(absolute_path,
+                                                          TEXTURE_FILE_FILTER_TITLE, TEXTURE_FILE_FILTER_TYPE,
+                                                          PLATFORM_MAX_PATH)) {
+
+                                char relative_path[PLATFORM_MAX_PATH];
+                                platform_get_relative_path(absolute_path, relative_path, PLATFORM_MAX_PATH);
+
+                                String relative_path_string = make_string(temp_region, relative_path);
+
+                                //set_texture_file(selected_texture->id, relative_path_string);
+                            }
+                        }
+
+                        end_region(temp_region);
+                    } ui_pop_widget();
+                }
+            } // if (selected_texture)
+        } ui_pop_widget(); // section
+
+        UI_Theme footer_theme = {};
+        footer_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
+        footer_theme.layout_type = UI_LAYOUT_HORIZONTAL;
+
+        ui_add_and_push_widget("", footer_theme);
+        {
+            if (selected_texture) {
+                UI_Theme push_right = {};
+                push_right.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
+                ui_add_widget("", push_right);
+
+                UI_Button_Theme delete_theme = editor_button_danger_theme;
+                delete_theme.size_type.x = UI_SIZE_ABSOLUTE;
+                delete_theme.size.x = 120.0f;
+                
+                bool32 delete_pressed = do_text_button("Delete Texture", delete_theme, "delete-texture");
+
+                if (delete_pressed) {
+                    // find texture id in list
+                    int32 id_to_delete = selected_texture->id;
+
+                    for (int32 i = 0; i < num_textures_listed; i++) {
+                        if (texture_ids[i] == id_to_delete) {
+                            if (num_textures_listed >= 1) {
+                                int32 new_index;
+                                if (i == 0) {
+                                    new_index = i + 1;
+                                } else {
+                                    new_index = max(i - 1, 0);
+                                }
+                                asset_library_state->selected_texture_id = texture_ids[new_index];
+                            } else {
+                                // we're deleting the last one
+                                asset_library_state->selected_texture_id = -1;
+                            }
+
+                            break;
+                        }
+                    }
+
+                    selected_texture = get_texture(asset_library_state->selected_texture_id);
+
+                    delete_texture(id_to_delete);
+                    num_textures_listed = max(num_textures_listed--, 0);
+                }
+            }
+        } ui_pop_widget(); // footer
+    } ui_pop_widget(); // asset-library-texture-info-container
+}
+
 UI_Button_Theme get_tab_theme(Asset_Library_Tab tab) {
     using namespace Asset_Library_Themes;
     
@@ -678,10 +918,17 @@ void draw_asset_library() {
                                    "asset-library-materials-tab")) {
                     asset_library_state->selected_tab = Asset_Library_Tab::MATERIALS;
                 }
-                ui_x_pad(5.0f);
+                ui_x_pad(1.0f);
+                
                 if (do_text_button("Meshes", get_tab_theme(Asset_Library_Tab::MESHES),
                                    "asset-library-meshes-tab")) {
                     asset_library_state->selected_tab = Asset_Library_Tab::MESHES;
+                }
+                ui_x_pad(1.0f);
+                
+                if (do_text_button("Textures", get_tab_theme(Asset_Library_Tab::TEXTURES),
+                                   "asset-library-textures-tab")) {
+                    asset_library_state->selected_tab = Asset_Library_Tab::TEXTURES;
                 }
             } ui_pop_widget(); // asset-library-tab-row
 
@@ -695,6 +942,9 @@ void draw_asset_library() {
                     } break;
                     case Asset_Library_Tab::MESHES: {
                         draw_mesh_library();
+                    } break;
+                    case Asset_Library_Tab::TEXTURES: {
+                        // TODO: draw_texture_library();
                     } break;
                     default: {
                         assert(!"Unhandled Asset_Library_State type!");
