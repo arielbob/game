@@ -656,7 +656,9 @@ void draw_texture_library() {
             texture_tile.layout_type = UI_LAYOUT_VERTICAL;
             texture_tile.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
             texture_tile.semantic_size = { 0.0f, 90.f };
-            texture_tile.background_color = rgb_to_vec4(255, 0, 0);
+            texture_tile.background_color = DEFAULT_BUTTON_BACKGROUND;
+            texture_tile.hot_background_color = DEFAULT_BUTTON_HOT_BACKGROUND;
+            texture_tile.active_background_color = DEFAULT_BUTTON_ACTIVE_BACKGROUND;
 
             UI_Widget *row_widget = NULL;
             int32 tiles_in_row = 0;
@@ -681,14 +683,18 @@ void draw_texture_library() {
 
                         bool32 is_selected = current->id == asset_library_state->selected_texture_id;
 
-                        
                         if (tiles_in_row == 0) {
                             if (!first_row && !row_widget) {
                                 ui_y_pad(1.0f);
                             }
                             row_widget = ui_push_widget("", full_row_theme);
                         }
-                        ui_add_widget("", texture_tile, UI_WIDGET_DRAW_BACKGROUND);
+
+                        UI_Widget *tile = ui_add_widget("texture-library-tile", texture_tile,
+                                                        UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE,
+                                                        num_textures_listed);
+                        ui_interact(tile);
+
                         ui_x_pad(1.0f);
 
                         tiles_in_row++;
@@ -722,6 +728,12 @@ void draw_texture_library() {
             }
 
             if (row_widget) {
+                int32 num_fillers_needed = tiles_per_row - tiles_in_row;
+                UI_Theme filler = {};
+                filler.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
+                for (int32 i = 0; i < num_fillers_needed; i++) {
+                    ui_add_widget("", filler);
+                }
                 ui_pop_widget();
             }
         }

@@ -217,8 +217,8 @@ UI_Widget *ui_add_widget(UI_id id, uint32 flags) {
 }
 #endif
 
-UI_Widget *ui_add_widget(String name, UI_Theme theme, uint32 flags = 0) {
-    UI_Widget *widget = make_widget(make_ui_id(name, 0), theme, flags);
+UI_Widget *ui_add_widget(String name, UI_Theme theme, uint32 flags = 0, int32 index = 0) {
+    UI_Widget *widget = make_widget(make_ui_id(name, index), theme, flags);
     ui_add_widget(widget);
     return widget;
 }
@@ -229,8 +229,8 @@ UI_Widget *ui_add_widget(UI_id id, UI_Theme theme, uint32 flags = 0) {
     return widget;
 }
 
-UI_Widget *ui_add_widget(char *name, UI_Theme theme, uint32 flags = 0) {
-    UI_Widget *widget = make_widget(make_ui_id(name, 0), theme, flags);
+UI_Widget *ui_add_widget(char *name, UI_Theme theme, uint32 flags = 0, int32 index = 0) {
+    UI_Widget *widget = make_widget(make_ui_id(name, index), theme, flags);
     ui_add_widget(widget);
     return widget;
 }
@@ -304,19 +304,19 @@ UI_Widget *ui_push_existing_widget(UI_Widget *widget) {
     return widget;
 }
 
-UI_Widget *ui_push_widget(UI_id id, UI_Theme theme,uint32 flags = 0) {
+UI_Widget *ui_push_widget(UI_id id, UI_Theme theme, uint32 flags = 0, int32 index = 0) {
     UI_Widget *widget = make_widget(id, theme, flags);
     ui_add_widget(widget);
 
     return ui_push_existing_widget(widget);
 }
 
-UI_Widget *ui_push_widget(String name, UI_Theme theme, uint32 flags = 0) {
-    return ui_push_widget(make_ui_id(name), theme, flags);
+UI_Widget *ui_push_widget(String name, UI_Theme theme, uint32 flags = 0, int32 index = 0) {
+    return ui_push_widget(make_ui_id(name), theme, flags, index);
 }
 
-UI_Widget *ui_push_widget(char *name, UI_Theme theme, uint32 flags = 0) {
-    return ui_push_widget(make_ui_id(name), theme, flags);
+UI_Widget *ui_push_widget(char *name, UI_Theme theme, uint32 flags = 0, int32 index = 0) {
+    return ui_push_widget(make_ui_id(name), theme, flags, index);
 }
 
 UI_Widget *ui_add_and_push_widget(UI_Widget *widget) {
