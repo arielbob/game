@@ -690,9 +690,23 @@ void draw_texture_library() {
                             row_widget = ui_push_widget("", full_row_theme);
                         }
 
-                        UI_Widget *tile = ui_add_widget("texture-library-tile", texture_tile,
-                                                        UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE,
-                                                        num_textures_listed);
+                        UI_Container_Theme theme = {};
+                        UI_Widget *tile = ui_push_widget("texture-library-tile", texture_tile,
+                                                         UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE,
+                                                         num_textures_listed);
+                        {
+                            ui_push_padded_area({ 5.0f, 5.0f, 5.0f, 5.0f });
+                            {
+                                UI_Theme texture_thumbnail = {};
+                                texture_thumbnail.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
+                                texture_thumbnail.texture_name = texture_name;
+                                ui_add_widget("", texture_thumbnail,
+                                              UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_USE_TEXTURE);
+                                do_text(texture_name);
+                            }
+                            ui_pop_widget();
+                        } ui_pop_widget();
+
                         ui_interact(tile);
 
                         ui_x_pad(1.0f);

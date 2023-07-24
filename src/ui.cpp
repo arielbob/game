@@ -304,7 +304,7 @@ UI_Widget *ui_push_existing_widget(UI_Widget *widget) {
     return widget;
 }
 
-UI_Widget *ui_push_widget(UI_id id, UI_Theme theme, uint32 flags = 0, int32 index = 0) {
+UI_Widget *ui_push_widget(UI_id id, UI_Theme theme, uint32 flags = 0) {
     UI_Widget *widget = make_widget(id, theme, flags);
     ui_add_widget(widget);
 
@@ -312,11 +312,11 @@ UI_Widget *ui_push_widget(UI_id id, UI_Theme theme, uint32 flags = 0, int32 inde
 }
 
 UI_Widget *ui_push_widget(String name, UI_Theme theme, uint32 flags = 0, int32 index = 0) {
-    return ui_push_widget(make_ui_id(name), theme, flags, index);
+    return ui_push_widget(make_ui_id(name, index), theme, flags);
 }
 
 UI_Widget *ui_push_widget(char *name, UI_Theme theme, uint32 flags = 0, int32 index = 0) {
-    return ui_push_widget(make_ui_id(name), theme, flags, index);
+    return ui_push_widget(make_ui_id(name, index), theme, flags);
 }
 
 UI_Widget *ui_add_and_push_widget(UI_Widget *widget) {
@@ -2935,4 +2935,34 @@ int32 do_dropdown(UI_Dropdown_Theme theme,
     end_region(temp_region);
     
     return selected_item_index;
+}
+
+void ui_push_padded_area(Vec4_UI_Padding padding) {
+    UI_Theme column = {};
+    column.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
+    column.layout_type = UI_LAYOUT_VERTICAL;
+
+    UI_Theme row = {};
+    row.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
+    row.layout_type = UI_LAYOUT_HORIZONTAL;
+
+    UI_Theme inner = {};
+    inner.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
+    inner.layout_type = UI_LAYOUT_VERTICAL;
+
+    UI_Widget *inner_widget = NULL;
+    
+    ui_push_widget("", column);
+    {
+        ui_y_pad(padding.top);
+        ui_push_widget("", row);
+        {
+            ui_x_pad(padding.left);
+            inner_widget = ui_add_widget("", inner);
+            ui_x_pad(padding.right);
+        } ui_pop_widget();
+        ui_y_pad(padding.bottom);
+    } ui_pop_widget();
+
+    ui_push_existing_widget(inner_widget);
 }
