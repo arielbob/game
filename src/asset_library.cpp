@@ -652,6 +652,16 @@ void draw_texture_library() {
         ui_add_and_push_widget("asset-library-texture-list-container2", list_theme,
                                UI_WIDGET_DRAW_BACKGROUND);
         {
+            UI_Theme texture_tile = {};
+            texture_tile.layout_type = UI_LAYOUT_VERTICAL;
+            texture_tile.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
+            texture_tile.semantic_size = { 0.0f, 90.f };
+            texture_tile.background_color = rgb_to_vec4(255, 0, 0);
+
+            UI_Widget *row_widget = NULL;
+            int32 tiles_in_row = 0;
+            bool32 first_row = true;
+            int32 tiles_per_row = 3;
             // don't use i for the button indices because that's for buckets and
             // not the actual textures we've visited
             for (int32 i = 0; i < NUM_TEXTURE_BUCKETS; i++) {
@@ -670,6 +680,29 @@ void draw_texture_library() {
                                                         current->name);
 
                         bool32 is_selected = current->id == asset_library_state->selected_texture_id;
+
+                        
+                        if (tiles_in_row == 0) {
+                            if (!first_row && !row_widget) {
+                                ui_y_pad(1.0f);
+                            }
+                            row_widget = ui_push_widget("", full_row_theme);
+                        }
+                        ui_add_widget("", texture_tile, UI_WIDGET_DRAW_BACKGROUND);
+                        ui_x_pad(1.0f);
+
+                        tiles_in_row++;
+
+                        if (tiles_in_row == tiles_per_row) {
+                            tiles_in_row = 0;
+                            row_widget = NULL;
+                            ui_pop_widget();
+                            if (first_row) {
+                                first_row = false;
+                            }
+                        }
+                        
+                        #if 0
                         bool32 pressed = do_text_button(texture_name,
                                                         is_selected ? selected_item_theme : item_theme,
                                                         "asset-library-texture-list-item",
@@ -679,12 +712,17 @@ void draw_texture_library() {
                             asset_library_state->selected_texture_id = current->id;
                             selected_texture = current;
                         }
+                        #endif
 
                         num_textures_listed++;
                     }
 
                     current = current->table_next;
                 }
+            }
+
+            if (row_widget) {
+                ui_pop_widget();
             }
         }
         ui_pop_widget(); // asset-library-texture-list-container

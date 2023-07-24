@@ -995,7 +995,7 @@ void calculate_ancestor_dependent_sizes_part_2(UI_Widget *widget, UI_Widget_Axis
         if (axis_matches_parent_layout) {
             widget->computed_size[axis] = ((parent->computed_size[axis] - parent->computed_child_size_sum[axis]) /
                                            parent->num_fill_children[axis]);
-            parent->computed_child_size_sum[axis] += widget->computed_size[axis];
+            //parent->computed_child_size_sum[axis] += widget->computed_size[axis];
         } else {
             widget->computed_size[axis] = parent->computed_size[axis];
         }
