@@ -632,7 +632,8 @@ void draw_texture_library() {
                                                         &new_texture_name, texture_exists);
                 assert(gen_result);
 
-                Texture *new_texture = add_texture(new_texture_name, make_string("blender/cube.texture"), Texture_Type::LEVEL);
+                Texture *new_texture = add_texture(new_texture_name, make_string("blender/debug-texture.jpg"),
+                                                   Texture_Type::LEVEL);
                 assert(new_texture);
                 asset_library_state->selected_texture_id = new_texture->id;
 
@@ -953,7 +954,7 @@ void draw_asset_library() {
                         draw_mesh_library();
                     } break;
                     case Asset_Library_Tab::TEXTURES: {
-                        // TODO: draw_texture_library();
+                        draw_texture_library();
                     } break;
                     default: {
                         assert(!"Unhandled Asset_Library_State type!");

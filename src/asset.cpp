@@ -291,18 +291,8 @@ void delete_texture(String name) {
 #endif
 
 bool32 texture_exists(String name) {
-    uint32 hash = get_hash(name, NUM_TEXTURE_BUCKETS);
-
-    Texture *current = asset_manager->texture_table[hash];
-    while (current) {
-        if (string_equals(current->name, name)) {
-            return true;
-        }
-
-        current = current->table_next;
-    }
-
-    return false;
+    Texture *texture = get_texture(name);
+    return texture != NULL;
 }
 
 Texture *add_texture(String name, String filename, Texture_Type type, int32 id = -1) {
