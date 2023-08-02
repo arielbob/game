@@ -654,8 +654,8 @@ void draw_texture_library() {
         {
             UI_Theme texture_tile = {};
             texture_tile.layout_type = UI_LAYOUT_VERTICAL;
-            texture_tile.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
-            texture_tile.semantic_size = { 0.0f, 90.f };
+            texture_tile.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
+            texture_tile.semantic_size = { 0.0f, 0.0f };
             texture_tile.background_color = DEFAULT_BUTTON_BACKGROUND;
             texture_tile.hot_background_color = DEFAULT_BUTTON_HOT_BACKGROUND;
             texture_tile.active_background_color = DEFAULT_BUTTON_ACTIVE_BACKGROUND;
@@ -698,10 +698,11 @@ void draw_texture_library() {
                             ui_push_padded_area({ 5.0f, 5.0f, 5.0f, 5.0f });
                             {
                                 UI_Theme texture_thumbnail = {};
-                                texture_thumbnail.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
+                                texture_thumbnail.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_MATCH_AXIS };
                                 texture_thumbnail.texture_name = texture_name;
-                                ui_add_widget("", texture_thumbnail,
-                                              UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_USE_TEXTURE);
+                                ui_add_widget("texture-thumbnail", texture_thumbnail,
+                                              UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_USE_TEXTURE,
+                                              num_textures_listed);
                                 do_text(texture_name);
                             }
                             ui_pop_widget();

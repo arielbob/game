@@ -952,6 +952,35 @@ void draw_ui(real32 dt) {
 
     ui_push_existing_widget(ui_manager->always_on_top_layer);
     {
+        // this case isn't working.
+        UI_Theme rect_a = {};
+        #if 1
+        // this doesn't work correctly
+        rect_a.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_FIT_CHILDREN };
+        rect_a.semantic_size = { 200.0f, 0.0f };
+        #else
+        rect_a.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
+        rect_a.semantic_size = { 200.0f, 150.0f };
+        #endif
+        rect_a.background_color = rgb_to_vec4(255, 0, 0);
+        rect_a.layout_type = UI_LAYOUT_HORIZONTAL;
+        
+        UI_Theme rect_b = {};
+        rect_b.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_MATCH_AXIS };
+        rect_b.semantic_size = { 0.0f, 0.0f };
+        rect_b.background_color = rgb_to_vec4(0, 0, 255);
+
+        UI_Theme rect_c = {};
+        rect_c.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
+        rect_c.semantic_size = { 50.0f, 100.0f };
+        rect_c.background_color = rgb_to_vec4(0, 255, 0);
+
+        ui_push_widget("rect_a", rect_a, UI_WIDGET_DRAW_BACKGROUND);
+        {
+            ui_add_widget("rect_b", rect_b, UI_WIDGET_DRAW_BACKGROUND);
+            ui_add_widget("rect_c", rect_c, UI_WIDGET_DRAW_BACKGROUND);
+        } ui_pop_widget();
+        
         UI_Theme white_text = NULL_THEME;
         white_text.text_color = { 1.0f, 1.0f, 1.0f, 1.0f };
         white_text.semantic_position = { 5.0f, 20.0f };

@@ -749,13 +749,34 @@ bool32 ui_widget_is_descendent_of(UI_id child_id, UI_id parent_id) {
     return false;
 }
 
+void match_sizes(UI_Widget *widget) {
+    if (widget->size_type.x == UI_SIZE_MATCH_AXIS) {
+        assert(widget->size_type.y != UI_SIZE_MATCH_AXIS);
+        widget->computed_size.x = widget->computed_size.y;
+    } else if (widget->size_type.y == UI_SIZE_MATCH_AXIS) {
+        widget->computed_size.y = widget->computed_size.x;
+    }
+}
+
+UI_Widget_Axis get_other_axis(UI_Widget_Axis axis) {
+    if (axis == UI_WIDGET_X_AXIS) {
+        return UI_WIDGET_Y_AXIS;
+    } else {
+        return UI_WIDGET_X_AXIS;
+    }
+}
+
 void calculate_standalone_size(UI_Widget *widget, UI_Widget_Axis axis) {
     UI_Size_Type size_type = widget->size_type[axis];
     real32 axis_semantic_size = widget->semantic_size[axis];
     real32 *axis_computed_size = &widget->computed_size[axis];
 
+    bool32 didComputeSize = false;
+    
     if (size_type == UI_SIZE_ABSOLUTE) {
         *axis_computed_size = axis_semantic_size;
+
+        didComputeSize = true;
     } else if (size_type == UI_SIZE_FIT_TEXT) {
         assert(widget->font);
         Font *font = get_font(widget->font);
@@ -764,8 +785,11 @@ void calculate_standalone_size(UI_Widget *widget, UI_Widget_Axis axis) {
         } else {
             *axis_computed_size = font->height_pixels;
         }
+
+        didComputeSize = true;
     } else if (size_type == UI_SIZE_FIT_CHILDREN) {
         *axis_computed_size = axis_semantic_size;
+        didComputeSize = true;
 
         // add an extra pixel for the border if we're size type FIT_CHILDREN.
         // this is fine since it's expected that the parent size will change. it's nice because the child widgets
@@ -790,6 +814,12 @@ void calculate_standalone_size(UI_Widget *widget, UI_Widget_Axis axis) {
         }
         #endif
     }
+
+    UI_Widget_Axis other_axis = get_other_axis(axis);
+    
+    if (didComputeSize && (widget->size_type[other_axis] == UI_SIZE_MATCH_AXIS)) {
+        widget->computed_size[other_axis] = widget->computed_size[axis];
+    }
 }
 
 void ui_calculate_standalone_sizes() {
@@ -798,11 +828,15 @@ void ui_calculate_standalone_sizes() {
     while (current) {
         // pre-order
 
+        if (string_equals(current->id.name, "rect_b")) {
+            //DebugBreak();
+        }
+        
         UI_Widget *parent = current->parent;
         
         calculate_standalone_size(current, UI_WIDGET_X_AXIS);
         calculate_standalone_size(current, UI_WIDGET_Y_AXIS);
-                
+
         if (current->first) {
             current = current->first;
         } else {
@@ -829,6 +863,8 @@ void calculate_ancestor_dependent_size(UI_Widget *widget, UI_Widget_Axis axis) {
     UI_Size_Type size_type = widget->size_type[axis];
     real32 axis_semantic_size = widget->semantic_size[axis];
     real32 *axis_computed_size = &widget->computed_size[axis];
+
+    UI_Widget_Axis other_axis = get_other_axis(axis);
     
     if (size_type == UI_SIZE_PERCENTAGE) {
         assert(parent); // root node cannot be percentage based
@@ -836,6 +872,10 @@ void calculate_ancestor_dependent_size(UI_Widget *widget, UI_Widget_Axis axis) {
             parent->size_type[axis] == UI_SIZE_ABSOLUTE) {
             // since this is pre-order traversal, the parent should already have a computed size
             *axis_computed_size = parent->computed_size[axis] * axis_semantic_size;
+
+            if (size_type == UI_SIZE_MATCH_AXIS) {
+                widget->computed_size[other_axis] = widget->computed_size[axis];
+            }
         }
     }
     
@@ -855,7 +895,7 @@ void ui_calculate_ancestor_dependent_sizes() {
 
         calculate_ancestor_dependent_size(current, UI_WIDGET_X_AXIS);
         calculate_ancestor_dependent_size(current, UI_WIDGET_Y_AXIS);
-        
+                
         if (current->first) {
             current = current->first;
         } else {
@@ -876,25 +916,11 @@ void ui_calculate_ancestor_dependent_sizes() {
     }
 }
 
-void calculate_child_dependent_size(UI_Widget *widget, UI_Widget_Axis axis) {
-    if (widget->position_type == UI_POSITION_FLOAT) return;
-    
+void calculate_computed_child_size_sum(UI_Widget *widget, UI_Widget_Axis axis) {
     UI_Widget *parent = widget->parent;
 
-    if (parent) {        
-        if (parent->size_type[axis] == UI_SIZE_FIT_CHILDREN) {
-            // if the current axis matches with the parent's layout axis, then increase the parent's
-            // size on that axis.
-            bool32 axis_matches_parent_layout = ((axis == UI_WIDGET_X_AXIS && parent->layout_type == UI_LAYOUT_HORIZONTAL) ||
-                                                 (axis == UI_WIDGET_Y_AXIS && parent->layout_type == UI_LAYOUT_VERTICAL));
-            if (axis_matches_parent_layout) {
-                parent->computed_size[axis] += widget->computed_size[axis];
-            } else {
-                parent->computed_size[axis] = max(parent->computed_size[axis], widget->computed_size[axis]);
-            }
-        }
-        
-        // we need need this layout type check here because we only add to the child size sum if the axis
+    if (parent) {
+        // we need this layout type check here because we only add to the child size sum if the axis
         // and the layout axis match. because when we use the child size sum later for FILL_REMAINING, we only
         // want the child sizes that took up space on that axis.
         if (axis == UI_WIDGET_X_AXIS &&
@@ -907,6 +933,86 @@ void calculate_child_dependent_size(UI_Widget *widget, UI_Widget_Axis axis) {
                    parent->layout_type == UI_LAYOUT_VERTICAL) {
             parent->computed_child_size_sum[axis] += widget->computed_size[axis];
         }
+    }
+}
+
+void ui_calculate_computed_child_size_sums() {
+    UI_Widget *current = ui_manager->root;
+
+    bool32 revisiting = false;
+    while (current) {
+        UI_Widget *parent = current->parent;
+        
+        if (current->first && !revisiting) {
+            current = current->first;
+        } else {
+            if (!current->first || revisiting) {
+                // since this is post-order, we need to go back up to process the node. we pass by it to get to
+                // the leaf nodes at first, but we only process it when we're either going back up (revisiting)
+                // or if we're at a leaf node (since leaf nodes will never get revisited since they have no
+                // children.
+
+                calculate_computed_child_size_sum(current, UI_WIDGET_X_AXIS);
+                calculate_computed_child_size_sum(current, UI_WIDGET_Y_AXIS);
+
+                revisiting = false;
+            }
+            
+            if (current->next) {
+                current = current->next;
+            } else {
+                if (!parent) return;
+
+                current = parent;
+                revisiting = true;
+            }
+        }
+    }
+}
+
+void calculate_child_dependent_size(UI_Widget *widget, UI_Widget_Axis axis) {
+    if (widget->position_type == UI_POSITION_FLOAT) return;
+    
+    UI_Widget *parent = widget->parent;
+
+    UI_Widget_Axis other_axis = get_other_axis(axis);
+    
+    if (parent) {
+        // we call this function before UI_SIZE_FILL_REMAINING gets resolved, so we use its
+        // computed size to hold the bubbled up value for UI_SIZE_FIT_CHILDREN
+        if (parent->size_type[axis] == UI_SIZE_FILL_REMAINING) {
+            // TODO: is this actually correct?
+            bool32 axis_matches_parent_layout = ((axis == UI_WIDGET_X_AXIS && parent->layout_type == UI_LAYOUT_HORIZONTAL) ||
+                                                 (axis == UI_WIDGET_Y_AXIS && parent->layout_type == UI_LAYOUT_VERTICAL));
+            if (axis_matches_parent_layout) {
+                parent->computed_size[axis] += widget->computed_size[axis];
+            } else {
+                parent->computed_size[axis] = max(parent->computed_size[axis], widget->computed_size[axis]);
+            }
+
+            if (parent->size_type[other_axis] == UI_SIZE_MATCH_AXIS) {
+                parent->computed_size[other_axis] = parent->computed_size[axis];
+            }
+        } else if (parent->size_type[axis] == UI_SIZE_FIT_CHILDREN) {
+            if (string_equals(parent->id.name, "texture-library-tile")) {
+                //DebugBreak();
+            }
+            
+            // if the current axis matches with the parent's layout axis, then increase the parent's
+            // size on that axis.
+            bool32 axis_matches_parent_layout = ((axis == UI_WIDGET_X_AXIS && parent->layout_type == UI_LAYOUT_HORIZONTAL) ||
+                                                 (axis == UI_WIDGET_Y_AXIS && parent->layout_type == UI_LAYOUT_VERTICAL));
+            if (axis_matches_parent_layout) {
+                parent->computed_size[axis] += widget->computed_size[axis];
+            } else {
+                parent->computed_size[axis] = max(parent->computed_size[axis], widget->computed_size[axis]);
+            }
+
+            if (parent->size_type[other_axis] == UI_SIZE_MATCH_AXIS) {
+                assert(false);
+                parent->computed_size[other_axis] = parent->computed_size[axis];
+            }
+        }
 
         #if 0
         if (widget->size_type[axis] != UI_SIZE_FILL_REMAINING) {
@@ -916,13 +1022,32 @@ void calculate_child_dependent_size(UI_Widget *widget, UI_Widget_Axis axis) {
     }
 }
 
-void ui_calculate_child_dependent_sizes() {
+void ui_calculate_child_dependent_sizes(bool32 reset_computed_sizes) {
     UI_Widget *current = ui_manager->root;
 
     bool32 revisiting = false;
     while (current) {
+        if (string_equals(current->id.name, "texture-thumbnail")) {
+            printf("test\n");
+        }
+        
         UI_Widget *parent = current->parent;
 
+        if (!revisiting && reset_computed_sizes) {
+            current->computed_child_size_sum.x = 0.0f;
+            current->computed_child_size_sum.y = 0.0f;
+
+            if (current->size_type.x == UI_SIZE_FIT_CHILDREN ||
+                current->size_type.x == UI_SIZE_FILL_REMAINING) {
+                current->computed_size.x = 0.0f;
+            }
+
+            if (current->size_type.y == UI_SIZE_FIT_CHILDREN ||
+                current->size_type.y == UI_SIZE_FILL_REMAINING) {
+                current->computed_size.y = 0.0f;
+            }
+        }
+        
         if (current->first && !revisiting) {
             current = current->first;
         } else {
@@ -940,7 +1065,7 @@ void ui_calculate_child_dependent_sizes() {
 
                 calculate_child_dependent_size(current, UI_WIDGET_X_AXIS);
                 calculate_child_dependent_size(current, UI_WIDGET_Y_AXIS);
-                
+
                 revisiting = false;
             }
             
@@ -956,6 +1081,13 @@ void ui_calculate_child_dependent_sizes() {
     }
 }
 
+bool32 axis_matches_layout(UI_Widget_Axis axis, UI_Widget *widget) {
+     bool32 is_horizontal_match = (axis == UI_WIDGET_X_AXIS && widget->layout_type == UI_LAYOUT_HORIZONTAL);
+     bool32 is_vertical_match = (axis == UI_WIDGET_Y_AXIS && widget->layout_type == UI_LAYOUT_VERTICAL);
+
+     return is_horizontal_match || is_vertical_match;
+}
+
 void calculate_ancestor_dependent_sizes_part_2(UI_Widget *widget, UI_Widget_Axis axis) {
     UI_Widget *parent = widget->parent;
 
@@ -968,6 +1100,8 @@ void calculate_ancestor_dependent_sizes_part_2(UI_Widget *widget, UI_Widget_Axis
         
     bool32 axis_matches_parent_layout = is_horizontal_match || is_vertical_match;
 
+    UI_Widget_Axis other_axis = get_other_axis(axis);
+    
     if (widget->size_type[axis] == UI_SIZE_PERCENTAGE) {
         assert(parent); // root node cannot be percentage based
 
@@ -976,12 +1110,40 @@ void calculate_ancestor_dependent_sizes_part_2(UI_Widget *widget, UI_Widget_Axis
         
         widget->computed_size[axis] = parent->computed_size[axis] * widget->semantic_size[axis];
 
+        if (widget->size_type[other_axis] == UI_SIZE_MATCH_AXIS) {
+            widget->computed_size[other_axis] = widget->computed_size[axis];
+            if (axis_matches_layout(other_axis, widget->parent)) {
+                parent->computed_child_size_sum[other_axis] += widget->computed_size[other_axis];
+            }
+        }
+        
         if (widget->position_type != UI_POSITION_FLOAT && axis_matches_parent_layout) {
+            // only one of these computed_child_size_sum additions will run, since layout will only
+            // ever be either horizontal or vertical
             parent->computed_child_size_sum[axis] += widget->computed_size[axis];
         }
-    } else if (widget->size_type[axis] == UI_SIZE_FILL_REMAINING) {
+    }
+#if 1
+    else if (widget->size_type[axis] == UI_SIZE_FILL_REMAINING) {
+        if (string_equals(widget->id.name, "rect_b")) {
+            //DebugBreak();
+        }
+        
         assert(widget->position_type != UI_POSITION_FLOAT);
         assert(parent);
+        if (parent->size_type[axis] == UI_SIZE_FIT_CHILDREN) {
+            widget->computed_size[axis] = parent->computed_child_size_sum[axis] / parent->num_fill_children[axis];
+        } else {
+            if (axis_matches_parent_layout) {
+                widget->computed_size[axis] = ((parent->computed_size[axis] -
+                                                parent->computed_child_size_sum[axis]) /
+                                               parent->num_fill_children[axis]);
+            } else {
+                widget->computed_size[axis] = parent->computed_size[axis];
+            }
+        }
+        // TODO: i don't think the below comment is actually accurate anymore... idk if B will actually
+        //       expand A
         // you can have a UI_SIZE_FILL_REMAINING (widget B) inside a UI_SIZE_FIT_CHILDREN (widget A)
         // because the children of widget B can expand the size of widget A. this logic is used with
         // push_container(). when we have x_pad, row, x_pad inside a UI_SIZE_FIT_CHILDREN widget, the row
@@ -992,14 +1154,25 @@ void calculate_ancestor_dependent_sizes_part_2(UI_Widget *widget, UI_Widget_Axis
         // for example, if we're laying out on x and the layout is horizontal, then we use the computed child size
         // sum on that axis to calculate how we want to fill on that axis. otherwise, for example, if we're on y,
         // then fill_remaining on that axis with a horizontal layout would just fill the entire height.
-        if (axis_matches_parent_layout) {
-            widget->computed_size[axis] = ((parent->computed_size[axis] - parent->computed_child_size_sum[axis]) /
-                                           parent->num_fill_children[axis]);
-            //parent->computed_child_size_sum[axis] += widget->computed_size[axis];
-        } else {
-            widget->computed_size[axis] = parent->computed_size[axis];
+        
+        // TODO: put a breakpoint here for texture-library-tile or for texture-thumbnail
+        //       - 
+
+#if 1
+        // TODO: below is fucked
+        // - if the previous sibling is FILL_REMAINING, it would do its size calculation based on bad
+        //   information... since we haven't calculated the below yet
+        if (widget->size_type[other_axis] == UI_SIZE_MATCH_AXIS) {
+            // i'm not sure why you would ever want this (fill_remaining, match_axis), but sure
+            // - actually, we use this for the texture thumbnails...
+            widget->computed_size[other_axis] = widget->computed_size[axis];
+            if (axis_matches_layout(other_axis, widget->parent)) {
+                parent->computed_child_size_sum[other_axis] += widget->computed_size[other_axis];
+            }
         }
+#endif
     }
+#endif
 }
 
 // this is to resolve percentage widths that are children of components that have child-dependent sizes
@@ -1033,6 +1206,82 @@ void ui_calculate_ancestor_dependent_sizes_part_2() {
             }
         }
     }
+}
+
+void calculate_fill_widget_size(UI_Widget *widget, UI_Widget_Axis axis) {
+    UI_Widget *parent = widget->parent;
+
+    if (!parent) {
+        return;
+    }
+
+    UI_Widget_Axis other_axis = get_other_axis(axis);
+
+    if (widget->size_type[axis] == UI_SIZE_FILL_REMAINING) {
+        assert(widget->position_type != UI_POSITION_FLOAT);
+        assert(parent);
+
+        // we only need to use the computed sizes when we're on the same axis as the layout axis.
+        // for example, if we're laying out on x and the layout is horizontal, then we use the computed child size
+        // sum on that axis to calculate how we want to fill on that axis. otherwise, for example, if we're on y,
+        // then fill_remaining on that axis with a horizontal layout would just fill the entire height.
+        if (axis_matches_layout(axis, widget->parent)) {
+            widget->computed_size[axis] = ((parent->computed_size[axis] - parent->computed_child_size_sum[axis]) /
+                                           parent->num_fill_children[axis]);
+        } else {
+            widget->computed_size[axis] = parent->computed_size[axis];
+        }
+
+        // TODO: put a breakpoint here for texture-library-tile or for texture-thumbnail
+        //       - 
+
+        if (widget->size_type[other_axis] == UI_SIZE_MATCH_AXIS) {
+            // i'm not sure why you would ever want this (fill_remaining, match_axis), but sure
+            widget->computed_size[other_axis] = widget->computed_size[axis];
+        }
+    }
+}
+
+void ui_calculate_fill_widget_sizes() {
+    // post-order
+    UI_Widget *current = ui_manager->root;
+
+    bool32 revisiting = false;
+    while (current) {
+        UI_Widget *parent = current->parent;
+
+        if (current->first && !revisiting) {
+            current = current->first;
+        } else {
+            if (!current->first || revisiting) {
+                // since this is post-order, we need to go back up to process the node. we pass by it to get to
+                // the leaf nodes at first, but we only process it when we're either going back up (revisiting)
+                // or if we're at a leaf node (since leaf nodes will never get revisited since they have no
+                // children.
+
+                // TODO: we may want to do something where size types are applied per axis. for example, if we
+                //       wanted something to fit children horizontally, but have y be a fixed height.
+                //       you can kind of do that now, but only when the cross-axis size is larger than the child's
+                //       size on that same axis. i can't really think of a case where you would want the cross-axis
+                //       size to be smaller than the largest child's on that cross-axis.
+
+                calculate_fill_widget_size(current, UI_WIDGET_X_AXIS);
+                calculate_fill_widget_size(current, UI_WIDGET_Y_AXIS);
+
+                revisiting = false;
+            }
+            
+            if (current->next) {
+                current = current->next;
+            } else {
+                if (!parent) return;
+
+                current = parent;
+                revisiting = true;
+            }
+        }
+    }
+    
 }
 
 void calculate_position(UI_Widget *widget, UI_Widget_Axis axis) {
@@ -1381,8 +1630,26 @@ void ui_post_update() {
     // layout calculations
     ui_calculate_standalone_sizes();
     ui_calculate_ancestor_dependent_sizes();
-    ui_calculate_child_dependent_sizes();
+    ui_calculate_computed_child_size_sums();
     ui_calculate_ancestor_dependent_sizes_part_2();
+    ui_calculate_child_dependent_sizes(false);
+    
+    // this matches size
+    // then we need to reset the child dependent size (the UI_SIZE_FIT_CHILDREN)
+    // i honestly kind of hate that we can have UI_SIZE_FILL_REMAINING inside a UI_SIZE_FIT_CHILDREN
+    // but it's kind of also really useful
+    // so if we have a UI_SIZE_FIT_CHILDREN and a UI_SIZE_FILL_REMAINING inside it, the children
+    // of the UI_SIZE_FILL_REMAINING expands UI_SIZE_FIT_CHILDREN
+    // so UI_SIZE_FILL_REMAINING will already be correct, i think
+    // but for a MATCH_AXIS, UI_SIZE_FIT_CHILDREN needs to be recalculated
+    // fuck this is so confusing
+
+    // TODO: redo this stuff; it's annoying
+    //ui_calculate_child_dependent_sizes(true);
+    //ui_calculate_ancestor_dependent_sizes_part_2();
+    
+    //ui_calculate_child_dependent_sizes_part_2();
+    //ui_calculate_fill_widget_sizes();
     ui_calculate_positions();
     ui_force_widgets_to_top_of_layers();
     
@@ -1578,8 +1845,8 @@ void do_text(char *text, UI_Theme theme, uint32 flags = 0) {
 
 void do_y_centered_text(char *text) {
     UI_Theme y_center_text_theme = {};
-    y_center_text_theme.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FILL_REMAINING };
-    y_center_text_theme.semantic_size = { 0.0f, 1.0f };
+    y_center_text_theme.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_ABSOLUTE };
+    y_center_text_theme.semantic_size = { 0.0f, 20.0f };
     y_center_text_theme.layout_type = UI_LAYOUT_CENTER;
     
     ui_add_and_push_widget("", y_center_text_theme);
