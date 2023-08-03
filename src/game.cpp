@@ -945,11 +945,10 @@ void update_game(Controller_State *controller_state, Sound_Output *sound_output,
 }
 
 void draw_ui(real32 dt) {
+    test_depth_first_traversal();
     draw_editor(Context::controller_state);
 
-
     // fps counter
-
     ui_push_existing_widget(ui_manager->always_on_top_layer);
     {
         UI_Theme white_text = NULL_THEME;

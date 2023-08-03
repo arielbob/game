@@ -876,6 +876,51 @@ void ui_calculate_ancestor_dependent_sizes() {
     }
 }
 
+void ui_calculate_percentage_and_fill_remaining() {
+    // depth-first level order traversal
+    UI_Widget *current = ui_manager->root;
+
+    bool32 revisiting = false;
+    while (current) {
+        UI_Widget *parent = current->parent;
+
+        if (current->first && !revisiting) {
+            current = current->first;
+        } else {
+            if (revisiting) {
+                if (!current->next) {
+                    // do the per level shit here
+                } else {
+                    revisiting = false;
+                }
+            } else {
+                // we're at a leaf node
+                if (!current->next && !current->first) {
+                    // compute it
+                }
+            }
+            
+#if 0
+            if (!current->first || revisiting) {
+                calculate_child_dependent_size(current, UI_WIDGET_X_AXIS);
+                calculate_child_dependent_size(current, UI_WIDGET_Y_AXIS);
+                
+                revisiting = false;
+            }
+#endif
+            
+            if (current->next) {
+                current = current->next;
+            } else {
+                if (!parent) return;
+
+                current = parent;
+                revisiting = true;
+            }
+        }
+    }
+}
+
 void calculate_child_dependent_size(UI_Widget *widget, UI_Widget_Axis axis) {
     if (widget->position_type == UI_POSITION_FLOAT) return;
     
