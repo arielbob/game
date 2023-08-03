@@ -876,41 +876,82 @@ void ui_calculate_ancestor_dependent_sizes() {
     }
 }
 
-void ui_calculate_percentage_and_fill_remaining() {
-    // depth-first level order traversal
-    UI_Widget *current = ui_manager->root;
+bool32 axis_matches_layout(UI_Widget_Axis axis, UI_Widget *widget) {
+    bool32 is_horizontal_match = (axis == UI_WIDGET_X_AXIS && widget->layout_type == UI_LAYOUT_HORIZONTAL);
+    bool32 is_vertical_match = (axis == UI_WIDGET_Y_AXIS && widget->layout_type == UI_LAYOUT_VERTICAL);
+        
+    bool32 axis_matches_layout = is_horizontal_match || is_vertical_match;
+    return axis_matches_layout;
+}
 
+void calculate_percentage_and_fill_remaining_on_level(UI_Widget *level_node, UI_Widget_Axis axis) {
+    // node just needs to be on the same level
+    UI_Widget *node = level_node;
+    // parent will always be the same, since we're always on the same level and same parent node
+    UI_Widget *parent = node->parent;
+
+    if (!parent) {
+        return;
+    }
+    
+    node = parent->first;
+    UI_Widget *first = node;
+
+    bool32 axis_matches_parent_layout = axis_matches_layout(axis, parent);
+    
+    // first level pass just resolves percentage sizes, so that the computed_child_size_sums
+    // are correct for the fill_remaining pass
+    while (node) {
+        if (node->size_type[axis] == UI_SIZE_PERCENTAGE) {
+            assert(parent); // root node cannot be percentage based
+            node->computed_size[axis] = parent->computed_size[axis] * node->semantic_size[axis];
+
+            if (node->position_type != UI_POSITION_FLOAT && axis_matches_parent_layout) {
+                parent->computed_child_size_sum[axis] += node->computed_size[axis];
+            }
+        }
+        node = node->next;
+    }
+
+    node = first;
+
+    while (node) {
+        if (node->size_type[axis] == UI_SIZE_FILL_REMAINING) {
+            assert(node->position_type != UI_POSITION_FLOAT);
+            assert(parent);
+
+            if (axis_matches_parent_layout) {
+                node->computed_size[axis] = ((parent->computed_size[axis] -
+                                                parent->computed_child_size_sum[axis]) /
+                                               parent->num_fill_children[axis]);
+            } else {
+                node->computed_size[axis] = parent->computed_size[axis];
+            }
+        }
+        node = node->next;
+    }
+}
+
+void ui_calculate_percentage_and_fill_remaining() {
+    UI_Widget *current = ui_manager->root;
+    
+    // breadth-first level order per node traversal
+    // this is kinda more like depth-first, except we process the levels as we pass them
     bool32 revisiting = false;
     while (current) {
         UI_Widget *parent = current->parent;
 
+        if (!current->prev && !revisiting) {
+            calculate_percentage_and_fill_remaining_on_level(current, UI_WIDGET_X_AXIS);
+            calculate_percentage_and_fill_remaining_on_level(current, UI_WIDGET_Y_AXIS);
+        }
+        
         if (current->first && !revisiting) {
             current = current->first;
         } else {
-            if (revisiting) {
-                if (!current->next) {
-                    // do the per level shit here
-                } else {
-                    revisiting = false;
-                }
-            } else {
-                // we're at a leaf node
-                if (!current->next && !current->first) {
-                    // compute it
-                }
-            }
-            
-#if 0
-            if (!current->first || revisiting) {
-                calculate_child_dependent_size(current, UI_WIDGET_X_AXIS);
-                calculate_child_dependent_size(current, UI_WIDGET_Y_AXIS);
-                
-                revisiting = false;
-            }
-#endif
-            
             if (current->next) {
                 current = current->next;
+                revisiting = false;
             } else {
                 if (!parent) return;
 
@@ -1427,7 +1468,8 @@ void ui_post_update() {
     ui_calculate_standalone_sizes();
     ui_calculate_ancestor_dependent_sizes();
     ui_calculate_child_dependent_sizes();
-    ui_calculate_ancestor_dependent_sizes_part_2();
+    ui_calculate_percentage_and_fill_remaining();
+    //ui_calculate_ancestor_dependent_sizes_part_2();
     ui_calculate_positions();
     ui_force_widgets_to_top_of_layers();
     

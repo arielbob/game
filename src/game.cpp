@@ -945,7 +945,6 @@ void update_game(Controller_State *controller_state, Sound_Output *sound_output,
 }
 
 void draw_ui(real32 dt) {
-    test_depth_first_traversal();
     draw_editor(Context::controller_state);
 
     // fps counter

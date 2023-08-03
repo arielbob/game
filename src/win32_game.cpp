@@ -70,7 +70,7 @@ global_variable Render_State *render_state;
 //#include "editor_ui.cpp"
 #include "asset_library.cpp"
 #include "editor.cpp"
-#include "tree-test.cpp"
+//#include "tree-test.cpp"
 #include "game.cpp"
 
 global_variable int64 perf_counter_frequency;

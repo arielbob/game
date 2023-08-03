@@ -19,7 +19,7 @@ void calculate_percentage_and_fill_remaining_on_level(UI_Widget *level_node) {
 
 // this is "breadth-first" but only for the children of each node
 void ui_calculate_percentage_and_fill_remaining(UI_Widget *current) {
-    // depth-first level order traversal
+    // breadth-first level order per node traversal
     bool32 revisiting = false;
     while (current) {
         UI_Widget *parent = current->parent;
