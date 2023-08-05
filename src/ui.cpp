@@ -128,6 +128,10 @@ inline UI_Widget *ui_get_widget_prev_frame(UI_id id) {
     return ui_table_get(ui_manager->last_frame_widget_table, id);
 }
 
+inline UI_Widget *ui_get_widget_prev_frame(char *name, int32 index) {
+    return ui_table_get(ui_manager->last_frame_widget_table, make_ui_id(name, index));
+}
+
 void ui_table_add(UI_Widget **table, UI_Widget *widget) {
     if (ui_id_is_empty(widget->id)) return;
     
@@ -968,7 +972,7 @@ void calculate_child_dependent_size(UI_Widget *widget, UI_Widget_Axis axis) {
     UI_Widget *parent = widget->parent;
 
     if (parent) {        
-        if (parent->size_type[axis] == UI_SIZE_FIT_CHILDREN) {
+        if (parent->size_type[axis] == UI_SIZE_FIT_CHILDREN || parent->size_type[axis] == UI_SIZE_FILL_REMAINING) {
             // if the current axis matches with the parent's layout axis, then increase the parent's
             // size on that axis.
             bool32 axis_matches_parent_layout = ((axis == UI_WIDGET_X_AXIS && parent->layout_type == UI_LAYOUT_HORIZONTAL) ||
@@ -1469,7 +1473,6 @@ void ui_post_update() {
     ui_calculate_ancestor_dependent_sizes();
     ui_calculate_child_dependent_sizes();
     ui_calculate_percentage_and_fill_remaining();
-    //ui_calculate_ancestor_dependent_sizes_part_2();
     ui_calculate_positions();
     ui_force_widgets_to_top_of_layers();
     

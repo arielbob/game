@@ -641,11 +641,12 @@ void draw_texture_library() {
             }
         } ui_pop_widget();
 
-        ui_y_pad(5.0f);
+        ui_y_pad(1.0f);
 
         UI_Scrollable_Region_Theme list_scroll_region_theme = {};
         list_scroll_region_theme.background_color = rgb_to_vec4(0, 0, 0);
         list_scroll_region_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
+        list_scroll_region_theme.hide_scrollbar_until_necessary = false;
 
         push_scrollable_region(list_scroll_region_theme,
                                make_string("texture-list-scroll-region"));
@@ -654,8 +655,8 @@ void draw_texture_library() {
         {
             UI_Theme texture_tile = {};
             texture_tile.layout_type = UI_LAYOUT_VERTICAL;
-            texture_tile.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
-            texture_tile.semantic_size = { 0.0f, 90.f };
+            texture_tile.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
+            texture_tile.semantic_size = { 0.0f, 0.0f };
             texture_tile.background_color = DEFAULT_BUTTON_BACKGROUND;
             texture_tile.hot_background_color = DEFAULT_BUTTON_HOT_BACKGROUND;
             texture_tile.active_background_color = DEFAULT_BUTTON_ACTIVE_BACKGROUND;
@@ -666,6 +667,15 @@ void draw_texture_library() {
             int32 tiles_per_row = 3;
             // don't use i for the button indices because that's for buckets and
             // not the actual textures we've visited
+
+            // kind of hacky way to get the thumbnails to be squares because getting sizes to match in
+            // the UI code is quite complicated
+            UI_Widget *computed_thumbnail = ui_get_widget_prev_frame("texture-thumbnail", 0);
+            real32 thumbnail_height = 0.0f;
+            if (computed_thumbnail) {
+                thumbnail_height = computed_thumbnail->computed_size.x;
+            }
+
             for (int32 i = 0; i < NUM_TEXTURE_BUCKETS; i++) {
                 Texture *current = asset_manager->texture_table[i];
                 while (current) {
@@ -698,10 +708,13 @@ void draw_texture_library() {
                             ui_push_padded_area({ 5.0f, 5.0f, 5.0f, 5.0f });
                             {
                                 UI_Theme texture_thumbnail = {};
-                                texture_thumbnail.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
+                                texture_thumbnail.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
                                 texture_thumbnail.texture_name = texture_name;
-                                ui_add_widget("", texture_thumbnail,
-                                              UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_USE_TEXTURE);
+                                texture_thumbnail.semantic_size.y = thumbnail_height;
+                                ui_add_widget("texture-thumbnail", texture_thumbnail,
+                                              UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_USE_TEXTURE,
+                                              num_textures_listed);
+                                ui_y_pad(5.0f);
                                 do_text(texture_name);
                             }
                             ui_pop_widget();
