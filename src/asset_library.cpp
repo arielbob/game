@@ -661,6 +661,11 @@ void draw_texture_library() {
             texture_tile.hot_background_color = DEFAULT_BUTTON_HOT_BACKGROUND;
             texture_tile.active_background_color = DEFAULT_BUTTON_ACTIVE_BACKGROUND;
 
+            UI_Theme selected_texture_tile = texture_tile;
+            selected_texture_tile.background_color = selected_item_theme.background_color;
+            selected_texture_tile.hot_background_color = selected_item_theme.hot_background_color;
+            selected_texture_tile.active_background_color = selected_item_theme.active_background_color;
+
             UI_Widget *row_widget = NULL;
             int32 tiles_in_row = 0;
             bool32 first_row = true;
@@ -687,7 +692,7 @@ void draw_texture_library() {
                             // select the first one by default
                             asset_library_state->selected_texture_id = current->id;
                         }
-                            
+
                         char *texture_name = to_char_array((Allocator *) &ui_manager->frame_arena,
                                                         current->name);
 
@@ -701,7 +706,8 @@ void draw_texture_library() {
                         }
 
                         UI_Container_Theme theme = {};
-                        UI_Widget *tile = ui_push_widget("texture-library-tile", texture_tile,
+                        UI_Widget *tile = ui_push_widget("texture-library-tile",
+                                                         is_selected ? selected_texture_tile : texture_tile,
                                                          UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE,
                                                          num_textures_listed);
                         {
@@ -720,7 +726,13 @@ void draw_texture_library() {
                             ui_pop_widget();
                         } ui_pop_widget();
 
-                        ui_interact(tile);
+                        UI_Interact_Result interact = ui_interact(tile);
+                        bool32 pressed = interact.released;
+
+                        if (pressed || is_selected) {
+                            asset_library_state->selected_texture_id = current->id;
+                            selected_texture = current;
+                        }
 
                         ui_x_pad(1.0f);
 
@@ -735,18 +747,6 @@ void draw_texture_library() {
                             }
                         }
                         
-                        #if 0
-                        bool32 pressed = do_text_button(texture_name,
-                                                        is_selected ? selected_item_theme : item_theme,
-                                                        "asset-library-texture-list-item",
-                                                        num_textures_listed);
-
-                        if (pressed || is_selected) {
-                            asset_library_state->selected_texture_id = current->id;
-                            selected_texture = current;
-                        }
-                        #endif
-
                         num_textures_listed++;
                     }
 

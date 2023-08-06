@@ -287,10 +287,6 @@ struct UI_Scrollable_Region_Theme {
     bool32 hide_scrollbar_until_necessary = true;
 };
 
-/*
-  window size / child height * window_size = scrollbar height
-  
- */
 struct UI_Scrollable_Region_State {
     real32 y_offset;         // offset of the inner region
     real32 relative_start_y; // start position of the click on the handle
