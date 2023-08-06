@@ -206,30 +206,7 @@ Texture *get_texture(String name) {
     return NULL;
 }
 
-void get_texture_names(Allocator *allocator, char **names, int max_names, int *num_names) {
-    int32 num_texture_names = 0;
-    for (int32 i = 0; i < NUM_TEXTURE_BUCKETS; i++) {
-        Texture *current = asset_manager->texture_table[i];
-        bool32 should_exit = false;
-        while (current) {
-            if (num_texture_names >= max_names) {
-                assert(num_texture_names < max_names);
-                should_exit = true;
-                break;
-            }
-            names[num_texture_names++] = to_char_array(allocator, current->name);
-            current = current->table_next;
-        }
-
-        if (should_exit) {
-            break;
-        }
-    }
-
-    *num_names = num_texture_names;
-}
-
-void delete_texture(int32 id) {
+void delete_texture_no_replace(int32 id) {
     Texture *texture = get_texture(id);
 
     if (!texture) {
@@ -254,6 +231,50 @@ void delete_texture(int32 id) {
     deallocate(asset_manager->allocator, texture);
 
     r_unload_texture(id);
+}
+
+void get_texture_names(Allocator *allocator, char **names, int max_names, int *num_names) {
+    int32 num_texture_names = 0;
+    for (int32 i = 0; i < NUM_TEXTURE_BUCKETS; i++) {
+        Texture *current = asset_manager->texture_table[i];
+        bool32 should_exit = false;
+        while (current) {
+            if (num_texture_names >= max_names) {
+                assert(num_texture_names < max_names);
+                should_exit = true;
+                break;
+            }
+            names[num_texture_names++] = to_char_array(allocator, current->name);
+            current = current->table_next;
+        }
+
+        if (should_exit) {
+            break;
+        }
+    }
+
+    *num_names = num_texture_names;
+}
+
+void replace_texture_if_equal(int32 *texture_id_to_replace, int32 id) {
+    if (*texture_id_to_replace == id) {
+        *texture_id_to_replace = 0;
+    }
+}
+
+void delete_texture(int32 id) {
+    delete_texture_no_replace(id);
+    
+    for (int32 i = 0; i < NUM_MATERIAL_BUCKETS; i++) {
+        Material *current = asset_manager->material_table[i];
+        while (current) {
+            replace_texture_if_equal(&current->albedo_texture_id, id);
+            replace_texture_if_equal(&current->metalness_texture_id, id);
+            replace_texture_if_equal(&current->roughness_texture_id, id);
+
+            current = current->table_next;
+        }
+    }
 }
 
 #if 0
@@ -295,7 +316,7 @@ bool32 texture_exists(String name) {
     return texture != NULL;
 }
 
-Texture *add_texture(String name, String filename, Texture_Type type, int32 id = -1) {
+Texture *add_texture(String name, String filename, Texture_Type type, int32 id = 0) {
     if (texture_exists(name)) {
         assert(!"Texture with name already exists.");
         return NULL;
@@ -304,11 +325,13 @@ Texture *add_texture(String name, String filename, Texture_Type type, int32 id =
     Texture *texture  = (Texture *) allocate(asset_manager->allocator, sizeof(Texture), true);
 
     if (type == Texture_Type::LEVEL) {
-        assert(id == -1);
-        id = asset_manager->total_textures_added_ever++;
+        if (id <= 0) {
+            id = ++asset_manager->total_textures_added_ever;
+        }
     } else {
-        // non-level assets have negative IDs
-        assert(id < 0);
+        // non-level assets have non-positive IDs
+        // we make the default debug texture 0 just for easy initialization
+        assert(id <= 0);
     }
 
     Texture *found_texture = get_texture(id);
@@ -339,6 +362,21 @@ Texture *add_texture(String name, String filename, Texture_Type type, int32 id =
 
 inline Texture *add_texture(char *name, char *filename, Texture_Type type, int32 id = -1) {
     return add_texture(make_string(name), make_string(filename), type, id);
+}
+
+void set_texture_file(int32 id, String new_filename) {
+    // this is based on set_mesh_file()
+    Texture *texture = get_texture(id);
+    assert(texture);
+
+    Allocator *temp_region = begin_region();
+    String name = copy(temp_region, texture->name);
+    Texture_Type type = texture->type;
+
+    delete_texture_no_replace(id);
+    add_texture(name, new_filename, type, id);
+
+    end_region(temp_region);
 }
 
 bool32 material_exists(String name) {

@@ -32,10 +32,10 @@
 #define ENGINE_DEFAULT_CUBE_MESH_ID     -13
 
 // engine textures
-#define ENGINE_DEBUG_TEXTURE_ID             -1
-#define ENGINE_LIGHTBULB_TEXTURE_ID         -2
-#define ENGINE_EDITOR_DOWN_ARROW_TEXTURE_ID -3
-#define ENGINE_EDITOR_CHECK_TEXTURE_ID      -4
+#define ENGINE_DEBUG_TEXTURE_ID             0
+#define ENGINE_LIGHTBULB_TEXTURE_ID         -1
+#define ENGINE_EDITOR_DOWN_ARROW_TEXTURE_ID -2
+#define ENGINE_EDITOR_CHECK_TEXTURE_ID      -3
 
 
 // LEVEL is for meshes specifically loaded in for a level by the user or by a level file.

@@ -32,7 +32,7 @@ UI_Widget *make_widget(UI_id id, UI_Theme theme, uint32 flags) {
     widget->background_color        = theme.background_color;
     widget->hot_background_color    = theme.hot_background_color;
     widget->active_background_color = theme.active_background_color;
-    widget->texture_name            = theme.texture_name;
+    widget->texture_id              = theme.texture_id;
     
     widget->text_color              = theme.text_color;
     widget->font                    = theme.font;
@@ -121,6 +121,10 @@ UI_Widget *ui_table_get(UI_Widget **table, UI_id id) {
 // from current frame
 inline UI_Widget *ui_get_widget(UI_id id) {
     return ui_table_get(ui_manager->widget_table, id);
+}
+
+inline UI_Widget *ui_get_widget(char *name, int32 index) {
+    return ui_table_get(ui_manager->widget_table, make_ui_id(name, index));
 }
 
 // from previous frame
@@ -1335,7 +1339,7 @@ void ui_frame_init(real32 dt) {
     // rendering. we use the ui_manager's frame arena for ui state stuff.
     // TODO: replace this with NULL_THEME and set the size manually
     UI_Theme root_theme = {
-        {}, {}, {}, "texture_default",
+        {}, {}, {}, 0,
         {}, NULL, NULL,
         {}, 0, 0, 0, 0,
         UI_LAYOUT_NONE,
@@ -2469,7 +2473,7 @@ bool32 do_checkbox(bool32 checked,
     check_theme.size_type = { UI_SIZE_PERCENTAGE, UI_SIZE_PERCENTAGE };
     check_theme.semantic_size = { 0.5f, 0.5f };
     check_theme.background_color = theme.check_color;
-    check_theme.texture_name = "editor_check";
+    check_theme.texture_id = ENGINE_EDITOR_CHECK_TEXTURE_ID;
 
     UI_id id = make_ui_id(id_string, index);
     
@@ -2913,7 +2917,7 @@ int32 do_dropdown(UI_Dropdown_Theme theme,
                     UI_Theme arrow_theme = {};
                     arrow_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_ABSOLUTE };
                     arrow_theme.semantic_size = { 15.0f, 15.0f };
-                    arrow_theme.texture_name = "editor_down_arrow";
+                    arrow_theme.texture_id = ENGINE_EDITOR_DOWN_ARROW_TEXTURE_ID;
                     arrow_theme.background_color = rgb_to_vec4(255, 0, 0);
 
                     ui_add_widget("", arrow_theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_USE_TEXTURE);

@@ -10,8 +10,8 @@ mesh "low-poly suzanne" ".\blender\suzanne.mesh"
 }
 
 textures {
-texture "debug" "src/textures/debug_texture.png"
 texture "white" "src/textures/white.bmp"
+texture "color picker screenshot" "..\..\Pictures\color-picker.png"
 }
 
 materials {
@@ -40,9 +40,9 @@ roughness 0.010563
 
 material {
 name "pink check"
+use_albedo_texture 1
+albedo_texture "color picker screenshot"
 albedo_color 1.000000 0.143333 0.777266
-use_metalness_texture 1
-metalness_texture "debug"
 metalness 0.000000
 roughness 0.021126
 }
@@ -64,7 +64,7 @@ position -0.380305 0.937249 2.148195
 rotation 0.963133 0.260742 -0.060243 0.027560
 scale 2.000000 2.000000 2.000000
 mesh "suzanne2"
-material "default_material"
+material "pink check"
 }
 entity {
 position 1.983263 0.000000 -2.828268

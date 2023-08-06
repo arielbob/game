@@ -152,7 +152,7 @@ struct UI_Theme {
     Vec4 background_color;
     Vec4 hot_background_color;
     Vec4 active_background_color;
-    char *texture_name;
+    int32 texture_id;
     
     Vec4 text_color;
     char *font;
@@ -407,7 +407,7 @@ struct UI_Widget {
     Vec4 background_color;
     Vec4 hot_background_color;
     Vec4 active_background_color;
-    char *texture_name;
+    int32 texture_id;
     
     Vec4 text_color;
     char *font;
@@ -693,7 +693,7 @@ struct UI_Manager {
 
 char *default_font = "calibri14";
 UI_Theme NULL_THEME = {
-    {}, {}, {}, "texture_default",
+    {}, {}, {}, 0,
     {}, default_font, NULL,
     {}, 0, 0, 0, 0,
     UI_LAYOUT_NONE,

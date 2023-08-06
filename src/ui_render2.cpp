@@ -394,8 +394,7 @@ void ui_render_widget_to_commands(UI_Widget *widget, UI_Scissor_State *scissor_s
                           &rendering_mode);
 
         if (widget->flags & UI_WIDGET_USE_TEXTURE) {
-            assert(widget->texture_name);
-            Texture *texture = get_texture(make_string(widget->texture_name));
+            Texture *texture = get_texture(widget->texture_id);
             assert(texture);
 
             command.texture_type = UI_Texture_Type::UI_TEXTURE_IMAGE;

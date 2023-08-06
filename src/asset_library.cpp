@@ -687,7 +687,7 @@ void draw_texture_library() {
                     if (current->type == Texture_Type::LEVEL) {
                         assert(num_textures_listed < MAX_TEXTURES);
                         texture_ids[num_textures_listed] = current->id;
-                            
+
                         if (num_textures_listed == 0 && asset_library_state->selected_texture_id < 0) {
                             // select the first one by default
                             asset_library_state->selected_texture_id = current->id;
@@ -715,7 +715,7 @@ void draw_texture_library() {
                             {
                                 UI_Theme texture_thumbnail = {};
                                 texture_thumbnail.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
-                                texture_thumbnail.texture_name = texture_name;
+                                texture_thumbnail.texture_id = current->id;
                                 texture_thumbnail.semantic_size.y = thumbnail_height;
                                 ui_add_widget("texture-thumbnail", texture_thumbnail,
                                               UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_USE_TEXTURE,
@@ -830,7 +830,7 @@ void draw_texture_library() {
                         if (filepath_result.committed) {
                             if (filepath_result.text.length > 0) {
                                 if (platform_file_exists(filepath_result.text)) {
-                                    //set_texture_file(selected_texture->id, filepath_result.text);
+                                    set_texture_file(selected_texture->id, filepath_result.text);
                                 } else {
                                     add_message(Context::message_manager, make_string("File does not exist!"));
                                 }
@@ -855,7 +855,7 @@ void draw_texture_library() {
 
                                 String relative_path_string = make_string(temp_region, relative_path);
 
-                                //set_texture_file(selected_texture->id, relative_path_string);
+                                set_texture_file(selected_texture->id, relative_path_string);
                             }
                         }
 
@@ -888,6 +888,13 @@ void draw_texture_library() {
 
                     for (int32 i = 0; i < num_textures_listed; i++) {
                         if (texture_ids[i] == id_to_delete) {
+                            // reset the thumbnail texture so the widget isn't using a deleted texture
+                            // NOTE: if we ever delete textures from outside of the texture library, we
+                            //       may need to rethink this..
+                            UI_Widget *thumbnail = ui_get_widget("texture-thumbnail", i);
+                            assert(thumbnail);
+                            thumbnail->texture_id = 0;
+                            
                             if (num_textures_listed >= 1) {
                                 int32 new_index;
                                 if (i == 0) {
