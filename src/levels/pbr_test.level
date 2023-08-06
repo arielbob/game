@@ -11,7 +11,7 @@ mesh "low-poly suzanne" ".\blender\suzanne.mesh"
 
 textures {
 texture "white" "src/textures/white.bmp"
-texture "color picker screenshot" "..\..\Pictures\color-picker.png"
+texture "grass" ".\src\textures\grass.png"
 }
 
 materials {
@@ -41,7 +41,7 @@ roughness 0.010563
 material {
 name "pink check"
 use_albedo_texture 1
-albedo_texture "color picker screenshot"
+albedo_texture "grass"
 albedo_color 1.000000 0.143333 0.777266
 metalness 0.000000
 roughness 0.021126
@@ -60,41 +60,18 @@ roughness 0.035210
 
 entities {
 entity {
-position -0.380305 0.937249 2.148195
-rotation 0.963133 0.260742 -0.060243 0.027560
-scale 2.000000 2.000000 2.000000
-mesh "suzanne2"
-material "pink check"
-}
-entity {
-position 1.983263 0.000000 -2.828268
-rotation 0.153559 0.104728 0.937697 -0.293558
-scale 1.000000 1.000000 1.000000
-mesh "low-poly suzanne"
-material "shiny debug"
-}
-entity {
-position 3.183504 0.000000 -0.193760
+position -0.709515 0.000000 -2.470970
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
-mesh "cube"
-material "default_material"
+mesh "gizmo_sphere"
+material "beige"
 }
 entity {
-position -3.136914 0.480708 -1.265053
-rotation 0.888306 0.153929 -0.418817 0.108676
+position 2.510092 0.073614 1.411166
+rotation 0.381343 -0.009363 -0.922670 0.056304
 scale 1.000000 1.000000 1.000000
-mesh "low-poly suzanne"
-material "shiny red"
-}
-entity {
-position -3.558386 3.283484 2.876131
-rotation 1.000000 0.000000 0.000000 0.000000
-scale 1.000000 1.000000 1.000000
-light_type point
-light_color 0.040000 0.021280 0.014000
-falloff_start 0.000000
-falloff_end 10.000000
+mesh "tree"
+material "beige"
 }
 entity {
 position 0.177281 5.683138 -3.576767
@@ -106,18 +83,41 @@ falloff_start 0.000000
 falloff_end 7.500000
 }
 entity {
-position 2.510092 0.073614 1.411166
-rotation 0.381343 -0.009363 -0.922670 0.056304
-scale 1.000000 1.000000 1.000000
-mesh "tree"
-material "beige"
-}
-entity {
-position -0.709515 0.000000 -2.470970
+position -3.558386 3.283484 2.876131
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
-mesh "gizmo_sphere"
-material "beige"
+light_type point
+light_color 0.040000 0.021280 0.014000
+falloff_start 0.000000
+falloff_end 10.000000
+}
+entity {
+position -3.136914 0.480708 -1.265053
+rotation 0.888306 0.153929 -0.418817 0.108676
+scale 1.000000 1.000000 1.000000
+mesh "low-poly suzanne"
+material "shiny red"
+}
+entity {
+position 3.183504 0.000000 -0.193760
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+mesh "cube"
+material "default_material"
+}
+entity {
+position 1.983263 0.000000 -2.828268
+rotation 0.153559 0.104728 0.937697 -0.293558
+scale 1.000000 1.000000 1.000000
+mesh "low-poly suzanne"
+material "shiny debug"
+}
+entity {
+position -0.380305 0.937249 2.148195
+rotation 0.963133 0.260742 -0.060243 0.027560
+scale 2.000000 2.000000 2.000000
+mesh "suzanne2"
+material "pink check"
 }
 }
 
