@@ -987,12 +987,14 @@ void update(Controller_State *controller_state,
     if (platform_window_has_focus() && was_clicked(controller_state->key_f5)) {
         if (game_state->mode == Game_Mode::EDITING) {
             game_state->mode = Game_Mode::PLAYING;
+            platform_set_cursor_visible(false);
         } else {
             game_state->mode = Game_Mode::EDITING;
 
-            if (!game_state->editor_state.use_freecam) {
-                platform_set_cursor_visible(true);
-            }
+            // set freecam to false; i feel like this is less disorienting if you switch to play mode
+            // while in freecam mode then switch back to editing mode.
+            game_state->editor_state.use_freecam = false;
+            platform_set_cursor_visible(!game_state->editor_state.use_freecam);
 
             // debug
             #if 0

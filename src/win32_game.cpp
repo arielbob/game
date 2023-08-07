@@ -76,6 +76,7 @@ global_variable Render_State *render_state;
 global_variable int64 perf_counter_frequency;
 global_variable bool32 is_running = true;
 global_variable bool32 is_paused = true;
+global_variable bool32 is_cursor_visible = true;
 global_variable HWND window;
 
 typedef char GLchar;
@@ -904,12 +905,15 @@ void platform_set_cursor_pos(Vec2 cursor_pos) {
     SetCursorPos(new_cursor_pos.x, new_cursor_pos.y);
 }
 
-// NOTE: since cursor visibility on windows is actually dependent on a counter that is incremented and decremented
-//       by ShowCursor(), you should NOT call this procedure every loop. we only want the counter to
-//       either be at 0 or 1 so that we don't have the counter extremely large or small and so that we
-//       don't have to loop to increment/decrement it to have a nice API.
 void platform_set_cursor_visible(bool32 is_visible) {
-    ShowCursor(is_visible);
+    // since cursor visibility on windows is actually dependent on a counter that is incremented and decremented
+    // by ShowCursor(), we only call ShowCursor if is_visible is different from is_cursor_visible. this makes
+    // the API a lot nicer because you can just show and hide the cursor whenever you want and it'll work how
+    // you expect it.
+    if (is_visible != is_cursor_visible) {
+        ShowCursor(is_visible);
+        is_cursor_visible = is_visible;
+    }
 }
 
 inline bool32 platform_window_has_focus() {
