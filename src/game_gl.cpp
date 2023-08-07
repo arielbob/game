@@ -3447,161 +3447,70 @@ void gl_render_editor(GL_Framebuffer framebuffer,
     end_region(temp_region);
 }
 
-#if 0
-void gl_render_game(GL_State *gl_state, Render_State *render_state, GL_Framebuffer framebuffer,
-                    Game_State *game_state) {
-    Asset_Manager *asset_manager = &game_state->asset_manager;
+void gl_render_game() {
+    // this is all copied from gl_render_editor(), but modified to take out the editor specific stuff
     Display_Output display_output = render_state->display_output;
+    Level *level = &game_state->level;
     
     Allocator *temp_region = begin_region();
 
-    // TODO: if we ever change levels in the game, we should clear its GPU data, but since everything in the game
-    //       is static right now, we only handle loading and not unloading.
+    // TODO: will need to use different macro when adding more lights
+    Vec3 *light_positions = (Vec3 *) allocate(temp_region, sizeof(Vec3)*MAX_POINT_LIGHTS);
+    int32 current_light_index = 0;
 
-    // NOTE: we currently share the same asset_manager when switching from edit mode to game mode.
+    // fill in UBO with point light data
+    uint32 padded_point_light_struct_size = sizeof(GL_Point_Light) + 8;
+    uint32 ubo_offset = 16; // start at 16 because we set num_point_lights after adding the lights
+    uint8 *ubo_buffer = (uint8 *) allocate(temp_region, GLOBAL_UBO_SIZE);
 
-    // load level meshes
-    {
-        FOR_ENTRY_POINTERS(int32, Mesh, asset_manager->mesh_table) {
-            int32 mesh_key = entry->key;
-            Mesh *mesh = &entry->value;
-            
-            if (!mesh->is_loaded) {
-                if (!hash_table_exists(gl_state->mesh_table, mesh_key)) {
-                    GL_Mesh gl_mesh = gl_load_mesh(gl_state, *mesh);
-                    hash_table_add(&gl_state->mesh_table, mesh_key, gl_mesh);
-                } else {
-                    debug_print("Mesh \"%s\" already loaded.\n", mesh->name);
-                }
+    int32 num_point_lights = 0;
+    Entity *current = level->entities;
+    while (current) {
+        if (current->flags & ENTITY_LIGHT) {
+            if (current->light_type == LIGHT_POINT) {
+                num_point_lights++;
+                assert(num_point_lights <= MAX_POINT_LIGHTS);
 
-                mesh->is_loaded = true;
+                GL_Point_Light gl_point_light = {
+                    make_vec4(current->transform.position, 1.0f),
+                    make_vec4(current->light_color, 1.0f),
+                    current->falloff_start,
+                    current->falloff_end
+                };
+                memcpy(ubo_buffer + ubo_offset, &gl_point_light, sizeof(GL_Point_Light));
+                ubo_offset += padded_point_light_struct_size;
             }
         }
+
+        current = current->next;
     }
+    *((int32 *) ubo_buffer) = num_point_lights;
 
-    // load textures
-    {
-        FOR_ENTRY_POINTERS(int32, Texture, asset_manager->texture_table) {
-            int32 texture_key = entry->key;
-            Texture *texture = &entry->value;
-            
-            if (!texture->is_loaded) {
-                if (!hash_table_exists(gl_state->texture_table, texture_key)) {
-                    GL_Texture gl_texture = gl_load_texture(gl_state, *texture);
-                    hash_table_add(&gl_state->texture_table, texture_key, gl_texture);
-                } else {
-                    debug_print("Texture \"%s\" already loaded.\n", texture->name);
-                }
-
-                texture->is_loaded = true;
-            }
-        }
-    }
-
-    // delete GL mesh data for meshes that no longer exist in level
-    {
-        FOR_ENTRY_POINTERS(int32, GL_Mesh, gl_state->mesh_table) {
-            int32 mesh_key = entry->key;
-            if (!hash_table_exists(asset_manager->mesh_table, mesh_key)) {
-                hash_table_remove(&gl_state->mesh_table, mesh_key);
-                gl_delete_mesh(entry->value);
-            }
-        }
-    }
-
-    // delete GL texture data for textures that no longer exist in level
-    {
-        FOR_ENTRY_POINTERS(int32, GL_Texture, gl_state->texture_table) {
-            int32 texture_key = entry->key;
-            if (!hash_table_exists(asset_manager->texture_table, texture_key)) {
-                hash_table_remove(&gl_state->texture_table, texture_key);
-                gl_delete_texture(entry->value);
-            }
-        }
-    }
-
-    // gather entities by type
-    Linked_List<Point_Light_Entity *> point_light_entities;
-    make_and_init_linked_list(Point_Light_Entity *, &point_light_entities, temp_region);
-    Linked_List<Normal_Entity *> normal_entities;
-    make_and_init_linked_list(Normal_Entity *, &normal_entities, temp_region);
-
-    Game_Level *level = &game_state->level;
-    FOR_LIST_NODES(Entity *, level->entities) {
-        Entity *entity = current_node->value;
-        switch (entity->type) {
-            case ENTITY_NORMAL: {
-                add(&normal_entities, (Normal_Entity *) entity);
-            } break;
-            case ENTITY_POINT_LIGHT: {
-                add(&point_light_entities, (Point_Light_Entity *) entity);
-            } break;
-            default: {
-                assert(!"Unhandled entity type.");
-            }
-        }
-    }
-
-    glBindBuffer(GL_UNIFORM_BUFFER, gl_state->global_ubo);
-    int64 ubo_offset = 0;
-    glBufferSubData(GL_UNIFORM_BUFFER, (int32 *) ubo_offset, sizeof(int32),
-                    &point_light_entities.num_entries);
-    // NOTE: not sure why we use 16 here, instead of 32, which is the size of the GL_Point_Light struct.
-    //       i think we just use the aligned offset of the first member of the struct, which is a vec4, so we offset
-    //       by 16 since it's the closest multiple.
-    ubo_offset += 16;
-    FOR_LIST_NODES(Point_Light_Entity *, point_light_entities) {
-        Point_Light_Entity *entity = current_node->value;
-        if (entity->type == ENTITY_POINT_LIGHT) {
-            // TODO: we may just want to replace position and light_color with vec4s in Point_Light_Entity.
-            //       although this would be kind of annoying since we would have to modify the Transform struct.
-            GL_Point_Light gl_point_light = {
-                make_vec4(entity->transform.position, 1.0f),
-                make_vec4(entity->light_color, 1.0f),
-                entity->falloff_start,
-                entity->falloff_end
-            };
-
-            glBufferSubData(GL_UNIFORM_BUFFER, (int32 *) ubo_offset,
-                            sizeof(GL_Point_Light), &gl_point_light);
-            ubo_offset += sizeof(GL_Point_Light) + 8; // add 8 bytes of padding so that it aligns to size of vec4
-        }
-    }
-
+    glBindBuffer(GL_UNIFORM_BUFFER, g_gl_state->global_ubo);
+    // only need to send up to ubo_offset bytes (this assumes ubo_offset is right after final byte set)
+    glBufferSubData(GL_UNIFORM_BUFFER, (int32 *) 0, ubo_offset, ubo_buffer);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-    // entities
-    {
-        FOR_LIST_NODES(Normal_Entity *, normal_entities) {
-            Normal_Entity *entity = current_node->value;
+    // render entities
+    current = level->entities;
 
-            int32 mesh_id = entity->mesh_id;
-
-            Material material;
-            if (entity->material_id >= 0) {
-                material = get_material(asset_manager, entity->material_id);
-            } else {
-                material = default_material;
-            }
-
-            gl_draw_mesh(gl_state, render_state,
-                         mesh_id, material,
-                         entity->transform);
+    // TODO: maybe just have one loop and do everything there?
+    while (current) {
+        bool32 has_mesh     = current->flags & ENTITY_MESH;
+        bool32 has_material = current->flags & ENTITY_MATERIAL;
+        bool32 has_collider = current->flags & ENTITY_COLLIDER;
+        
+        if (has_mesh && has_material) {
+            Material *material = get_material(current->material_id);
+            assert(material);
+            gl_draw_mesh(current->mesh_id, material, current->transform);
         }
-    }
 
-    Player *player = &game_state->player;
-    Transform player_circle_transform = make_transform(player->position, make_quaternion(-90.0f, x_axis),
-                                                       make_vec3(Player_Constants::capsule_radius,
-                                                                 Player_Constants::capsule_radius,
-                                                                 1.0f));
-    glDisable(GL_DEPTH_TEST);
-    gl_draw_circle(gl_state, render_state, player_circle_transform, make_vec4(0.0f, 1.0f, 1.0f, 1.0f));
-    glEnable(GL_DEPTH_TEST);    
+        current = current->next;
+    }
 
     end_region(temp_region);    
 }
-#endif
 
 void gl_render(Controller_State *controller_state,
                Win32_Sound_Output *win32_sound_output) {
@@ -3656,13 +3565,10 @@ void gl_render(Controller_State *controller_state,
     glLineWidth(1.0f);
     
     if (game_state->mode == Game_Mode::PLAYING) {
-        #if 0
-        gl_render_game(gl_state, render_state, gl_state->msaa_framebuffer, game_state);
-
+        gl_render_game();
         glDisable(GL_DEPTH_TEST);
-        //gl_draw_ui(gl_state, asset_manager, render_state, &game_state->ui_manager);
+        gl_draw_ui();
         glEnable(GL_DEPTH_TEST);
-        #endif
     } else {
         gl_render_editor(g_gl_state->msaa_framebuffer,
                          &game_state->editor_state);

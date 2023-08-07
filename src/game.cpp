@@ -945,8 +945,6 @@ void update_game(Controller_State *controller_state, Sound_Output *sound_output,
 }
 
 void draw_ui(real32 dt) {
-    draw_editor(Context::controller_state);
-
     // fps counter
     ui_push_existing_widget(ui_manager->always_on_top_layer);
     {
@@ -1016,9 +1014,8 @@ void update(Controller_State *controller_state,
     //update_render_state(render_state);
     
     if (game_state->mode == Game_Mode::EDITING) {
-        //asset_manager = &game_state->editor_state.asset_manager;
         update_editor(controller_state, dt);
-        //draw_editor(game_state, controller_state);
+        draw_editor(Context::controller_state);
         game_state->editor_state.is_startup = false;
     } else {
         //asset_manager = &game_state->asset_manager;
@@ -1034,15 +1031,6 @@ void update(Controller_State *controller_state,
     update_messages(&game_state->message_manager, dt);
     draw_messages(&game_state->message_manager, display_output->height - 175.0f);
     
-    //clear_hot_if_gone(ui_manager);
-    //clear_active_if_gone(ui_manager);
-
-    // NOTE: it's fine to call delete_state_if_gone() here. this won't cause any accesses of deallocated memory
-    //       when we render the UI, since if some element isn't in the push_buffer, which is also the condition
-    //       that we delete its state, it won't be rendered.
-    //delete_state_if_gone(ui_manager);
-    //assert(ui_manager->current_layer == 0);
-
     ui_post_update();
 
     if (game_state->mode == Game_Mode::EDITING) {
