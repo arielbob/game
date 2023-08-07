@@ -318,11 +318,11 @@ bool32 capsule_intersects_mesh(Capsule capsule, Mesh mesh, Transform transform,
 
 #if DEBUG_SHOW_COLLISION_LINES
         Vec4 triangle_color = make_vec4(1.0f, 1.0f, 1.0f, 1.0f);
-        add_debug_line(&Context::game_state->debug_state,
+        add_debug_line(&game_state->debug_state,
                        smallest_penetration_triangle[0], smallest_penetration_triangle[1], triangle_color);
-        add_debug_line(&Context::game_state->debug_state,
+        add_debug_line(&game_state->debug_state,
                        smallest_penetration_triangle[1], smallest_penetration_triangle[2], triangle_color);
-        add_debug_line(&Context::game_state->debug_state,
+        add_debug_line(&game_state->debug_state,
                        smallest_penetration_triangle[2], smallest_penetration_triangle[0], triangle_color);
 #endif
     }
@@ -483,7 +483,10 @@ void init_game(Sound_Output *sound_output, uint32 num_samples) {
     
     Display_Output *display_output = &game_state->render_state.display_output;
 
-    game_state->player.height = Player_Constants::player_height;
+    // init player
+    Player *player = &game_state->player;
+    player->height = Player_Constants::player_height;
+    player->speed = Player_Constants::initial_speed;
 
     // music file testing
 #if 0
@@ -677,8 +680,9 @@ void do_collisions(Player *player, Vec3 initial_move) {
         Entity *entity = level->entities;
 
         while (entity) {
-            // TODO: should add flag COLLIDABLE and test that as well
-            if (!(entity->flags & ENTITY_MESH)) {
+            bool32 walkable = (entity->flags & ENTITY_MESH) && (entity->flags & ENTITY_COLLIDER);
+            if (!walkable) {
+                entity = entity->next;
                 continue;
             }
 
@@ -710,15 +714,18 @@ void do_collisions(Player *player, Vec3 initial_move) {
                         Vec3 normalized_correction = (-penetration_normal *
                                                       dot(normalized_displacement, penetration_normal));
 
-                        // TODO: this causes jittering when pushing into things, but we want to do it this way since
-                        //       just pushing out by the penetration depth won't give you the correct speed when
-                        //       sliding along slopes or walls. also, this causes us to move out too much when
+                        // TODO: this causes jittering when pushing into things, but we want to do it this way
+                        //       since just pushing out by the penetration depth won't give you the correct speed
+                        //       when sliding along slopes or walls. also, this causes us to move out too much when
                         //       falling into the ground. we get pushed out of the ground, then we attempt to
                         //       collide with the ground again with gravity so that we don't keep alternating
-                        //       is_grounded, but with this uncommented, we get pushed out so much that the displacement
-                        //       from gravity or some small displacement we use to push us downwards isn't enough for
-                        //       us to collide again with the ground, and so we get the undesirable behaviour of
-                        //       is_grounded constantly alternating while walking on a surface.
+                        //       is_grounded, but with this uncommented, we get pushed out so much that the
+                        //       displacement from gravity or some small displacement we use to push us downwards
+                        //       isn't enough for us to collide again with the ground, and so we get the
+                        //       undesirable behaviour of is_grounded constantly alternating while walking on a
+                        //       surface.
+                        //       also i think this (the commented out line) is really buggy. you can get stuck
+                        //       at the common vertex of  multiple triangles in a mesh.
                         //player->position += displacement_length*normalized_correction;
                         player->position += penetration_normal * (penetration_depth + 0.00001f);
 
@@ -932,7 +939,7 @@ void update_camera(Camera *camera, Vec3 position, real32 heading, real32 pitch, 
     camera->current_basis = current_basis;
 }
 
-void update_game(Controller_State *controller_state, Sound_Output *sound_output, real32 dt) {
+void update_game(Controller_State *controller_state, real32 dt) {
     assert(game_state->is_initted);
     
     Player *player = &game_state->player;
@@ -1021,7 +1028,7 @@ void update(Controller_State *controller_state,
         game_state->editor_state.is_startup = false;
     } else {
         //asset_manager = &game_state->asset_manager;
-        //update_game(game_state, controller_state, sound_output, dt);
+        update_game(controller_state, dt);
     }
 
     draw_ui(dt);

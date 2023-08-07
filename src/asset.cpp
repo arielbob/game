@@ -123,8 +123,9 @@ Mesh *add_mesh(String name, String filename, Mesh_Type type, int32 id = -1) {
 
     Mesh *mesh = (Mesh *) allocate(asset_manager->allocator, sizeof(Mesh));
     if (type == Mesh_Type::LEVEL) {
-        assert(id == -1);
-        id = asset_manager->total_meshes_added_ever++;
+        if (id < 0) {
+            id = asset_manager->total_meshes_added_ever++;
+        }
     } else {
         assert(id < 0);
     }

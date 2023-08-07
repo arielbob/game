@@ -741,7 +741,7 @@ void draw_entity_box_2(bool32 force_reset) {
 
         do_text("Flags");
         ui_y_pad(1.0f);
-        ui_add_and_push_widget("", row_theme);
+        ui_push_widget("", row_theme);
         {
             if (do_text_button("MESH", get_entity_flags_button_theme(ENTITY_MESH, entity),
                                "entity-flag-mesh")) {
@@ -755,13 +755,20 @@ void draw_entity_box_2(bool32 force_reset) {
             }
             ui_x_pad(1.0f);
 
+            if (do_text_button("COLLIDER", get_entity_flags_button_theme(ENTITY_COLLIDER, entity),
+                               "entity-flag-collider")) {
+                entity->flags = set_bits(entity->flags, ENTITY_COLLIDER, !(entity->flags & ENTITY_COLLIDER));
+            }
+        } ui_pop_widget();
+
+        ui_y_pad(1.0f);
+        ui_push_widget("", row_theme); {
             if (do_text_button("LIGHT", get_entity_flags_button_theme(ENTITY_LIGHT, entity),
                                "entity-flag-light")) {
                 entity->flags = set_bits(entity->flags, ENTITY_LIGHT, !(entity->flags & ENTITY_LIGHT));
             }
             ui_x_pad(1.0f);
-        }
-        ui_pop_widget();
+        } ui_pop_widget();
 
         ui_y_pad(5.0f);
         
@@ -1082,8 +1089,26 @@ void draw_entity_box_2(bool32 force_reset) {
                 entity->falloff_end = result.value;
             } ui_pop_widget();
         }
-    }
-    ui_pop_widget();
+
+        ui_y_pad(10.0f);
+
+        ui_push_widget("", row_theme); {
+            UI_Theme push_right = {};
+            push_right.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
+            ui_add_widget("", push_right);
+
+            UI_Button_Theme delete_theme = editor_button_danger_theme;
+            delete_theme.size_type.x = UI_SIZE_FIT_CHILDREN;
+            delete_theme.padding.x = 10.0f;
+                
+            bool32 delete_pressed = do_text_button("Delete Entity", delete_theme, "delete-entity");
+
+            if (delete_pressed) {
+                editor_state->selected_entity_id = -1;
+                delete_entity(&game_state->level, entity->id);
+            }
+        } ui_pop_widget();
+    } ui_pop_widget();
     
     ui_pop_widget();
 }
