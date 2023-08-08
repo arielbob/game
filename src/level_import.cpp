@@ -732,6 +732,22 @@ bool32 Level_Loader::parse_entity(Allocator *temp_allocator, Tokenizer *tokenize
             if (!parse_real(tokenizer, &entity_info.falloff_end, error)) {
                 return false;
             }
+        } else if (string_equals(token.string, "has_collider")) {
+            token = get_token(tokenizer);
+            
+            if (token.type == INTEGER) {
+                uint32 result;
+                bool32 parse_result = string_to_uint32(token.string, &result);
+                if (parse_result) {
+                    if (result) {
+                        entity_info.flags |= ENTITY_COLLIDER;
+                    }
+                } else {
+                    return level_parse_error(error, "Expected unsigned integer for has_collider.");
+                }
+            } else {
+                return level_parse_error(error, "Expected unsigned integer for has_collider.");
+            }
         } else {
             return level_parse_error(error, "Unrecognized entity property.");
         }

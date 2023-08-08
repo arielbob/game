@@ -100,11 +100,12 @@ falloff_start 0.000000
 falloff_end 10.000000
 }
 entity {
-position -3.136914 0.480708 -1.265053
-rotation 0.888306 0.153929 -0.418817 0.108676
+position -4.271520 -0.819887 0.222117
+rotation 0.863695 0.258482 -0.402920 0.157714
 scale 1.000000 1.000000 1.000000
 mesh "low-poly suzanne"
 material "shiny red"
+has_collider 1
 }
 entity {
 position 3.183504 0.000000 -0.193760
@@ -133,6 +134,7 @@ rotation 1.000000 0.000000 0.000000 0.000000
 scale 0.500000 0.500000 0.500000
 mesh "ground3"
 material "grass"
+has_collider 1
 }
 entity {
 position 0.000000 30.628136 -24.403343

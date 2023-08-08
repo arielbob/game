@@ -181,6 +181,10 @@ void export_level(Level *level, char *filename) {
                 append_string_property(&working_buffer, "material", material->name);
             }
 
+            if (current->flags & ENTITY_COLLIDER) {
+                append_string(&working_buffer, "has_collider %d\n", 1);
+            }
+
             if (current->flags & ENTITY_LIGHT) {
                 if (current->light_type == LIGHT_POINT) {
                     append_string(&working_buffer, "light_type point\n");
