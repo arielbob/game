@@ -69,6 +69,7 @@ global_variable Render_State *render_state;
 //#include "editor_actions.cpp"
 //#include "editor_ui.cpp"
 #include "asset_library.cpp"
+#include "collision_debugger.cpp"
 #include "editor.cpp"
 //#include "tree-test.cpp"
 #include "game.cpp"

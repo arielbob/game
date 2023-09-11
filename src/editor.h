@@ -20,7 +20,7 @@
 #define TEXTURE_LIBRARY_WINDOW  1 << 2
 #define MESH_LIBRARY_WINDOW     1 << 3
 
-#define MAX_COLLISION_DEBUG_FRAMES 16
+#define MAX_COLLISION_DEBUG_FRAMES 256
 
 enum class Asset_Library_Tab {
     MATERIALS,
@@ -96,6 +96,7 @@ struct Editor_State {
     Entity_Properties_State entity_properties_state;
     
     bool32 is_asset_library_window_open;
+    bool32 is_collision_debugger_window_open;
 
     Collision_Debug_State collision_debug_state;
 };

@@ -1330,6 +1330,18 @@ void draw_editor(Controller_State *controller_state) {
         if (editor_state->is_asset_library_window_open) {
             draw_asset_library();
         }
+
+        ui_y_pad(10.0f);
+        bool32 open_collision_debugger_clicked = do_text_button("Collision Debugger", editor_button_theme,
+                                                                "open_collision_debugger");
+
+        if (open_collision_debugger_clicked) {
+            editor_state->is_collision_debugger_window_open = !editor_state->is_collision_debugger_window_open;
+        }
+
+        if (editor_state->is_collision_debugger_window_open) {
+            draw_collision_debugger();
+        }
     }
     ui_pop_widget();
     #endif
