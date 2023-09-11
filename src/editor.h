@@ -20,6 +20,8 @@
 #define TEXTURE_LIBRARY_WINDOW  1 << 2
 #define MESH_LIBRARY_WINDOW     1 << 3
 
+#define MAX_COLLISION_DEBUG_FRAMES 16
+
 enum class Asset_Library_Tab {
     MATERIALS,
     MESHES,
@@ -58,6 +60,16 @@ struct Entity_Properties_State {
     bool32 light_color_picker_open;
 };
 
+struct Collision_Debug_Frame {
+    Vec3 player_position;
+};
+
+struct Collision_Debug_State {
+    Collision_Debug_Frame debug_frames[MAX_COLLISION_DEBUG_FRAMES];
+    int32 debug_frame_start_index;
+    int32 num_debug_frames;
+};
+
 struct Editor_State {
     Arena_Allocator *arena;
     
@@ -84,6 +96,8 @@ struct Editor_State {
     Entity_Properties_State entity_properties_state;
     
     bool32 is_asset_library_window_open;
+
+    Collision_Debug_State collision_debug_state;
 };
 
 namespace Editor_Constants {

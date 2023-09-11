@@ -709,10 +709,54 @@ void do_collisions(Player *player, Vec3 initial_move) {
                 //       one there, this would be correct behaviour.
                 if (intersected) {
 #if 1
-                    if (dot(initial_move, triangle_normal) < 0.0f) {
+#if 0
+                    if (distance(displacement) < EPSILON) {
+                        Vec3 correction = -penetration_normal * (penetration_depth + 0.00001f);
+                        player->position += correction;
+
+                        if (hit_bottom_player_capsule_sphere(&player_capsule, &penetration_point)) {
+                            found_ground = true;
+                            player->walk_state.triangle_normal = triangle_normal;
+                        }
+
+                        player_capsule = make_capsule(player->position,
+                                                      player->position + make_vec3(0.0f, player->height, 0.0f),
+                                                      Player_Constants::capsule_radius);
+
+                        // TODO: set the displacement and displacement_length to the correction vector
+                        displacement = correction;
+                    } else if (dot(displacement, triangle_normal) < 0.0f) {
+#endif
+                    // we don't want to do anything when it's like 90 degrees right?
+                    //if (dot(displacement, triangle_normal) < 0.0f) {
+                    if (dot(displacement, triangle_normal) < 0.0f && fabsf(dot(displacement, triangle_normal)) > EPSILON) {
+                        // TODO: we need to replace this don't we?
                         Vec3 normalized_displacement = displacement / displacement_length;
+
+                        // TODO: wtf is this? vvvvv
+                        // i'm pretty sure penetration_normal points towards the center of the capsule cap sphere
+                        // TODO: i think if we're moving 1 unit, the player should move 1 unit up the slope if they collide
+                        // - is this currently the case? i'm not sure if this calculation ensures that happens
+
+                        // the displacement is wrong...???
+                        // TODO: i don't think this is even normalized?
+                        //       - why would we even do this? what's the point of multiplying
+                        //         displacement_length by it?
+                        //       - what if we just do displacement instead of normalized displacement to dot?
+#if 0
                         Vec3 normalized_correction = (-penetration_normal *
                                                       dot(normalized_displacement, penetration_normal));
+#else
+                        #if 0
+                        Vec3 correction = (-penetration_normal *
+                                           dot(displacement, penetration_normal));
+                        if (distance(displacement) < EPSILON) {
+                            correction = penetration_normal * (penetration_depth + 0.00001f);
+                        }
+                        #else
+                        Vec3 correction = penetration_normal * (penetration_depth + 0.00001f);
+                        #endif
+#endif
 
                         // TODO: this causes jittering when pushing into things, but we want to do it this way
                         //       since just pushing out by the penetration depth won't give you the correct speed
@@ -726,8 +770,20 @@ void do_collisions(Player *player, Vec3 initial_move) {
                         //       surface.
                         //       also i think this (the commented out line) is really buggy. you can get stuck
                         //       at the common vertex of  multiple triangles in a mesh.
-                        //player->position += displacement_length*normalized_correction;
-                        player->position += penetration_normal * (penetration_depth + 0.00001f);
+
+                        #if 1
+                        //player->position += displacement_length * normalized_correction; // line before
+                        player->position += correction;
+                        #if 0
+                        if (fabsf(dot(normalized_displacement, penetration_normal)) < (1 - EPSILON)) {
+                            player->position += displacement_length * normalized_correction; // line before
+                        } else {
+                            player->position += penetration_normal * (penetration_depth + 0.00001f);
+                            //player->position += displacement_length * normalized_displacement;
+                        }
+                        #endif
+                        #endif
+                        //player->position += penetration_normal * (penetration_depth + 0.00001f);
 
                         // we check this so that we can nicely climb up triangles that are low enough without
                         // being pushed brought down by gravity. this is also necessary since if we didn't have this,
@@ -741,6 +797,10 @@ void do_collisions(Player *player, Vec3 initial_move) {
                         player_capsule = make_capsule(player->position,
                                                       player->position + make_vec3(0.0f, player->height, 0.0f),
                                                       Player_Constants::capsule_radius);
+
+                        // TODO: set the displacement and displacement_length to the correction vector
+                        displacement = correction;
+                        //real32 displacement_length = distance(initial_move);
 
                         // we don't early-out here since we might encounter a walkable surface later, on this same
                         // mesh.
@@ -782,6 +842,9 @@ void do_collisions(Player *player, Vec3 initial_move) {
         if (!intersected) break;
     }
 
+    // can we just not do gravity checks? idk
+    // is_grounded should only be set to false after a move
+    // if you're pushed out by the ground, i think that guarantees you're still grounded right?
     bool32 was_grounded = player->is_grounded && !found_ground;
     
     player->is_grounded = found_ground;
@@ -914,6 +977,25 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
             do_collisions(player, displacement_vector);
         }
     }
+
+    Collision_Debug_State *collision_debug_state= &game_state->editor_state.collision_debug_state;
+    Collision_Debug_Frame *debug_frames = collision_debug_state->debug_frames;
+    int32 *debug_frame_start_index = &collision_debug_state->debug_frame_start_index;
+    int32 *num_debug_frames = &collision_debug_state->num_debug_frames;
+
+    int32 new_frame_index = -1;
+    if (*num_debug_frames >= MAX_COLLISION_DEBUG_FRAMES) {
+        new_frame_index = ((*debug_frame_start_index + MAX_COLLISION_DEBUG_FRAMES) %
+                           MAX_COLLISION_DEBUG_FRAMES);
+
+        *debug_frame_start_index = (*debug_frame_start_index + 1) % MAX_COLLISION_DEBUG_FRAMES;
+
+        *num_debug_frames = MAX_COLLISION_DEBUG_FRAMES;
+    } else {
+        new_frame_index = (*num_debug_frames)++;
+    }
+    
+    debug_frames[new_frame_index] = { player->position };
 }
 
 void update_camera(Camera *camera, Vec3 position, real32 heading, real32 pitch, real32 roll) {
