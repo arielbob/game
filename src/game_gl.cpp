@@ -3432,6 +3432,17 @@ void gl_render_editor(GL_Framebuffer framebuffer,
                                                 ENGINE_LIGHTBULB_TEXTURE_ID);
     }
 
+    // draw player capsule for collision debugger
+    Collision_Debug_State *collision_debug_state = &editor_state->collision_debug_state;
+    if (collision_debug_state->num_debug_frames > 0 && collision_debug_state->show_player_capsule) {
+        int32 frame_index = (collision_debug_state->current_frame + collision_debug_state->debug_frame_start_index)
+            % MAX_COLLISION_DEBUG_FRAMES;
+        Collision_Debug_Frame *frame = &collision_debug_state->debug_frames[frame_index];
+        gl_draw_capsule(frame->player_position,
+                        frame->player_position + make_vec3(0.0f, Player_Constants::player_height, 0.0f),
+                        Player_Constants::capsule_radius, make_vec4(1.0f, 0.0f, 1.0f, 1.0f));
+    }
+    
     // draw gizmo
     glBindFramebuffer(GL_FRAMEBUFFER, g_gl_state->gizmo_framebuffer.fbo);
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);

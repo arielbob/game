@@ -996,6 +996,7 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
     }
     
     debug_frames[new_frame_index] = { player->position };
+    collision_debug_state->current_frame = *num_debug_frames - 1;
 }
 
 void update_camera(Camera *camera, Vec3 position, real32 heading, real32 pitch, real32 roll) {

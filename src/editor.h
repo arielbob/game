@@ -20,7 +20,7 @@
 #define TEXTURE_LIBRARY_WINDOW  1 << 2
 #define MESH_LIBRARY_WINDOW     1 << 3
 
-#define MAX_COLLISION_DEBUG_FRAMES 256
+#define MAX_COLLISION_DEBUG_FRAMES 5
 
 enum class Asset_Library_Tab {
     MATERIALS,
@@ -68,6 +68,9 @@ struct Collision_Debug_State {
     Collision_Debug_Frame debug_frames[MAX_COLLISION_DEBUG_FRAMES];
     int32 debug_frame_start_index;
     int32 num_debug_frames;
+
+    bool32 show_player_capsule = true;
+    int32 current_frame;
 };
 
 struct Editor_State {
