@@ -1,0 +1,32 @@
+level_info {
+level_name "col"
+}
+
+meshes {
+}
+
+textures {
+}
+
+materials {
+}
+
+entities {
+entity {
+position 0.000000 0.000000 0.000000
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 12.328635 0.218987 13.539741
+mesh "cube"
+material "default_material"
+}
+entity {
+position -2.454894 3.368080 0.000000
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+light_type point
+light_color 1.000000 1.000000 1.000000
+falloff_start 0.000000
+falloff_end 101.000000
+}
+}
+

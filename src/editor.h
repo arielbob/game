@@ -1,6 +1,8 @@
 #ifndef EDITOR_H
 #define EDITOR_H
 
+// filter_types are kind of platform-specific to the windows open/save file dialogs right now
+
 #define LEVEL_FILE_FILTER_TITLE "Levels (*.level)"
 #define LEVEL_FILE_FILTER_TYPE  "*.level"
 #define SAVE_SUCCESS_MESSAGE    "Level saved!"
@@ -20,7 +22,7 @@
 #define TEXTURE_LIBRARY_WINDOW  1 << 2
 #define MESH_LIBRARY_WINDOW     1 << 3
 
-#define MAX_COLLISION_DEBUG_FRAMES 5
+#define MAX_COLLISION_DEBUG_FRAMES 512
 
 enum class Asset_Library_Tab {
     MATERIALS,

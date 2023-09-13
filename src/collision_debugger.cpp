@@ -34,11 +34,20 @@ void draw_collision_debugger() {
     row_theme.semantic_size = { 0.0f, 0.0f };
     row_theme.layout_type = UI_LAYOUT_HORIZONTAL;
 
-
     UI_Button_Theme frame_button_theme = editor_button_theme;
     frame_button_theme.padding = { 10.0f, 10.0f };
 
     ui_y_pad(5.0f);
+
+    if (debugger_state->num_debug_frames > 0) {
+        UI_Text_Field_Slider_Result result = do_text_field_slider((real32) debugger_state->current_frame + 1, 1,
+                                                                  (real32) debugger_state->num_debug_frames,
+                                                                  editor_slider_theme,
+                                                                  "frame-slider", "frame-slider-text");
+        debugger_state->current_frame = (int32) result.value - 1;
+    }
+    
+    ui_y_pad(1.0f);
     ui_push_widget("", row_theme);
     {
         if (do_text_button("<", frame_button_theme, "prev-frame")) {

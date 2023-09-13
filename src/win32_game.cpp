@@ -956,7 +956,6 @@ bool32 platform_open_file_dialog(char *filepath, char *filetype_name, char *file
     String_Buffer working_buffer = make_empty_string_buffer(filter_buffer, sizeof(filter_buffer));
     append_string(&working_buffer, filetype_name_string);
     append_string(&working_buffer, make_string("\0", 1));
-    //append_string(&working_buffer, make_string("*.", 2));
     append_string(&working_buffer, file_extensions_string);
     append_string(&working_buffer, make_string("\0\0", 2));
 
@@ -980,14 +979,13 @@ bool32 platform_open_file_dialog(char *filepath, char *filetype_name, char *file
 }
 
 // NOTE: this only supports a single file extension
-bool32 platform_open_save_file_dialog(char *filepath, char *filetype_name, char *file_extension_no_dot, uint32 size) {
+bool32 platform_open_save_file_dialog(char *filepath, char *filetype_name, char *file_extension, uint32 size) {
     assert(filetype_name);
-    assert(file_extension_no_dot);
+    assert(file_extension);
 
     OPENFILENAME ofn = {};
 
     String filetype_name_string = make_string(filetype_name);
-    String file_extension_no_dot_string = make_string(file_extension_no_dot);
 
     char filter_buffer[64];
     // NOTE: we do it this way since string_format is messed up when the string contains null
@@ -995,8 +993,7 @@ bool32 platform_open_save_file_dialog(char *filepath, char *filetype_name, char 
     String_Buffer working_buffer = make_empty_string_buffer(filter_buffer, sizeof(filter_buffer));
     append_string(&working_buffer, filetype_name_string);
     append_string(&working_buffer, make_string("\0", 1));
-    append_string(&working_buffer, make_string("*.", 2));
-    append_string(&working_buffer, file_extension_no_dot_string);
+    append_string(&working_buffer, file_extension);
     append_string(&working_buffer, make_string("\0\0", 2));
 
     ofn.lStructSize = sizeof(ofn);
@@ -1010,7 +1007,7 @@ bool32 platform_open_save_file_dialog(char *filepath, char *filetype_name, char 
     ofn.nMaxFileTitle = 0;
     ofn.lpstrInitialDir = NULL;
     // appends the file_extension to the returned filepath
-    ofn.lpstrDefExt = file_extension_no_dot;
+    ofn.lpstrDefExt = file_extension;
     ofn.Flags = OFN_OVERWRITEPROMPT | OFN_NOCHANGEDIR;
 
     bool32 result = GetSaveFileName(&ofn);
@@ -1044,10 +1041,10 @@ bool32 platform_write_file(char *filename, void *buffer, uint32 num_bytes_to_wri
     }
 
     HANDLE temp_file_handle = CreateFile((LPTSTR) temp_filename,
-                                         GENERIC_WRITE,        
-                                         0,                    
-                                         NULL,                 
-                                         CREATE_ALWAYS,        
+                                         GENERIC_WRITE,
+                                         0,
+                                         NULL,
+                                         CREATE_ALWAYS,
                                          FILE_ATTRIBUTE_NORMAL,
                                          NULL);
     if (temp_file_handle == INVALID_HANDLE_VALUE) {
