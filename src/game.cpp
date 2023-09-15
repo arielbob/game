@@ -671,12 +671,12 @@ void do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 init
     Vec3 displacement = initial_move;
     real32 displacement_length = distance(initial_move);
     assert(displacement_length > EPSILON);
+
+    Capsule player_capsule = make_capsule(player->position + displacement,
+                                          player->position + make_vec3(0.0f, player->height, 0.0f),
+                                          Player_Constants::capsule_radius);
     
     for (int32 num_collisions = 0; num_collisions < MAX_FRAME_COLLISIONS; num_collisions++) {
-        Capsule player_capsule = make_capsule(player->position,
-                                              player->position + make_vec3(0.0f, player->height, 0.0f),
-                                              Player_Constants::capsule_radius);
-
         Entity *entity = level->entities;
 
         while (entity) {
@@ -774,6 +774,8 @@ void do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 init
                         //       also i think this (the commented out line) is really buggy. you can get stuck
                         //       at the common vertex of  multiple triangles in a mesh.
 
+                        Vec3 initial_position = player->position;
+                        
                         #if 1
                         //player->position += displacement_length * normalized_correction; // line before
                         player->position += correction;
@@ -797,7 +799,26 @@ void do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 init
                             player->walk_state.triangle_normal = triangle_normal;
                         }
 
+                        // TODO: we don't save the correction vector yet
+                        Collision_Debug_Subframe collision_subframe = {
+                            COLLISION_SUBFRAME_DESIRED_MOVE_COLLISION
+                        };
+                        collision_subframe.desired_move_collision = {
+                            initial_position,
+                            displacement,
+                            entity->id,
+                            triangle_index,
+                            triangle_normal,
+                            penetration_normal,
+                            penetration_depth,
+                            penetration_point
+                        };
+                        collision_debug_log_subframe(debug_frame, collision_subframe);
+                        
+#if 0
                         Collision_Debug_Intersection info = {
+                            initial_position,
+                            player->position,
                             displacement,
                             entity->id,
                             triangle_index,
@@ -807,13 +828,18 @@ void do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 init
                             penetration_point
                         };
                         collision_debug_add_intersection(debug_frame, info);
+#endif
                         
-                        player_capsule = make_capsule(player->position,
+                        displacement = correction;
+
+                        Collision_Debug_Subframe desired_move_subframe = { COLLISION_SUBFRAME_DESIRED_MOVE };
+                        desired_move_subframe.desired_move = { player->position, displacement };
+                        collision_debug_log_subframe(debug_frame, desired_move_subframe);
+                        
+                        player_capsule = make_capsule(player->position + displacement,
                                                       player->position + make_vec3(0.0f, player->height, 0.0f),
                                                       Player_Constants::capsule_radius);
-
-                        // TODO: set the displacement and displacement_length to the correction vector
-                        displacement = correction;
+                        
                         //real32 displacement_length = distance(initial_move);
 
                         // we don't early-out here since we might encounter a walkable surface later, on this same
@@ -942,7 +968,12 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
     Vec3 gravity_acceleration = make_vec3(0.0f, -9.81f, 0.0f);
 
     Collision_Debug_State *collision_debug_state = &game_state->editor_state.collision_debug_state;
-    Collision_Debug_Frame *collision_debug_frame = collision_debug_start_frame(collision_debug_state);
+    Collision_Debug_Frame *collision_debug_frame = collision_debug_start_frame(collision_debug_state,
+                                                                               player->position);
+
+    Collision_Debug_Subframe initial_subframe = { COLLISION_SUBFRAME_POSITION };
+    initial_subframe.position = { player->position };
+    collision_debug_log_subframe(collision_debug_frame, initial_subframe);
 
     if (player->is_grounded) {
         player->velocity = move_vector;
@@ -950,9 +981,15 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
         Vec3 displacement_vector = player->velocity*dt;
 
         bool32 initial_is_grounded = player->is_grounded;
-        
+
         if (distance(displacement_vector) > EPSILON) {
             // TODO: rename do_collisions - do_collisions actually does the move given by displacement_vector
+
+            bool32 is_player_move = distance(move_vector) > EPSILON;
+            Collision_Debug_Subframe desired_move_subframe = { COLLISION_SUBFRAME_DESIRED_MOVE };
+            desired_move_subframe.desired_move = { player->position, displacement_vector, is_player_move };
+            collision_debug_log_subframe(collision_debug_frame, desired_move_subframe);
+            
             do_collisions(collision_debug_frame, player, displacement_vector);
             if (!player->is_grounded) {
                 // since collisions push out the player capsule so that they aren't colliding anymore, if we base
@@ -970,6 +1007,11 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
                 // don't use player velocity in displacement here, since we already moved by that in the previous
                 // do_collisions() call
                 displacement_vector = make_vec3(0.0f, -0.001f, 0.0f);
+
+                desired_move_subframe = { COLLISION_SUBFRAME_DESIRED_MOVE };
+                desired_move_subframe.desired_move = { player->position, displacement_vector, false };
+                collision_debug_log_subframe(collision_debug_frame, desired_move_subframe);
+                
                 do_collisions(collision_debug_frame, player, displacement_vector);
             }
         }
@@ -991,6 +1033,10 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
         Vec3 displacement_vector = player->velocity*dt + 0.5f*player->acceleration*dt*dt;
         player->velocity += player->acceleration * dt;
 
+        Collision_Debug_Subframe desired_move_subframe = { COLLISION_SUBFRAME_DESIRED_MOVE };
+        desired_move_subframe.desired_move = { player->position, displacement_vector, false };
+        collision_debug_log_subframe(collision_debug_frame, desired_move_subframe);
+        
         if (distance(displacement_vector) > EPSILON) {
             do_collisions(collision_debug_frame, player, displacement_vector);
         }

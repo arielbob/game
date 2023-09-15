@@ -1429,6 +1429,18 @@ bool32 sphere_intersects_triangle(Vec3 center, real32 radius, Vec3 triangle[3],
     *penetration_normal = normalize(penetration_vector);
     *penetration_depth = radius - distance(penetration_vector);
 
+    /*
+      side view of sphere:
+      |   :  .   |   
+      : is the triangle collision
+      penetration_vector is vector from : to .
+      penetration_normal is the normalized penetration_vector
+      penetration_depth is the distance from the left | to :
+      penetration/intersection point is if you took a line from the sphere center to the outside of the sphere
+that intersects the triangle and is perpendicular to it, the penetration point is where the line intersects the
+sphere
+    */
+
     Vec3 capsule_edge = closest_point_on_triangle - (*penetration_normal)*(*penetration_depth);
 
 #if DEBUG_SHOW_COLLISION_LINES

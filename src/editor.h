@@ -62,10 +62,27 @@ struct Entity_Properties_State {
     bool32 light_color_picker_open;
 };
 
+enum Collision_Subframe_Type {
+    COLLISION_SUBFRAME_POSITION,
+    COLLISION_SUBFRAME_DESIRED_MOVE,
+    COLLISION_SUBFRAME_DESIRED_MOVE_COLLISION
+};
+
 // these are attached to the frame
 // the frame's player_position is the result of all the intersections that happened that frame
-struct Collision_Debug_Intersection {
-    Vec3 displacement; // the initial displacement that caused the intersection
+struct Collision_Subframe_Position {
+    Vec3 position;
+};
+
+struct Collision_Subframe_Desired_Move {
+    Vec3 position;
+    Vec3 displacement;
+    bool32 is_player_move;
+};
+
+struct Collision_Subframe_Desired_Move_Collision {
+    Vec3 position;
+    Vec3 displacement;
     int32 entity_id;
     int32 triangle_index;
     Vec3 triangle_normal;
@@ -74,13 +91,20 @@ struct Collision_Debug_Intersection {
     Vec3 penetration_point;
 };
 
-#define MAX_FRAME_INTERSECTIONS 8
+struct Collision_Debug_Subframe {
+    Collision_Subframe_Type type;
+    union {
+        Collision_Subframe_Position position;
+        Collision_Subframe_Desired_Move desired_move;
+        Collision_Subframe_Desired_Move_Collision desired_move_collision;
+    };
+};
+
+#define MAX_COLLISION_DEBUG_FRAME_SUBFRAMES 16
 
 struct Collision_Debug_Frame {
-    Vec3 player_position;
-    // we only save the intersections that had resolutions
-    Collision_Debug_Intersection intersections[MAX_FRAME_INTERSECTIONS];
-    int32 num_intersections;
+    Collision_Debug_Subframe subframes[MAX_COLLISION_DEBUG_FRAME_SUBFRAMES];
+    int32 num_subframes;
 };
 
 struct Collision_Debug_State {
@@ -90,6 +114,7 @@ struct Collision_Debug_State {
 
     bool32 show_player_capsule = true;
     int32 current_frame;
+    int32 current_subframe;
 };
 
 struct Editor_State {

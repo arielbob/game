@@ -3435,12 +3435,60 @@ void gl_render_editor(GL_Framebuffer framebuffer,
     // draw player capsule for collision debugger
     Collision_Debug_State *collision_debug_state = &editor_state->collision_debug_state;
     if (collision_debug_state->num_debug_frames > 0 && collision_debug_state->show_player_capsule) {
-        int32 frame_index = (collision_debug_state->current_frame + collision_debug_state->debug_frame_start_index)
-            % MAX_COLLISION_DEBUG_FRAMES;
-        Collision_Debug_Frame *frame = &collision_debug_state->debug_frames[frame_index];
-        gl_draw_capsule(frame->player_position,
-                        frame->player_position + make_vec3(0.0f, Player_Constants::player_height, 0.0f),
-                        Player_Constants::capsule_radius, make_vec4(1.0f, 0.0f, 1.0f, 1.0f));
+        Collision_Debug_Frame *frame = get_current_frame(collision_debug_state);
+        assert(frame->num_subframes > 0);
+        assert(collision_debug_state->current_subframe < frame->num_subframes);
+
+        Collision_Debug_Subframe *subframe = &frame->subframes[collision_debug_state->current_subframe];
+        if (subframe->type == COLLISION_SUBFRAME_POSITION) {
+            gl_draw_capsule(subframe->position.position,
+                            subframe->position.position + make_vec3(0.0f, Player_Constants::player_height, 0.0f),
+                            Player_Constants::capsule_radius, make_vec4(1.0f, 0.0f, 1.0f, 1.0f));
+        } else if (subframe->type == COLLISION_SUBFRAME_DESIRED_MOVE) {
+            Vec3 start_position = subframe->desired_move.position;
+            Vec3 desired_position = start_position + subframe->desired_move.displacement;
+            bool32 is_player_move = subframe->desired_move.is_player_move;
+
+            gl_draw_capsule(start_position,
+                            start_position + make_vec3(0.0f, Player_Constants::player_height, 0.0f),
+                            Player_Constants::capsule_radius, make_vec4(1.0f, 0.0f, 1.0f, 1.0f));
+
+            Vec4 desired_capsule_color = (is_player_move ?
+                                          make_vec4(1.0f, 0.0f, 0.0f, 1.0f) : make_vec4(0.0f, 1.0f, 1.0f, 1.0f));
+                
+            gl_draw_capsule(desired_position,
+                            desired_position + make_vec3(0.0f, Player_Constants::player_height, 0.0f),
+                            Player_Constants::capsule_radius, desired_capsule_color);
+        } else if (subframe->type == COLLISION_SUBFRAME_DESIRED_MOVE_COLLISION) {
+            Vec3 start_position = subframe->desired_move_collision.position;
+            Vec3 desired_position = start_position + subframe->desired_move_collision.displacement;
+            Vec3 penetration_point = subframe->desired_move_collision.penetration_point;
+            Vec3 penetration_normal = subframe->desired_move_collision.penetration_normal;
+            real32 penetration_depth = subframe->desired_move_collision.penetration_depth;
+            
+            gl_draw_capsule(start_position,
+                            start_position + make_vec3(0.0f, Player_Constants::player_height, 0.0f),
+                            Player_Constants::capsule_radius, make_vec4(1.0f, 0.0f, 1.0f, 1.0f));
+
+            Vec4 desired_capsule_color = make_vec4(0.0f, 1.0f, 1.0f, 1.0f);
+                
+            gl_draw_capsule(desired_position,
+                            desired_position + make_vec3(0.0f, Player_Constants::player_height, 0.0f),
+                            Player_Constants::capsule_radius, desired_capsule_color);
+
+            // penetration_normal is a unit vector that points from the furthest inside point of the capsule
+            // to the closest center of the capsule? i'm not sure if this makes sense
+
+            // penetration_vector is closest_point_on_triangle to the center of the sphere.
+            // penetration_depth is the shortest depth from the outside of the sphere to the intersection point.
+            // penetration_depth = radius - distance(penetration_vector);
+            
+            // the collision lines are based on the displaced capsule. we move the capsule by the displacement
+            // and do the collision tests on the displaced capsule.
+            gl_draw_line(penetration_point,
+                         penetration_point + penetration_normal*Player_Constants::capsule_radius,
+                         make_vec4(1.0f, 0.0f, 0.0f, 1.0f));
+        }
     }
     
     // draw gizmo
