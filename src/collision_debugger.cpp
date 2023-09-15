@@ -1,3 +1,35 @@
+Collision_Debug_Frame *collision_debug_start_frame(Collision_Debug_State *state) {
+    Collision_Debug_Frame *debug_frames = state->debug_frames;
+    int32 *debug_frame_start_index = &state->debug_frame_start_index;
+    int32 *num_debug_frames = &state->num_debug_frames;
+
+    int32 new_frame_index = -1;
+    if (*num_debug_frames >= MAX_COLLISION_DEBUG_FRAMES) {
+        new_frame_index = ((*debug_frame_start_index + MAX_COLLISION_DEBUG_FRAMES) %
+                           MAX_COLLISION_DEBUG_FRAMES);
+
+        *debug_frame_start_index = (*debug_frame_start_index + 1) % MAX_COLLISION_DEBUG_FRAMES;
+
+        *num_debug_frames = MAX_COLLISION_DEBUG_FRAMES;
+    } else {
+        new_frame_index = (*num_debug_frames)++;
+    }
+    
+    Collision_Debug_Frame *new_frame = &debug_frames[new_frame_index];
+    *new_frame = {};
+
+    return new_frame;
+}
+
+void collision_debug_end_frame(Collision_Debug_State *state, Collision_Debug_Frame *frame, Vec3 position) {
+    frame->player_position = position;
+    state->current_frame = 0;
+}
+
+void collision_debug_add_intersection(Collision_Debug_Frame *frame, Collision_Debug_Intersection info) {
+    assert(frame->num_intersections < MAX_FRAME_INTERSECTIONS);
+    frame->intersections[frame->num_intersections++] = info;
+}
 
 void draw_collision_debugger() {
     UI_Window_Theme window_theme = DEFAULT_WINDOW_THEME;

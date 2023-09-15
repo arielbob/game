@@ -62,8 +62,25 @@ struct Entity_Properties_State {
     bool32 light_color_picker_open;
 };
 
+// these are attached to the frame
+// the frame's player_position is the result of all the intersections that happened that frame
+struct Collision_Debug_Intersection {
+    Vec3 displacement; // the initial displacement that caused the intersection
+    int32 entity_id;
+    int32 triangle_index;
+    Vec3 triangle_normal;
+    Vec3 penetration_normal;
+    real32 penetration_depth;
+    Vec3 penetration_point;
+};
+
+#define MAX_FRAME_INTERSECTIONS 8
+
 struct Collision_Debug_Frame {
     Vec3 player_position;
+    // we only save the intersections that had resolutions
+    Collision_Debug_Intersection intersections[MAX_FRAME_INTERSECTIONS];
+    int32 num_intersections;
 };
 
 struct Collision_Debug_State {

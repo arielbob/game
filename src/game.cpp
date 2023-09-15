@@ -514,7 +514,7 @@ void init_game(Sound_Output *sound_output, uint32 num_samples) {
     init_level(&game_state->level, &memory.game_data);
     
     // load default level
-    read_and_load_level(&game_state->level, "src/levels/pbr_test.level");
+    read_and_load_level(&game_state->level, "src/levels/collision-test.level");
     
     // init camera
     init_camera(&game_state->camera, display_output, CAMERA_FOV);
@@ -657,7 +657,7 @@ inline bool32 hit_bottom_player_capsule_sphere(Capsule *capsule, Vec3 *point_on_
     return relative_height_from_base < (capsule->radius - 0.1f);
 }
 
-void do_collisions(Player *player, Vec3 initial_move) {
+void do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 initial_move) {
     Level *level = &game_state->level;
     player->position += initial_move;
 
@@ -708,6 +708,9 @@ void do_collisions(Player *player, Vec3 initial_move) {
                 //       one, but then get caught on the other when you hit it. if the second triangle were the only
                 //       one there, this would be correct behaviour.
                 if (intersected) {
+                    // TODO: add the intersection to the frame's intersection array
+                    //       - the intersection is in order
+                    //       - each struct contains data for the triangle and the resolution vectors
 #if 1
 #if 0
                     if (distance(displacement) < EPSILON) {
@@ -794,6 +797,17 @@ void do_collisions(Player *player, Vec3 initial_move) {
                             player->walk_state.triangle_normal = triangle_normal;
                         }
 
+                        Collision_Debug_Intersection info = {
+                            displacement,
+                            entity->id,
+                            triangle_index,
+                            triangle_normal,
+                            penetration_normal,
+                            penetration_depth,
+                            penetration_point
+                        };
+                        collision_debug_add_intersection(debug_frame, info);
+                        
                         player_capsule = make_capsule(player->position,
                                                       player->position + make_vec3(0.0f, player->height, 0.0f),
                                                       Player_Constants::capsule_radius);
@@ -926,7 +940,10 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
     move_vector = normalize(move_vector) * player->speed;
 
     Vec3 gravity_acceleration = make_vec3(0.0f, -9.81f, 0.0f);
-    
+
+    Collision_Debug_State *collision_debug_state = &game_state->editor_state.collision_debug_state;
+    Collision_Debug_Frame *collision_debug_frame = collision_debug_start_frame(collision_debug_state);
+
     if (player->is_grounded) {
         player->velocity = move_vector;
         player->acceleration = {};
@@ -936,7 +953,7 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
         
         if (distance(displacement_vector) > EPSILON) {
             // TODO: rename do_collisions - do_collisions actually does the move given by displacement_vector
-            do_collisions(player, displacement_vector);
+            do_collisions(collision_debug_frame, player, displacement_vector);
             if (!player->is_grounded) {
                 // since collisions push out the player capsule so that they aren't colliding anymore, if we base
                 // is_grounded simply on whether we're colliding with an eligible ground triangle (i.e. a triangle
@@ -953,13 +970,14 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
                 // don't use player velocity in displacement here, since we already moved by that in the previous
                 // do_collisions() call
                 displacement_vector = make_vec3(0.0f, -0.001f, 0.0f);
-                do_collisions(player, displacement_vector);
+                do_collisions(collision_debug_frame, player, displacement_vector);
             }
         }
 
         bool32 was_grounded = initial_is_grounded && !player->is_grounded;
 
         if (was_grounded) {
+            // TODO: should we log some collision debug info here?
             Vec3 before_drop_move_position = player->position;
             bool32 moved = move_player_to_closest_ground(player, MAX_DROP_DISTANCE);
             if (moved) {
@@ -974,30 +992,11 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
         player->velocity += player->acceleration * dt;
 
         if (distance(displacement_vector) > EPSILON) {
-            do_collisions(player, displacement_vector);
+            do_collisions(collision_debug_frame, player, displacement_vector);
         }
     }
 
-    Collision_Debug_State *collision_debug_state= &game_state->editor_state.collision_debug_state;
-    Collision_Debug_Frame *debug_frames = collision_debug_state->debug_frames;
-    int32 *debug_frame_start_index = &collision_debug_state->debug_frame_start_index;
-    int32 *num_debug_frames = &collision_debug_state->num_debug_frames;
-
-    int32 new_frame_index = -1;
-    if (*num_debug_frames >= MAX_COLLISION_DEBUG_FRAMES) {
-        new_frame_index = ((*debug_frame_start_index + MAX_COLLISION_DEBUG_FRAMES) %
-                           MAX_COLLISION_DEBUG_FRAMES);
-
-        *debug_frame_start_index = (*debug_frame_start_index + 1) % MAX_COLLISION_DEBUG_FRAMES;
-
-        *num_debug_frames = MAX_COLLISION_DEBUG_FRAMES;
-    } else {
-        new_frame_index = (*num_debug_frames)++;
-    }
-    
-    debug_frames[new_frame_index] = { player->position };
-    //collision_debug_state->current_frame = *num_debug_frames - 1;
-    collision_debug_state->current_frame = 0;
+    collision_debug_end_frame(collision_debug_state, collision_debug_frame, player->position);
 }
 
 void update_camera(Camera *camera, Vec3 position, real32 heading, real32 pitch, real32 roll) {

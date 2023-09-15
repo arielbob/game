@@ -1375,10 +1375,12 @@ int WinMain(HINSTANCE hInstance,
                     // debug_print("work time before sleep: %f\n", work_time);
 
                     real32 target_frame_time = 1.0f / TARGET_FRAMERATE;
+
+#if DEBUG_CAP_FRAMERATE
                     if (work_time < target_frame_time) {
                         if (sleep_is_granular) {
-                            //DWORD sleep_ms = (DWORD) ((target_frame_time - work_time) * 1000);
-                            //Sleep(sleep_ms);
+                            DWORD sleep_ms = (DWORD) ((target_frame_time - work_time) * 1000);
+                            Sleep(sleep_ms);
                         } else {
                             while (work_time < target_frame_time) {
                                 work_time = win32_get_elapsed_time(last_perf_counter);
@@ -1388,6 +1390,7 @@ int WinMain(HINSTANCE hInstance,
                         //debug_print("MISSED FRAME\n");
                         // TODO: logging, missed frame
                     }
+#endif
                     
                     //debug_print("frame time: %f\n", work_time);
                     //debug_print("\n");
