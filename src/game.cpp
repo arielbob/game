@@ -659,7 +659,6 @@ inline bool32 hit_bottom_player_capsule_sphere(Capsule *capsule, Vec3 *point_on_
 
 void do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 initial_move) {
     Level *level = &game_state->level;
-    player->position += initial_move;
 
     bool32 found_ground = false;
     bool32 intersected = false;
@@ -669,10 +668,154 @@ void do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 init
     // (you can see this if you try pushing yourself underneath a sloped plane made up of 2
     // triangles)
     Vec3 displacement = initial_move;
-    real32 displacement_length = distance(initial_move);
+    real32 displacement_length = distance(displacement);
     assert(displacement_length > EPSILON);
+    player->position += displacement;
 
-    Capsule player_capsule = make_capsule(player->position + displacement,
+    Capsule player_capsule = make_capsule(player->position,
+                                          player->position + make_vec3(0.0f, player->height, 0.0f),
+                                          Player_Constants::capsule_radius);
+    
+    for (int32 num_collisions = 0; num_collisions < MAX_FRAME_COLLISIONS; num_collisions++) {
+        Entity *entity = level->entities;
+
+        while (entity) {
+            bool32 walkable = (entity->flags & ENTITY_MESH) && (entity->flags & ENTITY_COLLIDER);
+            if (!walkable) {
+                entity = entity->next;
+                continue;
+            }
+
+            Mat4 object_to_world = get_model_matrix(entity->transform);
+            Mesh *mesh = get_mesh(entity->mesh_id);
+
+            for (int32 triangle_index = 0; triangle_index < (int32) mesh->num_triangles; triangle_index++) {
+                Vec3 triangle[3];
+                get_transformed_triangle(mesh, triangle_index, &object_to_world, triangle);
+
+                Vec3 triangle_normal = get_triangle_normal(triangle);
+
+                Vec3 penetration_normal, penetration_point;
+                real32 penetration_depth;
+
+                intersected = capsule_intersects_triangle(player_capsule, triangle,
+                                                          &penetration_normal,
+                                                          &penetration_depth,
+                                                          &penetration_point);
+
+                // TODO: there is a bug in this code when sliding under and along two adjacent triangles above you.
+                //       since the adjacent triangles are not being treated as a single plane, you can slide along
+                //       one, but then get caught on the other when you hit it. if the second triangle were the only
+                //       one there, this would be correct behaviour.
+                if (intersected) {
+                    Vec3 normalized_displacement = displacement / displacement_length;
+
+                    Vec3 initial_position = player->position;
+
+                    Vec3 correction = penetration_normal * (penetration_depth + 0.00001f);
+                    player->position += correction;
+
+                    // we check this so that we can nicely climb up triangles that are low enough without
+                    // being pushed brought down by gravity. this is also necessary since if we didn't have this,
+                    // if a wall triangle comes before a floor triangle, then we would get pushed out before
+                    // we'd even be able to intersect with the floor and walk on the floor.
+                    #if 1
+                    if (hit_bottom_player_capsule_sphere(&player_capsule, &penetration_point)) {
+                        found_ground = true;
+                        player->walk_state.triangle_normal = triangle_normal;
+                    }
+                    #endif
+
+                    // TODO: we don't save the correction vector yet
+                    // this is the capsule that we're doing the collision test on
+                    Collision_Debug_Subframe collision_subframe = {
+                        COLLISION_SUBFRAME_COLLISION
+                    };
+                    collision_subframe.collision = {
+                        initial_position,
+                        entity->id,
+                        triangle_index,
+                        triangle_normal,
+                        penetration_normal,
+                        penetration_depth,
+                        penetration_point
+                    };
+                    collision_debug_log_subframe(debug_frame, collision_subframe);
+
+                    // this is the new, corrected, position
+                    Collision_Debug_Subframe position_subframe = {
+                        COLLISION_SUBFRAME_POSITION
+                    };
+                    position_subframe.position = {
+                        player->position
+                    };
+                    collision_debug_log_subframe(debug_frame, position_subframe);
+                    
+                    displacement = correction;
+
+#if 0
+                    Collision_Debug_Subframe desired_move_subframe = { COLLISION_SUBFRAME_DESIRED_MOVE };
+                    desired_move_subframe.desired_move = { player->position, displacement };
+                    collision_debug_log_subframe(debug_frame, desired_move_subframe);
+#endif
+                        
+                    player_capsule = make_capsule(player->position,
+                                                  player->position + make_vec3(0.0f, player->height, 0.0f),
+                                                  Player_Constants::capsule_radius);
+                        
+                    //real32 displacement_length = distance(initial_move);
+
+                    // we don't early-out here since we might encounter a walkable surface later, on this same
+                    // mesh.
+                    //break;
+
+#if DEBUG_SHOW_COLLISION_LINES
+                    Vec4 triangle_color = make_vec4(1.0f, 1.0f, 1.0f, 1.0f);
+                    add_debug_line(&game_state->debug_state,
+                                   triangle[0], triangle[1], triangle_color);
+                    add_debug_line(&game_state->debug_state,
+                                   triangle[1], triangle[2], triangle_color);
+                    add_debug_line(&game_state->debug_state,
+                                   triangle[2], triangle[0], triangle_color);
+#endif
+
+                    break;
+                }
+            }
+
+            // TODO: not sure if we should keep this early-out
+            if (intersected) break;
+                
+            entity = entity->next;
+        }
+        
+        if (!intersected) break;
+    }
+
+    // can we just not do gravity checks? idk
+    // is_grounded should only be set to false after a move
+    // if you're pushed out by the ground, i think that guarantees you're still grounded right?
+    bool32 was_grounded = player->is_grounded && !found_ground;
+    
+    player->is_grounded = found_ground;
+}
+
+void old_do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 initial_move) {
+    Level *level = &game_state->level;
+
+    bool32 found_ground = false;
+    bool32 intersected = false;
+
+    // we use the initial_move vector here, since using the correction displacement from a previous
+    // intersection can result in behaviour such as pushing the player through meshes
+    // (you can see this if you try pushing yourself underneath a sloped plane made up of 2
+    // triangles)
+    Vec3 displacement = initial_move;
+    real32 displacement_length = distance(displacement);
+    assert(displacement_length > EPSILON);
+    player->position += displacement;
+
+    Capsule player_capsule = make_capsule(player->position,
                                           player->position + make_vec3(0.0f, player->height, 0.0f),
                                           Player_Constants::capsule_radius);
     
@@ -732,7 +875,8 @@ void do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 init
 #endif
                     // we don't want to do anything when it's like 90 degrees right?
                     //if (dot(displacement, triangle_normal) < 0.0f) {
-                    if (dot(displacement, triangle_normal) < 0.0f && fabsf(dot(displacement, triangle_normal)) > EPSILON) {
+                    if (dot(displacement, triangle_normal) < 0.0f &&
+                        fabsf(dot(displacement, triangle_normal)) > EPSILON) {
                         // TODO: we need to replace this don't we?
                         Vec3 normalized_displacement = displacement / displacement_length;
 

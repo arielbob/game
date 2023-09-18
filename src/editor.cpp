@@ -400,6 +400,8 @@ void reset_editor(Editor_State *editor_state) {
     editor_state->selected_entity_id = -1;
     editor_state->last_selected_entity_id = -1;
 
+    reset_collision_debugger_state(&editor_state->collision_debug_state);
+    
     reset_asset_library_state();
     reset_entity_properties_state();
 }

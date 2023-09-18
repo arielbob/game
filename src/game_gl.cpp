@@ -3488,6 +3488,33 @@ void gl_render_editor(GL_Framebuffer framebuffer,
             gl_draw_line(penetration_point,
                          penetration_point + penetration_normal*Player_Constants::capsule_radius,
                          make_vec4(1.0f, 0.0f, 0.0f, 1.0f));
+        } else if (subframe->type == COLLISION_SUBFRAME_COLLISION) {
+            Vec3 position = subframe->collision.position;
+            Vec3 penetration_point = subframe->collision.penetration_point;
+            Vec3 penetration_normal = subframe->collision.penetration_normal;
+            real32 penetration_depth = subframe->collision.penetration_depth;
+
+            Vec4 capsule_color = make_vec4(1.0f, 1.0f, 1.0f, 1.0f);
+            glLineWidth(5.0f);
+            gl_draw_capsule(position,
+                            position + make_vec3(0.0f, Player_Constants::player_height, 0.0f),
+                            Player_Constants::capsule_radius, capsule_color);
+            glLineWidth(1.0f);
+
+            // penetration_normal is a unit vector that points from the furthest inside point of the capsule
+            // to the closest center of the capsule? i'm not sure if this makes sense
+
+            // penetration_vector is closest_point_on_triangle to the center of the sphere.
+            // penetration_depth is the shortest depth from the outside of the sphere to the intersection point.
+            // penetration_depth = radius - distance(penetration_vector);
+            
+            // the collision lines are based on the displaced capsule. we move the capsule by the displacement
+            // and do the collision tests on the displaced capsule.
+            glLineWidth(5.0f);
+            gl_draw_line(penetration_point,
+                         penetration_point + penetration_normal*Player_Constants::capsule_radius,
+                         make_vec4(1.0f, 0.0f, 0.0f, 1.0f));
+            glLineWidth(1.0f);
         }
     }
     

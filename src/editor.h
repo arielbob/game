@@ -65,7 +65,8 @@ struct Entity_Properties_State {
 enum Collision_Subframe_Type {
     COLLISION_SUBFRAME_POSITION,
     COLLISION_SUBFRAME_DESIRED_MOVE,
-    COLLISION_SUBFRAME_DESIRED_MOVE_COLLISION
+    COLLISION_SUBFRAME_DESIRED_MOVE_COLLISION,
+    COLLISION_SUBFRAME_COLLISION
 };
 
 // these are attached to the frame
@@ -91,12 +92,23 @@ struct Collision_Subframe_Desired_Move_Collision {
     Vec3 penetration_point;
 };
 
+struct Collision_Subframe_Collision {
+    Vec3 position;
+    int32 entity_id;
+    int32 triangle_index;
+    Vec3 triangle_normal;
+    Vec3 penetration_normal;
+    real32 penetration_depth;
+    Vec3 penetration_point;
+};
+
 struct Collision_Debug_Subframe {
     Collision_Subframe_Type type;
     union {
         Collision_Subframe_Position position;
         Collision_Subframe_Desired_Move desired_move;
         Collision_Subframe_Desired_Move_Collision desired_move_collision;
+        Collision_Subframe_Collision collision;
     };
 };
 

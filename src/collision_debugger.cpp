@@ -1,3 +1,9 @@
+void reset_collision_debugger_state(Collision_Debug_State *state) {
+    bool32 show_capsule = state->show_player_capsule;
+    *state = {};
+    state->show_player_capsule = show_capsule;
+}
+
 Collision_Debug_Frame *get_current_frame(Collision_Debug_State *state) {
     int32 frame_index = (state->current_frame + state->debug_frame_start_index)
         % MAX_COLLISION_DEBUG_FRAMES;
@@ -36,7 +42,7 @@ void collision_debug_next_subframe(Collision_Debug_State *state) {
 void collision_debug_log_subframe(Collision_Debug_Frame *frame,
                                   Collision_Debug_Subframe subframe) {
     assert(frame->num_subframes < MAX_COLLISION_DEBUG_FRAME_SUBFRAMES);
-    frame->subframes[frame->num_subframes++] = subframe;
+    //frame->subframes[frame->num_subframes++] = subframe;
 }
 
 Collision_Debug_Frame *collision_debug_start_frame(Collision_Debug_State *state, Vec3 initial_position) {

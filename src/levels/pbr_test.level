@@ -161,9 +161,10 @@ rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
 mesh "torus"
 material "shiny blue"
+has_collider 1
 }
 entity {
-position 0.000000 0.000000 -7.570771
+position 1.392019 -0.726975 -8.814487
 rotation 0.965931 0.000000 0.000000 -0.258799
 scale 5.384958 0.163586 1.000000
 mesh "cube"
