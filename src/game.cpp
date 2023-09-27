@@ -657,7 +657,83 @@ inline bool32 hit_bottom_player_capsule_sphere(Capsule *capsule, Vec3 *point_on_
     return relative_height_from_base < (capsule->radius - 0.1f);
 }
 
-void do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 initial_move) {
+void do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 new_pos) {
+    Level *level = &game_state->level;
+
+    real32 player_radius = 0.5f;
+    bool32 has_collision = false;
+    
+    for (Entity *entity = level->entities; entity; entity = entity->next) {
+        bool32 can_collide = (entity->flags & ENTITY_MESH) && (entity->flags & ENTITY_COLLIDER);
+        if (!can_collide) {
+            continue;
+        }
+
+        Mat4 object_to_world = get_model_matrix(entity->transform);
+        Mesh *mesh = get_mesh(entity->mesh_id);
+
+        for (int32 triangle_index = 0; triangle_index < (int32) mesh->num_triangles; triangle_index++) {
+            Vec3 triangle[3];
+            get_transformed_triangle(mesh, triangle_index, &object_to_world, triangle);
+
+            Vec3 triangle_normal = get_triangle_normal(triangle);
+
+            bool32 isWall = triangle_normal.y > -0.5f && triangle_normal.y < 0.5f;
+            if (!isWall){
+                continue;
+            }
+
+            // project the new position onto the normal
+            real32 distance_from_triangle_plane = dot(new_pos - triangle[0], triangle_normal);
+            if (distance_from_triangle_plane < 0.0f) {
+                // behind the wall, it's fine
+                // TODO: should probably shoot a ray and see if we collide, honestly
+                continue;
+            }
+            if (distance_from_triangle_plane > player_radius) {
+                // not colliding within player radius
+                continue;
+            }
+
+            // we're within the collision radius/distance of the triangle.
+            // now, check if the new position (projected onto the triangle) is inside the triangle.
+
+            // get the closest point on the triangle plane to the point. NEVERMIND, don't need to do this,
+            // since our barycentric coordinate function just projects the point onto the triangle.
+
+            // check if that coplanar point exists in the triangle.
+            Vec3 bary_coords;
+            if (!compute_barycentric_coords(triangle[0], triangle[1], triangle[2],
+                                            triangle_normal, new_pos,
+                                            &bary_coords)) {
+                assert(!"Degenerate triangle!");
+                continue;
+            }
+
+            // check if bary coords are inside the triangle
+            real32 bary_coords_sum = bary_coords[0] + bary_coords[1] + bary_coords[2];
+            if (bary_coords[0] < 0.0f || bary_coords[1] < 0.0f || bary_coords[2] < 0.0f ||
+                bary_coords_sum > 1.0f) {
+                continue;
+            }
+
+            // we're colliding.
+            real32 push_out_distance = 0.5f - distance_from_triangle_plane;
+            Vec3 push_out_vec = triangle_normal * push_out_distance;
+
+            // TODO: we shouldn't do this here. instead, we should just save all the push_out_vecs, average
+            // them, then do the same calculation as below.
+            player->position = new_pos + push_out_vec;
+            has_collision = true;
+        }
+    }
+
+    if (!has_collision) {
+        player->position = new_pos;
+    }
+}
+
+void old_do_collisions2(Collision_Debug_Frame *debug_frame, Player *player, Vec3 initial_move) {
     Level *level = &game_state->level;
 
     bool32 found_ground = false;
@@ -719,12 +795,12 @@ void do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 init
                     // being pushed brought down by gravity. this is also necessary since if we didn't have this,
                     // if a wall triangle comes before a floor triangle, then we would get pushed out before
                     // we'd even be able to intersect with the floor and walk on the floor.
-                    #if 1
+#if 1
                     if (hit_bottom_player_capsule_sphere(&player_capsule, &penetration_point)) {
                         found_ground = true;
                         player->walk_state.triangle_normal = triangle_normal;
                     }
-                    #endif
+#endif
 
                     // TODO: we don't save the correction vector yet
                     // this is the capsule that we're doing the collision test on
@@ -1107,7 +1183,13 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
     if (controller_state->key_a.is_down) {
         move_vector += -player_right;
     }
-    move_vector = normalize(move_vector) * player->speed;
+    if (controller_state->key_space.is_down) {
+        move_vector += y_axis;
+    }
+    if (controller_state->key_shift.is_down) {
+        move_vector += -y_axis;
+    }
+    move_vector = normalize(move_vector) * player->speed * dt;
 
     Vec3 gravity_acceleration = make_vec3(0.0f, -9.81f, 0.0f);
 
@@ -1119,6 +1201,10 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
     initial_subframe.position = { player->position };
     collision_debug_log_subframe(collision_debug_frame, initial_subframe);
 
+    //player->position += move_vector;
+    do_collisions(collision_debug_frame, player, player->position + move_vector);
+    
+    #if 0
     if (player->is_grounded) {
         player->velocity = move_vector;
         player->acceleration = {};
@@ -1185,6 +1271,7 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
             do_collisions(collision_debug_frame, player, displacement_vector);
         }
     }
+    #endif
 
     collision_debug_end_frame(collision_debug_state, collision_debug_frame, player->position);
 }

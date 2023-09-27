@@ -71,7 +71,7 @@ struct Controller_State {
     char pressed_chars[MAX_PRESSED_CHARS];
 
     union {
-        Controller_Button_State key_states[20];
+        Controller_Button_State key_states[21];
         struct {
             Controller_Button_State key_shift;
             Controller_Button_State key_ctrl;
@@ -89,6 +89,7 @@ struct Controller_State {
             Controller_Button_State key_down;
             Controller_Button_State key_right;
             Controller_Button_State key_left;
+            Controller_Button_State key_space;
             Controller_Button_State key_enter;
             Controller_Button_State left_mouse;
             Controller_Button_State right_mouse;

@@ -681,6 +681,12 @@ internal void win32_process_keyboard_input(bool was_down, bool is_down,
             controller_state->key_left.repeat = is_down == was_down;
             return;
         }
+        case VK_SPACE: {
+            controller_state->key_space.is_down = is_down;
+            controller_state->key_space.was_down = was_down;
+            controller_state->key_space.repeat = is_down == was_down;
+            return;
+        }
         case VK_SHIFT: {
             controller_state->key_shift.is_down = is_down;
             controller_state->key_shift.was_down = was_down;

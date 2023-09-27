@@ -2122,6 +2122,7 @@ bool32 in_triangle(Vec3 p, Vec3 basis1, Vec3 basis2) {
 }
 #endif
 
+// (this is in 2D)
 bool32 in_triangle(Vec2 p, Vec2 triangle[3]) {
     real32 x1 = triangle[0].x;
     real32 y1 = triangle[0].y;
