@@ -662,6 +662,64 @@ void do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 new_
 
     real32 player_radius = 0.5f;
     bool32 has_collision = false;
+
+    Capsule target_capsule = make_capsule(new_pos,
+                                          player->position + make_vec3(0.0f, player->height, 0.0f),
+                                          Player_Constants::capsule_radius);
+    
+    for (Entity *entity = level->entities; entity; entity = entity->next) {
+        bool32 can_collide = (entity->flags & ENTITY_MESH) && (entity->flags & ENTITY_COLLIDER);
+        if (!can_collide) {
+            continue;
+        }
+
+        Mat4 object_to_world = get_model_matrix(entity->transform);
+        Mesh *mesh = get_mesh(entity->mesh_id);
+
+        for (int32 triangle_index = 0; triangle_index < (int32) mesh->num_triangles; triangle_index++) {
+            Vec3 triangle[3];
+            get_transformed_triangle(mesh, triangle_index, &object_to_world, triangle);
+
+            Vec3 triangle_normal = get_triangle_normal(triangle);
+            // TODO: add a check that the triangle normal is pointing toward us? idk
+
+            // TODO: is penetration_normal always the same as triangle_normal?
+            //       i would assume so...
+            // TODO: the reason why we can just glide through things when holding shift and forward is
+            //       that the target_capsule never changes, so as long as the floor collision is last,
+            //       we'll move as if the floor is the only thing we're colliding with and we'll move
+            //       through any other object.
+            Vec3 penetration_normal, penetration_point;
+            real32 penetration_depth;
+
+            bool32 intersected = capsule_intersects_triangle(target_capsule, triangle,
+                                                             &penetration_normal,
+                                                             &penetration_depth,
+                                                             &penetration_point);
+
+            if (!intersected)
+                continue;
+
+            // we're colliding.
+            Vec3 push_out_vec = triangle_normal * penetration_depth;
+
+            // TODO: we shouldn't do this here. instead, we should just save all the push_out_vecs, average
+            // them, then do the same calculation as below.
+            player->position = new_pos + push_out_vec;
+            has_collision = true;
+        }
+    }
+
+    if (!has_collision) {
+        player->position = new_pos;
+    }
+}
+
+void do_collisions_point(Collision_Debug_Frame *debug_frame, Player *player, Vec3 new_pos) {
+    Level *level = &game_state->level;
+
+    real32 player_radius = 0.5f;
+    bool32 has_collision = false;
     
     for (Entity *entity = level->entities; entity; entity = entity->next) {
         bool32 can_collide = (entity->flags & ENTITY_MESH) && (entity->flags & ENTITY_COLLIDER);

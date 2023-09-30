@@ -38,11 +38,28 @@ roughness 0.000000
 
 entities {
 entity {
-position 0.000000 1.365892 0.000000
-rotation 0.722224 -0.691660 0.000000 0.000000
-scale 1.000000 0.145385 4.040632
+position 2.379637 1.909431 0.000000
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
 mesh "cube"
-material "basic"
+material "default_material"
+has_collider 1
+}
+entity {
+position 0.000000 1.224753 -5.407761
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+light_type point
+light_color 1.000000 1.000000 1.000000
+falloff_start 0.000000
+falloff_end 35.000000
+}
+entity {
+position 0.000000 0.000000 -0.002204
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 12.328635 0.292615 10.842669
+mesh "cube"
+material "whateve"
 has_collider 1
 }
 entity {
@@ -55,21 +72,12 @@ falloff_start 0.000000
 falloff_end 101.000000
 }
 entity {
-position 0.000000 0.000000 -0.002204
-rotation 1.000000 0.000000 0.000000 0.000000
-scale 12.328635 0.292615 10.842669
+position 0.000000 1.365892 0.000000
+rotation 0.722215 -0.691668 0.000000 0.000000
+scale 1.000000 0.145385 4.040632
 mesh "cube"
-material "whateve"
+material "basic"
 has_collider 1
-}
-entity {
-position 0.000000 1.224753 -5.407761
-rotation 1.000000 0.000000 0.000000 0.000000
-scale 1.000000 1.000000 1.000000
-light_type point
-light_color 1.000000 1.000000 1.000000
-falloff_start 0.000000
-falloff_end 35.000000
 }
 }
 

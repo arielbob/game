@@ -1433,6 +1433,7 @@ bool32 sphere_intersects_triangle(Vec3 center, real32 radius, Vec3 triangle[3],
       side view of sphere:
       |   :  .   |   
       : is the triangle collision
+      . is the center of the sphere
       penetration_vector is vector from : to .
       penetration_normal is the normalized penetration_vector
       penetration_depth is the distance from the left | to :
