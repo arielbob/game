@@ -284,10 +284,11 @@ bool32 capsule_intersects_mesh(Capsule capsule, Mesh mesh, Transform transform,
 
         // TODO: do we want to return the smallest or largest penetration depth?
         Vec3 normal_result;
-        real32 depth_result;
+        real32 depth_result, distance_from_plane;
         Vec3 intersection_point_result;
         if (capsule_intersects_triangle(capsule, triangle,
-                                        &normal_result, &depth_result, &intersection_point_result)) {
+                                        &normal_result, &depth_result, &intersection_point_result,
+                                        &distance_from_plane)) {
             real32 dot_result = dot(normal_result, triangle_normal);
             // TODO: penetration depth is super confusing, we might just want to return the opposite one, i.e.
             //       the one we use for pushing the capsule out
@@ -664,8 +665,10 @@ void do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 new_
     bool32 has_collision = false;
 
     Capsule target_capsule = make_capsule(new_pos,
-                                          player->position + make_vec3(0.0f, player->height, 0.0f),
+                                          new_pos + make_vec3(0.0f, player->height, 0.0f),
                                           Player_Constants::capsule_radius);
+
+    Vec3 corrected_position;
     
     for (Entity *entity = level->entities; entity; entity = entity->next) {
         bool32 can_collide = (entity->flags & ENTITY_MESH) && (entity->flags & ENTITY_COLLIDER);
@@ -690,28 +693,39 @@ void do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 new_
             //       we'll move as if the floor is the only thing we're colliding with and we'll move
             //       through any other object.
             Vec3 penetration_normal, penetration_point;
-            real32 penetration_depth;
+            real32 penetration_depth, distance_from_plane;
 
             bool32 intersected = capsule_intersects_triangle(target_capsule, triangle,
                                                              &penetration_normal,
                                                              &penetration_depth,
-                                                             &penetration_point);
+                                                             &penetration_point,
+                                                             &distance_from_plane);
 
             if (!intersected)
                 continue;
 
             // we're colliding.
-            Vec3 push_out_vec = triangle_normal * penetration_depth;
+            real32 offset = target_capsule.radius - distance_from_plane;
+            Vec3 push_out_vec = triangle_normal * offset;
 
             // TODO: we shouldn't do this here. instead, we should just save all the push_out_vecs, average
             // them, then do the same calculation as below.
             player->position = new_pos + push_out_vec;
+            corrected_position = player->position;
             has_collision = true;
         }
     }
 
     if (!has_collision) {
         player->position = new_pos;
+    } else {
+        Collision_Debug_Subframe position_subframe = {
+            COLLISION_SUBFRAME_POSITION
+        };
+        position_subframe.position = {
+            player->position
+        };
+        collision_debug_log_subframe(debug_frame, position_subframe);
     }
 }
 
@@ -830,12 +844,13 @@ void old_do_collisions2(Collision_Debug_Frame *debug_frame, Player *player, Vec3
                 Vec3 triangle_normal = get_triangle_normal(triangle);
 
                 Vec3 penetration_normal, penetration_point;
-                real32 penetration_depth;
+                real32 penetration_depth, distance_from_plane;
 
                 intersected = capsule_intersects_triangle(player_capsule, triangle,
                                                           &penetration_normal,
                                                           &penetration_depth,
-                                                          &penetration_point);
+                                                          &penetration_point,
+                                                          &distance_from_plane);
 
                 // TODO: there is a bug in this code when sliding under and along two adjacent triangles above you.
                 //       since the adjacent triangles are not being treated as a single plane, you can slide along
@@ -973,12 +988,13 @@ void old_do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 
                 Vec3 triangle_normal = get_triangle_normal(triangle);
 
                 Vec3 penetration_normal, penetration_point;
-                real32 penetration_depth;
+                real32 penetration_depth, distance_from_plane;
 
                 intersected = capsule_intersects_triangle(player_capsule, triangle,
                                                           &penetration_normal,
                                                           &penetration_depth,
-                                                          &penetration_point);
+                                                          &penetration_point,
+                                                          &distance_from_plane);
 
                 // TODO: there is a bug in this code when sliding under and along two adjacent triangles above you.
                 //       since the adjacent triangles are not being treated as a single plane, you can slide along

@@ -1406,8 +1406,10 @@ bool32 circle_intersects_triangle_on_xz_plane(Vec3 center, real32 radius, Vec3 t
     return true;
 }
 
+// TODO: maybe just put these params into a struct
 bool32 sphere_intersects_triangle(Vec3 center, real32 radius, Vec3 triangle[3],
-                                  Vec3 *penetration_normal, real32 *penetration_depth) {
+                                  Vec3 *penetration_normal, real32 *penetration_depth,
+                                  real32 *center_distance_from_plane_result) {
     Vec3 p0 = triangle[0];
     Vec3 p1 = triangle[1];
     Vec3 p2 = triangle[2];
@@ -1418,6 +1420,8 @@ bool32 sphere_intersects_triangle(Vec3 center, real32 radius, Vec3 triangle[3],
     real32 center_distance_from_plane = dot(center - p0, triangle_normal);
     if (fabsf(center_distance_from_plane) > radius) return false;
 
+    *center_distance_from_plane_result = center_distance_from_plane;
+    
     Vec3 coplanar_point = center - triangle_normal*center_distance_from_plane;
     Vec3 closest_point_on_triangle = get_closest_point_on_triangle_to_coplanar_point(coplanar_point, triangle,
                                                                                      triangle_normal);
@@ -1440,6 +1444,8 @@ bool32 sphere_intersects_triangle(Vec3 center, real32 radius, Vec3 triangle[3],
       penetration/intersection point is if you took a line from the sphere center to the outside of the sphere
 that intersects the triangle and is perpendicular to it, the penetration point is where the line intersects the
 sphere
+center_distance_from_plane_result is the distance from coplanar point to the center of the sphere
+      - just look at the code above to figure out what it is
     */
 
     Vec3 capsule_edge = closest_point_on_triangle - (*penetration_normal)*(*penetration_depth);
@@ -1462,7 +1468,7 @@ sphere
 // https://wickedengine.net/2020/04/26/capsule-collision-detection/
 bool32 capsule_intersects_triangle(Capsule capsule, Vec3 triangle[3],
                                    Vec3 *penetration_normal, real32 *penetration_depth,
-                                   Vec3 *intersection_point) {
+                                   Vec3 *intersection_point, real32 *sphere_center_distance_from_plane) {
     Vec3 capsule_normal = normalize(capsule.tip - capsule.base);
     Vec3 line_end_offset = capsule_normal * capsule.radius;
     Vec3 a = capsule.base + line_end_offset;
@@ -1485,9 +1491,12 @@ bool32 capsule_intersects_triangle(Capsule capsule, Vec3 triangle[3],
     // the penetration normal is the direction vector of the shortest line from the triangle to the reference
     // point. the penetration vector is NOT the distance we need to move the capsule by to get it out. the
     // direction is the same, but the distance is the radius of the capsule - the length of the penetration vector.
+
+    // note that the reference point can be at the top or the bottom of the capsule, but we need a point
+    // that exists on the line between the centers of the capsule spheres, so we call the function below:
     Vec3 sphere_center = closest_point_on_line_segment(a, b, reference_point);
     if (!sphere_intersects_triangle(sphere_center, capsule.radius, triangle,
-                                    penetration_normal, penetration_depth)) {
+                                    penetration_normal, penetration_depth, sphere_center_distance_from_plane)) {
         return false;
     }
 
