@@ -1510,7 +1510,7 @@ bool32 capsule_intersects_triangle(Capsule capsule, Vec3 triangle[3],
                    triangle[2], triangle[0], make_vec4(1.0f, 0.0f, 0.0f, 1.0f));
 #endif
 
-    *intersection_point = sphere_center - (*penetration_normal)*capsule.radius;
+    *intersection_point = sphere_center - penetration_normal*(capsule.radius - penetration_depth);
 
     return true;
 }

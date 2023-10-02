@@ -668,7 +668,8 @@ void do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 new_
                                           new_pos + make_vec3(0.0f, player->height, 0.0f),
                                           Player_Constants::capsule_radius);
 
-    Vec3 corrected_position;
+    Vec3 push_outs[MAX_PUSH_OUTS];
+    int32 num_push_outs = 0;
     
     for (Entity *entity = level->entities; entity; entity = entity->next) {
         bool32 can_collide = (entity->flags & ENTITY_MESH) && (entity->flags & ENTITY_COLLIDER);
@@ -692,6 +693,9 @@ void do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 new_
             //       that the target_capsule never changes, so as long as the floor collision is last,
             //       we'll move as if the floor is the only thing we're colliding with and we'll move
             //       through any other object.
+
+            // TODO: we should be updating the player position as we go on...
+            // TODO: i think we should be shooting a swept capsule ray
             Vec3 penetration_normal, penetration_point;
             real32 penetration_depth, distance_from_plane;
 
@@ -704,14 +708,21 @@ void do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 new_
             if (!intersected)
                 continue;
 
-            // we're colliding.
-            real32 offset = target_capsule.radius - distance_from_plane;
-            Vec3 push_out_vec = triangle_normal * offset;
+            // TODO: we might be able to check this earlier
+            if (distance_from_plane < 0.0f)
+                continue;
 
-            // TODO: we shouldn't do this here. instead, we should just save all the push_out_vecs, average
-            // them, then do the same calculation as below.
-            player->position = new_pos + push_out_vec;
-            corrected_position = player->position;
+            // should we check if we're behind? i think so...
+            // distance from plane is signed? idk
+            // we're colliding.
+            if (num_push_outs < MAX_PUSH_OUTS) {
+                real32 offset = target_capsule.radius - distance_from_plane;
+                Vec3 push_out_vec = triangle_normal * offset;
+                push_outs[num_push_outs++] = push_out_vec;
+            } else {
+                assert(!"Max push outs exceeded!");
+            }
+            
             has_collision = true;
         }
     }
@@ -719,6 +730,15 @@ void do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 new_
     if (!has_collision) {
         player->position = new_pos;
     } else {
+        Vec3 push_out_average;
+        Vec3 push_out_sum = {};
+        for (int32 i = 0; i < num_push_outs; i++) {
+            push_out_sum += push_outs[i];
+        }
+        push_out_average = push_out_sum / (real32) num_push_outs;
+        
+        player->position = new_pos + push_out_average;
+        
         Collision_Debug_Subframe position_subframe = {
             COLLISION_SUBFRAME_POSITION
         };
