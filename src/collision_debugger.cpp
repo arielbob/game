@@ -76,6 +76,12 @@ void collision_debug_end_frame(Collision_Debug_State *state, Collision_Debug_Fra
     state->current_frame = 0;
 }
 
+void collision_debug_log_position_subframe(Collision_Debug_Frame *collision_debug_frame, Vec3 position) {
+    Collision_Debug_Subframe initial_subframe = { COLLISION_SUBFRAME_POSITION };
+    initial_subframe.position = { position };
+    collision_debug_log_subframe(collision_debug_frame, initial_subframe);
+}
+
 void draw_collision_debugger() {
     UI_Window_Theme window_theme = DEFAULT_WINDOW_THEME;
 

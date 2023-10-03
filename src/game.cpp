@@ -471,6 +471,13 @@ void draw_messages(Message_Manager *manager, real32 y_start) {
     ui_pop_widget();
 }
 
+void init_player() {
+    Player *player = &game_state->player;
+    *player = {};
+    player->height = Player_Constants::player_height;
+    player->speed = Player_Constants::initial_speed;
+}
+
 void init_game(Sound_Output *sound_output, uint32 num_samples) {
     assert(!game_state->is_initted);
     game_state->mode = Game_Mode::EDITING;
@@ -485,9 +492,7 @@ void init_game(Sound_Output *sound_output, uint32 num_samples) {
     Display_Output *display_output = &game_state->render_state.display_output;
 
     // init player
-    Player *player = &game_state->player;
-    player->height = Player_Constants::player_height;
-    player->speed = Player_Constants::initial_speed;
+    init_player();
 
     // music file testing
 #if 0
@@ -663,6 +668,7 @@ void do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 new_
 
     real32 player_radius = 0.5f;
     bool32 has_collision = false;
+    bool32 found_ground = false;
 
     player->position = new_pos;
     Capsule current_capsule = make_capsule(player->position,
@@ -700,11 +706,15 @@ void do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 new_
                 continue;
 
             // we're colliding
+            if (hit_bottom_player_capsule_sphere(&current_capsule, &penetration_point)) {
+                found_ground = true;
+            }
+            
             player->position += penetration_normal * penetration_depth;
             current_capsule = make_capsule(player->position,
                                            player->position + make_vec3(0.0f, player->height, 0.0f),
                                            Player_Constants::capsule_radius);
-            
+
             has_collision = true;
         }
     }
@@ -720,6 +730,8 @@ void do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 new_
         player->position
     };
     collision_debug_log_subframe(debug_frame, position_subframe);
+
+    player->is_grounded = found_ground;
 }
 
 void do_collisions_point(Collision_Debug_Frame *debug_frame, Player *player, Vec3 new_pos) {
@@ -1251,7 +1263,11 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
         move_vector += -player_right;
     }
     if (controller_state->key_space.is_down) {
-        move_vector += y_axis;
+        if (player->is_grounded) {
+            // TODO: i'm not sure why we have to have such high values for y velocity... we might be doing something wrong?
+            player->velocity = make_vec3(0.0f, 6.0f, 0.0f);
+        }
+        //move_vector += y_axis;
     }
     if (controller_state->key_shift.is_down) {
         move_vector += -y_axis;
@@ -1264,12 +1280,29 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
     Collision_Debug_Frame *collision_debug_frame = collision_debug_start_frame(collision_debug_state,
                                                                                player->position);
 
-    Collision_Debug_Subframe initial_subframe = { COLLISION_SUBFRAME_POSITION };
-    initial_subframe.position = { player->position };
-    collision_debug_log_subframe(collision_debug_frame, initial_subframe);
+    collision_debug_log_position_subframe(collision_debug_frame, player->position);
+    
+    Vec3 displacement_vector = player->velocity*dt + 0.5f*player->acceleration*dt*dt;
+    player->velocity += player->acceleration * dt;
 
+    move_vector += displacement_vector;
+    
     //player->position += move_vector;
+    bool32 was_grounded = player->is_grounded;
+
     do_collisions(collision_debug_frame, player, player->position + move_vector);
+
+    if (player->is_grounded) {
+        player->velocity = {};
+        player->acceleration = {};
+    } else {
+        player->acceleration = gravity_acceleration;
+        #if 0
+        if (was_grounded) {
+            player->velocity = {};
+        }
+        #endif
+    }
     
     #if 0
     if (player->is_grounded) {

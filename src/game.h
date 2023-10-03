@@ -176,7 +176,7 @@ namespace Player_Constants {
     Vec3 right = make_vec3(1.0f, 0.0f, 0.0f);
     Vec3 up = make_vec3(0.0f, 1.0f, 0.0f);
 
-    real32 initial_speed = 3.5f;
+    real32 initial_speed = 5.0f;
 };
 
 struct Walk_State {
@@ -284,6 +284,7 @@ bool32 get_walkable_triangle_on_mesh(Vec3 center, real32 radius,
                                      Get_Walkable_Triangle_On_Mesh_Result *result);
 void add_debug_line(Debug_State *debug_state, Vec3 start, Vec3 end, Vec4 color);
 void add_message(Message_Manager *manager, String text);
+void init_player();
 //void set_entity_transform(Asset_Manager *asset_manager, Entity *entity, Transform transform);
 
 #endif

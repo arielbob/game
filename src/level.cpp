@@ -132,6 +132,8 @@ void load_level(Level *level, Level_Info *level_info) {
 
     level->is_loaded = true;
 
+    init_player();
+
 #if 0
     Vec3 capsule_position = make_vec3(0.0f, 1.0f, 0.0f);
     Vec3 entity_scale = make_vec3(0.1f, 0.1f, 0.1f);
