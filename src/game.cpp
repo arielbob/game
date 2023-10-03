@@ -664,13 +664,11 @@ void do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 new_
     real32 player_radius = 0.5f;
     bool32 has_collision = false;
 
-    Capsule target_capsule = make_capsule(new_pos,
-                                          new_pos + make_vec3(0.0f, player->height, 0.0f),
-                                          Player_Constants::capsule_radius);
+    player->position = new_pos;
+    Capsule current_capsule = make_capsule(player->position,
+                                           player->position + make_vec3(0.0f, player->height, 0.0f),
+                                           Player_Constants::capsule_radius);
 
-    Vec3 push_outs[MAX_PUSH_OUTS];
-    int32 num_push_outs = 0;
-    
     for (Entity *entity = level->entities; entity; entity = entity->next) {
         bool32 can_collide = (entity->flags & ENTITY_MESH) && (entity->flags & ENTITY_COLLIDER);
         if (!can_collide) {
@@ -685,21 +683,10 @@ void do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 new_
             get_transformed_triangle(mesh, triangle_index, &object_to_world, triangle);
 
             Vec3 triangle_normal = get_triangle_normal(triangle);
-            // TODO: add a check that the triangle normal is pointing toward us? idk
-
-            // TODO: is penetration_normal always the same as triangle_normal?
-            //       i would assume so...
-            // TODO: the reason why we can just glide through things when holding shift and forward is
-            //       that the target_capsule never changes, so as long as the floor collision is last,
-            //       we'll move as if the floor is the only thing we're colliding with and we'll move
-            //       through any other object.
-
-            // TODO: we should be updating the player position as we go on...
-            // TODO: i think we should be shooting a swept capsule ray
             Vec3 penetration_normal, penetration_point;
             real32 penetration_depth, distance_from_plane;
 
-            bool32 intersected = capsule_intersects_triangle(target_capsule, triangle,
+            bool32 intersected = capsule_intersects_triangle(current_capsule, triangle,
                                                              &penetration_normal,
                                                              &penetration_depth,
                                                              &penetration_point,
@@ -712,16 +699,11 @@ void do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 new_
             if (distance_from_plane < 0.0f)
                 continue;
 
-            // should we check if we're behind? i think so...
-            // distance from plane is signed? idk
-            // we're colliding.
-            if (num_push_outs < MAX_PUSH_OUTS) {
-                real32 offset = target_capsule.radius - distance_from_plane;
-                Vec3 push_out_vec = triangle_normal * offset;
-                push_outs[num_push_outs++] = push_out_vec;
-            } else {
-                assert(!"Max push outs exceeded!");
-            }
+            // we're colliding
+            player->position += penetration_normal * penetration_depth;
+            current_capsule = make_capsule(player->position,
+                                           player->position + make_vec3(0.0f, player->height, 0.0f),
+                                           Player_Constants::capsule_radius);
             
             has_collision = true;
         }
@@ -729,24 +711,15 @@ void do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 new_
 
     if (!has_collision) {
         player->position = new_pos;
-    } else {
-        Vec3 push_out_average;
-        Vec3 push_out_sum = {};
-        for (int32 i = 0; i < num_push_outs; i++) {
-            push_out_sum += push_outs[i];
-        }
-        push_out_average = push_out_sum / (real32) num_push_outs;
-        
-        player->position = new_pos + push_out_average;
-        
-        Collision_Debug_Subframe position_subframe = {
-            COLLISION_SUBFRAME_POSITION
-        };
-        position_subframe.position = {
-            player->position
-        };
-        collision_debug_log_subframe(debug_frame, position_subframe);
     }
+        
+    Collision_Debug_Subframe position_subframe = {
+        COLLISION_SUBFRAME_POSITION
+    };
+    position_subframe.position = {
+        player->position
+    };
+    collision_debug_log_subframe(debug_frame, position_subframe);
 }
 
 void do_collisions_point(Collision_Debug_Frame *debug_frame, Player *player, Vec3 new_pos) {
