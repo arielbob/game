@@ -707,9 +707,41 @@ void do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 new_
 
             // we're colliding
             if (hit_bottom_player_capsule_sphere(&current_capsule, &penetration_point)) {
-                found_ground = true;
+                real32 abs_normal_y = fabsf(triangle_normal.y);
+                real32 y_at_45_deg = 0.707106781f;
+                if (abs_normal_y > y_at_45_deg)
+                    found_ground = true;
             }
+
+            // TODO: we get pushed out on the same frame.
+            // - can't we just check if there's anything below us, and if there isn't, then just bring us down to the closest ground
+            // - just find the closest ground and move us to it
+            // - i don't think the distance really matters because if it was on the same frame, then, actually idk
+            //   - does this mess up jumping?
+            /*
+              - if you were grounded and are no longer grounded (this should be checked after we do_collision)
+                - then it means you're in the air for whatever reason
+                - which could be because:
+                  - you're jumping
+                  - you walked off a ledge
+                  - you got pushed up during collision
+                - jumping - easy to detect; just set a bool
+                - walked off a ledge - idk
+                - pushed up during collision:
+                  - were grounded, but no longer grounded
+                  - can we just check if the new y is higher?
+                    - if you're on an upward slope that ends with a ledge, you can be not grounded after being grounded
+                      and still have a new y that is higher
+                    - i think it's fine to just do a closest ground thing; we just have to only do it within a certain
+                      distance
+                - can we use a cylinder triangle test?
+                - go from bottom of capsule to set distance
+                  - you can get the closest point to the cylinder ray
+                  - then just move the player y down to the y of the intersection point
+                    - intersection point meaning same as with capsule intersection
+             */
             
+            //player->position += triangle_normal*(current_capsule.radius - distance_from_plane);
             player->position += penetration_normal * penetration_depth;
             current_capsule = make_capsule(player->position,
                                            player->position + make_vec3(0.0f, player->height, 0.0f),
@@ -1265,7 +1297,7 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
     if (controller_state->key_space.is_down) {
         if (player->is_grounded) {
             // TODO: i'm not sure why we have to have such high values for y velocity... we might be doing something wrong?
-            player->velocity = make_vec3(0.0f, 6.0f, 0.0f);
+            player->velocity = make_vec3(0.0f, 5.0f, 0.0f);
         }
         //move_vector += y_axis;
     }
@@ -1422,6 +1454,13 @@ void draw_ui(real32 dt) {
         char *fps_text = string_format((Allocator *) &ui_manager->frame_arena, "FPS: %d / dt %.3f",
                                        (int32) round(game_state->last_second_fps), dt);
         do_text(fps_text, "", white_text);
+
+        UI_Theme is_grounded_theme = white_text;
+        is_grounded_theme.semantic_position.y += 15.0f;
+
+        char *grounded_text = string_format((Allocator *) &ui_manager->frame_arena, "is_grounded: %d",
+                                            game_state->player.is_grounded);
+        do_text(grounded_text, "", is_grounded_theme);
     }
     ui_pop_widget();
 }
