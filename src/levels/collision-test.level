@@ -38,7 +38,15 @@ roughness 0.000000
 
 entities {
 entity {
-position 2.379637 1.909431 0.000000
+position 0.000000 1.388721 -4.240461
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 6.338542 5.504259 1.000000
+mesh "cube"
+material "default_material"
+has_collider 1
+}
+entity {
+position 5.047541 -1.000000 0.000000
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
 mesh "cube"
@@ -46,37 +54,11 @@ material "default_material"
 has_collider 1
 }
 entity {
-position 11.398870 9.859129 -5.407761
+position 4.037377 -0.452777 0.000000
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
-light_type point
-light_color 1.000000 1.000000 1.000000
-falloff_start 0.000000
-falloff_end 32.000000
-}
-entity {
-position 0.000000 -1.085017 -0.002204
-rotation 1.000000 0.000000 0.000000 0.000000
-scale 12.328635 0.292615 10.842669
 mesh "cube"
-material "whateve"
-has_collider 1
-}
-entity {
-position -2.454894 3.194646 0.000000
-rotation 1.000000 0.000000 0.000000 0.000000
-scale 1.000000 1.000000 1.000000
-light_type point
-light_color 1.000000 1.000000 1.000000
-falloff_start 0.000000
-falloff_end 101.000000
-}
-entity {
-position -3.148626 1.382292 0.048825
-rotation 0.843270 -0.537490 0.000000 0.000000
-scale 7.914371 0.523662 6.083735
-mesh "cube"
-material "basic"
+material "default_material"
 has_collider 1
 }
 entity {
@@ -89,15 +71,41 @@ falloff_start 0.000000
 falloff_end 63.000000
 }
 entity {
-position 4.037377 -0.452777 0.000000
-rotation 1.000000 0.000000 0.000000 0.000000
-scale 1.000000 1.000000 1.000000
+position -3.148626 1.382292 0.048825
+rotation 0.843270 -0.537490 0.000000 0.000000
+scale 7.914371 0.523662 6.083735
 mesh "cube"
-material "default_material"
+material "basic"
 has_collider 1
 }
 entity {
-position 5.047541 -1.000000 0.000000
+position -2.454894 3.194646 0.000000
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+light_type point
+light_color 1.000000 1.000000 1.000000
+falloff_start 0.000000
+falloff_end 101.000000
+}
+entity {
+position 0.000000 -1.085017 -0.002204
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 12.328635 0.292615 22.465631
+mesh "cube"
+material "whateve"
+has_collider 1
+}
+entity {
+position 11.398870 9.859129 -5.407761
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+light_type point
+light_color 1.000000 1.000000 1.000000
+falloff_start 0.000000
+falloff_end 32.000000
+}
+entity {
+position 2.379637 1.909431 0.000000
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
 mesh "cube"
