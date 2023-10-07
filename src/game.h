@@ -264,6 +264,12 @@ struct Closest_Vertical_Point_On_Mesh_Result {
     Vec3 triangle_normal;
 };
 
+struct Collision {
+    // distance from center to penetration point via penetration_vector
+    real32 distance_from_center;
+    Vec3 push_out;
+};
+
 inline bool32 was_clicked(Controller_Button_State button_state);
 inline bool32 being_held(Controller_Button_State button_state);
 inline bool32 just_pressed(Controller_Button_State button_state);

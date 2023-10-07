@@ -675,6 +675,10 @@ void do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 new_
                                            player->position + make_vec3(0.0f, player->height, 0.0f),
                                            Player_Constants::capsule_radius);
 
+    const int32 MAX_COLLISIONS = 64;
+    Collision collisions[MAX_COLLISIONS];
+    int32 num_collisions = 0;
+
     for (Entity *entity = level->entities; entity; entity = entity->next) {
         bool32 can_collide = (entity->flags & ENTITY_MESH) && (entity->flags & ENTITY_COLLIDER);
         if (!can_collide) {
@@ -742,10 +746,17 @@ void do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 new_
              */
             
             //player->position += triangle_normal*(current_capsule.radius - distance_from_plane);
+
+            assert(num_collisions < MAX_COLLISIONS);
+            Vec3 push_out = penetration_normal * penetration_depth;
+            collisions[num_collisions++] = { current_capsule.radius - penetration_depth, push_out };
+
+#if 0
             player->position += penetration_normal * penetration_depth;
             current_capsule = make_capsule(player->position,
                                            player->position + make_vec3(0.0f, player->height, 0.0f),
                                            Player_Constants::capsule_radius);
+#endif
 
             has_collision = true;
         }
@@ -753,6 +764,21 @@ void do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 new_
 
     if (!has_collision) {
         player->position = new_pos;
+    }
+
+    if (num_collisions) {
+        real32 min_distance = INFINITY;
+        Collision *closest_collision = NULL;
+        int32 min_dist_index = -1;
+        for (int32 i = 0; i < num_collisions; i++) {
+            Collision *c = &collisions[i];
+            if (c->distance_from_center < min_distance) {
+                closest_collision = c;
+                min_distance = c->distance_from_center;
+            }
+        }
+
+        player->position += closest_collision->push_out;
     }
         
     Collision_Debug_Subframe position_subframe = {
