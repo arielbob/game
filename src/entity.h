@@ -21,23 +21,49 @@
 //       light_type is set. this is fine for now, but we may want to have flags
 //       for light fields if they need to be deallocated.
 enum Light_Type {
-    LIGHT_POINT
+    LIGHT_POINT,
+    LIGHT_SUN
 };
+
+// TODO: rename the falloff_start and _end variables to prepend point_
+// - just because we will probably have other light sources that have those same
+//   variables
+// we keep them all instead of using a union (like we do with shader uniforms in
+// UI_Theme) because it makes parsing easier. we don't have to any checking or
+// making sure an order is kept; we can just read the parameter and set it. it
+// also gives us the ability to have parameters for light types other than whatever
+// light_type is set to. so you can switch either in the editor or in the game and
+// all the params will be saved. all this at the expense of a larger struct,
+// obviously, but i think it's fine.
+// all this being said, currently, in level_export.cpp, we actually only export
+// the parameters for the current light_type. yeah, it's kinda weird and
+// asymmetrical... idk. it's honestly useful for editing and for parsing.
+// let's just keep it this way. i guess when we save, it's expected the unused
+// params will be dropped. i guess we just don't support switching light types
+// yet in-game.
+
+#define POINT_LIGHT_FIELDS                      \
+    Vec3 light_color;                           \
+    real32 falloff_start;                       \
+    real32 falloff_end;                         \
+
+#define SUN_LIGHT_FIELDS                        \
+    Vec3 sun_color;                             \
+    Vec3 sun_direction;                         \
 
 #define ENTITY_FIELDS                           \
     uint32 flags;                               \
     Transform transform;                        \
                                                 \
-    int32 mesh_id;                              \
+    int32 mesh_id = ENGINE_DEFAULT_CUBE_MESH_ID;\
     int32 material_id;                          \
     AABB transformed_aabb;                      \
                                                 \
     Collider_Variant collider;                  \
                                                 \
     Light_Type light_type;                      \
-    Vec3 light_color;                           \
-    real32 falloff_start;                       \
-    real32 falloff_end;                         \
+    POINT_LIGHT_FIELDS                          \
+    SUN_LIGHT_FIELDS                            \
 
 struct Entity {
     int32 id;

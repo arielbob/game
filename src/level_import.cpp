@@ -717,10 +717,16 @@ bool32 Level_Loader::parse_entity(Allocator *temp_allocator, Tokenizer *tokenize
 
             if (string_equals(token.string, "point")) {
                 entity_info.light_type = LIGHT_POINT;
+            } else if (string_equals(token.string, "sun")) {
+                entity_info.light_type = LIGHT_SUN;
             } else {
                 return level_parse_error(error, "Invalid light_type property value. Expected \"point\".");
             }
         } else if (string_equals(token.string, "light_color")) {
+            // it's actually fine if we set these even if the specific light type doesn't have that
+            // specific parameter. it'll get set, but it'll only ever actually be used if you change
+            // the light type of the entity in the editor to a type that uses the parameter, which
+            // is fine.
             if (!parse_vec3(tokenizer, &entity_info.light_color, error)) {
                 return false;
             }
@@ -730,6 +736,14 @@ bool32 Level_Loader::parse_entity(Allocator *temp_allocator, Tokenizer *tokenize
             }
         } else if (string_equals(token.string, "falloff_end")) {
             if (!parse_real(tokenizer, &entity_info.falloff_end, error)) {
+                return false;
+            }
+        } else if (string_equals(token.string, "sun_color")) {
+            if (!parse_vec3(tokenizer, &entity_info.sun_color, error)) {
+                return false;
+            }
+        } else if (string_equals(token.string, "sun_direction")) {
+            if (!parse_vec3(tokenizer, &entity_info.sun_direction, error)) {
                 return false;
             }
         } else if (string_equals(token.string, "has_collider")) {

@@ -38,7 +38,7 @@ roughness 0.000000
 
 entities {
 entity {
-position 0.000000 1.388721 -4.240461
+position 0.000000 1.388721 -8.297350
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 6.338542 5.504259 1.000000
 mesh "cube"
@@ -108,9 +108,10 @@ entity {
 position 2.379637 1.909431 0.000000
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
-mesh "cube"
-material "default_material"
-has_collider 1
+light_type point
+light_color 0.000000 0.000000 0.000000
+falloff_start 0.000000
+falloff_end 0.000000
 }
 }
 

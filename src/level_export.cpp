@@ -191,6 +191,10 @@ void export_level(Level *level, char *filename) {
                     append_vec3_property(&working_buffer, "light_color", current->light_color);
                     append_string(&working_buffer, "falloff_start %f\n", current->falloff_start);
                     append_string(&working_buffer, "falloff_end %f\n", current->falloff_end);
+                } else if (current->light_type == LIGHT_SUN) {
+                    append_string(&working_buffer, "light_type sun\n");
+                    append_vec3_property(&working_buffer, "sun_color", current->sun_color);
+                    append_vec3_property(&working_buffer, "sun_direction", current->sun_direction);
                 } else {
                     assert(!"Unhandled light type.");
                 }
