@@ -226,6 +226,16 @@ struct GL_Point_Light {
     real32 d_max;
 };
 
+struct GL_Sun_Light {
+    Vec4 color;
+    Vec4 direction;
+};
+
+struct Light_Icon {
+    Light_Type type;
+    Vec3 view_space_position;
+};
+
 struct GL_Shader {
     // this struct includes entire shader program (i.e. vertex + fragment),
     // so don't need to store type here

@@ -3335,6 +3335,14 @@ void gl_draw_gizmo(Gizmo_State *gizmo_state) {
     gl_draw_solid_color_mesh(ENGINE_GIZMO_RING_MESH_ID, z_handle_color, z_transform);
 }
 
+int32 get_size_for_ubo(int32 size) {
+    int32 padded_size = 0;
+    while (padded_size < size) {
+        padded_size += 16; // 16 bytes is size of vec4
+    }
+    return padded_size;
+}
+
 void gl_render_editor(GL_Framebuffer framebuffer,
                       Editor_State *editor_state) {
     Display_Output display_output = render_state->display_output;
@@ -3344,44 +3352,83 @@ void gl_render_editor(GL_Framebuffer framebuffer,
     Level *level = &game_state->level;
 
     // TODO: will need to use different macro when adding more lights
-    Vec3 *light_positions = (Vec3 *) allocate(temp_region, sizeof(Vec3)*MAX_POINT_LIGHTS);
-    int32 current_light_index = 0;
+    Light_Icon *light_icons = (Light_Icon *) allocate(temp_region, sizeof(Light_Icon)*MAX_LIGHTS);
+    int32 num_lights = 0;
 
     // fill in UBO with point light data
+    // the 8 is because the structs are padded to be a multiple of the size of vec4 (16 bytes = sizeof(real32)*4).
+    // - we have { vec4, vec4, real32, real32 }, so we need 2 more real32's = 4 bytes * 2 = 8 bytes.
     uint32 padded_point_light_struct_size = sizeof(GL_Point_Light) + 8;
-    uint32 ubo_offset = 16; // start at 16 because we set num_point_lights after adding the lights
+    uint32 ubo_offset = 0;
     uint8 *ubo_buffer = (uint8 *) allocate(temp_region, GLOBAL_UBO_SIZE);
 
-    int32 num_point_lights = 0;
+    // where does the 16 come from for ubo_offset?
+    // it's the size of vec4. look at pbr.fs's uniform shader_globals to understand the format of ubo_buffer.
+    
+    int32 *num_point_lights = (int32 *) ubo_buffer;
+    ubo_offset += get_size_for_ubo(sizeof(int32));
+    *num_point_lights = 0;
+
     Entity *current = level->entities;
     while (current) {
-        if (current->flags & ENTITY_LIGHT) {
-            if (current->light_type == LIGHT_POINT) {
-                num_point_lights++;
-                assert(num_point_lights <= MAX_POINT_LIGHTS);
+        if (current->flags & ENTITY_LIGHT && current->light_type == LIGHT_POINT) {
+            (*num_point_lights)++;
+            assert(*num_point_lights <= MAX_POINT_LIGHTS);
 
-                GL_Point_Light gl_point_light = {
-                    make_vec4(current->transform.position, 1.0f),
-                    make_vec4(current->light_color, 1.0f),
-                    current->falloff_start,
-                    current->falloff_end
-                };
-                memcpy(ubo_buffer + ubo_offset, &gl_point_light, sizeof(GL_Point_Light));
-                ubo_offset += padded_point_light_struct_size;
+            GL_Point_Light gl_point_light = {
+                make_vec4(current->transform.position, 1.0f),
+                make_vec4(current->light_color, 1.0f),
+                current->falloff_start,
+                current->falloff_end
+            };
+            assert(ubo_offset < GLOBAL_UBO_SIZE);
+            memcpy(ubo_buffer + ubo_offset, &gl_point_light, sizeof(GL_Point_Light));
+            ubo_offset += padded_point_light_struct_size;
 
-                // for point light icon
-                light_positions[current_light_index++] = truncate_v4_to_v3(render_state->view_matrix *
-                                                                           make_vec4(current->transform.position,
-                                                                                     1.0f));
-            }
+            // for point light icon
+            assert(num_lights < MAX_LIGHTS);
+            Vec3 view_space_pos = truncate_v4_to_v3(render_state->view_matrix *
+                                                    make_vec4(current->transform.position, 1.0f));
+            light_icons[num_lights++] = { LIGHT_POINT, view_space_pos };
         }
 
         current = current->next;
     }
-    *((int32 *) ubo_buffer) = num_point_lights;
 
+    // fill in UBO with sun light data
+    Vec3 *sun_light_positions = (Vec3 *) allocate(temp_region, sizeof(Vec3)*MAX_SUN_LIGHTS);
+    int32 *num_sun_lights = (int32 *) (ubo_buffer + ubo_offset);
+    *num_sun_lights = 0;
+    current = level->entities;
+    int32 padded_sun_light_struct_size = get_size_for_ubo(sizeof(GL_Sun_Light));
+
+    while (current) {
+        if (current->flags & ENTITY_LIGHT && current->light_type == LIGHT_SUN) {
+            (*num_sun_lights)++;
+            assert(*num_sun_lights <= MAX_SUN_LIGHTS);
+
+            Vec4 direction = make_rotate_matrix(current->transform.rotation) * make_vec4(1.0f, 0.0f, 0.0f, 1.0f);
+            GL_Sun_Light gl_sun_light = {
+                make_vec4(current->sun_color, 1.0f),
+                direction
+            };
+            assert(ubo_offset < GLOBAL_UBO_SIZE);
+            memcpy(ubo_buffer + ubo_offset, &gl_sun_light, sizeof(GL_Sun_Light));
+            ubo_offset += padded_sun_light_struct_size;
+
+            // for sun light icon
+            assert(num_lights < MAX_LIGHTS);
+            Vec3 view_space_pos = truncate_v4_to_v3(render_state->view_matrix *
+                                                    make_vec4(current->transform.position, 1.0f));
+            light_icons[num_lights++] = { LIGHT_SUN, view_space_pos };
+        }
+
+        current = current->next;
+    }
+    
     glBindBuffer(GL_UNIFORM_BUFFER, g_gl_state->global_ubo);
     // only need to send up to ubo_offset bytes (this assumes ubo_offset is right after final byte set)
+    // note that ubo_offset here is now the size of the buffer (it's not an offset here)
     glBufferSubData(GL_UNIFORM_BUFFER, (int32 *) 0, ubo_offset, ubo_buffer);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
@@ -3415,21 +3462,32 @@ void gl_render_editor(GL_Framebuffer framebuffer,
     }
 
     // insertion sort on light positions, to render back to front with transparency
-    for (int32 i = 1; i < num_point_lights; i++) {
-        Vec3 key = light_positions[i];
+    for (int32 i = 1; i < num_lights; i++) {
+        Light_Icon key = light_icons[i];
         int32 j = i - 1;
-        for (; j >= 0 && (light_positions[j].z < key.z); j--) {
-            light_positions[j + 1] = light_positions[j];
+        for (; j >= 0 && (light_icons[j].view_space_position.z < key.view_space_position.z); j--) {
+            light_icons[j + 1] = light_icons[j];
         }
-        light_positions[j + 1] = key;
+        light_icons[j + 1] = key;
     }
 
     // draw light icons
-    for (int32 i = 0; i < num_point_lights; i++) {
-        Vec3 view_space_position = light_positions[i];
+    for (int32 i = 0; i < num_lights; i++) {
+        Light_Icon *light_icon = &light_icons[i];
+
+        int32 texture_id = 0;
+        if (light_icon->type == LIGHT_POINT) {
+            texture_id = ENGINE_LIGHTBULB_TEXTURE_ID;
+        } else if (light_icon->type == LIGHT_SUN) {
+            texture_id = ENGINE_SUN_TEXTURE_ID;
+        } else {
+            assert(!"Unhandled light type!");
+        }
+
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        gl_draw_constant_facing_quad_view_space(view_space_position, Editor_Constants::point_light_side_length,
-                                                ENGINE_LIGHTBULB_TEXTURE_ID);
+        gl_draw_constant_facing_quad_view_space(light_icon->view_space_position,
+                                                Editor_Constants::point_light_side_length,
+                                                texture_id);
     }
 
     // draw player capsule for collision debugger

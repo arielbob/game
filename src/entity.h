@@ -47,9 +47,10 @@ enum Light_Type {
     real32 falloff_start;                       \
     real32 falloff_end;                         \
 
+// note that we don't store another Vec3 for the direction; we just use
+// the rotation transform of the entity
 #define SUN_LIGHT_FIELDS                        \
     Vec3 sun_color;                             \
-    Vec3 sun_direction;                         \
 
 #define ENTITY_FIELDS                           \
     uint32 flags;                               \

@@ -689,6 +689,114 @@ UI_Button_Theme get_entity_flags_button_theme(uint32 flag, Entity *entity) {
     }
 }
 
+UI_Button_Theme get_light_type_button_theme(Light_Type type, Entity *entity) {
+    UI_Button_Theme unselected_theme = item_theme;
+    unselected_theme.size_type.x = UI_SIZE_FIT_CHILDREN;
+    unselected_theme.size.x = 0.0f;
+    unselected_theme.padding.x = 5.0f;
+    UI_Button_Theme selected_theme = selected_item_theme;
+    selected_theme.size_type.x = UI_SIZE_FIT_CHILDREN;
+    selected_theme.size.x = 0.0f;
+    selected_theme.padding.x = 5.0f;
+    if (entity->light_type == type) {
+        return selected_theme;
+    } else {
+        return unselected_theme;
+    }
+}
+
+void do_point_light_options(Entity *entity, Entity_Properties_State *properties_state,
+                            UI_Theme *row_theme, UI_Theme *label_theme, UI_Text_Field_Slider_Theme *slider_theme) {
+    do_text("Light Color");
+    ui_y_pad(1.0f);
+
+    UI_Interact_Result interact_result;
+    bool32 open_color_picker_pressed = do_text_button("Open Color Picker",
+                                                      editor_button_theme,
+                                                      "entity-light-open-color-picker", 0,
+                                                      &interact_result);
+    if (open_color_picker_pressed) {
+        properties_state->light_color_picker_open = !properties_state->light_color_picker_open;
+    }
+
+    if (properties_state->light_color_picker_open) {
+        UI_Color_Picker_Result result = do_color_picker(entity->light_color,
+                                                        "entity-light-color-picker",
+                                                        "entity-light-color-picker-panel",
+                                                        "entity-light-color-picker-slider",
+                                                        false);
+
+        if (result.should_hide && !interact_result.just_pressed) {
+            properties_state->light_color_picker_open = false;
+        } else {
+            entity->light_color = result.color;
+        }
+    }
+
+    ui_y_pad(5.0f);
+    do_text("Light Falloff");
+    ui_y_pad(1.0f);
+            
+    label_theme->semantic_size.x = 35.0f;
+            
+    ui_add_and_push_widget("", *row_theme);
+    {
+        ui_push_widget("", *label_theme, UI_WIDGET_DRAW_BACKGROUND);
+        { do_text("Start"); }
+        ui_pop_widget();
+            
+        ui_x_pad(1.0f);
+        UI_Text_Field_Slider_Result result = do_text_field_slider(entity->falloff_start, *slider_theme,
+                                                                  "entity-falloff-start-slider",
+                                                                  "entity-falloff-start-slider-text");
+        entity->falloff_start = result.value;
+    } ui_pop_widget();
+
+    ui_y_pad(1.0f);
+
+    ui_add_and_push_widget("", *row_theme);
+    {
+        ui_push_widget("", *label_theme, UI_WIDGET_DRAW_BACKGROUND);
+        { do_text("End"); }
+        ui_pop_widget();
+            
+        ui_x_pad(1.0f);
+        UI_Text_Field_Slider_Result result = do_text_field_slider(entity->falloff_end, *slider_theme,
+                                                                  "entity-falloff-end-slider",
+                                                                  "entity-falloff-end-slider-text");
+        entity->falloff_end = result.value;
+    } ui_pop_widget();
+}
+
+void do_sun_light_options(Entity *entity, Entity_Properties_State *properties_state,
+                          UI_Theme *row_theme, UI_Theme *label_theme, UI_Text_Field_Slider_Theme *slider_theme) {
+    do_text("Light Color");
+    ui_y_pad(1.0f);
+
+    UI_Interact_Result interact_result;
+    bool32 open_color_picker_pressed = do_text_button("Open Color Picker",
+                                                      editor_button_theme,
+                                                      "entity-light-open-color-picker", 0,
+                                                      &interact_result);
+    if (open_color_picker_pressed) {
+        properties_state->light_color_picker_open = !properties_state->light_color_picker_open;
+    }
+
+    if (properties_state->light_color_picker_open) {
+        UI_Color_Picker_Result result = do_color_picker(entity->light_color,
+                                                        "entity-light-color-picker",
+                                                        "entity-light-color-picker-panel",
+                                                        "entity-light-color-picker-slider",
+                                                        false);
+
+        if (result.should_hide && !interact_result.just_pressed) {
+            properties_state->light_color_picker_open = false;
+        } else {
+            entity->sun_color = result.color;
+        }
+    }
+}
+
 void draw_entity_box_2(bool32 force_reset) {
     UI_Window_Theme window_theme = DEFAULT_WINDOW_THEME;
     window_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_FIT_CHILDREN };
@@ -1031,65 +1139,31 @@ void draw_entity_box_2(bool32 force_reset) {
 
         if (entity->flags & ENTITY_LIGHT) {
             ui_y_pad(10.0f);
-            do_text("Light Color");
+            do_text("Light Type");
             ui_y_pad(1.0f);
-
-            UI_Interact_Result interact_result;
-            bool32 open_color_picker_pressed = do_text_button("Open Color Picker",
-                                                              editor_button_theme,
-                                                              "entity-light-open-color-picker", 0,
-                                                              &interact_result);
-            if (open_color_picker_pressed) {
-                properties_state->light_color_picker_open = !properties_state->light_color_picker_open;
-            }
-
-            if (properties_state->light_color_picker_open) {
-                UI_Color_Picker_Result result = do_color_picker(entity->light_color,
-                                                                "entity-light-color-picker",
-                                                                "entity-light-color-picker-panel",
-                                                                "entity-light-color-picker-slider",
-                                                                false);
-
-                if (result.should_hide && !interact_result.just_pressed) {
-                    properties_state->light_color_picker_open = false;
-                } else {
-                    entity->light_color = result.color;
+            ui_push_widget("", row_theme);
+            {
+                if (do_text_button("POINT", get_light_type_button_theme(LIGHT_POINT, entity),
+                                   "light-type-point")) {
+                    entity->light_type = LIGHT_POINT;
                 }
-            }
-
+                ui_x_pad(1.0f);
+                if (do_text_button("SUN", get_light_type_button_theme(LIGHT_SUN, entity),
+                                   "light-type-sun")) {
+                    entity->light_type = LIGHT_SUN;
+                }
+            } ui_pop_widget();
             ui_y_pad(5.0f);
-            do_text("Light Falloff");
-            ui_y_pad(1.0f);
-            
-            label_theme.semantic_size.x = 35.0f;
-            
-            ui_add_and_push_widget("", row_theme);
-            {
-                ui_push_widget("", label_theme, UI_WIDGET_DRAW_BACKGROUND);
-                { do_text("Start"); }
-                ui_pop_widget();
-            
-                ui_x_pad(1.0f);
-                UI_Text_Field_Slider_Result result = do_text_field_slider(entity->falloff_start, slider_theme,
-                                                                          "entity-falloff-start-slider",
-                                                                          "entity-falloff-start-slider-text");
-                entity->falloff_start = result.value;
-            } ui_pop_widget();
 
-            ui_y_pad(1.0f);
+            if (entity->light_type == LIGHT_POINT) {
+                do_point_light_options(entity, properties_state, &row_theme, &label_theme, &slider_theme);
+            } else if (entity->light_type == LIGHT_SUN) {
+                do_sun_light_options(entity, properties_state, &row_theme, &label_theme, &slider_theme);
 
-            ui_add_and_push_widget("", row_theme);
-            {
-                ui_push_widget("", label_theme, UI_WIDGET_DRAW_BACKGROUND);
-                { do_text("End"); }
-                ui_pop_widget();
+            } else {
+                assert(!"Unhandled light type!");
+            }
             
-                ui_x_pad(1.0f);
-                UI_Text_Field_Slider_Result result = do_text_field_slider(entity->falloff_end, slider_theme,
-                                                                          "entity-falloff-end-slider",
-                                                                          "entity-falloff-end-slider-text");
-                entity->falloff_end = result.value;
-            } ui_pop_widget();
         }
 
         ui_y_pad(10.0f);

@@ -13,10 +13,17 @@ struct Point_Light {
     float falloff_end;
 };
 
+struct Sun_Light {
+    vec4 color;
+    vec4 direction; // vector pointing the way the sun is pointing (calculated by us on cpu)
+};
+
 layout (std140) uniform shader_globals {
     //                                 aligned offset
     int num_point_lights;           // 0
     Point_Light point_lights[16];   // 16
+    int num_sun_lights;             // 64
+    Sun_Light sun_lights[16];       // 80
 };
 
 uniform vec3 camera_pos;

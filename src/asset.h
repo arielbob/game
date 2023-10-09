@@ -36,7 +36,7 @@
 #define ENGINE_LIGHTBULB_TEXTURE_ID         -1
 #define ENGINE_EDITOR_DOWN_ARROW_TEXTURE_ID -2
 #define ENGINE_EDITOR_CHECK_TEXTURE_ID      -3
-
+#define ENGINE_SUN_TEXTURE_ID               0
 
 // LEVEL is for meshes specifically loaded in for a level by the user or by a level file.
 // PRIMITIVE is for meshes you can use in levels, but can't be deleted. also used for default meshes when a
