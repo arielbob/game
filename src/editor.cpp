@@ -795,7 +795,7 @@ void do_sun_light_options(Entity *entity, Entity_Properties_State *properties_st
     }
 
     if (properties_state->light_color_picker_open) {
-        UI_Color_Picker_Result result = do_color_picker(entity->light_color,
+        UI_Color_Picker_Result result = do_color_picker(entity->sun_color,
                                                         "entity-light-color-picker",
                                                         "entity-light-color-picker-panel",
                                                         "entity-light-color-picker-slider",

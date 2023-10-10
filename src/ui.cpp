@@ -1515,6 +1515,20 @@ void ui_frame_end() {
     for (int32 i = 0; i < num_states_to_delete; i++) {
         _ui_delete_state(states_to_delete[i]);
     }
+
+    // clear hot if the widget was deleted
+    if (ui_has_hot()) {
+        if (!ui_get_widget(ui_manager->hot)) {
+            ui_manager->hot = {};
+        }
+    }
+
+    // same for active
+    if (ui_has_active()) {
+        if (!ui_get_widget(ui_manager->active)) {
+            ui_manager->active = {};
+        }
+    }
     
     // swap allocators
     Arena_Allocator temp = ui_manager->last_frame_arena;

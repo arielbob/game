@@ -727,5 +727,7 @@ real32 get_center_x_offset(real32 container_width, real32 element_width);
 real32 get_center_baseline_offset(real32 container_height, real32 text_height);
 real32 get_center_y_offset(real32 height, real32 box_height);
 void ui_create_render_commands();
+bool32 ui_has_hot();
+bool32 ui_has_active();
 
 #endif

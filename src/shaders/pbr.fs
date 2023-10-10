@@ -2,7 +2,7 @@
 
 #define PI 3.1415926538
 
-// size of this struct is 16 + 16 + 4 + 4 + 8
+// size of this struct is 16 + 16 + 4 + 4 + 4 + (4)
 // final 8 bytes is to make final size a multiple of 16 (i.e. multiple of size of a vec4)
 struct Point_Light {
     vec4 position;
@@ -23,8 +23,8 @@ layout (std140) uniform shader_globals {
     //                                 aligned offset
     int num_point_lights;           // 0
     Point_Light point_lights[16];   // 16
-    int num_sun_lights;             // 64
-    Sun_Light sun_lights[16];       // 80
+    int num_sun_lights;             // 784
+    Sun_Light sun_lights[16];       // 800
 };
 
 uniform vec3 camera_pos;
@@ -127,6 +127,42 @@ void main() {
     roughness = pow(roughness, 1.0 / 2.2);
 
     vec3 light_out = vec3(0.0);
+
+    for (int i = 0; i < num_sun_lights; i++) {
+        vec3 fragment_to_light = -vec3(sun_lights[i].direction);
+
+        float fragment_to_light_distance = length(fragment_to_light);
+        vec3 l = fragment_to_light / fragment_to_light_distance;
+        // halfway vector
+        vec3 h = normalize(v + l);
+        
+        Sun_Light sun_light = sun_lights[i];
+
+        float intensity = 200.0;
+        vec3 light_color = pow(vec3(sun_light.color) * intensity, vec3(1.0 / gamma));
+        vec3 radiance = light_color;
+
+        vec3 f0 = vec3(0.04);
+        f0 = mix(f0, albedo, metalness);
+        // i'm pretty sure we don't need to do max(dot(h, v), 0.0) here
+        vec3 fresnel = fresnel_schlick(dot(h, v), f0);
+        float ndf = normal_distribution_ggx(n, h, roughness);
+        float geometry = geometry_smith(n, v, l, roughness);
+
+        // cook-torrance specular brdf
+        float v_dot_n = max(dot(v, n), 0.0);
+        float n_dot_l = max(dot(n, l), 0.0);
+        // add 0.0001 to prevent divide by 0
+        vec3 specular = (ndf * fresnel * geometry) / ((4.0 * v_dot_n * n_dot_l) + 0.0001);
+
+        vec3 k_specular = fresnel;
+        vec3 k_diffuse = vec3(1.0) - k_specular;
+        k_diffuse *= (1.0 - metalness);
+        
+        // we don't use k_specular here, since fresnel == k_specular and is already included
+        // in the specular term.
+        light_out += ((k_diffuse * albedo / PI) + specular) * radiance * n_dot_l;
+    }
 
     for (int i = 0; i < num_point_lights; i++) {
         // fragment to light

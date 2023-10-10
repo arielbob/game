@@ -3356,15 +3356,11 @@ void gl_render_editor(GL_Framebuffer framebuffer,
     int32 num_lights = 0;
 
     // fill in UBO with point light data
-    // the 8 is because the structs are padded to be a multiple of the size of vec4 (16 bytes = sizeof(real32)*4).
-    // - we have { vec4, vec4, real32, real32 }, so we need 2 more real32's = 4 bytes * 2 = 8 bytes.
+    // structs are padded to be a multiple of the size of vec4 (16 bytes = sizeof(real32)*4).
     uint32 padded_point_light_struct_size = get_size_for_ubo(sizeof(GL_Point_Light));
     uint32 ubo_offset = 0;
     uint8 *ubo_buffer = (uint8 *) allocate(temp_region, GLOBAL_UBO_SIZE);
 
-    // where does the 16 come from for ubo_offset?
-    // it's the size of vec4. look at pbr.fs's uniform shader_globals to understand the format of ubo_buffer.
-    
     int32 *num_point_lights = (int32 *) ubo_buffer;
     ubo_offset += get_size_for_ubo(sizeof(int32));
     *num_point_lights = 0;
@@ -3396,13 +3392,18 @@ void gl_render_editor(GL_Framebuffer framebuffer,
         current = current->next;
     }
 
+    ubo_offset += padded_point_light_struct_size * (MAX_POINT_LIGHTS - *num_point_lights);
+
     // fill in UBO with sun light data
     Vec3 *sun_light_positions = (Vec3 *) allocate(temp_region, sizeof(Vec3)*MAX_SUN_LIGHTS);
-    int32 *num_sun_lights = (int32 *) (ubo_buffer + ubo_offset);
-    *num_sun_lights = 0;
-    current = level->entities;
     int32 padded_sun_light_struct_size = get_size_for_ubo(sizeof(GL_Sun_Light));
 
+    int32 *num_sun_lights = (int32 *) (ubo_buffer + ubo_offset);
+    ubo_offset += get_size_for_ubo(sizeof(int32));
+    *num_sun_lights = 0;
+
+    current = level->entities;
+    
     while (current) {
         if (current->flags & ENTITY_LIGHT && current->light_type == LIGHT_SUN) {
             (*num_sun_lights)++;
