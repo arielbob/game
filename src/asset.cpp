@@ -873,7 +873,14 @@ void load_default_assets() {
     add_mesh("capsule_cap",      "blender/capsule_cap.mesh",
              Mesh_Type::ENGINE, ENGINE_CAPSULE_CAP_MESH_ID);
     add_mesh("cube",             "blender/cube.mesh",  Mesh_Type::PRIMITIVE, ENGINE_DEFAULT_CUBE_MESH_ID);
-    
+
+    // if you're seeing white borders around semi-transparent parts of exported PNGs, make sure the
+    // fully transparent parts of your image have an RGB value of (0, 0, 0) (use eyedropper tool in
+    // your photo editor).
+    // though, this is probably only for when the semi transparent parts are also black, like with the
+    // outlines of the light icons. when the fully transparent background wasn't RGB(0, 0, 0), opengl
+    // was blending between the black outline and the white fully transparent background when scaling
+    // the texture, which resulted in faint white artifacts on the edges of the outlines.
     add_texture("texture_default",   "blender/debug-texture.jpg",          Texture_Type::DEFAULT,
                 ENGINE_DEBUG_TEXTURE_ID);
     add_texture("lightbulb",         "src/textures/lightbulb.png",         Texture_Type::ENGINE,
@@ -882,6 +889,8 @@ void load_default_assets() {
                 ENGINE_EDITOR_DOWN_ARROW_TEXTURE_ID);
     add_texture("editor_check",      "src/textures/editor_check.png",      Texture_Type::ENGINE,
                 ENGINE_EDITOR_CHECK_TEXTURE_ID);
+    add_texture("sun_icon",          "src/textures/sun-icon.png",          Texture_Type::ENGINE,
+                ENGINE_SUN_TEXTURE_ID);
 
     add_font("times32",         "c:/windows/fonts/times.ttf",    32.0f);
     add_font("times24",         "c:/windows/fonts/times.ttf",    24.0f);

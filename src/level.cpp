@@ -89,6 +89,8 @@ void delete_entity(Level *level, int32 id) {
             //       all editor entities are stored in the editor heap
             deallocate((Allocator *) &level->heap, current);
             break;
+        } else {
+            current = current->next;
         }
     }
 }
