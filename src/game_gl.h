@@ -222,6 +222,7 @@ struct GL_Framebuffer {
 struct GL_Point_Light {
     Vec4 position;
     Vec4 color;
+    real32 intensity; // watts / steradian
     real32 d_min;
     real32 d_max;
 };

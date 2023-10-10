@@ -730,6 +730,10 @@ bool32 Level_Loader::parse_entity(Allocator *temp_allocator, Tokenizer *tokenize
             if (!parse_vec3(tokenizer, &entity_info.light_color, error)) {
                 return false;
             }
+        } else if (string_equals(token.string, "point_light_intensity")) {
+            if (!parse_real(tokenizer, &entity_info.point_light_intensity, error)) {
+                return false;
+            }
         } else if (string_equals(token.string, "falloff_start")) {
             if (!parse_real(tokenizer, &entity_info.falloff_start, error)) {
                 return false;

@@ -21,10 +21,12 @@ Entity make_entity_from_info(Allocator *allocator, Entity_Info *info) {
 
     result.collider         = info->collider;
 
-    result.light_type       = info->light_type;
-    result.light_color      = info->light_color;
-    result.falloff_start    = info->falloff_start;
-    result.falloff_end      = info->falloff_end;
+    result.light_type            = info->light_type;
+    result.light_color           = info->light_color;
+    result.point_light_intensity = info->point_light_intensity;
+    result.falloff_start         = info->falloff_start;
+    result.falloff_end           = info->falloff_end;
+    result.sun_color             = info->sun_color;
 
     return result;
 }

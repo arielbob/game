@@ -734,6 +734,18 @@ void do_point_light_options(Entity *entity, Entity_Properties_State *properties_
     }
 
     ui_y_pad(5.0f);
+    do_text("Light Intensity");
+    ui_y_pad(1.0f);
+
+    ui_add_and_push_widget("", *row_theme);
+    {
+        UI_Text_Field_Slider_Result result = do_text_field_slider(entity->point_light_intensity, *slider_theme,
+                                                                  "entity-point-light-intensity-slider",
+                                                                  "entity-point-light-intensity-slider-text");
+        entity->point_light_intensity = result.value;
+    } ui_pop_widget();
+    
+    ui_y_pad(5.0f);
     do_text("Light Falloff");
     ui_y_pad(1.0f);
             

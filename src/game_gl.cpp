@@ -3358,7 +3358,7 @@ void gl_render_editor(GL_Framebuffer framebuffer,
     // fill in UBO with point light data
     // the 8 is because the structs are padded to be a multiple of the size of vec4 (16 bytes = sizeof(real32)*4).
     // - we have { vec4, vec4, real32, real32 }, so we need 2 more real32's = 4 bytes * 2 = 8 bytes.
-    uint32 padded_point_light_struct_size = sizeof(GL_Point_Light) + 8;
+    uint32 padded_point_light_struct_size = get_size_for_ubo(sizeof(GL_Point_Light));
     uint32 ubo_offset = 0;
     uint8 *ubo_buffer = (uint8 *) allocate(temp_region, GLOBAL_UBO_SIZE);
 
@@ -3378,6 +3378,7 @@ void gl_render_editor(GL_Framebuffer framebuffer,
             GL_Point_Light gl_point_light = {
                 make_vec4(current->transform.position, 1.0f),
                 make_vec4(current->light_color, 1.0f),
+                current->point_light_intensity,
                 current->falloff_start,
                 current->falloff_end
             };
@@ -3603,7 +3604,7 @@ void gl_render_game() {
     int32 current_light_index = 0;
 
     // fill in UBO with point light data
-    uint32 padded_point_light_struct_size = sizeof(GL_Point_Light) + 8;
+    uint32 padded_point_light_struct_size = get_size_for_ubo(sizeof(GL_Point_Light));
     uint32 ubo_offset = 16; // start at 16 because we set num_point_lights after adding the lights
     uint8 *ubo_buffer = (uint8 *) allocate(temp_region, GLOBAL_UBO_SIZE);
 
@@ -3618,6 +3619,7 @@ void gl_render_game() {
                 GL_Point_Light gl_point_light = {
                     make_vec4(current->transform.position, 1.0f),
                     make_vec4(current->light_color, 1.0f),
+                    current->point_light_intensity,
                     current->falloff_start,
                     current->falloff_end
                 };

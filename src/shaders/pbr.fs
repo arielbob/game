@@ -7,6 +7,7 @@
 struct Point_Light {
     vec4 position;
     vec4 color;
+    float intensity;
     // this attenuation formula isn't very physically accurate, but it allows us to easily bound the light.
     // it also allows for more intuitive artistic control.
     float falloff_start;
@@ -143,7 +144,8 @@ void main() {
         attenuation = clamp(attenuation, 0.0f, 1.0f);
         //attenuation = max(attenuation, 0.0f);
 
-        vec3 light_color = pow(vec3(point_light.color), vec3(1.0 / gamma)) * 200.0;
+        // this is L_i, and for point lights, it's always the same
+        vec3 light_color = pow(vec3(point_light.color) * max(0.0, point_light.intensity), vec3(1.0 / gamma));
         vec3 radiance = attenuation * light_color;
 
         vec3 f0 = vec3(0.04);
@@ -168,7 +170,7 @@ void main() {
         light_out += ((k_diffuse * albedo / PI) + specular) * radiance * n_dot_l;
     }
 
-    vec3 ambient = vec3(0.03) * albedo * ao;
+    vec3 ambient = vec3(0.5) * albedo * ao;
     vec3 color = ambient + light_out;
 
     color = color / (color + vec3(1.0)); // reinhard tone mapping

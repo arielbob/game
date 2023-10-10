@@ -189,6 +189,7 @@ void export_level(Level *level, char *filename) {
                 if (current->light_type == LIGHT_POINT) {
                     append_string(&working_buffer, "light_type point\n");
                     append_vec3_property(&working_buffer, "light_color", current->light_color);
+                    append_string(&working_buffer, "point_light_intensity %f\n", current->point_light_intensity);
                     append_string(&working_buffer, "falloff_start %f\n", current->falloff_start);
                     append_string(&working_buffer, "falloff_end %f\n", current->falloff_end);
                 } else if (current->light_type == LIGHT_SUN) {

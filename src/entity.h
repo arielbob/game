@@ -44,6 +44,7 @@ enum Light_Type {
 
 #define POINT_LIGHT_FIELDS                      \
     Vec3 light_color;                           \
+    real32 point_light_intensity;               \
     real32 falloff_start;                       \
     real32 falloff_end;                         \
 
