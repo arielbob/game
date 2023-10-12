@@ -3412,7 +3412,8 @@ void gl_render_editor(GL_Framebuffer framebuffer,
             Vec4 direction = make_rotate_matrix(current->transform.rotation) * make_vec4(1.0f, 0.0f, 0.0f, 1.0f);
             GL_Sun_Light gl_sun_light = {
                 make_vec4(current->sun_color, 1.0f),
-                direction
+                direction,
+                current->sun_intensity
             };
             assert(ubo_offset < GLOBAL_UBO_SIZE);
             memcpy(ubo_buffer + ubo_offset, &gl_sun_light, sizeof(GL_Sun_Light));

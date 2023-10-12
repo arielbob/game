@@ -230,6 +230,7 @@ struct GL_Point_Light {
 struct GL_Sun_Light {
     Vec4 color;
     Vec4 direction;
+    float intensity;
 };
 
 struct Light_Icon {

@@ -52,6 +52,7 @@ enum Light_Type {
 // the rotation transform of the entity
 #define SUN_LIGHT_FIELDS                        \
     Vec3 sun_color;                             \
+    real32 sun_intensity;                       \
 
 #define ENTITY_FIELDS                           \
     uint32 flags;                               \

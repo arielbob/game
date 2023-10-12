@@ -79,10 +79,11 @@ roughness 1.000000
 entities {
 entity {
 position 0.000000 6.988622 0.000000
-rotation 0.604167 0.150893 -0.778990 -0.073407
+rotation 0.604164 0.150893 -0.778992 -0.073406
 scale 1.000000 1.000000 1.000000
 light_type sun
 sun_color 0.363333 0.465200 1.000000
+sun_intensity 1573.000000
 }
 entity {
 position 1.392019 -0.726975 -8.814487
@@ -119,10 +120,10 @@ material "debug squares"
 has_collider 1
 }
 entity {
-position -0.380305 -1.062751 5.304492
-rotation 0.962335 0.262063 0.071866 -0.008310
+position -0.380305 -0.403196 5.304492
+rotation 0.955092 0.287344 0.071621 -0.010202
 scale 2.000000 2.000000 2.000000
-mesh "low-poly suzanne"
+mesh "suzanne2"
 material "pink check"
 }
 entity {

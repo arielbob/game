@@ -807,6 +807,18 @@ void do_sun_light_options(Entity *entity, Entity_Properties_State *properties_st
             entity->sun_color = result.color;
         }
     }
+
+    ui_y_pad(5.0f);
+    do_text("Light Intensity");
+    ui_y_pad(1.0f);
+
+    ui_add_and_push_widget("", *row_theme);
+    {
+        UI_Text_Field_Slider_Result result = do_text_field_slider(entity->sun_intensity, *slider_theme,
+                                                                  "entity-sun-intensity-slider",
+                                                                  "entity-sun-intensity-slider-text");
+        entity->sun_intensity = result.value;
+    } ui_pop_widget();
 }
 
 void draw_entity_box_2(bool32 force_reset) {

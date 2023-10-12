@@ -27,6 +27,7 @@ Entity make_entity_from_info(Allocator *allocator, Entity_Info *info) {
     result.falloff_start         = info->falloff_start;
     result.falloff_end           = info->falloff_end;
     result.sun_color             = info->sun_color;
+    result.sun_intensity         = info->sun_intensity;
 
     return result;
 }

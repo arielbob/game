@@ -195,6 +195,7 @@ void export_level(Level *level, char *filename) {
                 } else if (current->light_type == LIGHT_SUN) {
                     append_string(&working_buffer, "light_type sun\n");
                     append_vec3_property(&working_buffer, "sun_color", current->sun_color);
+                    append_string(&working_buffer, "sun_intensity %f\n", current->sun_intensity);
                 } else {
                     assert(!"Unhandled light type.");
                 }

@@ -40,12 +40,11 @@ roughness 0.000000
 entities {
 entity {
 position 2.379637 1.909431 -0.000000
-rotation -0.405297 -0.560328 0.580199 -0.430274
+rotation -0.405296 -0.560328 0.580200 -0.430274
 scale 1.000000 1.000000 1.000000
-mesh "suzanne2"
-material "default_material"
 light_type sun
 sun_color 1.000000 0.000000 1.000000
+sun_intensity 173.000000
 }
 entity {
 position 7.623713 4.329330 -5.407761

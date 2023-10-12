@@ -746,6 +746,10 @@ bool32 Level_Loader::parse_entity(Allocator *temp_allocator, Tokenizer *tokenize
             if (!parse_vec3(tokenizer, &entity_info.sun_color, error)) {
                 return false;
             }
+        } else if (string_equals(token.string, "sun_intensity")) {
+            if (!parse_real(tokenizer, &entity_info.sun_intensity, error)) {
+                return false;
+            }
         } else if (string_equals(token.string, "has_collider")) {
             token = get_token(tokenizer);
             
