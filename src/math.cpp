@@ -1847,13 +1847,14 @@ void get_euler_angles_from_rotate_matrix(Mat4 rotate_matrix, real32 *canonical_r
 
     real32 m13 = rotate_matrix.col3[0];
     real32 m11 = rotate_matrix.col1[0];
+    real32 m31 = rotate_matrix.col1[2];
 
     pitch = asinf(sin_pitch);
     
     // NOTE: this is the gimbal lock case - pitch is very close to -90 or +90 degrees
     if (fabsf(sin_pitch) > 0.99999f) {
         roll = 0.0f;
-        heading = atan2f(-m13, m11);
+        heading = atan2f(-m31, m11);
     } else {
         real32 m33 = rotate_matrix.col3[2];
         heading = (real32) atan2(m13, m33);

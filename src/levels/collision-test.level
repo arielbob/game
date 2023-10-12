@@ -3,6 +3,7 @@ level_name "col"
 }
 
 meshes {
+mesh "suzanne2" ".\blender\suzanne2.mesh"
 }
 
 textures {
@@ -39,8 +40,10 @@ roughness 0.000000
 entities {
 entity {
 position 2.379637 1.909431 -0.000000
-rotation 0.673414 0.215795 0.215829 -0.673323
+rotation -0.405297 -0.560328 0.580199 -0.430274
 scale 1.000000 1.000000 1.000000
+mesh "suzanne2"
+material "default_material"
 light_type sun
 sun_color 1.000000 0.000000 1.000000
 }
