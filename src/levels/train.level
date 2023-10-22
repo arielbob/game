@@ -1,0 +1,49 @@
+level_info {
+level_name "train"
+}
+
+meshes {
+mesh "train-car" ".\src\meshes\train-car.mesh"
+}
+
+textures {
+}
+
+materials {
+}
+
+entities {
+entity {
+position 1.223463 0.260000 5.643929
+rotation 0.836180 0.000000 -0.548455 0.000000
+scale 1.000000 1.000000 1.000000
+mesh "train-car"
+material "default_material"
+has_collider 1
+}
+entity {
+position 0.000000 0.267958 -2.847638
+rotation 0.758919 0.000000 0.651185 0.000000
+scale 1.000000 1.000000 1.000000
+mesh "train-car"
+material "default_material"
+has_collider 1
+}
+entity {
+position -0.371722 0.000000 -0.497808
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 34.061020 0.235295 57.527008
+mesh "cube"
+material "default_material"
+has_collider 1
+}
+entity {
+position 0.000000 8.799067 -2.680094
+rotation 0.715027 0.219542 -0.612199 -0.256418
+scale 1.000000 1.000000 1.000000
+light_type sun
+sun_color 1.000000 1.000000 1.000000
+sun_intensity 262.000000
+}
+}
+

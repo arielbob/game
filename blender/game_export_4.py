@@ -24,6 +24,24 @@ class Vertex:
             sum += e
         return int(sum)
 
+def apply_modifiers(obj):
+    ctx = bpy.context.copy()
+    ctx.view_layer.objects.active = obj
+    
+    for modifier in obj.modifiers:
+        bpy.ops.object.modifier_apply(modifier=modifier.name)
+#    ctx.object = obj
+#    for _, m in enumerate(obj.modifiers):
+#        try:
+#            ctx['modifier'] = m
+#            bpy.ops.object.modifier_apply(ctx, modifier=m.name)
+#        except RuntimeError:
+#            print(f"Error applying {m.name} to {obj.name}, removing it instead.")
+#            obj.modifiers.remove(m)
+
+#    for m in obj.modifiers:
+#        obj.modifiers.remove(m)
+
 def game_export(context, filename, replace_existing):
     temp_output_file = None
     open_flag = ''
@@ -42,6 +60,16 @@ def game_export(context, filename, replace_existing):
 
     bpy.ops.object.mode_set(mode='OBJECT')
     mesh_copy = context.active_object.copy()
+    mesh_copy.data = mesh_copy.data.copy()
+    bpy.context.collection.objects.link(mesh_copy)
+    
+    ctx = bpy.context.copy()
+    ctx["object"] = mesh_copy
+    for _, m in enumerate(mesh_copy.modifiers):
+        ctx["modifier"] = m
+        bpy.ops.object.modifier_apply(ctx, modifier=m.name)        
+
+    #apply_modifiers(mesh_copy)
 
     # TODO: apply modifiers on the copy, so we don't have to apply them and change what we're exporting
 

@@ -1313,7 +1313,8 @@ void draw_level_box() {
                     if (has_filename) {
                         export_level(&game_state->level, filename);
                         editor_state->is_new_level = false;
-                
+                        game_state->level.filename = make_string((Allocator *) &game_state->level.heap, filename);
+
                         add_message(&game_state->message_manager, make_string(SAVE_SUCCESS_MESSAGE));
                     }
                 } else {
