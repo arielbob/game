@@ -4,30 +4,40 @@ level_name "train"
 
 meshes {
 mesh "train-car" ".\src\meshes\train-car.mesh"
+mesh "New Mesh" ".\src\meshes\seams.mesh"
 }
 
 textures {
 }
 
 materials {
+material {
+name "train"
+albedo_color 1.000000 0.143333 0.143333
+metalness 0.000000
+roughness 0.051900
+}
+
 }
 
 entities {
 entity {
-position 1.223463 0.260000 5.643929
-rotation 0.836180 0.000000 -0.548455 0.000000
+position 7.868360 1.762760 2.736548
+rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
-mesh "train-car"
-material "default_material"
-has_collider 1
+light_type point
+light_color 1.000000 1.000000 1.000000
+point_light_intensity 149.000000
+falloff_start 0.000000
+falloff_end 43.000000
 }
 entity {
-position 0.000000 0.267958 -2.847638
-rotation 0.758919 0.000000 0.651185 0.000000
+position 0.000000 8.799067 -2.680094
+rotation 0.072502 0.727603 -0.170469 -0.660513
 scale 1.000000 1.000000 1.000000
-mesh "train-car"
-material "default_material"
-has_collider 1
+light_type sun
+sun_color 1.000000 1.000000 1.000000
+sun_intensity 454.000000
 }
 entity {
 position -0.371722 0.000000 -0.497808
@@ -38,12 +48,28 @@ material "default_material"
 has_collider 1
 }
 entity {
-position 0.000000 8.799067 -2.680094
-rotation 0.715027 0.219542 -0.612199 -0.256418
+position 0.000000 0.267958 -2.847638
+rotation 0.758919 0.000000 0.651185 0.000000
 scale 1.000000 1.000000 1.000000
-light_type sun
-sun_color 1.000000 1.000000 1.000000
-sun_intensity 262.000000
+mesh "train-car"
+material "train"
+has_collider 1
+}
+entity {
+position 1.223463 0.260000 5.643929
+rotation 0.836180 0.000000 -0.548455 0.000000
+scale 1.000000 1.000000 1.000000
+mesh "train-car"
+material "train"
+has_collider 1
+}
+entity {
+position 7.772176 1.163628 1.984454
+rotation 0.752111 0.000000 0.659036 0.000000
+scale 1.000000 1.000000 1.000000
+mesh "New Mesh"
+material "train"
+has_collider 1
 }
 }
 

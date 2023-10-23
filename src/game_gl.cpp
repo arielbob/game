@@ -3639,6 +3639,9 @@ void gl_render_game() {
     glBufferSubData(GL_UNIFORM_BUFFER, (int32 *) 0, ubo_offset, ubo_buffer);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
+    // TODO: add sun data here...
+    // - although it basically already works because we don't reset the ubo
+    
     // render entities
     current = level->entities;
 

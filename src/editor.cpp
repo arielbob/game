@@ -508,6 +508,17 @@ void debug_check_collisions(Level *level, Normal_Entity *entity) {
 }
 #endif
 
+void select_entity(Entity *entity) {
+    Editor_State *editor_state = &game_state->editor_state;
+    Gizmo_State *gizmo_state = &editor_state->gizmo_state;
+
+    editor_state->last_selected_entity_id = editor_state->selected_entity_id;
+    editor_state->selected_entity_id = entity->id;
+    editor_state->selected_entity_modified = true;
+
+    gizmo_state->transform = entity->transform;
+}
+
 void update_editor(Controller_State *controller_state, real32 dt) {
     //UI_Manager *ui_manager = &game_state->ui_manager;
     Editor_State *editor_state = &game_state->editor_state;
@@ -568,11 +579,7 @@ void update_editor(Controller_State *controller_state, real32 dt) {
             
             if (entity) {
                 if (entity->id != editor_state->selected_entity_id) {
-                    editor_state->last_selected_entity_id = editor_state->selected_entity_id;
-                    editor_state->selected_entity_id = entity->id;
-                    editor_state->selected_entity_modified = true;
-
-                    gizmo_state->transform = entity->transform;
+                    select_entity(entity);
                 }
             } else {
                 editor_state->selected_entity_id = -1;
@@ -1412,7 +1419,9 @@ void draw_editor(Controller_State *controller_state) {
             info.mesh_name = make_string("cube");
             info.material_name = make_string("default_material");
             
-            make_and_add_entity(&game_state->level, info);
+            Entity *added_entity = make_and_add_entity(&game_state->level, info);
+            select_entity(added_entity);
+            
             end_region(temp_region);
         }
 

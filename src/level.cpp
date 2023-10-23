@@ -62,13 +62,14 @@ int32 add_entity(Level *level, Entity *entity) {
     return id;
 }
 
-void make_and_add_entity(Level *level, Entity_Info info) {
+Entity *make_and_add_entity(Level *level, Entity_Info info) {
     Allocator *allocator = (Allocator *) &level->heap;
 
     Entity *entity = (Entity *) allocate(allocator, sizeof(Entity));
     *entity = make_entity_from_info(allocator, &info);
 
     add_entity(level, entity);
+    return entity;
 }
 
 void delete_entity(Level *level, int32 id) {
