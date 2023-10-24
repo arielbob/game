@@ -22,6 +22,14 @@ roughness 0.051900
 
 entities {
 entity {
+position 24.018755 0.267958 14.641891
+rotation 0.435602 0.000000 -0.900139 0.000000
+scale 1.000000 1.000000 1.000000
+mesh "train-car"
+material "train"
+has_collider 1
+}
+entity {
 position 7.868360 1.762760 2.736548
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
@@ -40,15 +48,15 @@ sun_color 1.000000 1.000000 1.000000
 sun_intensity 454.000000
 }
 entity {
-position -0.371722 0.000000 -0.497808
+position 3.128188 0.000000 -0.497808
 rotation 1.000000 0.000000 0.000000 0.000000
-scale 34.061020 0.235295 57.527008
+scale 62.779835 0.235295 57.527008
 mesh "cube"
 material "default_material"
 has_collider 1
 }
 entity {
-position 0.000000 0.267958 -2.847638
+position 0.171670 0.267958 -3.964548
 rotation 0.758919 0.000000 0.651185 0.000000
 scale 1.000000 1.000000 1.000000
 mesh "train-car"
@@ -56,7 +64,7 @@ material "train"
 has_collider 1
 }
 entity {
-position 1.223463 0.260000 5.643929
+position 1.548218 0.260000 6.391605
 rotation 0.836180 0.000000 -0.548455 0.000000
 scale 1.000000 1.000000 1.000000
 mesh "train-car"
@@ -68,6 +76,46 @@ position 7.772176 1.163628 1.984454
 rotation 0.752111 0.000000 0.659036 0.000000
 scale 1.000000 1.000000 1.000000
 mesh "New Mesh"
+material "train"
+has_collider 1
+}
+entity {
+position 7.090315 0.267958 13.501993
+rotation 0.336009 0.000000 0.941859 0.000000
+scale 1.000000 1.000000 1.000000
+mesh "train-car"
+material "train"
+has_collider 1
+}
+entity {
+position 16.018732 0.267958 -9.204103
+rotation 0.163022 0.000000 0.986622 0.000000
+scale 1.000000 1.000000 1.000000
+mesh "train-car"
+material "train"
+has_collider 1
+}
+entity {
+position 24.263586 0.267958 -4.258214
+rotation 0.412519 0.000000 0.910949 0.000000
+scale 1.000000 1.000000 1.000000
+mesh "train-car"
+material "train"
+has_collider 1
+}
+entity {
+position 27.916504 0.267958 4.994987
+rotation 0.762554 0.000000 0.646924 0.000000
+scale 1.000000 1.000000 1.000000
+mesh "train-car"
+material "train"
+has_collider 1
+}
+entity {
+position 15.317654 0.267958 16.884201
+rotation 0.107234 0.000000 0.994234 0.000000
+scale 1.000000 1.000000 1.000000
+mesh "train-car"
 material "train"
 has_collider 1
 }

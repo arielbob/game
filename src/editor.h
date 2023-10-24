@@ -1,11 +1,15 @@
 #ifndef EDITOR_H
 #define EDITOR_H
 
+#include "linked_list.h"
+#include "level.h"
+#include "render.h"
+#include "gizmo.h"
+
 // filter_types are kind of platform-specific to the windows open/save file dialogs right now
 
 #define LEVEL_FILE_FILTER_TITLE "Levels (*.level)"
 #define LEVEL_FILE_FILTER_TYPE  "*.level"
-#define SAVE_SUCCESS_MESSAGE    "Level saved!"
 
 #define MESH_FILE_FILTER_TITLE "Meshes (*.mesh)"
 #define MESH_FILE_FILTER_TYPE  "*.mesh"
@@ -13,10 +17,8 @@
 #define TEXTURE_FILE_FILTER_TITLE "Image Files (*.png; *.jpg; *.jpeg)"
 #define TEXTURE_FILE_FILTER_TYPE  "*.png;*.jpg;*.jpeg"
 
-#include "linked_list.h"
-#include "level.h"
-#include "render.h"
-#include "gizmo.h"
+#define SAVE_SUCCESS_MESSAGE      "Level saved!"
+#define ENTITY_DUPLICATED_MESSAGE "Entity duplicated!"
 
 #define MATERIAL_LIBRARY_WINDOW 1 << 1
 #define TEXTURE_LIBRARY_WINDOW  1 << 2
@@ -205,6 +207,7 @@ UI_Button_Theme editor_button_theme = {
     { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE },
     { 0.0f, 20.0f }, { 0.0f, 0.0f },
     DEFAULT_BUTTON_BACKGROUND, DEFAULT_BUTTON_HOT_BACKGROUND, DEFAULT_BUTTON_ACTIVE_BACKGROUND,
+    DEFAULT_BUTTON_DISABLED_BACKGROUND,
     { 1.0f, 1.0f, 1.0f, 1.0f },
     default_font
 };
@@ -213,6 +216,7 @@ UI_Button_Theme editor_button_danger_theme = {
     { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE },
     { 0.0f, 20.0f }, { 0.0f, 0.0f },
     DANGER_BUTTON_BACKGROUND, DANGER_BUTTON_HOT_BACKGROUND, DANGER_BUTTON_ACTIVE_BACKGROUND,
+    DEFAULT_BUTTON_DISABLED_BACKGROUND,
     { 1.0f, 1.0f, 1.0f, 1.0f },
     default_font
 };
@@ -232,6 +236,7 @@ UI_Button_Theme editor_dropdown_item_theme = {
     editor_button_theme.size_type,
     editor_button_theme.size, editor_button_theme.position,
     rgb_to_vec4(19, 19, 23), rgb_to_vec4(36, 36, 43), rgb_to_vec4(8, 8, 10),
+    DEFAULT_BUTTON_DISABLED_BACKGROUND,
     editor_button_theme.text_color,
     editor_button_theme.font,
     UI_SCISSOR_INHERIT
@@ -241,6 +246,7 @@ UI_Button_Theme editor_selected_dropdown_item_theme = {
     editor_button_theme.size_type,
     editor_button_theme.size, editor_button_theme.position,
     rgb_to_vec4(61, 96, 252), rgb_to_vec4(61, 96, 252), rgb_to_vec4(61, 96, 252),
+    DEFAULT_BUTTON_DISABLED_BACKGROUND,
     editor_button_theme.text_color,
     editor_button_theme.font,
     UI_SCISSOR_INHERIT
@@ -254,6 +260,7 @@ UI_Button_Theme selected_item_theme = {
     rgb_to_vec4(61, 96, 252),
     rgb_to_vec4(61, 96, 252),
     rgb_to_vec4(61, 96, 252),
+    DEFAULT_BUTTON_DISABLED_BACKGROUND,
     editor_button_theme.text_color,
     editor_button_theme.font,
     UI_SCISSOR_INHERIT

@@ -508,15 +508,14 @@ void debug_check_collisions(Level *level, Normal_Entity *entity) {
 }
 #endif
 
-void select_entity(Entity *entity) {
-    Editor_State *editor_state = &game_state->editor_state;
+void select_entity(Editor_State *editor_state, Entity *entity) {
     Gizmo_State *gizmo_state = &editor_state->gizmo_state;
 
     editor_state->last_selected_entity_id = editor_state->selected_entity_id;
     editor_state->selected_entity_id = entity->id;
     editor_state->selected_entity_modified = true;
 
-    gizmo_state->transform = entity->transform;
+    update_gizmo(editor_state);
 }
 
 void update_editor(Controller_State *controller_state, real32 dt) {
@@ -579,7 +578,7 @@ void update_editor(Controller_State *controller_state, real32 dt) {
             
             if (entity) {
                 if (entity->id != editor_state->selected_entity_id) {
-                    select_entity(entity);
+                    select_entity(editor_state, entity);
                 }
             } else {
                 editor_state->selected_entity_id = -1;
@@ -1420,12 +1419,25 @@ void draw_editor(Controller_State *controller_state) {
             info.material_name = make_string("default_material");
             
             Entity *added_entity = make_and_add_entity(&game_state->level, info);
-            select_entity(added_entity);
-            
+            select_entity(editor_state, added_entity);
+
             end_region(temp_region);
         }
+        
+        ui_y_pad(1.0f);
+        bool32 duplicate_entity_clicked = do_text_button("Duplicate Entity", editor_button_theme,
+                                                         "duplicate_entity", 0, NULL,
+                                                         !get_selected_entity(editor_state));
+        if (duplicate_entity_clicked) {
+            Entity *selected = get_selected_entity(editor_state);
+            assert(selected);
+            Entity *dup = duplicate_entity(&game_state->level, selected->id);
+            select_entity(editor_state, dup);
 
-        ui_y_pad(10.0f);
+            add_message(&game_state->message_manager, make_string(ENTITY_DUPLICATED_MESSAGE));
+        }
+
+        ui_y_pad(20.0f);
         bool32 open_asset_library_clicked = do_text_button("Asset Library", editor_button_theme,
                                                            "open_asset_library");
 
@@ -1441,7 +1453,7 @@ void draw_editor(Controller_State *controller_state) {
             draw_asset_library();
         }
 
-        ui_y_pad(10.0f);
+        ui_y_pad(1.0f);
         bool32 open_collision_debugger_clicked = do_text_button("Collision Debugger", editor_button_theme,
                                                                 "open_collision_debugger");
 
@@ -1461,200 +1473,6 @@ void draw_editor(Controller_State *controller_state) {
         draw_entity_box_2(editor_state->selected_entity_modified);
     }
     
-#if 0
-    if (selected_entity) {
-        draw_entity_box(editor_state, ui_manager, controller_state, selected_entity);
-
-        if (editor_state->open_window_flags & MATERIAL_LIBRARY_WINDOW) {
-            draw_material_library(editor_state, ui_manager, controller_state, render_state, selected_entity);
-        } else if (editor_state->open_window_flags & TEXTURE_LIBRARY_WINDOW) {
-            if (has_material_field(selected_entity)) {
-                draw_texture_library(editor_state, ui_manager, controller_state, render_state,
-                                     get_material_id(selected_entity));
-            }
-        } else if (editor_state->open_window_flags & MESH_LIBRARY_WINDOW) {
-            draw_mesh_library(editor_state, ui_manager, controller_state, render_state, selected_entity);
-        }
-    } else {
-        reset_entity_editors(editor_state);
-    }
-
-
-
-    real32 y = 0.0f;
-    real32 button_gap = 1.0f;
-    real32 sidebar_button_width = 200.0f;
-
-    int32 font_id;
-    Font font = get_font(&editor_state->asset_manager, Editor_Constants::editor_font_name, &font_id);
-
-    Gizmo_State *gizmo_state = &editor_state->gizmo_state;
-
-    real32 button_height = 25.0f;
-    // wireframe toggle
-    real32 wireframe_button_width = sidebar_button_width;
-    bool32 toggle_show_wireframe_clicked = do_text_button(render_state->display_output.width - sidebar_button_width,
-                                                          y,
-                                                          wireframe_button_width, button_height,
-                                                          default_text_button_style, default_text_style,
-                                                          editor_state->show_wireframe ?
-                                                          "Hide Wireframe" : "Show Wireframe",
-                                                          font_id, "toggle_wireframe");
-    if (toggle_show_wireframe_clicked) {
-        editor_state->show_wireframe = !editor_state->show_wireframe;
-    }
-    y += button_height + button_gap;
-
-    // transform mode toggle
-    bool32 toggle_global_clicked = do_text_button(render_state->display_output.width - sidebar_button_width, y,
-                                                  sidebar_button_width, button_height,
-                                                  default_text_button_style, default_text_style,
-                                                  gizmo_state->transform_mode == TRANSFORM_GLOBAL ?
-                                                  "Use Local Transform" : "Use Global Transform",
-                                                  font_id, "toggle_transform");
-    if (toggle_global_clicked) {
-        if (gizmo_state->transform_mode == TRANSFORM_GLOBAL) {
-            gizmo_state->transform_mode = TRANSFORM_LOCAL;
-        } else {
-            gizmo_state->transform_mode = TRANSFORM_GLOBAL;
-        }
-    }
-    y += button_height + button_gap;
-
-    y += 5;
-    draw_level_box(&game_state->ui_manager, editor_state,
-                   controller_state,
-                   render_state->display_output.width - 198.0f - 1.0f, y);
-
-    y += 120.0f;
-
-    bool32 add_normal_entity_clicked = do_text_button(render_state->display_output.width - sidebar_button_width, y,
-                                                      sidebar_button_width, button_height,
-                                                      default_text_button_style, default_text_style,
-                                                      "Add Normal Entity",
-                                                      font_id, "add_entity");
-    y += button_height + button_gap;
-    if (add_normal_entity_clicked) {
-        do_add_normal_entity(editor_state);
-    }
-
-    bool32 add_point_light_entity_clicked = do_text_button(render_state->display_output.width - sidebar_button_width, y,
-                                                           sidebar_button_width, button_height,
-                                                           default_text_button_style, default_text_style,
-                                                           "Add Point Light Entity",
-                                                           font_id, "add_point_light_entity");
-    y += button_height + button_gap;
-    if (add_point_light_entity_clicked) {
-        do_add_point_light_entity(editor_state);
-    }
-
-    bool32 toggle_colliders_clicked = do_text_button(render_state->display_output.width - sidebar_button_width, y,
-                                                     sidebar_button_width, button_height,
-                                                     default_text_button_style, default_text_style,
-                                                     editor_state->show_colliders ?
-                                                     "Hide Colliders" : "Show Colliders",
-                                                     font_id, "toggle_show_colliders");
-
-    if (toggle_colliders_clicked) {
-        editor_state->show_colliders = !editor_state->show_colliders;
-    }
-
-    if (!editor_state->is_new_level) {
-        char *filename_buf = to_char_array((Allocator *) &memory.frame_arena, editor_state->level_filename);
-        char *buf = string_format((Allocator *) &memory.frame_arena, PLATFORM_MAX_PATH + 32,
-                                  "current level: %s", filename_buf);
-        do_text(ui_manager,
-                5.0f, render_state->display_output.height - 9.0f,
-                buf, font_id, default_text_style, "editor_current_level_filename");
-    }
-
-    y += button_height + button_height;
-
-    int32 num_history_entries = history_get_num_entries(&editor_state->history);
-    bool32 undo_clicked = do_text_button(render_state->display_output.width - sidebar_button_width, y,
-                                         0.5f * sidebar_button_width - 1, button_height,
-                                         default_text_button_style, default_text_style,
-                                         "Undo",
-                                         font_id,
-                                         editor_state->history.num_undone == num_history_entries,
-                                         "editor_undo");
-    if (undo_clicked) {
-        history_undo(editor_state);
-    }
-
-    bool32 redo_clicked = do_text_button(render_state->display_output.width - 0.5f * sidebar_button_width, y,
-                                         0.5f * sidebar_button_width, button_height,
-                                         default_text_button_style, default_text_style,
-                                         "Redo",
-                                         font_id,
-                                         num_history_entries == 0 || editor_state->history.num_undone == 0,
-                                         "editor_redo");
-    if (redo_clicked) {
-        history_redo(editor_state);
-    }
-    #endif
-
-    #if 0
-    Allocator *frame_allocator = (Allocator *) &memory.frame_arena;
-    char *buf = string_format(frame_allocator, 64, "editor history heap used: %d",
-                              editor_state->history_heap.used);
-    do_text(ui_manager,
-            5.0f, render_state->display_output.height - 90.0f,
-            buf, font_id, default_text_style, "editor history heap used");
-
-    buf = string_format(frame_allocator, 64, "editor entity heap used: %d",
-                        editor_state->entity_heap.used);
-    do_text(ui_manager,
-            5.0f, render_state->display_output.height - 72.0f,
-            buf, font_id, default_text_style, "editor entity heap used");
-    #endif
-
-#if 0
-    char *buf = string_format(frame_allocator, 64, "heap size: %d", ui_manager->heap_pointer->size);
-    do_text(ui_manager,
-            5.0f, render_state->display_output.height - 62.0f,
-            buf, editor_font_name, default_text_style, "heap size");
-
-    buf = string_format((Allocator *) &memory.frame_arena, 64, "heap used: %d", ui_manager->heap_pointer->used);
-    do_text(ui_manager,
-            5.0f, render_state->display_output.height - 48.0f,
-            buf, editor_font_name, default_text_style, "heap used");
-#endif
-
-    
-#if 0
-    buf = string_format(frame_allocator, 64, "num_undone: %d", editor_state->history.num_undone);
-    do_text(ui_manager,
-            5.0f, render_state->display_output.height - 129.0f,
-            buf, editor_font_name, default_text_style, "num undone");
-
-    buf = string_format((Allocator *) &memory.frame_arena, 64, "num_history_entries: %d", num_history_entries);
-    do_text(ui_manager,
-            5.0f, render_state->display_output.height - 143.0f,
-            buf, editor_font_name, default_text_style, "num history entries");
-
-    Heap_Allocator *history_heap = &memory.editor_history_heap;
-    String_Buffer history_buf = make_string_buffer((Allocator *) &memory.frame_arena, 512);
-    append_string(&history_buf, "[ ");
-
-    Heap_Block *block = history_heap->first_block;
-    while (block) {
-        Allocator *temp_region = begin_region();
-        char *whatever = string_format((Allocator *) &memory.global_stack, 16, "| %d | ", block->size);
-        append_string(&history_buf, whatever);
-        end_region(temp_region);
-
-        block = block->next;
-    }
-
-    append_string(&history_buf, "]");
-
-    buf = to_char_array((Allocator *) &memory.frame_arena, history_buf);
-    do_text(ui_manager,
-            5.0f, render_state->display_output.height - 114.0f,
-            buf, editor_font_name, default_text_style, "editor history");
-#endif
-
     ui_pop_widget();
 }
 

@@ -1718,21 +1718,25 @@ void ui_y_pad(real32 height) {
     ui_add_widget("", theme);
 }
 
-bool32 do_text_button(char *text, UI_Button_Theme button_theme, UI_id id, UI_Interact_Result *interact_out) {
+bool32 do_text_button(char *text, UI_Button_Theme button_theme, UI_id id, UI_Interact_Result *interact_out,
+                      bool32 disabled) {
     UI_Theme theme = NULL_THEME;
     theme.semantic_position = button_theme.position;
     theme.size_type = button_theme.size_type;
     theme.semantic_size = button_theme.size;
     theme.layout_type = UI_LAYOUT_VERTICAL;
-    theme.background_color = button_theme.background_color;
+    theme.background_color = disabled ? button_theme.disabled_background_color : button_theme.background_color;
     theme.hot_background_color = button_theme.hot_background_color;
     theme.active_background_color = button_theme.active_background_color;
     theme.corner_radius = 5.0f;
     theme.corner_flags = CORNER_ALL;
     theme.scissor_type = button_theme.scissor_type;
 
-    UI_Widget *button = ui_push_widget(id, theme,
-                                       UI_WIDGET_DRAW_BORDER | UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
+    uint32 flags = UI_WIDGET_DRAW_BORDER | UI_WIDGET_DRAW_BACKGROUND;
+    if (!disabled)
+        flags |= UI_WIDGET_IS_CLICKABLE;
+    
+    UI_Widget *button = ui_push_widget(id, theme, flags);
 
     {
         UI_Theme center_theme = NULL_THEME;
@@ -1779,6 +1783,9 @@ bool32 do_text_button(char *text, UI_Button_Theme button_theme, UI_id id, UI_Int
         ui_pop_widget();
     }
     ui_pop_widget();
+
+    if (disabled)
+        return false;
     
     UI_Interact_Result interact_result = ui_interact(button);
 
@@ -1790,8 +1797,8 @@ bool32 do_text_button(char *text, UI_Button_Theme button_theme, UI_id id, UI_Int
 }
 
 inline bool32 do_text_button(char *text, UI_Button_Theme button_theme, char *id, int32 index = 0,
-                             UI_Interact_Result *interact_result = NULL) {
-    return do_text_button(text, button_theme, make_ui_id(id, index), interact_result);
+                             UI_Interact_Result *interact_result = NULL, bool32 disabled = false) {
+    return do_text_button(text, button_theme, make_ui_id(id, index), interact_result, disabled);
 }
 
 UI_Interact_Result ui_push_empty_button(UI_Button_Theme button_theme, UI_id id) {

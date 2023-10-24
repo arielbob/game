@@ -215,6 +215,7 @@ struct UI_Button_Theme {
     Vec4 background_color;
     Vec4 hot_background_color;
     Vec4 active_background_color;
+    Vec4 disabled_background_color;
 
     Vec4 text_color;
     char *font;
@@ -683,6 +684,7 @@ struct UI_Manager {
 #define DEFAULT_BUTTON_BACKGROUND rgb_to_vec4(50, 50, 60)
 #define DEFAULT_BUTTON_HOT_BACKGROUND rgb_to_vec4(60, 60, 72)
 #define DEFAULT_BUTTON_ACTIVE_BACKGROUND rgb_to_vec4(9, 9, 10)
+#define DEFAULT_BUTTON_DISABLED_BACKGROUND rgb_to_vec4(82, 82, 82)
 
 #define DANGER_BUTTON_BACKGROUND rgb_to_vec4(199, 45, 18)
 #define DANGER_BUTTON_HOT_BACKGROUND rgb_to_vec4(222, 80, 55)

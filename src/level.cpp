@@ -46,6 +46,20 @@ bool32 read_and_load_level(Level *level, char *filename) {
     return true;
 }
 
+Entity *get_entity(Level *level, int32 id) {
+    Entity *current = level->entities;
+    while (current) {
+        if (current->id == id) {
+            return current;
+        }
+
+        current = current->next;
+    }
+    
+    assert(!"Entity not found.");
+    return NULL;
+}
+
 int32 add_entity(Level *level, Entity *entity) {
     int32 id = level->total_entities_added_ever++;
 
@@ -56,6 +70,7 @@ int32 add_entity(Level *level, Entity *entity) {
     if (level->entities) {
         level->entities->prev = entity;
     }
+    entity->prev = NULL;
     entity->next = level->entities;
     level->entities = entity;
     
@@ -70,6 +85,18 @@ Entity *make_and_add_entity(Level *level, Entity_Info info) {
 
     add_entity(level, entity);
     return entity;
+}
+
+Entity *duplicate_entity(Level *level, int32 id) {
+    Entity *e = get_entity(level, id);
+
+    Allocator *allocator = (Allocator *) &level->heap;
+    Entity *dup = (Entity *) allocate(allocator, sizeof(Entity));
+    *dup = *e;
+
+    add_entity(level, dup);
+
+    return dup;
 }
 
 void delete_entity(Level *level, int32 id) {
@@ -94,20 +121,6 @@ void delete_entity(Level *level, int32 id) {
             current = current->next;
         }
     }
-}
-
-Entity *get_entity(Level *level, int32 id) {
-    Entity *current = level->entities;
-    while (current) {
-        if (current->id == id) {
-            return current;
-        }
-
-        current = current->next;
-    }
-    
-    assert(!"Entity not found.");
-    return NULL;
 }
 
 void load_level_entities(Level *level, Level_Info *level_info) {
