@@ -29,36 +29,12 @@ roughness 0.204147
 
 entities {
 entity {
-position 3.216114 0.748059 0.443192
-rotation 0.878177 0.308634 0.344772 -0.121170
-scale 2.000000 2.000000 2.000000
-mesh "suzanne"
-material "matte blue"
-}
-entity {
-position 1.472469 2.254015 7.296789
-rotation 0.811273 -0.584667 0.000000 0.000000
+position -3.291274 3.808974 -2.597950
+rotation 0.908205 0.091635 -0.279682 -0.297565
 scale 1.000000 1.000000 1.000000
-light_type point
-light_color 0.996667 0.996667 0.996667
-falloff_start 0.000000
-falloff_end 11.000000
-}
-entity {
-position -3.143196 2.197822 1.496788
-rotation 1.000000 0.000000 0.000000 0.000000
-scale 1.000000 1.000000 1.000000
-light_type point
-light_color 0.063333 0.063333 0.063333
-falloff_start 0.000000
-falloff_end 5.000000
-}
-entity {
-position -0.381705 0.685194 0.000000
-rotation 0.950983 0.253512 -0.168103 0.055712
-scale 1.000000 1.075399 1.000000
-mesh "suzanne"
-material "glossy red"
+light_type sun
+sun_color 1.000000 0.779000 0.350000
+sun_intensity 2185.000000
 }
 entity {
 position 1.861936 -0.214412 0.000000
@@ -68,13 +44,18 @@ mesh "cube"
 material "default_material"
 }
 entity {
-position 0.000000 3.808974 -5.110138
-rotation 1.000000 0.000000 0.000000 0.000000
-scale 1.000000 1.000000 1.000000
-light_type point
-light_color 0.030000 0.030000 0.030000
-falloff_start 0.000000
-falloff_end 14.000000
+position -0.381705 0.685194 0.000000
+rotation 0.950983 0.253512 -0.168103 0.055712
+scale 1.000000 1.075399 1.000000
+mesh "suzanne"
+material "glossy red"
+}
+entity {
+position 3.216114 0.748059 0.443192
+rotation 0.878177 0.308634 0.344772 -0.121170
+scale 2.000000 2.000000 2.000000
+mesh "suzanne"
+material "matte blue"
 }
 }
 
