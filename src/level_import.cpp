@@ -155,6 +155,7 @@ Level_Loader::Token Level_Loader::get_token(Tokenizer *tokenizer) {
 
                 char current_char = *tokenizer->current;
                 if (!(is_letter(current_char) || current_char == '_')) {
+                    // note that we can only start a keyword with letters
                     assert(!"Keywords can only contain letters and underscores.");
                 }
 
@@ -811,7 +812,6 @@ bool32 Level_Loader::parse_entities_block(Allocator *temp_allocator, Tokenizer *
 bool32 Level_Loader::parse_level(Allocator *temp_allocator, File_Data file_data,
                                  Level_Info *level_info, char **error_out) {
     Tokenizer tokenizer = make_tokenizer(file_data);
-
     bool32 result;
 
     // it's fine to use the level_info pointer here since it's just in temp_region and we're just gonna clear it.

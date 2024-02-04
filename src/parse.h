@@ -52,6 +52,42 @@ int32 string_to_int32(char *str, uint32 length) {
     return result;
 }
 
+bool32 string_to_int32(char *str, uint32 length, int32 *result_out) {
+    int32 result = 0;
+    uint32 place_value = 1;
+
+    int32 i = (int32) length - 1;
+    for (; i > 0; i--) {
+        char c = str[i];
+        if (!is_digit(c)) {
+            return false;
+        }
+        result += place_value * ascii_to_uint32(c);
+        place_value *= 10;
+    }
+
+    if (length > 0) {
+        // guaranteed i = 0 here
+        char c = str[i];
+        if (c == '-') {
+            result *= -1;
+        } else {
+            if (!is_digit(c)) {
+                return false;
+            }
+            result += place_value * ascii_to_uint32(c);
+            place_value *= 10;
+        }
+    }
+
+    *result_out = result;
+    return true;
+}
+
+inline int32 string_to_int32(String string, int32 *result) {
+    return string_to_int32(string.contents, string.length, result);
+}
+
 int32 string_to_uint32(char *str, uint32 length) {
     uint32 result = 0;
     uint32 place_value = 1;

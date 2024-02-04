@@ -86,10 +86,25 @@ namespace Mesh_Loader {
     Token make_token(Token_Type type, char *contents, int32 length);
     bool32 token_text_equals(Token token, char *str);
     bool32 mesh_parse_error(char **error_out, char *error_string);
+    
     bool32 parse_real(Tokenizer *tokenizer, real32 *result, char **error);
     bool32 parse_int(Tokenizer *tokenizer, int32 *result, char **error);
-    Mesh load_mesh(File_Data file_data, Allocator *allocator);
-}
+    bool32 parse_uint(Tokenizer *tokenizer, uint32 *result, char **error);
+    bool32 parse_vec2(Tokenizer *tokenizer, Vec2 *result, char **error);
+    bool32 parse_vec3(Tokenizer *tokenizer, Vec3 *result, char **error);
+    bool32 parse_vec3_int32(Tokenizer *tokenizer, Vec3_int32 *result, char **error);
+    bool32 parse_vec3_uint32(Tokenizer *tokenizer, Vec3_uint32 *result, char **error);
+    bool32 parse_vec4_int32(Tokenizer *tokenizer, Vec4_int32 *result, char **error);
+    bool32 parse_vec4_uint32(Tokenizer *tokenizer, Vec4_uint32 *result, char **error);
+    
+    bool32 parse_num_vertices(Tokenizer *tokenizer, uint32 *result, char **error);
+    bool32 parse_num_triangles(Tokenizer *tokenizer, uint32 *result, char **error);
+    bool32 parse_vertex(Tokenizer *tokenizer, Mesh *mesh, uint32 vertex_index, char **error);
+    bool32 parse_triangle(Tokenizer *tokenizer, Mesh *mesh, uint32 triangle_index, char **error);
+
+    bool32 load_mesh(Allocator *allocator, File_Data file_data,
+                     Mesh **mesh_result, char **error_out);
+    }
 
 inline bool32 Mesh_Loader::mesh_parse_error(char **error_out, char *error_string) {
     *error_out = error_string;
@@ -116,7 +131,7 @@ bool32 Mesh_Loader::parse_real(Tokenizer *tokenizer, real32 *result, char **erro
 
 bool32 Mesh_Loader::parse_int(Tokenizer *tokenizer, int32 *result, char **error) {
     Token token = get_token(tokenizer);
-    real32 num;
+    int32 num;
     
     if (token.type == INTEGER) {
         bool32 parse_result = string_to_int32(token.string, &num);
@@ -132,12 +147,43 @@ bool32 Mesh_Loader::parse_int(Tokenizer *tokenizer, int32 *result, char **error)
     }
 }
 
+bool32 Mesh_Loader::parse_uint(Tokenizer *tokenizer, uint32 *result, char **error) {
+    Token token = get_token(tokenizer);
+    uint32 num;
+    
+    if (token.type == INTEGER) {
+        bool32 parse_result = string_to_uint32(token.string, &num);
+
+        if (!parse_result) {
+            return mesh_parse_error(error, "Invalid unsigned integer value.");
+        } else {
+            *result = num;
+            return true;
+        }
+    } else {
+        return mesh_parse_error(error, "Expected unsigned integer.");
+    }
+}
+
+bool32 Mesh_Loader::parse_vec2(Tokenizer *tokenizer, Vec2 *result, char **error) {
+    Vec2 v;
+    
+    for (int i = 0; i < 2; i++) {
+        if (!parse_real(tokenizer, &v[i], error)) {
+            return mesh_parse_error(error, "Invalid number in Vec2.");
+        }
+    }
+
+    *result = v;
+    return true;
+}
+
 bool32 Mesh_Loader::parse_vec3(Tokenizer *tokenizer, Vec3 *result, char **error) {
     Vec3 v;
     
     for (int i = 0; i < 3; i++) {
         if (!parse_real(tokenizer, &v[i], error)) {
-            return level_parse_error(error, "Invalid number in Vec3.");
+            return mesh_parse_error(error, "Invalid number in Vec3.");
         }
     }
 
@@ -150,7 +196,20 @@ bool32 Mesh_Loader::parse_vec3_int32(Tokenizer *tokenizer, Vec3_int32 *result, c
     
     for (int i = 0; i < 3; i++) {
         if (!parse_int(tokenizer, &v[i], error)) {
-            return level_parse_error(error, "Invalid number in Vec3.");
+            return mesh_parse_error(error, "Invalid number in Vec3.");
+        }
+    }
+
+    *result = v;
+    return true;
+}
+
+bool32 Mesh_Loader::parse_vec3_uint32(Tokenizer *tokenizer, Vec3_uint32 *result, char **error) {
+    Vec3_uint32 v;
+    
+    for (int i = 0; i < 3; i++) {
+        if (!parse_uint(tokenizer, &v[i], error)) {
+            return mesh_parse_error(error, "Invalid number in Vec3_uint32.");
         }
     }
 
@@ -163,7 +222,7 @@ bool32 Mesh_Loader::parse_vec4_int32(Tokenizer *tokenizer, Vec4_int32 *result, c
     
     for (int i = 0; i < 4; i++) {
         if (!parse_int(tokenizer, &v[i], error)) {
-            return level_parse_error(error, "Invalid number in Vec4.");
+            return mesh_parse_error(error, "Invalid number in Vec4.");
         }
     }
 
@@ -171,6 +230,20 @@ bool32 Mesh_Loader::parse_vec4_int32(Tokenizer *tokenizer, Vec4_int32 *result, c
     return true;
 }
 
+bool32 Mesh_Loader::parse_vec4_uint32(Tokenizer *tokenizer, Vec4_uint32 *result, char **error) {
+    Vec4_uint32 v;
+    
+    for (int i = 0; i < 4; i++) {
+        if (!parse_uint(tokenizer, &v[i], error)) {
+            return mesh_parse_error(error, "Invalid number in Vec4_uint32.");
+        }
+    }
+
+    *result = v;
+    return true;
+}
+
+#if 0
 // NOTE: token.text is not null-terminated, but str is expected to be null-terminated
 inline bool32 Mesh_Loader::token_text_equals(Token token, char *str) {
     for (int32 i = 0; i < token.length; i++) {
@@ -192,6 +265,7 @@ inline bool32 Mesh_Loader::token_text_equals(Token token, char *str) {
         return false;
     }
 }
+#endif
 
 inline Mesh_Loader::Token Mesh_Loader::make_token(Token_Type type, char *contents, int32 length) {
     Token token = {
@@ -202,137 +276,326 @@ inline Mesh_Loader::Token Mesh_Loader::make_token(Token_Type type, char *content
 }
 
 Mesh_Loader::Token Mesh_Loader::get_token(Tokenizer *tokenizer) {
-    Token_Type token_type;
+    Token token = {};
 
-    consume_leading_whitespace(tokenizer);
+    do {
+        consume_leading_whitespace(tokenizer);
 
-    if (is_end(tokenizer)) {
-        return make_token(Mesh_Loader::END, NULL, 0);
-    }
+        if (is_end(tokenizer)) {
+            return make_token(END, NULL, 0);
+        }
     
-    char c = *tokenizer->current;
+        char c = *tokenizer->current;
 
-    if (is_digit(c) || c == '-' || c == '.') {
-        uint32 start = tokenizer->index;
+        if (is_digit(c) || c == '-' || c == '.') {
+            uint32 start = tokenizer->index;
         
-        bool32 has_period = false;
-        bool32 is_negative = false;
-        if (c == '.') {
-            has_period = true;
-        } else if (c == '-') {
-            is_negative = true;
-        }
-
-        increment_tokenizer(tokenizer);
-        
-        while (!is_end(tokenizer) &&
-               !is_whitespace(*tokenizer->current)) {
-
-            if (!is_digit(*tokenizer->current) &&
-                *tokenizer->current != '.') {
-                assert(!"Expected digit or period");
+            bool32 has_period = false;
+            bool32 is_negative = false;
+            if (c == '.') {
+                has_period = true;
+            } else if (c == '-') {
+                is_negative = true;
             }
-            
-            if (*tokenizer->current == '.') {
-                if (!has_period) {
-                    has_period = true;
-                } else {
-                    assert(!"More than one period in number");
+
+            increment_tokenizer(tokenizer);
+        
+            while (!is_end(tokenizer) &&
+                   !is_whitespace(*tokenizer->current)) {
+
+                if (!is_digit(*tokenizer->current) &&
+                    *tokenizer->current != '.') {
+                    assert(!"Expected digit or period");
                 }
+            
+                if (*tokenizer->current == '.') {
+                    if (!has_period) {
+                        has_period = true;
+                    } else {
+                        assert(!"More than one period in number");
+                    }
+                }
+
+                if (*tokenizer->current == '-') {
+                    assert(!"Negatives can only be at the start of a number");
+                }
+
+                increment_tokenizer(tokenizer);
+            }
+        
+            uint32 length = tokenizer->index - start;
+
+            Token_Type token_type;
+            if (has_period) {
+                token_type = REAL;
+            } else {
+                token_type = INTEGER;
             }
 
-            if (*tokenizer->current == '-') {
-                assert(!"Negatives can only be at the start of a number");
+            // NOTE: we don't include the null terminator here, and just set bounds using a length member
+            token = make_token(token_type, &tokenizer->contents[start], length);
+        } else if (tokenizer->current[0] == ';' &&
+                   tokenizer->current[1] == ';') {
+            increment_tokenizer(tokenizer, 2);
+            uint32 start = tokenizer->index;
+        
+            while (!is_end(tokenizer) &&
+                   !is_line_end(tokenizer->current)) {
+                increment_tokenizer(tokenizer);
             }
+
+            uint32 length = tokenizer->index - start;
+            token = make_token(COMMENT, &tokenizer->contents[start], length);
+        } else if (is_letter(tokenizer->current[0])) {
+            uint32 start = tokenizer->index;
 
             increment_tokenizer(tokenizer);
-        }
         
-        uint32 length = tokenizer->index - start;
+            while (!is_end(tokenizer) &&
+                   !is_whitespace(tokenizer->current[0])) {
 
-        Token_Type token_type;
-        if (has_period) {
-            token_type = REAL;
+                char current_char = *tokenizer->current;
+                if (!(is_letter(current_char) || current_char == '_')) {
+                    assert(!"Labels can only contain letters and underscores.");
+                }
+
+                increment_tokenizer(tokenizer);
+            }
+
+        
+            uint32 length = tokenizer->index - start;
+            token = make_token(LABEL, &tokenizer->contents[start], length);
         } else {
-            token_type = INTEGER;
+            assert(!"Token type not recognized");
+            return {};
         }
-
-        // NOTE: we don't include the null terminator here, and just set bounds using a length member
-        token.text = &tokenizer->contents[start];
-        token.length = length;
-
-        // TODO: can we return here? idk
-    } else if (tokenizer->current[0] == ';' &&
-               tokenizer->current[1] == ';') {
-        increment_tokenizer(tokenizer, 2);
-        uint32 start = tokenizer->index;
-        
-        while (!is_end(tokenizer) &&
-               !is_line_end(tokenizer->current)) {
-            increment_tokenizer(tokenizer);
-        }
-
-        uint32 length = tokenizer->index - start;
-        token.type = COMMENT;
-        token.text = &tokenizer->contents[start];
-        token.length = length;
-    } else if (is_letter(tokenizer->current[0])) {
-        uint32 start = tokenizer->index;
-
-        increment_tokenizer(tokenizer);
-        
-        while (!is_end(tokenizer) &&
-               !is_whitespace(tokenizer->current[0])) {
-
-            if (!is_letter(tokenizer->current[0])) {
-                assert(!"Labels can only contain letters");
-            }
-
-            increment_tokenizer(tokenizer);
-        }
-
-        uint32 length = tokenizer->index - start;
-        token.type = LABEL;
-        token.text = &tokenizer->contents[start];
-        token.length = length;
-    } else {
-        assert(!"Token type not recognized");
-    }
+    } while (token.type == COMMENT);
 
     return token;
 }
 
-bool32 Mesh_Loader::parse_num_vertices(Allocator *temp_allocator, Tokenizer *tokenizer,
-                                       int *num_vertices, char **error) {
+bool32 Mesh_Loader::parse_num_vertices(Tokenizer *tokenizer, uint32 *result, char **error) {
     Token token = get_token(tokenizer);
     if (token.type != INTEGER) {
         return mesh_parse_error(error, "Expected num_vertices integer.");
     }
 
-    
+    bool32 parse_result = string_to_uint32(token.string, result);
+    if (parse_result) {
+        return true;
+    } else {
+        return mesh_parse_error(error, "Invalid num_vertices unsigned integer.");
+    }
 }
 
-Mesh Mesh_Loader::load_mesh(Allocator *allocator, File_Data file_data) {
+bool32 Mesh_Loader::parse_num_triangles(Tokenizer *tokenizer, uint32 *result, char **error) {
+    Token token = get_token(tokenizer);
+    if (token.type != INTEGER) {
+        return mesh_parse_error(error, "Expected num_triangles integer.");
+    }
+
+    bool32 parse_result = string_to_uint32(token.string, result);
+    if (parse_result) {
+        return true;
+    } else {
+        return mesh_parse_error(error, "Invalid num_triangles unsigned integer.");
+    }
+}
+
+bool32 Mesh_Loader::parse_vertex(Tokenizer *tokenizer, Mesh *mesh, uint32 vertex_index, char **error) {
+    assert(vertex_index < mesh->num_vertices);
+
+    // vertex position
+    Token token = get_token(tokenizer);
+    if (token.type != LABEL || !string_equals(token.string, "v")) {
+        return mesh_parse_error(error, "Expected 'v' label for vertex position.");
+    }
+
+    uint8 *data_position = (uint8 *) &mesh->data[vertex_index * mesh->vertex_stride];
+    
+    Vec3 *position = (Vec3 *) data_position;
+    bool32 result = parse_vec3(tokenizer, position, error);
+    if (!result) {
+        // error message gets set by parse_vec3
+        return false;
+    }
+
+    data_position += mesh->n_vertex * sizeof(real32);
+
+    mesh->aabb.p_min.x = min(mesh->aabb.p_min.x, position->x);
+    mesh->aabb.p_min.y = min(mesh->aabb.p_min.y, position->y);
+    mesh->aabb.p_min.z = min(mesh->aabb.p_min.z, position->z);
+
+    mesh->aabb.p_max.x = max(mesh->aabb.p_max.x, position->x);
+    mesh->aabb.p_max.y = max(mesh->aabb.p_max.y, position->y);
+    mesh->aabb.p_max.z = max(mesh->aabb.p_min.z, position->z);
+
+    // vertex normal
+    token = get_token(tokenizer);
+    if (token.type != LABEL || !string_equals(token.string, "n")) {
+        return mesh_parse_error(error, "Expected 'n' label for vertex normal.");
+    }
+
+    Vec3 *normal = (Vec3 *) data_position;
+    result = parse_vec3(tokenizer, normal, error);
+    if (!result) {
+        return false;
+    }
+
+    data_position += mesh->n_normal * sizeof(real32);
+
+    // vertex uv
+    token = get_token(tokenizer);
+    if (token.type != LABEL || !string_equals(token.string, "uv")) {
+        return mesh_parse_error(error, "Expected 'uv' label for vertex normal.");
+    }
+
+    Vec2 *uv = (Vec2 *) data_position;
+    result = parse_vec2(tokenizer, uv, error);
+    if (!result) {
+        return false;
+    }
+ 
+    data_position += mesh->n_uv * sizeof(real32);
+
+    if (mesh->is_skinned) {
+        // bone indices
+        token = get_token(tokenizer);
+        if (token.type != LABEL || !string_equals(token.string, "bi")) {
+            return mesh_parse_error(error, "Expected 'bi' label for vertex bone indices.");
+        }
+
+        Vec4_uint32 *bone_indices = (Vec4_uint32 *) data_position;
+        result = parse_vec4_uint32(tokenizer, bone_indices, error);
+        if (!result) {
+            return false;
+        }
+
+        data_position += mesh->n_bone_indices * sizeof(int32);
+
+        // bone weights
+        token = get_token(tokenizer);
+        if (token.type != LABEL || !string_equals(token.string, "bw")) {
+            return mesh_parse_error(error, "Expected 'bw' label for vertex bone weights.");
+        }
+
+        Vec4_uint32 *bone_weights = (Vec4_uint32 *) data_position;
+        result = parse_vec4_uint32(tokenizer, bone_weights, error);
+        if (!result) {
+            return false;
+        }
+
+        data_position += mesh->n_bone_weights * sizeof(int32);
+    }
+
+    return true;
+}
+
+bool32 Mesh_Loader::parse_triangle(Tokenizer *tokenizer, Mesh *mesh, uint32 triangle_index, char **error) {
+    assert(triangle_index < mesh->num_triangles);
+
+    Vec3_uint32 *triangle_indices = (Vec3_uint32 *) &mesh->indices[3 * triangle_index];
+
+    return parse_vec3_uint32(tokenizer, triangle_indices, error);
+}
+
+bool32 Mesh_Loader::load_mesh(Allocator *allocator, File_Data file_data,
+                              Mesh **mesh_result, char **error_out) {
     Tokenizer tokenizer = make_tokenizer(file_data);
     bool32 result;
 
-    result = parse_num_vertices();
+    Mesh mesh = {};
+
+    mesh.allocator = allocator;
+    mesh.n_vertex = 3;
+    mesh.n_normal = 3;
+    mesh.n_uv = 2;
+
+    mesh.is_skinned = false;
+    mesh.n_bone_indices = 0;
+    mesh.n_bone_weights = 0;
+
+    // check is_skinned
+    Token token = get_token(&tokenizer);
+    if (token.type == LABEL && string_equals(token.string, "is_skinned")) {
+        int32 is_skinned;
+        result = parse_int(&tokenizer, &is_skinned, error_out);
+
+        if (!result) {
+            return false;
+        } else if (is_skinned != 0 && is_skinned != 1) {
+            return mesh_parse_error(error_out, "Invalid value for is_skinned. Expected 0 or 1.");
+        }
+
+        mesh.is_skinned = is_skinned;
+
+        if (mesh.is_skinned) {
+            mesh.n_bone_indices = MAX_BONE_INDICES;
+            mesh.n_bone_weights = MAX_BONE_INDICES;
+        }
+    } else {
+        // if the first thing we see isn't is_skinned, then just go back a token.
+        // i.e. not having an is_skinned entry is fine
+        increment_tokenizer(&tokenizer, -token.string.length);
+    }
+    
+    mesh.vertex_stride = mesh.n_vertex + mesh.n_normal + mesh.n_uv + mesh.n_bone_indices +
+        mesh.n_bone_weights;
+
+    // num_vertices
+    result = parse_num_vertices(&tokenizer, &mesh.num_vertices, error_out);
     if (!result) return false;
 
-    result = parse_num_triangles();
-    if (!result) return false;
+    mesh.data_size = mesh.num_vertices * mesh.vertex_stride * sizeof(real32);
+    mesh.data = (real32 *) allocate(allocator, mesh.data_size);
 
-    // parse vertices for the amount of vertices we have
-    result = parse_vertices();
-    if (!result) return false;
+    // num_triangles
+    result = parse_num_triangles(&tokenizer, &mesh.num_triangles, error_out);
+    if (!result) {
+        deallocate(mesh.allocator, mesh.data);
+        return false;
+    }
 
-    // parse triangles for the amount of triangles we have
-    result = parse_triangles();
-    if (!result) return false;
+    mesh.indices_size = mesh.num_triangles * 3 * sizeof(uint32);
+    mesh.indices = (uint32 *) allocate(allocator, mesh.indices_size);
+    
+    // parse vertex data
+    mesh.aabb.p_min = { INFINITY, INFINITY, INFINITY };
+    mesh.aabb.p_max = { -INFINITY, -INFINITY, -INFINITY };
 
-    // verify we hit the end    
+    for (uint32 i = 0; i < mesh.num_vertices; i++) {
+        result = parse_vertex(&tokenizer, &mesh, i, error_out);
+        if (!result) {
+            deallocate(mesh.allocator, mesh.data);
+            deallocate(mesh.allocator, mesh.indices);
+            return false;
+        }
+    }
+
+    // parse triangle data
+    for (uint32 i = 0; i < mesh.num_triangles; i++) {
+        result = parse_triangle(&tokenizer, &mesh, i, error_out);
+        if (!result) {
+            deallocate(mesh.allocator, mesh.data);
+            deallocate(mesh.allocator, mesh.indices);
+            return false;
+        }
+    }
+
+    token = get_token(&tokenizer);
+    if (token.type != END) {
+        deallocate(mesh.allocator, mesh.data);
+        deallocate(mesh.allocator, mesh.indices);
+        return mesh_parse_error(error_out, "Expected end of mesh file.");
+    }
+
+    *mesh_result = (Mesh *) allocate(allocator, sizeof(Mesh));
+    **mesh_result = mesh;
+    
+    return true;
 }
 
+#if 0
 Mesh Mesh_Loader::load_mesh(File_Data file_data, Allocator *allocator) {
     Tokenizer tokenizer = {};
     tokenizer.current = (char *) file_data.contents;
@@ -520,6 +783,7 @@ Mesh Mesh_Loader::load_mesh(File_Data file_data, Allocator *allocator) {
 
     return mesh;
 }
+#endif
 
 Vec3 get_vertex_from_index(Mesh *mesh, uint32 index) {
     assert(index < mesh->num_vertices);

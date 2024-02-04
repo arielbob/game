@@ -82,6 +82,25 @@ struct Vec3_int32 {
     inline bool32 operator!=(Vec3_int32 v);
 };
 
+struct Vec3_uint32 {
+    union {
+        uint32 values[3];
+        struct {
+            uint32 x;
+            uint32 y;
+            uint32 z;
+        };
+    };
+
+    inline Vec3_uint32 &operator+=(Vec3_uint32 v);
+    //inline Vec3_uint32 &operator-=(Vec3_uint32 v);
+    inline Vec3_uint32 &operator*=(uint32 factor);
+    inline Vec3_uint32 &operator/=(uint32 factor);
+    inline uint32 &operator[](int32 index);
+    inline bool32 operator==(Vec3_uint32 v);
+    inline bool32 operator!=(Vec3_uint32 v);
+};
+
 struct Vec4 {
     union {
         real32 values[4];
@@ -118,6 +137,26 @@ struct Vec4_int32 {
     inline int32 &operator[](int32 index);
     inline bool32 operator==(Vec4_int32 v);
     inline bool32 operator!=(Vec4_int32 v);
+};
+
+struct Vec4_uint32 {
+    union {
+        uint32 values[4];
+        struct {
+            uint32 x;
+            uint32 y;
+            uint32 z;
+            uint32 w;
+        };
+    };
+    
+    inline Vec4_uint32 &operator+=(Vec4_uint32 v);
+    //inline Vec4_uint32 &operator-=(Vec4_uint32 v);
+    inline Vec4_uint32 &operator*=(uint32 factor);
+    inline Vec4_uint32 &operator/=(uint32 factor);
+    inline uint32 &operator[](int32 index);
+    inline bool32 operator==(Vec4_uint32 v);
+    inline bool32 operator!=(Vec4_uint32 v);
 };
 
 // NOTE: we define it this way so we can send it easily to opengl shaders

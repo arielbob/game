@@ -94,20 +94,30 @@ void delete_mesh(int32 id) {
     replace_entity_meshes(id, default_mesh->id);
 }
 
-Mesh load_mesh(Allocator *allocator, Mesh_Type type, String name, String filename) {
+bool32 load_mesh(Allocator *allocator, Mesh **mesh_result, Mesh_Type type, String name, String filename) {
     Allocator *temp_region = begin_region();
 
     char *c_filename = to_char_array(temp_region, filename);
     File_Data file_data = platform_open_and_read_file(temp_region, filename);
 
-    Mesh mesh = Mesh_Loader::load_mesh(file_data, allocator);
-    mesh.type     = type;
-    mesh.name     = copy(allocator, name);
-    mesh.filename = copy(allocator, filename);
+    char *error;
 
+    Mesh *mesh;
+    bool32 result = Mesh_Loader::load_mesh(allocator, file_data, &mesh, &error);
+    if (result) {
+        mesh->type     = type;
+        mesh->name     = copy(allocator, name);
+        mesh->filename = copy(allocator, filename);
+        *mesh_result = mesh;
+    } else {
+        // we can call load_mesh before we're rendering, so.. just print the error too
+        debug_print(error);
+        add_message(Context::message_manager, make_string(error));
+    }
+    
     end_region(temp_region);
 
-    return mesh;
+    return result;
 }
 
 bool32 mesh_exists(String name) {
@@ -121,7 +131,15 @@ Mesh *add_mesh(String name, String filename, Mesh_Type type, int32 id = -1) {
         return NULL;
     }
 
-    Mesh *mesh = (Mesh *) allocate(asset_manager->allocator, sizeof(Mesh));
+    Mesh *mesh;
+    // note that this should be called before we set mesh->id, or else we would overwrite
+    // the mesh->id value with 0
+    bool32 result = load_mesh(asset_manager->allocator, &mesh, type, name, filename);
+    if (!result) {
+        assert(!"Mesh loading failed.");
+        return NULL;
+    }
+
     if (type == Mesh_Type::LEVEL) {
         if (id < 0) {
             id = asset_manager->total_meshes_added_ever++;
@@ -129,10 +147,6 @@ Mesh *add_mesh(String name, String filename, Mesh_Type type, int32 id = -1) {
     } else {
         assert(id < 0);
     }
-
-    // note that this should be called before we set mesh->id, or else we would overwrite
-    // the mesh->id value with 0
-    *mesh = load_mesh(asset_manager->allocator, type, name, filename);
     
     Mesh *found_mesh = get_mesh(id);
     if (found_mesh) {

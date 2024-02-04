@@ -364,6 +364,101 @@ inline bool32 Vec3_int32::operator!=(Vec3_int32 v) {
     return (x != v.x || y != v.y || z != v.z);
 }
 
+// Vec3_uint32 functions
+
+inline Vec3_uint32 make_vec3_uint32(uint32 x, uint32 y, uint32 z) {
+    Vec3_uint32 vec3;
+    vec3.x = x;
+    vec3.y = y;
+    vec3.z = z;
+
+    return vec3;
+};
+
+inline Vec3_uint32 make_vec3_uint32(Vec3 v) {
+    return { (uint32) v.x, (uint32) v.y, (uint32) v.z };
+}
+
+inline Vec3_uint32 operator+(Vec3_uint32 v1, Vec3_uint32 v2) {
+    Vec3_uint32 result = v1;
+    result.x += v2.x;
+    result.y += v2.y;
+    result.z += v2.z;
+    return result;
+}
+
+#if 0
+inline Vec3_uint32 operator-(Vec3_uint32 v) {
+    Vec3_uint32 result;
+    result.x = -v.x;
+    result.y = -v.y;
+    result.z = -v.z;
+    return result;
+}
+
+inline Vec3_uint32 operator-(Vec3_uint32 v1, Vec3_uint32 v2) {
+    Vec3_uint32 result = v1;
+    result.x -= v2.x;
+    result.y -= v2.y;
+    result.z -= v2.z;
+    return result;
+}
+#endif
+
+inline Vec3_uint32 operator*(uint32 factor, Vec3_uint32 v) {
+    Vec3_uint32 result = v;
+    result.x *= factor;
+    result.y *= factor;
+    result.z *= factor;
+    return result;
+}
+
+inline Vec3_uint32 operator*(Vec3_uint32 v, uint32 factor) {
+    return factor * v;
+}
+
+inline Vec3_uint32 operator/(Vec3_uint32 v, uint32 factor) {
+    Vec3_uint32 result = v;
+    result.x /= factor;
+    result.y /= factor;
+    result.z /= factor;
+    return result;
+}
+
+inline Vec3_uint32& Vec3_uint32::operator+=(Vec3_uint32 v) {
+    *this = *this + v;
+    return *this;
+}
+
+#if 0
+inline Vec3_uint32& Vec3_uint32::operator-=(Vec3_uint32 v) {
+    *this = *this - v;
+    return *this;
+}
+#endif
+
+inline Vec3_uint32& Vec3_uint32::operator*=(uint32 factor) {
+    *this = *this * factor;
+    return *this;
+}
+
+inline Vec3_uint32& Vec3_uint32::operator/=(uint32 factor) {
+    *this = *this / factor;
+    return *this;
+}
+
+inline uint32& Vec3_uint32::operator[](int32 index) {
+    return (*this).values[index];
+}
+
+inline bool32 Vec3_uint32::operator==(Vec3_uint32 v) {
+    return (x == v.x && y == v.y && z == v.z);
+}
+
+inline bool32 Vec3_uint32::operator!=(Vec3_uint32 v) {
+    return (x != v.x || y != v.y || z != v.z);
+}
+
 // Vec4 functions
 
 inline Vec4 operator+(Vec4 v1, Vec4 v2) {
@@ -554,6 +649,107 @@ inline bool32 Vec4_int32::operator==(Vec4_int32 v) {
 }
 
 inline bool32 Vec4_int32::operator!=(Vec4_int32 v) {
+    return (x != v.x || y != v.y || z != v.z || w != v.w);
+}
+
+// Vec4_uint32 functions
+
+inline Vec4_uint32 make_vec4(uint32 x, uint32 y, uint32 z, uint32 w) {
+    Vec4_uint32 vec4;
+    vec4.x = x;
+    vec4.y = y;
+    vec4.z = z;
+    vec4.w = w;
+
+    return vec4;
+};
+
+inline Vec4_uint32 make_vec4_uint32(Vec4 v) {
+    return { (uint32) v.x, (uint32) v.y, (uint32) v.z, (uint32) v.w };
+}
+
+inline Vec4_uint32 operator+(Vec4_uint32 v1, Vec4_uint32 v2) {
+    Vec4_uint32 result = v1;
+    result.x += v2.x;
+    result.y += v2.y;
+    result.z += v2.z;
+    result.w += v2.w;
+    return result;
+}
+
+#if 0
+inline Vec4_uint32 operator-(Vec4_uint32 v) {
+    Vec4_uint32 result;
+    result.x = -v.x;
+    result.y = -v.y;
+    result.z = -v.z;
+    result.w = -v.w;
+    return result;
+}
+
+inline Vec4_uint32 operator-(Vec4_uint32 v1, Vec4_uint32 v2) {
+    Vec4_uint32 result = v1;
+    result.x -= v2.x;
+    result.y -= v2.y;
+    result.z -= v2.z;
+    result.w -= v2.w;
+    return result;
+}
+#endif
+
+inline Vec4_uint32 operator*(uint32 factor, Vec4_uint32 v) {
+    Vec4_uint32 result = v;
+    result.x *= factor;
+    result.y *= factor;
+    result.z *= factor;
+    result.w *= factor;
+    return result;
+}
+
+inline Vec4_uint32 operator*(Vec4_uint32 v, uint32 factor) {
+    return factor * v;
+}
+
+inline Vec4_uint32 operator/(Vec4_uint32 v, uint32 factor) {
+    Vec4_uint32 result = v;
+    result.x /= factor;
+    result.y /= factor;
+    result.z /= factor;
+    result.w /= factor;
+    return result;
+}
+
+inline Vec4_uint32& Vec4_uint32::operator+=(Vec4_uint32 v) {
+    *this = *this + v;
+    return *this;
+}
+
+#if 0
+inline Vec4_uint32& Vec4_uint32::operator-=(Vec4_uint32 v) {
+    *this = *this - v;
+    return *this;
+}
+#endif
+
+inline Vec4_uint32& Vec4_uint32::operator*=(uint32 factor) {
+    *this = *this * factor;
+    return *this;
+}
+
+inline Vec4_uint32& Vec4_uint32::operator/=(uint32 factor) {
+    *this = *this / factor;
+    return *this;
+}
+
+inline uint32& Vec4_uint32::operator[](int32 index) {
+    return (*this).values[index];
+}
+
+inline bool32 Vec4_uint32::operator==(Vec4_uint32 v) {
+    return (x == v.x && y == v.y && z == v.z && w == v.w);
+}
+
+inline bool32 Vec4_uint32::operator!=(Vec4_uint32 v) {
     return (x != v.x || y != v.y || z != v.z || w != v.w);
 }
 
