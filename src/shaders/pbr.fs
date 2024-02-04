@@ -102,7 +102,6 @@ void main() {
     float metalness;
     float roughness;
 
-#if 1
     if (use_albedo_texture) {
         albedo = texture(albedo_texture, uv).xyz;
     } else {
@@ -120,7 +119,6 @@ void main() {
     } else {
         roughness = u_roughness;
     }
-#endif
     
     albedo    = pow(albedo, vec3(1.0 / 2.2));
     metalness = pow(metalness, 1.0 / 2.2);

@@ -31,15 +31,21 @@ enum class Command_Type {
     LOAD_TEXTURE, UNLOAD_TEXTURE
 };
 
+enum class Command_Mesh_Type {
+    NORMAL, SKINNED
+};
+
 struct Command_Load_Font {
     String font_name;
 };
 
 struct Command_Load_Mesh {
+    Command_Mesh_Type mesh_type;
     int32 mesh_id;
 };
 
 struct Command_Unload_Mesh {
+    Command_Mesh_Type mesh_type;
     int32 mesh_id;
 };
 

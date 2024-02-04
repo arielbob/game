@@ -896,10 +896,10 @@ uint32 gl_compile_and_link_shaders(char *vertex_shader_source, uint32 vertex_sha
 }
 
 // TODO: should these be inline?
-inline void gl_set_uniform_mat4(uint32 shader_id, char* uniform_name, Mat4 *m) {
+inline void gl_set_uniform_mat4(uint32 shader_id, char* uniform_name, Mat4 *m, int num = 1) {
     int32 uniform_location = glGetUniformLocation(shader_id, uniform_name);
     assert(uniform_location > -1);
-    glUniformMatrix4fv(uniform_location, 1, GL_FALSE, (real32 *) m);
+    glUniformMatrix4fv(uniform_location, num, GL_FALSE, (real32 *) m);
 }
 
 inline void gl_set_uniform_vec2(uint32 shader_id, char* uniform_name, Vec2 *v) {
@@ -1048,6 +1048,20 @@ inline GL_Mesh *gl_get_mesh(char *mesh_name) {
 GL_Mesh *gl_get_mesh(int32 mesh_id) {
     uint32 hash = get_hash(mesh_id, NUM_MESH_BUCKETS);
     GL_Mesh *current = g_gl_state->mesh_table[hash];
+    while (current) {
+        if (current->id == mesh_id) {
+            return current;
+        }
+
+        current = current->table_next;
+    }
+
+    return NULL;
+}
+
+GL_Skinned_Mesh *gl_get_skinned_mesh(int32 mesh_id) {
+    uint32 hash = get_hash(mesh_id, NUM_MESH_BUCKETS);
+    GL_Skinned_Mesh *current = g_gl_state->skinned_mesh_table[hash];
     while (current) {
         if (current->id == mesh_id) {
             return current;
@@ -1270,14 +1284,6 @@ bool32 gl_add_mesh(int32 id, Mesh_Type type, uint32 vao, uint32 vbo, uint32 num_
         return false;
     }
 
-#if 0
-    mesh = gl_get_mesh(name);
-    if (mesh) {
-        assert(!"GL_Mesh with this name already exists!");
-        return false;
-    }
-#endif
-
     // add gl_mesh to the gl mesh table
     uint32 hash = get_hash(id, NUM_MESH_BUCKETS);
     GL_Mesh *current = g_gl_state->mesh_table[hash];
@@ -1338,6 +1344,92 @@ bool32 gl_load_mesh(Mesh *mesh) {
 
     // add gl_mesh to the gl mesh table
     return gl_add_mesh(mesh->id, mesh->type, vao, vbo, mesh->num_triangles);
+}
+
+bool32 gl_add_skinned_mesh(int32 id, Mesh_Type type, uint32 vao, uint32 vbo, uint32 num_triangles, int32 num_bones) {
+    if (type != Mesh_Type::LEVEL) {
+        assert(id < 0);
+    }
+    
+    GL_Skinned_Mesh *mesh = gl_get_skinned_mesh(id);
+    if (mesh) {
+        assert(!"GL_Skinned_Mesh with this ID already exists!");
+        return false;
+    }
+
+    // add gl_skinned_mesh to the gl skinned mesh table
+    uint32 hash = get_hash(id, NUM_MESH_BUCKETS);
+    GL_Skinned_Mesh *current = g_gl_state->skinned_mesh_table[hash];
+    GL_Skinned_Mesh *last = NULL;
+    while (current) {
+        last = current;
+        current = current->table_next;
+    }
+    
+    GL_Skinned_Mesh *gl_skinned_mesh = (Gl_Skinned_Mesh *) allocate(&g_gl_state->heap, sizeof(Gl_Skinned_Mesh));
+    *gl_skinned_mesh = { type, vao, vbo, num_triangles, num_bones };
+    gl_skinned_mesh->id         = id;
+    gl_skinned_mesh->table_prev = last;
+    gl_skinned_mesh->table_next = NULL;
+    
+    if (!last) {
+        g_gl_state->skinned_mesh_table[hash] = gl_skinned_mesh;
+    } else {
+        last->table_next = gl_skinned_mesh;
+    }
+
+    return true;
+}
+
+bool gl_load_skinned_mesh(Skinned_Mesh *mesh) {
+    uint32 vao, vbo, ebo;
+    
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
+    glGenBuffers(1, &ebo);
+        
+    glBindVertexArray(vao);
+    
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, mesh->data_size, mesh->data, GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh->indices_size, mesh->indices, GL_STATIC_DRAW);
+
+    // data is interleaved
+    
+    // vertices
+    glVertexAttribPointer(0, mesh->n_vertex, GL_FLOAT, GL_FALSE,
+                          mesh->vertex_stride * sizeof(real32), (void *) 0);
+    glEnableVertexAttribArray(0);
+    
+    // normals
+    glVertexAttribPointer(1, mesh->n_normal, GL_FLOAT, GL_FALSE,
+                          mesh->vertex_stride * sizeof(real32),
+                          (void *) (mesh->n_vertex * sizeof(real32)));
+    glEnableVertexAttribArray(1);
+
+    // UVs
+    glVertexAttribPointer(2, mesh->n_uv, GL_FLOAT, GL_FALSE,
+                          mesh->vertex_stride * sizeof(real32),
+                          (void *) ((mesh->n_vertex + mesh->n_normal) * sizeof(real32)));
+    glEnableVertexAttribArray(2);
+
+    // bone indices
+    glVertexAttribPointer(3, mesh->n_bone_indices, GL_FLOAT, GL_FALSE,
+                          mesh->vertex_stride * sizeof(real32),
+                          (void *) ((mesh->n_vertex + mesh->n_normal + mesh->n_uv) * sizeof(real32)));
+    glEnableVertexAttribArray(3);
+
+    // bone weights
+    glVertexAttribPointer(4, mesh->n_bone_weights, GL_FLOAT, GL_FALSE,
+                          mesh->vertex_stride * sizeof(real32),
+                          (void *) ((mesh->n_vertex + mesh->n_normal + mesh->n_uv + mesh_n_bone_indices) * sizeof(real32)));
+    glEnableVertexAttribArray(4);
+
+    glBindVertexArray(0);
+
+    // add gl_mesh to the gl mesh table
+    return gl_add_skinned_mesh(mesh->id, mesh->type, vao, vbo, mesh->num_triangles, mesh->num_bones);
 }
 
 uint32 gl_use_shader(char *shader_name) {
@@ -1520,6 +1612,7 @@ void gl_draw_mesh(int32 mesh_id,
     Mat4 model_matrix = get_model_matrix(transform);
     gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
     gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->cpv_matrix);
+    
     // TODO: we may need to think about this for transparent materials
     gl_set_uniform_bool(shader_id, "use_albedo_texture",    material->flags & MATERIAL_USE_ALBEDO_TEXTURE);
     gl_set_uniform_bool(shader_id, "use_metalness_texture", material->flags & MATERIAL_USE_METALNESS_TEXTURE);
@@ -1533,6 +1626,45 @@ void gl_draw_mesh(int32 mesh_id,
     gl_set_uniform_vec3(shader_id, "camera_pos", &render_state->camera.position);
     
     glDrawElements(GL_TRIANGLES, gl_mesh->num_triangles * 3, GL_UNSIGNED_INT, 0);
+
+    glUseProgram(0);
+    glBindVertexArray(0);
+}
+
+void gl_draw_skinned_mesh(int32 mesh_id,
+                          Material *material,
+                          Mat4 *bind_to_pose_matrices) {
+    uint32 shader_id = gl_use_shader("pbr_skinned");
+
+    GL_Skinned_Mesh *gl_skinned_mesh = gl_use_mesh(mesh_id);
+    gl_use_texture(material->albedo_texture_id,    0);
+    gl_use_texture(material->metalness_texture_id, 1);
+    gl_use_texture(material->roughness_texture_id, 2);
+
+    gl_set_uniform_int(shader_id, "albedo_texture", 0);
+    gl_set_uniform_int(shader_id, "metalness_texture", 1);
+    gl_set_uniform_int(shader_id, "roughness_texture", 2);
+    
+    // TODO: call gl_use_texture with different slots based on material_use_x_texture flags
+
+    Mat4 model_matrix = get_model_matrix(transform);
+    gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
+    gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->cpv_matrix);
+    gl_set_uniform_mat4(shader_id, "bind_to_pose_matrices", bind_to_pose_matrices, gl_skinned_mesh->num_bones);
+
+    // TODO: we may need to think about this for transparent materials
+    gl_set_uniform_bool(shader_id, "use_albedo_texture",    material->flags & MATERIAL_USE_ALBEDO_TEXTURE);
+    gl_set_uniform_bool(shader_id, "use_metalness_texture", material->flags & MATERIAL_USE_METALNESS_TEXTURE);
+    gl_set_uniform_bool(shader_id, "use_roughness_texture", material->flags & MATERIAL_USE_ROUGHNESS_TEXTURE);
+    
+    gl_set_uniform_vec3(shader_id, "u_albedo_color", &material->albedo_color);
+    gl_set_uniform_float(shader_id, "u_metalness", material->metalness);
+    gl_set_uniform_float(shader_id, "u_roughness", material->roughness);
+    gl_set_uniform_float(shader_id, "ao", 1.0f);
+    
+    gl_set_uniform_vec3(shader_id, "camera_pos", &render_state->camera.position);
+    
+    glDrawElements(GL_TRIANGLES, gl_skinned_mesh->num_triangles * 3, GL_UNSIGNED_INT, 0);
 
     glUseProgram(0);
     glBindVertexArray(0);
@@ -1997,6 +2129,41 @@ void gl_unload_mesh(int32 id) {
     }
     
     assert(!"GL mesh does not exist!");
+}
+
+void gl_unload_skinned_mesh(int32 id) {
+    uint32 hash = get_hash(id, NUM_MESH_BUCKETS);
+
+    GL_Skinned_Mesh *current = g_gl_state->skinned_mesh_table[hash];
+    while (current) {
+        if (current->id == id) {
+            if (current->table_prev) {
+                current->table_prev->table_next = current->table_next;
+            } else {
+                // if we're first in list, we need to update bucket array when we delete
+                g_gl_state->skinned_mesh_table[hash] = current->table_next;
+            }
+            
+            if (current->table_next) {
+                current->table_next->table_prev = current->table_prev;
+            }
+
+            // we should only ever be deleting level meshes
+            assert(current->type == Mesh_Type::LEVEL);
+            
+            glDeleteBuffers(1, &current->vbo);
+            glDeleteVertexArrays(1, &current->vao);
+            
+            deallocate(current);
+            deallocate((Allocator *) &g_gl_state->heap, current);
+
+            return;
+        }
+
+        current = current->table_next;
+    }
+    
+    assert(!"GL skinned_mesh does not exist!");
 }
 
 void gl_unload_texture(int32 id) {
@@ -3687,12 +3854,27 @@ void gl_render(Controller_State *controller_state,
                 // a mesh, we delete it from the asset manager, then add a command to the
                 // command queue to unload the mesh from our gl state.
                 Command_Load_Mesh c = command->load_mesh;
-                Mesh *mesh = get_mesh(c.mesh_id);
-                gl_load_mesh(mesh);
+                if (c.mesh_type == Command_Mesh_Type::NORMAL) {
+                    Mesh *mesh = get_mesh(c.mesh_id);
+                    gl_load_mesh(mesh);
+                } else if (c.mesh_type == Command_Mesh_Type::SKINNED) {
+                    Mesh *mesh = get_skinned_mesh(c.mesh_id);
+                    gl_load_mesh(mesh);
+                    gl_load_skinned_mesh(c.mesh_id);
+                } else {
+                    assert(!"Unhandled render command mesh type.");
+                }
+                
             } break;
             case Command_Type::UNLOAD_MESH: {
                 Command_Unload_Mesh c = command->unload_mesh;
-                gl_unload_mesh(c.mesh_id);
+                if (c.mesh_type == Command_Mesh_Type::NORMAL) {
+                    gl_unload_mesh(c.mesh_id);
+                } else if (c.mesh_type == Command_Mesh_Type::SKINNED) {
+                    gl_unload_skinned_mesh(c.mesh_id);
+                } else {
+                    assert(!"Unhandled render command mesh type.");
+                }
             } break;
             case Command_Type::LOAD_TEXTURE: {
                 Command_Load_Texture c = command->load_texture;

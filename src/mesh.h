@@ -15,6 +15,7 @@ enum class Mesh_Type { NONE, LEVEL, PRIMITIVE, ENGINE, RENDERING };
 struct Mesh {
     Mesh_Type type;
     char *name;
+    bool32 is_skinned;
 
     real32 *data;
     uint32 num_vertices;
@@ -25,6 +26,8 @@ struct Mesh {
     uint32 n_vertex;
     uint32 n_normal;
     uint32 n_uv;
+    uint32 n_bone_indices;
+    uint32 n_bone_weights;
     
     // NOTE: vertex_stride = total amount of numbers for a single vertex, i.e. sum up all mesh.n_* members
     uint32 vertex_stride;
