@@ -273,6 +273,99 @@ inline Vec3 make_vec3(real32 x, real32 y, real32 z) {
     return vec3;
 };
 
+// Vec3_int32 functions
+
+inline Vec3_int32 make_vec3(int32 x, int32 y, int32 z) {
+    Vec3_int32 vec3;
+    vec3.x = x;
+    vec3.y = y;
+    vec3.z = z;
+
+    return vec3;
+};
+
+inline Vec3_int32 make_vec3_int32(Vec3 v) {
+    return { (int32) v.x, (int32) v.y, (int32) v.z };
+}
+
+inline Vec3_int32 operator+(Vec3_int32 v1, Vec3_int32 v2) {
+    Vec3_int32 result = v1;
+    result.x += v2.x;
+    result.y += v2.y;
+    result.z += v2.z;
+    return result;
+}
+
+inline Vec3_int32 operator-(Vec3_int32 v) {
+    Vec3_int32 result;
+    result.x = -v.x;
+    result.y = -v.y;
+    result.z = -v.z;
+    return result;
+}
+
+inline Vec3_int32 operator-(Vec3_int32 v1, Vec3_int32 v2) {
+    Vec3_int32 result = v1;
+    result.x -= v2.x;
+    result.y -= v2.y;
+    result.z -= v2.z;
+    return result;
+}
+
+inline Vec3_int32 operator*(int32 factor, Vec3_int32 v) {
+    Vec3_int32 result = v;
+    result.x *= factor;
+    result.y *= factor;
+    result.z *= factor;
+    return result;
+}
+
+inline Vec3_int32 operator*(Vec3_int32 v, int32 factor) {
+    return factor * v;
+}
+
+inline Vec3_int32 operator/(Vec3_int32 v, int32 factor) {
+    Vec3_int32 result = v;
+    result.x /= factor;
+    result.y /= factor;
+    result.z /= factor;
+    return result;
+}
+
+inline Vec3_int32& Vec3_int32::operator+=(Vec3_int32 v) {
+    *this = *this + v;
+    return *this;
+}
+
+inline Vec3_int32& Vec3_int32::operator-=(Vec3_int32 v) {
+    *this = *this - v;
+    return *this;
+}
+
+inline Vec3_int32& Vec3_int32::operator*=(int32 factor) {
+    *this = *this * factor;
+    return *this;
+}
+
+inline Vec3_int32& Vec3_int32::operator/=(int32 factor) {
+    *this = *this / factor;
+    return *this;
+}
+
+inline int32& Vec3_int32::operator[](int32 index) {
+    return (*this).values[index];
+}
+
+inline bool32 Vec3_int32::operator==(Vec3_int32 v) {
+    return (x == v.x && y == v.y && z == v.z);
+}
+
+inline bool32 Vec3_int32::operator!=(Vec3_int32 v) {
+    return (x != v.x || y != v.y || z != v.z);
+}
+
+// Vec4 functions
+
 inline Vec4 operator+(Vec4 v1, Vec4 v2) {
     Vec4 result = v1;
     result.x += v2.x;
@@ -366,6 +459,105 @@ inline Vec4 make_vec4(Vec3 v, real32 w) {
     
     return result;
 }
+
+// Vec4_int32 functions
+
+inline Vec4_int32 make_vec4(int32 x, int32 y, int32 z, int32 w) {
+    Vec4_int32 vec4;
+    vec4.x = x;
+    vec4.y = y;
+    vec4.z = z;
+    vec4.w = w;
+
+    return vec4;
+};
+
+inline Vec4_int32 make_vec4_int32(Vec4 v) {
+    return { (int32) v.x, (int32) v.y, (int32) v.z, (int32) v.w };
+}
+
+inline Vec4_int32 operator+(Vec4_int32 v1, Vec4_int32 v2) {
+    Vec4_int32 result = v1;
+    result.x += v2.x;
+    result.y += v2.y;
+    result.z += v2.z;
+    result.w += v2.w;
+    return result;
+}
+
+inline Vec4_int32 operator-(Vec4_int32 v) {
+    Vec4_int32 result;
+    result.x = -v.x;
+    result.y = -v.y;
+    result.z = -v.z;
+    result.w = -v.w;
+    return result;
+}
+
+inline Vec4_int32 operator-(Vec4_int32 v1, Vec4_int32 v2) {
+    Vec4_int32 result = v1;
+    result.x -= v2.x;
+    result.y -= v2.y;
+    result.z -= v2.z;
+    result.w -= v2.w;
+    return result;
+}
+
+inline Vec4_int32 operator*(int32 factor, Vec4_int32 v) {
+    Vec4_int32 result = v;
+    result.x *= factor;
+    result.y *= factor;
+    result.z *= factor;
+    result.w *= factor;
+    return result;
+}
+
+inline Vec4_int32 operator*(Vec4_int32 v, int32 factor) {
+    return factor * v;
+}
+
+inline Vec4_int32 operator/(Vec4_int32 v, int32 factor) {
+    Vec4_int32 result = v;
+    result.x /= factor;
+    result.y /= factor;
+    result.z /= factor;
+    result.w /= factor;
+    return result;
+}
+
+inline Vec4_int32& Vec4_int32::operator+=(Vec4_int32 v) {
+    *this = *this + v;
+    return *this;
+}
+
+inline Vec4_int32& Vec4_int32::operator-=(Vec4_int32 v) {
+    *this = *this - v;
+    return *this;
+}
+
+inline Vec4_int32& Vec4_int32::operator*=(int32 factor) {
+    *this = *this * factor;
+    return *this;
+}
+
+inline Vec4_int32& Vec4_int32::operator/=(int32 factor) {
+    *this = *this / factor;
+    return *this;
+}
+
+inline int32& Vec4_int32::operator[](int32 index) {
+    return (*this).values[index];
+}
+
+inline bool32 Vec4_int32::operator==(Vec4_int32 v) {
+    return (x == v.x && y == v.y && z == v.z && w == v.w);
+}
+
+inline bool32 Vec4_int32::operator!=(Vec4_int32 v) {
+    return (x != v.x || y != v.y || z != v.z || w != v.w);
+}
+
+// rest of math functions
 
 inline Vec3 homogeneous_divide(Vec4 vec4) {
     Vec3 vec3 = {};

@@ -79,15 +79,97 @@ namespace Mesh_Loader {
 
     struct Token {
         Token_Type type;
-        char *text;
-        int32 length;
+        String string;
     };
 
-    Token get_token(Tokenizer *tokenizer, char* file_contents);
+    Token get_token(Tokenizer *tokenizer);
+    Token make_token(Token_Type type, char *contents, int32 length);
     bool32 token_text_equals(Token token, char *str);
+    bool32 mesh_parse_error(char **error_out, char *error_string);
+    bool32 parse_real(Tokenizer *tokenizer, real32 *result, char **error);
+    bool32 parse_int(Tokenizer *tokenizer, int32 *result, char **error);
     Mesh load_mesh(File_Data file_data, Allocator *allocator);
 }
 
+inline bool32 Mesh_Loader::mesh_parse_error(char **error_out, char *error_string) {
+    *error_out = error_string;
+    return false;
+}
+
+bool32 Mesh_Loader::parse_real(Tokenizer *tokenizer, real32 *result, char **error) {
+    Token token = get_token(tokenizer);
+    real32 num;
+    
+    if (token.type == REAL || token.type == INTEGER) {
+        bool32 parse_result = string_to_real32(token.string, &num);
+
+        if (!parse_result) {
+            return mesh_parse_error(error, "Invalid number value.");
+        } else {
+            *result = num;
+            return true;
+        }
+    } else {
+        return mesh_parse_error(error, "Expected number.");
+    }
+}
+
+bool32 Mesh_Loader::parse_int(Tokenizer *tokenizer, int32 *result, char **error) {
+    Token token = get_token(tokenizer);
+    real32 num;
+    
+    if (token.type == INTEGER) {
+        bool32 parse_result = string_to_int32(token.string, &num);
+
+        if (!parse_result) {
+            return mesh_parse_error(error, "Invalid integer value.");
+        } else {
+            *result = num;
+            return true;
+        }
+    } else {
+        return mesh_parse_error(error, "Expected integer.");
+    }
+}
+
+bool32 Mesh_Loader::parse_vec3(Tokenizer *tokenizer, Vec3 *result, char **error) {
+    Vec3 v;
+    
+    for (int i = 0; i < 3; i++) {
+        if (!parse_real(tokenizer, &v[i], error)) {
+            return level_parse_error(error, "Invalid number in Vec3.");
+        }
+    }
+
+    *result = v;
+    return true;
+}
+
+bool32 Mesh_Loader::parse_vec3_int32(Tokenizer *tokenizer, Vec3_int32 *result, char **error) {
+    Vec3_int32 v;
+    
+    for (int i = 0; i < 3; i++) {
+        if (!parse_int(tokenizer, &v[i], error)) {
+            return level_parse_error(error, "Invalid number in Vec3.");
+        }
+    }
+
+    *result = v;
+    return true;
+}
+
+bool32 Mesh_Loader::parse_vec4_int32(Tokenizer *tokenizer, Vec4_int32 *result, char **error) {
+    Vec4_int32 v;
+    
+    for (int i = 0; i < 4; i++) {
+        if (!parse_int(tokenizer, &v[i], error)) {
+            return level_parse_error(error, "Invalid number in Vec4.");
+        }
+    }
+
+    *result = v;
+    return true;
+}
 
 // NOTE: token.text is not null-terminated, but str is expected to be null-terminated
 inline bool32 Mesh_Loader::token_text_equals(Token token, char *str) {
@@ -111,16 +193,21 @@ inline bool32 Mesh_Loader::token_text_equals(Token token, char *str) {
     }
 }
 
-Mesh_Loader::Token Mesh_Loader::get_token(Tokenizer *tokenizer, char *file_contents) {
-    Token token = {};
+inline Mesh_Loader::Token Mesh_Loader::make_token(Token_Type type, char *contents, int32 length) {
+    Token token = {
+        type,
+        make_string(contents, length)
+    };
+    return token;
+}
+
+Mesh_Loader::Token Mesh_Loader::get_token(Tokenizer *tokenizer) {
+    Token_Type token_type;
 
     consume_leading_whitespace(tokenizer);
 
     if (is_end(tokenizer)) {
-        token.type = Mesh_Loader::END;
-        token.text = NULL;
-        token.length = 0;
-        return token;
+        return make_token(Mesh_Loader::END, NULL, 0);
     }
     
     char c = *tokenizer->current;
@@ -162,15 +249,19 @@ Mesh_Loader::Token Mesh_Loader::get_token(Tokenizer *tokenizer, char *file_conte
         }
         
         uint32 length = tokenizer->index - start;
+
+        Token_Type token_type;
         if (has_period) {
-            token.type = REAL;
+            token_type = REAL;
         } else {
-            token.type = INTEGER;
+            token_type = INTEGER;
         }
 
         // NOTE: we don't include the null terminator here, and just set bounds using a length member
-        token.text = &file_contents[start];
+        token.text = &tokenizer->contents[start];
         token.length = length;
+
+        // TODO: can we return here? idk
     } else if (tokenizer->current[0] == ';' &&
                tokenizer->current[1] == ';') {
         increment_tokenizer(tokenizer, 2);
@@ -183,7 +274,7 @@ Mesh_Loader::Token Mesh_Loader::get_token(Tokenizer *tokenizer, char *file_conte
 
         uint32 length = tokenizer->index - start;
         token.type = COMMENT;
-        token.text = &file_contents[start];
+        token.text = &tokenizer->contents[start];
         token.length = length;
     } else if (is_letter(tokenizer->current[0])) {
         uint32 start = tokenizer->index;
@@ -202,13 +293,44 @@ Mesh_Loader::Token Mesh_Loader::get_token(Tokenizer *tokenizer, char *file_conte
 
         uint32 length = tokenizer->index - start;
         token.type = LABEL;
-        token.text = &file_contents[start];
+        token.text = &tokenizer->contents[start];
         token.length = length;
     } else {
         assert(!"Token type not recognized");
     }
 
     return token;
+}
+
+bool32 Mesh_Loader::parse_num_vertices(Allocator *temp_allocator, Tokenizer *tokenizer,
+                                       int *num_vertices, char **error) {
+    Token token = get_token(tokenizer);
+    if (token.type != INTEGER) {
+        return mesh_parse_error(error, "Expected num_vertices integer.");
+    }
+
+    
+}
+
+Mesh Mesh_Loader::load_mesh(Allocator *allocator, File_Data file_data) {
+    Tokenizer tokenizer = make_tokenizer(file_data);
+    bool32 result;
+
+    result = parse_num_vertices();
+    if (!result) return false;
+
+    result = parse_num_triangles();
+    if (!result) return false;
+
+    // parse vertices for the amount of vertices we have
+    result = parse_vertices();
+    if (!result) return false;
+
+    // parse triangles for the amount of triangles we have
+    result = parse_triangles();
+    if (!result) return false;
+
+    // verify we hit the end    
 }
 
 Mesh Mesh_Loader::load_mesh(File_Data file_data, Allocator *allocator) {
@@ -225,6 +347,11 @@ Mesh Mesh_Loader::load_mesh(File_Data file_data, Allocator *allocator) {
     mesh.n_vertex = 3;
     mesh.n_normal = 3;
     mesh.n_uv = 2;
+
+    // TODO: these need to only be set if we're a skinned mesh
+    //mesh.n_bone_indices = MAX_BONE_INDICES;
+    //mesh.n_bone_weights = MAX_BONE_INDICES;
+    
     mesh.vertex_stride = mesh.n_vertex + mesh.n_normal + mesh.n_uv;
     
     Parser_State state = WAITING_FOR_NUM_VERTICES;

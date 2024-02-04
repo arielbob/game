@@ -11,6 +11,8 @@
 #define NUM_FONT_BUCKETS      128
 #define NUM_FONT_FILE_BUCKETS 128
 
+#define MAX_BONE_INDICES 4
+
 // material flags
 #define MATERIAL_USE_ALBEDO_TEXTURE    (1 << 0)
 #define MATERIAL_USE_METALNESS_TEXTURE (1 << 1)
