@@ -171,6 +171,8 @@ struct GL_Mesh {
     uint32 vao;
     uint32 vbo;
     uint32 num_triangles;
+
+    bool32 is_skinned;
     int32 num_bones;
 
     int32 id;

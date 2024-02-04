@@ -55,7 +55,8 @@ struct Mesh {
     Mesh_Type type;
     String name;
     String filename;
-
+    bool32 is_skinned;
+    
     Allocator *allocator;
     
     Mesh *table_prev;
@@ -70,6 +71,8 @@ struct Mesh {
     uint32 n_vertex;
     uint32 n_normal;
     uint32 n_uv;
+    uint32 n_bone_indices;
+    uint32 n_bone_weights;
     
     // NOTE: vertex_stride = total amount of numbers for a single vertex, i.e. sum up all mesh.n_* members
     uint32 vertex_stride;

@@ -22,9 +22,6 @@ void main() {
     // then we can just take the bone-space to pose-space matrix and multiply the vertex
     // by that, and the vertex will be in pose-space.
     
-    // model-space is basically the same as bind-space.
-    // bind to pose-space transform still has the vertices in model-space basically.
-    // then model_matrix converts from model-space to world-space.
     mat4 pose_matrix(0.0);
     for (int i = 0; i < 4; i++) {
         pose_matrix += bind_to_pose_matrices[i] * bone_weights[i];
