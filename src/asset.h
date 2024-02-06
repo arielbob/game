@@ -32,6 +32,7 @@
 #define ENGINE_TRIANGLE_MESH_ID         -11
 #define ENGINE_DEBUG_LINE_MESH_ID       -12
 #define ENGINE_DEFAULT_CUBE_MESH_ID     -13
+#define ENGINE_DEFAULT_SKINNED_CUBE_MESH_ID -14
 
 // engine textures
 #define ENGINE_DEBUG_TEXTURE_ID             0

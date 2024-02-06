@@ -888,6 +888,9 @@ void load_default_assets() {
              Mesh_Type::ENGINE, ENGINE_CAPSULE_CAP_MESH_ID);
     add_mesh("cube",             "blender/cube.mesh",  Mesh_Type::PRIMITIVE, ENGINE_DEFAULT_CUBE_MESH_ID);
 
+    add_mesh("skinned_cube",     "src/meshes/skinned_cube.mesh", Mesh_Type::PRIMITIVE,
+             ENGINE_DEFAULT_SKINNED_CUBE_MESH_ID);
+
     // if you're seeing white borders around semi-transparent parts of exported PNGs, make sure the
     // fully transparent parts of your image have an RGB value of (0, 0, 0) (use eyedropper tool in
     // your photo editor).

@@ -1508,9 +1508,11 @@ void gl_draw_mesh(GL_State *gl_state, Render_State *render_state,
 }
 #endif
 
+// we send transforms instead of matrices for bones since it's less to store in the file.
+// though we convert them to matrices here.
 void gl_draw_mesh(int32 mesh_id,
                   Material *material,
-                  Transform transform, Mat4 *bind_to_pose_matrices = NULL) {
+                  Transform transform, Transform *bind_to_world_transforms = NULL) {
     uint32 shader_id = gl_use_shader("pbr");
 
     GL_Mesh *gl_mesh = gl_use_mesh(mesh_id);
@@ -1525,7 +1527,7 @@ void gl_draw_mesh(int32 mesh_id,
     // TODO: call gl_use_texture with different slots based on material_use_x_texture flags
 
     if (gl_mesh->is_skinned) {
-        assert(bind_to_pose_matrices);
+        assert(bind_to_world_transforms);
         gl_set_uniform_mat4(shader_id, "bind_to_pose_matrices", bind_to_pose_matrices, gl_mesh->num_bones);
         gl_set_uniform_bool(shader_id, "is_skinned", true);
     }

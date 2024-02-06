@@ -31,90 +31,23 @@ roughness 0.100342
 
 entities {
 entity {
-position -11.583014 0.092302 0.000000
-rotation 0.914883 0.000000 0.403718 0.000000
-scale 1.000000 1.000000 1.000000
-mesh "whatever"
-material "blue"
-has_collider 1
-}
-entity {
-position 24.018755 0.267958 14.641891
-rotation 0.435602 0.000000 -0.900139 0.000000
-scale 1.000000 1.000000 1.000000
-mesh "train-car"
-material "train"
-has_collider 1
-}
-entity {
-position 7.868360 1.762760 2.736548
+position 10.987391 1.632293 0.000000
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
-light_type point
-light_color 1.000000 1.000000 1.000000
-point_light_intensity 149.000000
-falloff_start 0.000000
-falloff_end 43.000000
+mesh "skinned_cube"
+material "default_material"
 }
 entity {
-position 0.000000 8.799067 -2.680094
-rotation 0.072502 0.727603 -0.170469 -0.660513
+position 2.645750 1.023805 -21.230968
+rotation 0.952254 0.000000 -0.305306 0.000000
 scale 1.000000 1.000000 1.000000
-light_type sun
-sun_color 1.000000 1.000000 1.000000
-sun_intensity 454.000000
-}
-entity {
-position 3.128188 0.000000 -0.497808
-rotation 1.000000 0.000000 0.000000 0.000000
-scale 62.779835 0.235295 57.527008
-mesh "cube"
+mesh "building"
 material "default_material"
 has_collider 1
 }
 entity {
-position 0.171670 0.267958 -3.964548
-rotation 0.758919 0.000000 0.651185 0.000000
-scale 1.000000 1.000000 1.000000
-mesh "train-car"
-material "train"
-has_collider 1
-}
-entity {
-position 1.548218 0.260000 6.391605
-rotation 0.836180 0.000000 -0.548455 0.000000
-scale 1.000000 1.000000 1.000000
-mesh "train-car"
-material "train"
-has_collider 1
-}
-entity {
-position 7.772176 1.163628 1.984454
-rotation 0.752111 0.000000 0.659036 0.000000
-scale 1.000000 1.000000 1.000000
-mesh "seams"
-material "train"
-has_collider 1
-}
-entity {
-position 7.090315 0.267958 13.501993
-rotation 0.336009 0.000000 0.941859 0.000000
-scale 1.000000 1.000000 1.000000
-mesh "train-car"
-material "train"
-has_collider 1
-}
-entity {
-position 16.018732 0.267958 -9.204103
-rotation 0.163022 0.000000 0.986622 0.000000
-scale 1.000000 1.000000 1.000000
-mesh "train-car"
-material "train"
-has_collider 1
-}
-entity {
-position 24.263586 0.267958 -4.258214
-rotation 0.412519 0.000000 0.910949 0.000000
+position 15.317654 0.267958 16.884201
+rotation 0.107234 0.000000 0.994234 0.000000
 scale 1.000000 1.000000 1.000000
 mesh "train-car"
 material "train"
@@ -129,19 +62,93 @@ material "train"
 has_collider 1
 }
 entity {
-position 15.317654 0.267958 16.884201
-rotation 0.107234 0.000000 0.994234 0.000000
+position 24.263586 0.267958 -4.258214
+rotation 0.412519 0.000000 0.910949 0.000000
 scale 1.000000 1.000000 1.000000
 mesh "train-car"
 material "train"
 has_collider 1
 }
 entity {
-position 2.645750 1.023805 -21.230968
-rotation 0.952254 0.000000 -0.305306 0.000000
+position 16.018732 0.267958 -9.204103
+rotation 0.163022 0.000000 0.986622 0.000000
 scale 1.000000 1.000000 1.000000
-mesh "building"
+mesh "train-car"
+material "train"
+has_collider 1
+}
+entity {
+position 7.090315 0.267958 13.501993
+rotation 0.336009 0.000000 0.941859 0.000000
+scale 1.000000 1.000000 1.000000
+mesh "train-car"
+material "train"
+has_collider 1
+}
+entity {
+position 7.772176 1.163628 1.984454
+rotation 0.752111 0.000000 0.659036 0.000000
+scale 1.000000 1.000000 1.000000
+mesh "seams"
+material "train"
+has_collider 1
+}
+entity {
+position 1.548218 0.260000 6.391605
+rotation 0.836180 0.000000 -0.548455 0.000000
+scale 1.000000 1.000000 1.000000
+mesh "train-car"
+material "train"
+has_collider 1
+}
+entity {
+position 0.171670 0.267958 -3.964548
+rotation 0.758919 0.000000 0.651185 0.000000
+scale 1.000000 1.000000 1.000000
+mesh "train-car"
+material "train"
+has_collider 1
+}
+entity {
+position 3.128188 0.000000 -0.497808
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 62.779835 0.235295 57.527008
+mesh "cube"
 material "default_material"
+has_collider 1
+}
+entity {
+position 0.000000 8.799067 -2.680094
+rotation 0.072502 0.727603 -0.170469 -0.660513
+scale 1.000000 1.000000 1.000000
+light_type sun
+sun_color 1.000000 1.000000 1.000000
+sun_intensity 454.000000
+}
+entity {
+position 7.868360 1.762760 2.736548
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+light_type point
+light_color 1.000000 1.000000 1.000000
+point_light_intensity 149.000000
+falloff_start 0.000000
+falloff_end 43.000000
+}
+entity {
+position 24.018755 0.267958 14.641891
+rotation 0.435602 0.000000 -0.900139 0.000000
+scale 1.000000 1.000000 1.000000
+mesh "train-car"
+material "train"
+has_collider 1
+}
+entity {
+position -11.583014 0.092302 0.000000
+rotation 0.914883 0.000000 0.403718 0.000000
+scale 1.000000 1.000000 1.000000
+mesh "whatever"
+material "blue"
 has_collider 1
 }
 }
