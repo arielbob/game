@@ -9,13 +9,33 @@ layout (location = 3) in ivec4 bone_indices;
 layout (location = 4) in vec4 bone_weights;
 
 uniform bool is_skinned;
-uniform mat4 bind_to_pose_matrices[NUM_BONES];
+
+/*
+- we have animation data
+- when drawing an entity, we sample the animation data at whatever time
+- we get the matrices for all the bones for that sample
+- we send the matrices to gl_draw_mesh()
+ */
+
+// model->bone->pose->model matrices
+// calculated like this: B * (B->P) * (B)^-1
+// where B is the bone->model space matrix, i.e. the transform that positions and orients
+// the bone on the mesh.
+// B^-1 is sometimes called the inverse bind matrix, which does the opposite of B. multiplying
+// a vertex of the mesh in its bind pose transforms it from model space to bone-space.
+// now that the vertex is in bone-space, we can apply the bone's local transform by muiltiplying
+// it by the bone to pose-space matrix (B->P).
+// now we can convert it back to model-space by multiplying by B. and we get the final model-space
+// position.
+uniform mat4 bone_matrices[NUM_BONES];
+
 uniform mat4 model_matrix;
 uniform mat4 cpv_matrix;
 
 out vec3 frag_pos;
 out vec3 normal;
 out vec2 uv;
+out vec3 vertex_color;
 
 void main() {
     // the vertices are in model-space and are positioned in the bind pose.
@@ -25,22 +45,33 @@ void main() {
 
     // model_matrix converts from model-space to world-space
     mat4 model_to_world_matrix = model_matrix;
+    vec4 skinned_pos = vec4(pos, 1.0);
     
     if (is_skinned) {
-        mat4 pose_matrix = mat4(0.0);
+        skinned_pos = vec4(0.0);
         for (int i = 0; i < 4; i++) {
-            pose_matrix += bind_to_pose_matrices[i] * bone_weights[i];
+            skinned_pos += bone_matrices[bone_indices[i]] * vec4(pos, 1.0) * bone_weights[i];
         }
-
-        // pose first (vertices are still in model-space), then convert from
-        // model-space to world-space.
-        model_to_world_matrix = model_matrix * pose_matrix;
     }
     
-    frag_pos = vec3(model_to_world_matrix * vec4(pos, 1.0));
-    gl_Position = cpv_matrix * model_to_world_matrix * vec4(pos, 1.0);
+    frag_pos = vec3(model_matrix * skinned_pos);
+    gl_Position = cpv_matrix * model_matrix * skinned_pos;
 
+    #if 0
+    vertex_color = vec3(bone_indices[0], bone_indices[0], bone_indices[0]);
+    if (is_skinned) {
+        // TODO: the top vertices' bone_indices[0] are not 1 for some reason?????
+        if (bone_indices[0] == 0) {
+            vertex_color = vec3(1.0, 0.0, 0.0);
+        } else {
+            vertex_color = vec3(0.0, 1.0, 0.0);
+        }
+    } else {
+        vertex_color = vec3(0.0, 0.0, 1.0);
+    }
+    #endif
+    
     // NOTE: w of vec4 is 0 to ignore the translation of the model matrix
-    normal = normalize(vec3(transpose(inverse(model_to_world_matrix)) * vec4(vertex_normal, 0.0)));
+    normal = normalize(vec3(transpose(inverse(model_matrix)) * vec4(vertex_normal, 0.0)));
     uv = vertex_uv;
 }

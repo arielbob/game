@@ -1259,7 +1259,8 @@ void gl_init_font(Font *font) {
     }
 }
 
-bool32 gl_add_mesh(int32 id, Mesh_Type type, uint32 vao, uint32 vbo, uint32 num_triangles) {
+bool32 gl_add_mesh(int32 id, Mesh_Type type, uint32 vao, uint32 vbo, uint32 num_triangles,
+                   bool32 is_skinned = false) {
     if (type != Mesh_Type::LEVEL) {
         assert(id < 0);
     }
@@ -1282,6 +1283,7 @@ bool32 gl_add_mesh(int32 id, Mesh_Type type, uint32 vao, uint32 vbo, uint32 num_
     GL_Mesh *gl_mesh = (GL_Mesh *) allocate(&g_gl_state->heap, sizeof(GL_Mesh));
     *gl_mesh = { type, vao, vbo, num_triangles };
     gl_mesh->id         = id;
+    gl_mesh->is_skinned = is_skinned;
     //gl_mesh->name       = copy((Allocator *) &g_gl_state->heap, name);
     gl_mesh->table_prev = last;
     gl_mesh->table_next = NULL;
@@ -1310,41 +1312,41 @@ bool32 gl_load_mesh(Mesh *mesh) {
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh->indices_size, mesh->indices, GL_STATIC_DRAW);
 
     // vertices
+    glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, mesh->n_vertex, GL_FLOAT, GL_FALSE,
                           mesh->vertex_stride * sizeof(real32), (void *) 0);
-    glEnableVertexAttribArray(0);
     
     // normals
+    glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, mesh->n_normal, GL_FLOAT, GL_FALSE,
                           mesh->vertex_stride * sizeof(real32),
                           (void *) (mesh->n_vertex * sizeof(real32)));
-    glEnableVertexAttribArray(1);
 
     // UVs
+    glEnableVertexAttribArray(2);
     glVertexAttribPointer(2, mesh->n_uv, GL_FLOAT, GL_FALSE,
                           mesh->vertex_stride * sizeof(real32),
                           (void *) ((mesh->n_vertex + mesh->n_normal) * sizeof(real32)));
-    glEnableVertexAttribArray(2);
 
     if (mesh->is_skinned) {
         // bone indices
-        glVertexAttribPointer(3, mesh->n_bone_indices, GL_FLOAT, GL_FALSE,
+        glEnableVertexAttribArray(3);
+        glVertexAttribIPointer(3, mesh->n_bone_indices, GL_INT,
                               mesh->vertex_stride * sizeof(real32),
                               (void *) ((mesh->n_vertex + mesh->n_normal + mesh->n_uv) * sizeof(real32)));
-        glEnableVertexAttribArray(3);
+        
 
         // bone weights
+        glEnableVertexAttribArray(4);
         glVertexAttribPointer(4, mesh->n_bone_weights, GL_FLOAT, GL_FALSE,
                               mesh->vertex_stride * sizeof(real32),
                               (void *) ((mesh->n_vertex + mesh->n_normal + mesh->n_uv + mesh->n_bone_indices) * sizeof(real32)));
-        glEnableVertexAttribArray(4);
-
     }
     
     glBindVertexArray(0);
 
     // add gl_mesh to the gl mesh table
-    return gl_add_mesh(mesh->id, mesh->type, vao, vbo, mesh->num_triangles);
+    return gl_add_mesh(mesh->id, mesh->type, vao, vbo, mesh->num_triangles, mesh->is_skinned);
 }
 
 uint32 gl_use_shader(char *shader_name) {
@@ -1453,66 +1455,13 @@ void gl_draw_solid_color_mesh(int32 mesh_id, Vec4 color,
     glBindVertexArray(0);
 }
 
-#if 0
-void gl_draw_solid_color_mesh(GL_Mesh gl_mesh, Vec4 color,
-                              Transform transform) {
-    uint32 shader_id = gl_use_shader(gl_state, "solid");
-    glBindVertexArray(gl_mesh.vao);
-
-    Mat4 model_matrix = get_model_matrix(transform);
-    gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
-    gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->cpv_matrix);
-    gl_set_uniform_vec4(shader_id, "color", &color);
-    gl_set_uniform_int(shader_id, "use_color_override", true);
-    
-    glDrawElements(GL_TRIANGLES, gl_mesh.num_triangles * 3, GL_UNSIGNED_INT, 0);
-
-    glUseProgram(0);
-    glBindVertexArray(0);
-}
-#endif
-
-#if 0
-void gl_draw_mesh(GL_State *gl_state, Render_State *render_state,
-                  int32 mesh_id,
-                  Material material,
-                  Transform transform) {
-    uint32 shader_id = gl_use_shader(gl_state, "basic_3d");
-
-    GL_Mesh gl_mesh = gl_use_mesh(gl_state, mesh_id);
-
-    if (material.texture_id >= 0 && !material.use_color_override) gl_use_texture(gl_state, material.texture_id);
-
-    Mat4 model_matrix = get_model_matrix(transform);
-    gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
-    gl_set_uniform_mat4(shader_id, "cpv_matrix", &render_state->cpv_matrix);
-    // NOTE: we may need to think about this for transparent materials
-    // TODO: using override color here is temporary.. ideally we will have finer control over things like
-    //       ambient/diffuse/specular color
-    Vec3 material_color = truncate_v4_to_v3(material.color_override);
-    gl_set_uniform_vec3(shader_id, "material_color", &material_color);
-    gl_set_uniform_float(shader_id, "gloss", material.gloss);
-    
-    gl_set_uniform_vec3(shader_id, "camera_pos", &render_state->camera.position);
-
-    // if there is no texture, then just use color override, no matter what material.use_color_override is.
-    // we do it this way since we don't save whether or not a material is using a color override when we delete
-    // textures. it's kind of confusing. basically this is just so we don't have to also save use_color_overrides
-    // when we delete textures/undo delete textures.
-    gl_set_uniform_int(shader_id, "use_color_override", (material.texture_id < 0) || material.use_color_override);
-
-    glDrawElements(GL_TRIANGLES, gl_mesh.num_triangles * 3, GL_UNSIGNED_INT, 0);
-
-    glUseProgram(0);
-    glBindVertexArray(0);
-}
-#endif
-
 // we send transforms instead of matrices for bones since it's less to store in the file.
 // though we convert them to matrices here.
 void gl_draw_mesh(int32 mesh_id,
                   Material *material,
-                  Transform transform, Transform *bind_to_world_transforms = NULL) {
+                  Transform transform,
+                  bool32 do_skinning = false,
+                  Mat4 *bone_matrices = NULL, int32 num_bones = 0) {
     uint32 shader_id = gl_use_shader("pbr");
 
     GL_Mesh *gl_mesh = gl_use_mesh(mesh_id);
@@ -1526,10 +1475,16 @@ void gl_draw_mesh(int32 mesh_id,
     
     // TODO: call gl_use_texture with different slots based on material_use_x_texture flags
 
-    if (gl_mesh->is_skinned) {
-        assert(bind_to_world_transforms);
-        gl_set_uniform_mat4(shader_id, "bind_to_pose_matrices", bind_to_pose_matrices, gl_mesh->num_bones);
-        gl_set_uniform_bool(shader_id, "is_skinned", true);
+    bool32 should_skin = do_skinning && gl_mesh->is_skinned;
+    gl_set_uniform_bool(shader_id, "is_skinned", should_skin);
+    
+    if (should_skin) {
+        // bones are treated as independent from meshes, but obviously, animation data is usually
+        // targeted towards a specific mesh, and a mesh's bone indices/weights will be for a specific
+        // skeleton.
+        assert(bone_matrices);
+        assert(num_bones <= MAX_BONES);
+        gl_set_uniform_mat4(shader_id, "bone_matrices", bone_matrices, num_bones);
     }
     
     Mat4 model_matrix = get_model_matrix(transform);
@@ -3464,7 +3419,62 @@ void gl_render_editor(GL_Framebuffer framebuffer,
         if (has_mesh && has_material) {
             Material *material = get_material(current->material_id);
             assert(material);
-            gl_draw_mesh(current->mesh_id, material, current->transform);
+
+            Mat4 bone_transforms[2];
+            int32 num_bones = 0;
+            if (current->mesh_id == ENGINE_DEFAULT_SKINNED_CUBE_MESH_ID) {
+                // TODO: fix mesh picking not being very accurate anymore
+                // - i think a recent commit broke that
+                // TODO: also fix collisions not working properly for some reason
+                // - this is probably related to first TODO
+                
+                // TODO: animation sampling
+                // TODO: toggle viewing skinned meshes vs just bind pose in edit mode
+                // TODO: view skinned meshes in play mode
+                // - just viewing; we don't need to do collisions, since static geometry
+                // will usually not need skinning
+                // TODO: animation file format
+                // TODO: animation exporting from blender
+                
+                // bind positions
+                static Vec3 bone_positions[] = {
+                    { 0.0f, -0.5f, 0.0f },
+                    { 0.0f, 0.0f, 0.0f }
+                };
+
+                Mat4 bone_to_model_matrices[] = {
+                    get_model_matrix({ 1.0f, 1.0f, 1.0f },
+                                     make_quaternion(),
+                                     bone_positions[0]),
+                    get_model_matrix({ 1.0f, 1.0f, 1.0f },
+                                     make_quaternion(),
+                                     bone_positions[1])
+                };
+
+                Mat4 bone_to_pose_matrices[] = {
+                    get_model_matrix({ 1.0f, 1.0f, 1.0f },
+                                     make_quaternion(10.0f, {1.0f, 0.0f, 0.0f}),
+                                     {0.0f, -1.0f, 0.0f}),
+                    //get_model_matrix({ 1.0f, 1.0f, 1.0f }, make_quaternion(), { 0.5f, 0.0f, 0.0f })
+                    get_model_matrix({ 1.0f, 1.0f, 1.0f },
+                                     make_quaternion(0.0f, 20.0f, 45.0f),
+                                     {})
+                };
+                
+                Mat4 model_to_bone_matrices[] = {
+                    inverse(bone_to_model_matrices[0]),
+                    inverse(bone_to_model_matrices[1])
+                };
+
+                for (int32 i = 0; i < 2; i++) {
+                    bone_transforms[i] = bone_to_model_matrices[i] * bone_to_pose_matrices[i] * model_to_bone_matrices[i];
+                }
+
+                num_bones = 2;
+            }
+            
+            gl_draw_mesh(current->mesh_id, material, current->transform,
+                         true, bone_transforms, num_bones);
         }
 
         if (editor_state->show_wireframe &&

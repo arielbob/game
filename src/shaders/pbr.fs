@@ -45,6 +45,7 @@ uniform sampler2D roughness_texture;
 in vec2 uv;
 in vec3 frag_pos;
 in vec3 normal;
+in vec3 vertex_color;
 
 out vec4 FragColor;
 
@@ -208,6 +209,7 @@ void main() {
 
     color = color / (color + vec3(1.0)); // reinhard tone mapping
     color = pow(color, vec3(2.2));       // gamma correction
+    //color = 0.00001f * color + vec3(vertex_color);
     
     FragColor = vec4(color, 1.0);
     //FragColor = vec4(num_point_lights, 0.0, 0.0, 1.0);

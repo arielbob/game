@@ -675,7 +675,7 @@ void do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 new_
                                            player->position + make_vec3(0.0f, player->height, 0.0f),
                                            Player_Constants::capsule_radius);
 
-    const int32 MAX_COLLISIONS = 64;
+    const int32 MAX_COLLISIONS = 128;
     Collision collisions[MAX_COLLISIONS];
     int32 num_collisions = 0;
 

@@ -92,6 +92,7 @@ namespace Mesh_Loader {
     bool32 parse_uint(Tokenizer *tokenizer, uint32 *result, char **error);
     bool32 parse_vec2(Tokenizer *tokenizer, Vec2 *result, char **error);
     bool32 parse_vec3(Tokenizer *tokenizer, Vec3 *result, char **error);
+    bool32 parse_vec4(Tokenizer *tokenizer, Vec4 *result, char **error);
     bool32 parse_vec3_int32(Tokenizer *tokenizer, Vec3_int32 *result, char **error);
     bool32 parse_vec3_uint32(Tokenizer *tokenizer, Vec3_uint32 *result, char **error);
     bool32 parse_vec4_int32(Tokenizer *tokenizer, Vec4_int32 *result, char **error);
@@ -184,6 +185,19 @@ bool32 Mesh_Loader::parse_vec3(Tokenizer *tokenizer, Vec3 *result, char **error)
     for (int i = 0; i < 3; i++) {
         if (!parse_real(tokenizer, &v[i], error)) {
             return mesh_parse_error(error, "Invalid number in Vec3.");
+        }
+    }
+
+    *result = v;
+    return true;
+}
+
+bool32 Mesh_Loader::parse_vec4(Tokenizer *tokenizer, Vec4 *result, char **error) {
+    Vec4 v;
+    
+    for (int i = 0; i < 4; i++) {
+        if (!parse_real(tokenizer, &v[i], error)) {
+            return mesh_parse_error(error, "Invalid number in Vec4.");
         }
     }
 
@@ -465,13 +479,13 @@ bool32 Mesh_Loader::parse_vertex(Tokenizer *tokenizer, Mesh *mesh, uint32 vertex
             return mesh_parse_error(error, "Expected 'bi' label for vertex bone indices.");
         }
 
-        Vec4_uint32 *bone_indices = (Vec4_uint32 *) data_position;
-        result = parse_vec4_uint32(tokenizer, bone_indices, error);
+        Vec4_int32 *bone_indices = (Vec4_int32 *) data_position;
+        result = parse_vec4_int32(tokenizer, bone_indices, error);
         if (!result) {
             return false;
         }
 
-        data_position += mesh->n_bone_indices * sizeof(int32);
+        data_position += mesh->n_bone_indices * sizeof(uint32);
 
         // bone weights
         token = get_token(tokenizer);
@@ -479,13 +493,19 @@ bool32 Mesh_Loader::parse_vertex(Tokenizer *tokenizer, Mesh *mesh, uint32 vertex
             return mesh_parse_error(error, "Expected 'bw' label for vertex bone weights.");
         }
 
-        Vec4_uint32 *bone_weights = (Vec4_uint32 *) data_position;
-        result = parse_vec4_uint32(tokenizer, bone_weights, error);
+        Vec4 *bone_weights = (Vec4 *) data_position;
+        result = parse_vec4(tokenizer, bone_weights, error);
         if (!result) {
             return false;
         }
 
-        data_position += mesh->n_bone_weights * sizeof(int32);
+        assert(fabsf(1.0f -
+                     ((*bone_weights)[0] +
+                      (*bone_weights)[1] +
+                      (*bone_weights)[2] +
+                      (*bone_weights)[3])) < EPSILON);
+
+        data_position += mesh->n_bone_weights * sizeof(real32);
     }
 
     return true;
