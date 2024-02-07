@@ -3423,7 +3423,7 @@ void gl_render_editor(GL_Framebuffer framebuffer,
             Mat4 bone_transforms[2];
             int32 num_bones = 0;
             if (current->mesh_id == ENGINE_DEFAULT_SKINNED_CUBE_MESH_ID) {
-                // TODO: fix mesh picking not being very accurate anymore
+                // TODO (done): fix mesh picking not being very accurate anymore
                 // - i think a recent commit broke that
                 // TODO: also fix collisions not working properly for some reason
                 // - this is probably related to first TODO

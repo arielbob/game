@@ -442,7 +442,7 @@ bool32 Mesh_Loader::parse_vertex(Tokenizer *tokenizer, Mesh *mesh, uint32 vertex
 
     mesh->aabb.p_max.x = max(mesh->aabb.p_max.x, position->x);
     mesh->aabb.p_max.y = max(mesh->aabb.p_max.y, position->y);
-    mesh->aabb.p_max.z = max(mesh->aabb.p_min.z, position->z);
+    mesh->aabb.p_max.z = max(mesh->aabb.p_max.z, position->z);
 
     // vertex normal
     token = get_token(tokenizer);
