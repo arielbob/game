@@ -3425,8 +3425,15 @@ void gl_render_editor(GL_Framebuffer framebuffer,
             if (current->mesh_id == ENGINE_DEFAULT_SKINNED_CUBE_MESH_ID) {
                 // TODO (done): fix mesh picking not being very accurate anymore
                 // - i think a recent commit broke that
-                // TODO: also fix collisions not working properly for some reason
+                // TODO (done): also fix collisions not working properly for some reason
                 // - this is probably related to first TODO
+                // - i don't think it is.. something about car.mesh is messing things up
+                // - looks like something is overwriting its data, causing it to have
+                // degenerate triangles, causing the collision code to do weird shit
+                // - just did Mesh > Clean Up > Degenerate Dissolve in Blender
+                
+                // TODO: update blender script to automatically clean degenerate triangles
+                // TODO: just use blender 3.6, i think
                 
                 // TODO: animation sampling
                 // TODO: toggle viewing skinned meshes vs just bind pose in edit mode

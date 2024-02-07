@@ -693,6 +693,7 @@ void do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 new_
             get_transformed_triangle(mesh, triangle_index, &object_to_world, triangle);
 
             Vec3 triangle_normal = get_triangle_normal(triangle);
+            assert(!is_zero(triangle_normal));
             Vec3 penetration_normal, penetration_point;
             real32 penetration_depth, distance_from_plane;
 

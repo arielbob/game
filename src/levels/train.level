@@ -5,8 +5,8 @@ level_name "train"
 meshes {
 mesh "train-car" ".\src\meshes\train-car.mesh"
 mesh "seams" ".\src\meshes\seams.mesh"
-mesh "building" "blender/building.mesh"
-mesh "whatever" ".\blender\car.mesh"
+mesh "building" "blender/building2.mesh"
+mesh "whatever" ".\blender\car2.mesh"
 }
 
 textures {
@@ -145,7 +145,7 @@ has_collider 1
 }
 entity {
 position -11.583014 0.092302 0.000000
-rotation 0.914883 0.000000 0.403718 0.000000
+rotation 0.914884 0.000000 0.403718 0.000000
 scale 1.000000 1.000000 1.000000
 mesh "whatever"
 material "blue"

@@ -17,6 +17,11 @@ Mesh *get_mesh(String name) {
         Mesh *current = asset_manager->mesh_table[i];
         while (current) {
             if (string_equals(current->name, name)) {
+                if (string_equals(current->name, "whatever")) {
+                    Vec3 triangle1[3];
+                    get_triangle(current, 33, triangle1);
+                }
+                
                 return current;
             }
             current = current->table_next;
