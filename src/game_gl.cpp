@@ -3431,11 +3431,17 @@ void gl_render_editor(GL_Framebuffer framebuffer,
                 // - looks like something is overwriting its data, causing it to have
                 // degenerate triangles, causing the collision code to do weird shit
                 // - just did Mesh > Clean Up > Degenerate Dissolve in Blender
-                
-                // TODO: update blender script to automatically clean degenerate triangles
-                // TODO: just use blender 3.6, i think
+                // TODO (done): update blender script to automatically clean degenerate triangles
+                // - just use blender 3.6, i think
                 
                 // TODO: animation sampling
+                // - TODO: create test data and try and make skinned_cube animate
+                // - TODO: create file format
+                // - TODO: each bone can have keyframes independent from other bones
+                //   - bones should have names
+                // TODO: mesh exporting with correct weights based on armature
+                // - bone indices (of bones that influence vertices) and weights should be correct
+
                 // TODO: toggle viewing skinned meshes vs just bind pose in edit mode
                 // TODO: view skinned meshes in play mode
                 // - just viewing; we don't need to do collisions, since static geometry

@@ -82,6 +82,7 @@ def game_export(context, filename, replace_existing):
     bm.from_mesh(mesh_copy_data)
     
     bmesh.ops.triangulate(bm, faces=bm.faces)
+    bmesh.ops.dissolve_degenerate(bm, dist=0.000001, edges=bm.edges)
 
     bm.to_mesh(mesh_copy_data)
     bm.free()
