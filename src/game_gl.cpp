@@ -3433,6 +3433,14 @@ void gl_render_editor(GL_Framebuffer framebuffer,
                 // - just did Mesh > Clean Up > Degenerate Dissolve in Blender
                 // TODO (done): update blender script to automatically clean degenerate triangles
                 // - just use blender 3.6, i think
+
+                // do you really just do bone's bone->pose->model transform, then
+                // the parent's bone->pose->model transform?
+                // no, look at sketchbook.
+
+                // we don't need any local transforms for the bind pose. to render the bind
+                // pose, we just render the model without a skeleton.
+                // we just need transforms for animations.
                 
                 // TODO: animation sampling
                 // - TODO (done): write animation sampling, interpolation, matrix code
@@ -3440,6 +3448,8 @@ void gl_render_editor(GL_Framebuffer framebuffer,
                 // - TODO: create file format
                 // - TODO: each bone can have keyframes independent from other bones
                 //   - bones should have names
+                // - TODO: rotation, translation, scale need to be separate keyframeable channels
+
                 // TODO: mesh exporting with correct weights based on armature
                 // - bone indices (of bones that influence vertices) and weights should be correct
 
