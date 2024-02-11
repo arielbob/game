@@ -1140,30 +1140,92 @@ void draw_entity_box_2(bool32 force_reset) {
         
             Mesh *mesh = get_mesh(entity->mesh_id);
 
-            const int32 MAX_MESH_NAMES = 256;
-            char *mesh_names[MAX_MESH_NAMES];
-            int32 num_mesh_names;
-            get_mesh_names((Allocator *) &ui_manager->frame_arena, Mesh_Type::LEVEL,
-                           mesh_names, MAX_MESH_NAMES,
-                           &num_mesh_names);
-            assert(num_mesh_names > 0);
+            {
+                const int32 MAX_MESH_NAMES = 256;
+                char *mesh_names[MAX_MESH_NAMES];
+                int32 num_mesh_names;
+                get_mesh_names((Allocator *) &ui_manager->frame_arena, Mesh_Type::LEVEL,
+                               mesh_names, MAX_MESH_NAMES,
+                               &num_mesh_names);
+                assert(num_mesh_names > 0);
 
-            int32 selected_index = -1;
-            for (int32 i = 0; i < num_mesh_names; i++) {
-                if (string_equals(mesh->name, mesh_names[i])) {
-                    selected_index = i;
+                int32 selected_index = -1;
+                for (int32 i = 0; i < num_mesh_names; i++) {
+                    if (string_equals(mesh->name, mesh_names[i])) {
+                        selected_index = i;
+                    }
+                }
+        
+                int32 dropdown_selected_index = do_dropdown(dropdown_theme,
+                                                            mesh_names, num_mesh_names,
+                                                            selected_index,
+                                                            "mesh_dropdown",
+                                                            force_reset);
+                if (dropdown_selected_index != selected_index) {
+                    selected_index = dropdown_selected_index;
+                    set_mesh(entity, mesh_names[dropdown_selected_index]);
+                    editor_state->selected_entity_modified = true;
+                    mesh = get_mesh(entity->mesh_id);
                 }
             }
-        
-            int32 dropdown_selected_index = do_dropdown(dropdown_theme,
-                                                        mesh_names, num_mesh_names,
-                                                        selected_index,
-                                                        "mesh_dropdown",
-                                                        force_reset);
-            if (dropdown_selected_index != selected_index) {
-                selected_index = dropdown_selected_index;
-                set_mesh(entity, mesh_names[dropdown_selected_index]);
-                editor_state->selected_entity_modified = true;
+
+            // animation selection
+            if (mesh->is_skinned) {
+                ui_y_pad(10.0f);
+                do_text("Animation");
+                ui_y_pad(1.0f);
+
+                // have a default animation? you can't... it'll be weird because
+                // bones have to match meshes.
+                // just have default "none"
+                // it shouldn't be a flag, right? because if you enabled the flag, you would
+                // still have a "None" thing because you still have to match. so the flag is
+                // redundant.
+
+                #if 0
+                if (entity->animation_id < 0) {
+
+                }
+                #endif
+                
+                Skeletal_Animation *animation = get_animation(entity->animation_id);
+
+                const int32 MAX_ANIMATION_NAMES = 256;
+                char *animation_names[MAX_ANIMATION_NAMES];
+                int32 num_animation_names;
+                get_animation_names((Allocator *) &ui_manager->frame_arena,
+                                    animation_names, MAX_ANIMATION_NAMES,
+                                    &num_animation_names);
+                assert(num_animation_names > 0);
+
+                int32 selected_index = -1;
+                if (!animation) {
+                    selected_index = 0; // 0 is "None"
+                } else {
+                    for (int32 i = 1; i < num_animation_names; i++) {
+                        if (string_equals(animation->name, animation_names[i])) {
+                            selected_index = i;
+                        }
+                    }
+                }
+                        
+                int32 dropdown_selected_index = do_dropdown(dropdown_theme,
+                                                            animation_names, num_animation_names,
+                                                            selected_index,
+                                                            "animation_dropdown",
+                                                            force_reset);
+                #if 0
+                if (dropdown_selected_index != selected_index) {
+                    selected_index = dropdown_selected_index;
+                    if (dropdown_selected_index == 0) {
+                        set_animation(entity, NULL);
+                    } else {
+                        set_animation(entity, animation_names[dropdown_selected_index]);
+                    }
+                    
+                    editor_state->selected_entity_modified = true;
+                }
+                #endif
             }
         }
 

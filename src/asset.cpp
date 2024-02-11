@@ -17,11 +17,6 @@ Mesh *get_mesh(String name) {
         Mesh *current = asset_manager->mesh_table[i];
         while (current) {
             if (string_equals(current->name, name)) {
-                if (string_equals(current->name, "whatever")) {
-                    Vec3 triangle1[3];
-                    get_triangle(current, 33, triangle1);
-                }
-                
                 return current;
             }
             current = current->table_next;
@@ -41,6 +36,35 @@ Mesh *get_mesh(int32 id) {
         }
 
         current = current->table_next;
+    }
+
+    return NULL;
+}
+
+Skeletal_Animation *get_animation(int32 id) {
+    uint32 hash = get_hash(id, NUM_ANIMATION_BUCKETS);
+
+    Skeletal_Animation *current = asset_manager->animation_table[hash];
+    while (current) {
+        if (current->id == id) {
+            return current;
+        }
+
+        current = current->table_next;
+    }
+
+    return NULL;
+}
+
+Skeletal_Animation *get_animation(String name) {
+    for (int32 i = 0; i < NUM_ANIMATION_BUCKETS; i++) {
+        Skeletal_Animation *current = asset_manager->animation_table[i];
+        while (current) {
+            if (string_equals(current->name, name)) {
+                return current;
+            }
+            current = current->table_next;
+        }
     }
 
     return NULL;
@@ -178,6 +202,55 @@ Mesh *add_mesh(String name, String filename, Mesh_Type type, int32 id = -1) {
 inline Mesh *add_mesh(char *name, char *filename, Mesh_Type type, int32 id = 1) {
     return add_mesh(make_string(name), make_string(filename), type, id);
 }
+
+bool32 animation_exists(String name) {
+    Skeletal_Animation *animation = get_animation(name);
+    return animation != NULL;
+}
+
+#if 0
+Skeletal_Animation *add_animation(String name, String filename, int32 id = -1) {
+    if (animation_exists(name)) {
+        assert(!"Animation with name already exists.");
+        return NULL;
+    }
+
+    Skeletal_Animation *animation;
+    // note that this should be called before we set animation->id, or else we would overwrite
+    // the animation->id value with 0
+    bool32 result = load_animation(asset_manager->allocator, &animation, name, filename);
+    if (!result) {
+        assert(!"Animation loading failed.");
+        return NULL;
+    }
+
+    if (id < 0) {
+        id = asset_manager->total_animations_added_ever++;
+    }
+    
+    Skeletal_Animation *found_animation = get_animation(id);
+    if (found_animation) {
+        assert(!"Animation with ID already exists!");
+    } else {
+        animation->id = id;
+    }
+    
+    uint32 hash = get_hash(animation->id, NUM_ANIMATION_BUCKETS);
+
+    Skeletal_Animation *current = asset_manager->animation_table[hash];
+    animation->table_next = current;
+    animation->table_prev = NULL;
+    if (current) {
+        current->table_prev = animation;
+    }
+    asset_manager->animation_table[hash] = animation;
+
+    // TODO: we don't need anything like this right?
+    //r_load_animation(animation->id);
+    
+    return animation;
+}
+#endif
 
 void set_mesh_file(int32 id, String new_filename) {
     Mesh *mesh = get_mesh(id);
@@ -572,6 +645,36 @@ void get_mesh_names(Allocator *allocator, Mesh_Type type, char **names, int max_
     }
 
     *num_names = num_mesh_names;
+}
+
+void get_animation_names(Allocator *allocator, char **names, int max_names, int *num_names) {
+    int32 num_animation_names = 0;
+    
+    // make first one "None", for animation_id = -1
+    assert(max_names >= 1);
+    names[0] = "None";
+    num_animation_names++;
+    
+    for (int32 i = 0; i < NUM_ANIMATION_BUCKETS; i++) {
+        Skeletal_Animation *current = asset_manager->animation_table[i];
+        bool32 should_exit = false;
+        while (current) {
+            if (num_animation_names >= max_names) {
+                assert(num_animation_names < max_names);
+                should_exit = true;
+                break;
+            }
+
+            names[num_animation_names++] = to_char_array(allocator, current->name);
+            current = current->table_next;
+        }
+
+        if (should_exit) {
+            break;
+        }
+    }
+
+    *num_names = num_animation_names;
 }
 
 Font_File *get_font_file(char *filename) {

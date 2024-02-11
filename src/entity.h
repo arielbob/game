@@ -67,6 +67,10 @@ enum Light_Type {
     Light_Type light_type;                      \
     POINT_LIGHT_FIELDS                          \
     SUN_LIGHT_FIELDS                            \
+                                                \
+    int32 animation_id = -1;                    \
+    real32 animation_t = 0.0f;
+    
 
 struct Entity {
     int32 id;

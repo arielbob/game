@@ -1135,6 +1135,10 @@ inline Transform make_transform(Vec3 position, Quaternion rotation, Vec3 scale) 
     return transform;
 }
 
+Vec3 lerp(Vec3 a, Vec3 b, real32 t) {
+    return a + (b - a)*t;
+}
+
 inline Quaternion inverse(Quaternion q) {
     // we assume we're using a rotation quaternion (i.e. q.v is a unit vector, and thus magnitude(q) = 1)
     assert(fabsf(magnitude(q) - 1.0f) < EPSILON);
@@ -1144,6 +1148,50 @@ inline Quaternion inverse(Quaternion q) {
 
 inline real32 dot(Quaternion q1, Quaternion q2) {
     return q1.w*q2.w * dot(q1.v, q2.v);
+}
+
+// https://gamemath.com/book/orient.html#quaternion_slerp
+Quaternion slerp(Quaternion q1, Quaternion q2, real32 t) {
+    Quaternion result;
+
+    real32 cos_omega = dot(q1, q2);
+    // if negative cos_omega, it means we're gonna go the long way.
+    // negating one of the quaternions makes it so we go the shorter way.
+    // both the positive and negative versions of a quarternion represent
+    // the same orientation, but can have different results when slerping
+    // between them.
+    if (cos_omega < 0.0f) {
+        q2.w *= -1.0f;
+        q2.v *= -1.0f;
+        cos_omega *= -1.0f;
+    }
+
+    // we're lerping along the arc between the points on the 4d hypersphere
+    real32 k0, k1;
+
+    // protect against divide-by-zero by just doing linear interpolation
+    // when the 2 points are very close on the hypersphere. i.e., when
+    // the 2 orientations are very close.
+    if (cos_omega > 0.9999f) {
+        k0 = 1.0f- t;
+        k1 = t;
+    } else {
+        // use trig identity: sin^2(omega) + cos^2(omega) = 1 
+        real32 sin_omega = sqrtf(1.0f - cos_omega*cos_omega);
+        
+        // compute angle between orientations
+        real32 omega = atan2f(sin_omega, cos_omega);
+        real32 one_over_sin_omega = 1.0f / sin_omega;
+
+        // calculate interpolation parameters
+        k0 = sinf((1.0f - t) * omega) * one_over_sin_omega;
+        k1 = sinf(t * omega) * one_over_sin_omega;
+    }
+
+    result.w = k0*q1.w + k1*q2.w;
+    result.v = k0*q1.v + k1*q2.v;
+
+    return result;
 }
 
 Mat4 make_rotate_matrix(Quaternion q) {

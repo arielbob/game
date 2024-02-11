@@ -3435,6 +3435,7 @@ void gl_render_editor(GL_Framebuffer framebuffer,
                 // - just use blender 3.6, i think
                 
                 // TODO: animation sampling
+                // - TODO (done): write animation sampling, interpolation, matrix code
                 // - TODO: create test data and try and make skinned_cube animate
                 // - TODO: create file format
                 // - TODO: each bone can have keyframes independent from other bones

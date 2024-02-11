@@ -3,11 +3,13 @@
 
 #include "math.h"
 #include "string.h"
+#include "animation.h"
 
 #define MAX_TOKEN_TEXT_SIZE   1024
 #define NUM_MESH_BUCKETS      128
 #define NUM_TEXTURE_BUCKETS   128
 #define NUM_MATERIAL_BUCKETS  128
+#define NUM_ANIMATION_BUCKETS  128
 #define NUM_FONT_BUCKETS      128
 #define NUM_FONT_FILE_BUCKETS 128
 
@@ -195,6 +197,9 @@ struct Asset_Manager {
     
     Material  *material_table[NUM_MATERIAL_BUCKETS];
     int32     total_materials_added_ever;
+
+    Skeletal_Animation *animation_table[NUM_ANIMATION_BUCKETS];
+    int32 total_animations_ever;
     
     Font      *font_table[NUM_FONT_BUCKETS];
     Font_File *font_file_table[NUM_FONT_FILE_BUCKETS]; // for caching font files

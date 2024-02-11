@@ -1458,10 +1458,22 @@ void update_camera(Camera *camera, Vec3 position, real32 heading, real32 pitch, 
     camera->current_basis = current_basis;
 }
 
+void update_entities(Level *level, real32 dt) {
+    Entity *current = level->entities;
+    while (current) {
+        if (current->animation_id >= 0) {
+            current->animation_t += dt;
+        }
+
+        current = current->next;
+    }
+}
+
 void update_game(Controller_State *controller_state, real32 dt) {
     assert(game_state->is_initted);
     
     Player *player = &game_state->player;
+    update_entities(&game_state->level, dt);
     update_player(player, controller_state, dt);
 
     update_camera(&game_state->camera, &game_state->render_state.display_output,
@@ -1498,7 +1510,6 @@ void update(Controller_State *controller_state,
     if (!game_state->is_initted) {
         debug_print("initting game %d!\n", 123);
         init_game(sound_output, num_samples);
-        //return;
     }
 
     real64 current_time = platform_get_wall_clock_time();
