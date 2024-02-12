@@ -71,6 +71,11 @@ Mat4 *get_bone_matrices(Allocator *allocator, Skeletal_Animation *animation, rea
 
         // interpolate the bone transforms
         // TODO: this shit is fucked; the cube is gaining volume between keyframes
+        // - we could print the scale from the rotate matrix and see if maybe our make_rotate_matrix()
+        //   function is fucked
+
+        // - for some reason, the w in the slerp'd quaternion is outside the bounds of cos...
+        //   - it's often > 1, but cos should be within [-1, 1]
         Transform interpolated_transform;
         interpolated_transform.position = lerp(transform_a->position,
                                                transform_b->position,
@@ -78,6 +83,13 @@ Mat4 *get_bone_matrices(Allocator *allocator, Skeletal_Animation *animation, rea
         interpolated_transform.rotation = slerp(transform_a->rotation,
                                                 transform_b->rotation,
                                                 frame_t);
+
+        char *rotation_text = string_format((Allocator *) &ui_manager->frame_arena, "rotation: w=%f, v=%f %f %f\n",
+                                            interpolated_transform.rotation.w,
+                                            interpolated_transform.rotation.v.x,
+                                            interpolated_transform.rotation.v.y,
+                                            interpolated_transform.rotation.v.z);
+        debug_print(rotation_text);
 
         // this may not be necessary, and scale can just be assumed to always be 1
         interpolated_transform.scale = lerp(transform_a->scale,

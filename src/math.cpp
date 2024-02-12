@@ -1151,9 +1151,16 @@ inline real32 dot(Quaternion q1, Quaternion q2) {
 }
 
 // https://gamemath.com/book/orient.html#quaternion_slerp
+// TODO: fix this slerp function
+// - try using this implementation: http://number-none.com/product/Understanding%20Slerp,%20Then%20Not%20Using%20It
+// - or this one https://allenchou.net/2014/04/game-math-quaternion-basics/
 Quaternion slerp(Quaternion q1, Quaternion q2, real32 t) {
     Quaternion result;
 
+    assert(q1.w < 1.001f && q1.w > -1.001f);
+    assert(q2.w < 1.001f && q2.w > -1.001f);
+    assert(t >= 0.0f && t <= 1.0f);
+    
     real32 cos_omega = dot(q1, q2);
     // if negative cos_omega, it means we're gonna go the long way.
     // negating one of the quaternions makes it so we go the shorter way.
@@ -1191,6 +1198,8 @@ Quaternion slerp(Quaternion q1, Quaternion q2, real32 t) {
     result.w = k0*q1.w + k1*q2.w;
     result.v = k0*q1.v + k1*q2.v;
 
+    assert(result.w < 1.001f && result.w > -1.001f);
+    
     return result;
 }
 
