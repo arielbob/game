@@ -3420,9 +3420,96 @@ void gl_render_editor(GL_Framebuffer framebuffer,
             Material *material = get_material(current->material_id);
             assert(material);
 
-            Mat4 bone_transforms[2];
+            Mat4 *bone_matrices = NULL;
             int32 num_bones = 0;
             if (current->mesh_id == ENGINE_DEFAULT_SKINNED_CUBE_MESH_ID) {
+                // bind positions
+                static Vec3 bone_positions[] = {
+                    { 0.0f, -0.5f, 0.0f },
+                    { 0.0f, 0.0f, 0.0f }
+                };
+
+                Mat4 bone_to_model_matrices[] = {
+                    get_model_matrix({ 1.0f, 1.0f, 1.0f },
+                                     make_quaternion(),
+                                     bone_positions[0]),
+                    get_model_matrix({ 1.0f, 1.0f, 1.0f },
+                                     make_quaternion(),
+                                     bone_positions[1])
+                };
+                
+                Bone bones[2] = {
+                    { inverse(bone_to_model_matrices[0]), -1 }, // root
+                    { inverse(bone_to_model_matrices[1]), 0 }
+                };
+
+                Skeleton skeleton = {
+                    NULL,
+                    2,
+                    bones
+                };
+
+                const int num_bone_0_frames = 2;
+                Bone_Frame bone_0_frames[num_bone_0_frames] = {
+                    { 0.0f, make_transform({ 0.0f, -0.5f, 0.0f },
+                                           make_quaternion(0.0f, 0.0f, 0.0f),
+                                           make_vec3(1.0f, 1.0f, 1.0f)) },
+                    #if 1
+                    { 1.0f, make_transform({ 0.0f, -0.5f, 0.0f },
+                                           make_quaternion(0.0f, 0.0f, 90.0f),
+                                           make_vec3(1.0f, 1.0f, 1.0f)) },
+                    #endif
+                    #if 0
+                    { 2.0f, make_transform({ 0.0f, -0.5f, 0.0f },
+                                           make_quaternion(0.0f, 0.0f, 180.0f),
+                                              make_vec3(1.0f, 1.0f, 1.0f)) },
+                    { 3.0f, make_transform({ 0.0f, -0.5f, 0.0f },
+                                              make_quaternion(0.0f, 0.0f, 270.0f),
+                                              make_vec3(1.0f, 1.0f, 1.0f)) },
+                    #endif
+                };
+
+                const int num_bone_1_frames = 1;
+                Bone_Frame bone_1_frames[num_bone_1_frames] = {
+                    { 0.0f, make_transform({ 0.0f, 0.5f, 0.0f },
+                                           make_quaternion(0.0f, 0.0f, 0.0f),
+                                           make_vec3(1.0f, 1.0f, 1.0f)) },
+                    #if 0
+                    { 2.0f, make_transform({ 0.0f, 0.5f, 0.0f },
+                                           make_quaternion(0.0f, 45.0f, 0.0f),
+                                           make_vec3(1.0f, 1.0f, 1.0f)) }
+                    #endif
+#if 0
+                    { 0.0f, make_transform({ 0.0f, 0.5f, 0.0f },
+                                           make_quaternion(0.0f, -45.0f, 0.0f),
+                                           make_vec3(1.0f, 1.0f, 1.0f)) },
+                    { 0.5f, make_transform({ 0.0f, 0.5f, 0.0f },
+                                           make_quaternion(0.0f, 45.0f, 0.0f),
+                                           make_vec3(1.0f, 1.0f, 1.0f)) },
+                    { 1.0f, make_transform({ 0.0f, 0.5f, 0.0f },e
+                                           make_quaternion(0.0f, -45.0f, 0.0f),
+                                           make_vec3(1.0f, 1.0f, 1.0f)) }
+#endif
+                };
+                
+                Bone_Channel bone_channels[2] = {
+                    { num_bone_0_frames, bone_0_frames },
+                    { num_bone_1_frames, bone_1_frames }
+                };
+
+                Skeletal_Animation animation = {
+                    NULL,
+                    &skeleton,
+                    0,
+                    make_string("test_skeleton"),
+                    4.0f,
+                    bone_channels,
+                    NULL,
+                    NULL
+                };
+                
+                bone_matrices = get_bone_matrices(frame_arena, &animation, current->animation_t);
+                
                 // TODO (done): fix mesh picking not being very accurate anymore
                 // - i think a recent commit broke that
                 // TODO (done): also fix collisions not working properly for some reason
@@ -3459,46 +3546,12 @@ void gl_render_editor(GL_Framebuffer framebuffer,
                 // will usually not need skinning
                 // TODO: animation file format
                 // TODO: animation exporting from blender
-                
-                // bind positions
-                static Vec3 bone_positions[] = {
-                    { 0.0f, -0.5f, 0.0f },
-                    { 0.0f, 0.0f, 0.0f }
-                };
-
-                Mat4 bone_to_model_matrices[] = {
-                    get_model_matrix({ 1.0f, 1.0f, 1.0f },
-                                     make_quaternion(),
-                                     bone_positions[0]),
-                    get_model_matrix({ 1.0f, 1.0f, 1.0f },
-                                     make_quaternion(),
-                                     bone_positions[1])
-                };
-
-                Mat4 bone_to_pose_matrices[] = {
-                    get_model_matrix({ 1.0f, 1.0f, 1.0f },
-                                     make_quaternion(10.0f, {1.0f, 0.0f, 0.0f}),
-                                     {0.0f, -1.0f, 0.0f}),
-                    //get_model_matrix({ 1.0f, 1.0f, 1.0f }, make_quaternion(), { 0.5f, 0.0f, 0.0f })
-                    get_model_matrix({ 1.0f, 1.0f, 1.0f },
-                                     make_quaternion(0.0f, 20.0f, 45.0f),
-                                     {})
-                };
-                
-                Mat4 model_to_bone_matrices[] = {
-                    inverse(bone_to_model_matrices[0]),
-                    inverse(bone_to_model_matrices[1])
-                };
-
-                for (int32 i = 0; i < 2; i++) {
-                    bone_transforms[i] = bone_to_model_matrices[i] * bone_to_pose_matrices[i] * model_to_bone_matrices[i];
-                }
 
                 num_bones = 2;
             }
             
             gl_draw_mesh(current->mesh_id, material, current->transform,
-                         true, bone_transforms, num_bones);
+                         true, bone_matrices, num_bones);
         }
 
         if (editor_state->show_wireframe &&

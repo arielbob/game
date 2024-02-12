@@ -1461,9 +1461,13 @@ void update_camera(Camera *camera, Vec3 position, real32 heading, real32 pitch, 
 void update_entities(Level *level, real32 dt) {
     Entity *current = level->entities;
     while (current) {
+        // TODO: this is just for testing
+        current->animation_t += dt;
+        #if 0
         if (current->animation_id >= 0) {
             current->animation_t += dt;
         }
+        #endif
 
         current = current->next;
     }
@@ -1561,6 +1565,7 @@ void update(Controller_State *controller_state,
     
     if (game_state->mode == Game_Mode::EDITING) {
         update_editor(controller_state, dt);
+        update_entities(&game_state->level, dt);
         draw_editor(Context::controller_state);
         game_state->editor_state.is_startup = false;
     } else {
