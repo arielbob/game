@@ -3449,47 +3449,43 @@ void gl_render_editor(GL_Framebuffer framebuffer,
                     bones
                 };
 
-                const int num_bone_0_frames = 2;
+                const int num_bone_0_frames = 4;
                 Bone_Frame bone_0_frames[num_bone_0_frames] = {
                     { 0.0f, make_transform({ 0.0f, -0.5f, 0.0f },
                                            make_quaternion(0.0f, 0.0f, 0.0f),
                                            make_vec3(1.0f, 1.0f, 1.0f)) },
-                    #if 1
                     { 1.0f, make_transform({ 0.0f, -0.5f, 0.0f },
                                            make_quaternion(0.0f, 0.0f, 90.0f),
                                            make_vec3(1.0f, 1.0f, 1.0f)) },
-                    #endif
-                    #if 0
                     { 2.0f, make_transform({ 0.0f, -0.5f, 0.0f },
                                            make_quaternion(0.0f, 0.0f, 180.0f),
                                               make_vec3(1.0f, 1.0f, 1.0f)) },
                     { 3.0f, make_transform({ 0.0f, -0.5f, 0.0f },
                                               make_quaternion(0.0f, 0.0f, 270.0f),
                                               make_vec3(1.0f, 1.0f, 1.0f)) },
-                    #endif
                 };
 
-                const int num_bone_1_frames = 1;
+                const int num_bone_1_frames = 6;
+                real32 step = 4.0f / 6;
                 Bone_Frame bone_1_frames[num_bone_1_frames] = {
-                    { 0.0f, make_transform({ 0.0f, 0.5f, 0.0f },
-                                           make_quaternion(0.0f, 0.0f, 0.0f),
-                                           make_vec3(1.0f, 1.0f, 1.0f)) },
-                    #if 0
-                    { 2.0f, make_transform({ 0.0f, 0.5f, 0.0f },
-                                           make_quaternion(0.0f, 45.0f, 0.0f),
-                                           make_vec3(1.0f, 1.0f, 1.0f)) }
-                    #endif
-#if 0
-                    { 0.0f, make_transform({ 0.0f, 0.5f, 0.0f },
+                    { 0.0, make_transform({ 0.0f, 0.5f, 0.0f },
                                            make_quaternion(0.0f, -45.0f, 0.0f),
                                            make_vec3(1.0f, 1.0f, 1.0f)) },
-                    { 0.5f, make_transform({ 0.0f, 0.5f, 0.0f },
+                    { step, make_transform({ 0.0f, 0.5f, 0.0f },
                                            make_quaternion(0.0f, 45.0f, 0.0f),
                                            make_vec3(1.0f, 1.0f, 1.0f)) },
-                    { 1.0f, make_transform({ 0.0f, 0.5f, 0.0f },e
+                    { step*2, make_transform({ 0.0f, 0.5f, 0.0f },
                                            make_quaternion(0.0f, -45.0f, 0.0f),
+                                           make_vec3(1.0f, 1.0f, 1.0f)) },
+                    { step*3, make_transform({ 0.0f, 0.5f, 0.0f },
+                                           make_quaternion(0.0f, 45.0f, 0.0f),
+                                           make_vec3(1.0f, 1.0f, 1.0f)) },
+                    { step*4, make_transform({ 0.0f, 0.5f, 0.0f },
+                                           make_quaternion(0.0f, -45.0f, 0.0f),
+                                           make_vec3(1.0f, 1.0f, 1.0f)) },
+                    { step*5, make_transform({ 0.0f, 0.5f, 0.0f },
+                                           make_quaternion(0.0f, 45.0f, 0.0f),
                                            make_vec3(1.0f, 1.0f, 1.0f)) }
-#endif
                 };
                 
                 Bone_Channel bone_channels[2] = {
@@ -3531,11 +3527,12 @@ void gl_render_editor(GL_Framebuffer framebuffer,
                 
                 // TODO: animation sampling
                 // - TODO (done): write animation sampling, interpolation, matrix code
-                // - TODO: create test data and try and make skinned_cube animate
+                // - TODO (done): create test data and try and make skinned_cube animate
                 // - TODO: create file format
                 // - TODO: each bone can have keyframes independent from other bones
                 //   - bones should have names
-                // - TODO: rotation, translation, scale need to be separate keyframeable channels
+                // - TODO (nevermind): rotation, translation, scale need to be separate keyframeable channels
+                //   - it's fine if they aren't, honestly, i think
 
                 // TODO: mesh exporting with correct weights based on armature
                 // - bone indices (of bones that influence vertices) and weights should be correct

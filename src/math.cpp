@@ -1147,13 +1147,10 @@ inline Quaternion inverse(Quaternion q) {
 }
 
 inline real32 dot(Quaternion q1, Quaternion q2) {
-    return q1.w*q2.w * dot(q1.v, q2.v);
+    return q1.w*q2.w + dot(q1.v, q2.v);
 }
 
 // https://gamemath.com/book/orient.html#quaternion_slerp
-// TODO: fix this slerp function
-// - try using this implementation: http://number-none.com/product/Understanding%20Slerp,%20Then%20Not%20Using%20It
-// - or this one https://allenchou.net/2014/04/game-math-quaternion-basics/
 Quaternion slerp(Quaternion q1, Quaternion q2, real32 t) {
     Quaternion result;
 
@@ -1198,7 +1195,9 @@ Quaternion slerp(Quaternion q1, Quaternion q2, real32 t) {
     result.w = k0*q1.w + k1*q2.w;
     result.v = k0*q1.v + k1*q2.v;
 
-    assert(result.w < 1.001f && result.w > -1.001f);
+    // we should really verify that the quaternion is a unit quaternion, but
+    // this is good enough, i guess
+    assert(result.w < 1.0001f && result.w > -1.0001f);
     
     return result;
 }

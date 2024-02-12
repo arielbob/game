@@ -46,12 +46,17 @@ void main() {
     // model_matrix converts from model-space to world-space
     mat4 model_to_world_matrix = model_matrix;
     vec4 skinned_pos = vec4(pos, 1.0);
+    mat4 weighted_skin_matrix = mat4(1.0);
     
     if (is_skinned) {
         skinned_pos = vec4(0.0);
+        weighted_skin_matrix = mat4(0.0);
+        // we assume the bone_weights add to 1.. if they don't we'll end up with an empty skinning
+        // matrix, and thus empty model_matrix as well
         for (int i = 0; i < 4; i++) {
-            skinned_pos += bone_matrices[bone_indices[i]] * vec4(pos, 1.0) * bone_weights[i];
+            weighted_skin_matrix += bone_matrices[bone_indices[i]] * bone_weights[i];
         }
+        skinned_pos = weighted_skin_matrix * vec4(pos, 1.0);
     }
     
     frag_pos = vec3(model_matrix * skinned_pos);
@@ -72,6 +77,6 @@ void main() {
     #endif
     
     // NOTE: w of vec4 is 0 to ignore the translation of the model matrix
-    normal = normalize(vec3(transpose(inverse(model_matrix)) * vec4(vertex_normal, 0.0)));
+    normal = normalize(vec3(transpose(inverse(model_matrix * weighted_skin_matrix)) * vec4(vertex_normal, 0.0)));
     uv = vertex_uv;
 }
