@@ -1,0 +1,30 @@
+animation_info {
+    name "cube_test"
+    duration 2.0
+    num_bones 16
+}
+
+;; every bone should have a channel
+;; if there's not a single frame for a bone, the exporter should just export a frame with a transform
+;; that would put the bone in its bind-pose (i.e. the bone's transform relative to its parent in the bind pose)
+channel {
+    bone 0
+    num_frames 2
+    frames {
+        {
+            timestamp 0.0
+            pos 0.0 0.0 0.0 (x, y, z)
+            rot 1.0 0.0 0.0 0.0 (w, x, y, z)
+            scale 1.0 1.0 1.0 (x, y, z)
+        }
+        {
+            timestamp 1.0
+            ;; maybe we can have these be optional?
+            ;; if a specific transform type is missing, then we just inherit from last frame.
+            ;; if there's no last frame? idk, maybe we should just always have every transform available
+            pos
+            rot
+            scale
+        }
+    }
+}
