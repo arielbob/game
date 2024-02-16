@@ -7,8 +7,8 @@ animation_info {
 ;; every bone should have a channel
 ;; if there's not a single frame for a bone, the exporter should just export a frame with a transform
 ;; that would put the bone in its bind-pose (i.e. the bone's transform relative to its parent in the bind pose)
-channel {
-    bone 0
+bone {
+    index 0
     num_frames 2
     frames {
         {

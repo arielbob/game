@@ -690,6 +690,8 @@ void *allocate(Allocator *allocator, uint32 size, bool32 zero_memory) {
 }
 
 void deallocate(Allocator *allocator, void *address) {
+    assert(address);
+    
     switch (allocator->type) {
         case READ_ONLY_ALLOCATOR: {
             // no-op

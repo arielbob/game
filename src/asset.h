@@ -71,6 +71,12 @@ struct Mesh {
     uint32 num_vertices;
     // size of data in bytes
     uint32 data_size;
+
+    // skeletons are only associated with a single mesh.
+    // you can have many entities with the same mesh. they'd all be using the same
+    // mesh object, so we wouldn't really be duplicating anything (neither mesh nor
+    // skeleton)
+    Skeleton *skeleton;
     
     // number of components in a vertex
     uint32 n_vertex;
@@ -96,6 +102,9 @@ void deallocate(Mesh *mesh) {
     deallocate(mesh->filename);
     deallocate(mesh->allocator, mesh->data);
     deallocate(mesh->allocator, mesh->indices);
+
+    deallocate(mesh->skeleton);
+    deallocate(mesh->allocator, mesh->skeleton);
 }
 
 struct Texture {
@@ -191,7 +200,7 @@ struct Asset_Manager {
 
     Mesh      *mesh_table[NUM_MESH_BUCKETS];
     int32     total_meshes_added_ever;
-    
+
     Texture   *texture_table[NUM_TEXTURE_BUCKETS];
     int32      total_textures_added_ever;
     

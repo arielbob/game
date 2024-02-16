@@ -78,6 +78,7 @@ void copy_string(String_Buffer *dest, String src) {
     dest->current_length = src.length;
 }
 
+// TODO: why is this named copy() and not copy_string()?
 String copy(Allocator *allocator, String src) {
     String result;
     result.allocator = allocator;

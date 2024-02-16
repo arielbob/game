@@ -2,6 +2,7 @@
 #define ANIMATION_H
 
 struct Bone {
+    String name; // also stored on Mesh's allocator
     // TODO: make a Mat3x4 struct for this? idk
     // - we can just store the 12 values in the file, but then when we
     //   parse it and store the data here, we can just have it be a Mat4
@@ -43,6 +44,17 @@ struct Skeletal_Animation {
 
 void deallocate(Skeletal_Animation *animation) {
     deallocate(animation->name);
+}
+
+void deallocate(Bone *bone) {
+    deallocate(bone->name);
+}
+
+void deallocate(Skeleton *skeleton) {
+    for (int32 i = 0; i < skeleton->num_bones; i++) {
+        deallocate(&skeleton->bones[i]);
+    }
+    deallocate(skeleton->allocator, skeleton->bones);
 }
 
 #endif

@@ -3439,8 +3439,8 @@ void gl_render_editor(GL_Framebuffer framebuffer,
                 };
                 
                 Bone bones[2] = {
-                    { inverse(bone_to_model_matrices[0]), -1 }, // root
-                    { inverse(bone_to_model_matrices[1]), 0 }
+                    { make_string("root"), inverse(bone_to_model_matrices[0]), -1 }, // root
+                    { make_string("child"), inverse(bone_to_model_matrices[1]), 0 }
                 };
 
                 Skeleton skeleton = {

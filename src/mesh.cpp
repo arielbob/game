@@ -62,19 +62,10 @@ namespace Mesh_Loader {
         COMMENT,
         INTEGER,
         REAL,
-        LABEL
-    };
-
-    enum Parser_State {
-        WAITING_FOR_NUM_VERTICES,
-        WAITING_FOR_NUM_TRIANGLES,
-        WAITING_FOR_VERTEX_LABEL,
-        WAITING_FOR_VERTEX_COMPONENTS,
-        WAITING_FOR_NORMAL_LABEL,
-        WAITING_FOR_NORMAL_COMPONENTS,
-        WAITING_FOR_UV_LABEL,
-        WAITING_FOR_UV_COMPONENTS,
-        WAITING_FOR_INDICES
+        LABEL,
+        OPEN_BRACKET,
+        CLOSE_BRACKET,
+        STRING
     };
 
     struct Token {
@@ -102,6 +93,8 @@ namespace Mesh_Loader {
     bool32 parse_num_triangles(Tokenizer *tokenizer, uint32 *result, char **error);
     bool32 parse_vertex(Tokenizer *tokenizer, Mesh *mesh, uint32 vertex_index, char **error);
     bool32 parse_triangle(Tokenizer *tokenizer, Mesh *mesh, uint32 triangle_index, char **error);
+    bool32 parse_bone(Tokenizer *tokenizer, Mesh *mesh, Bone *bone, char **error);
+    bool32 parse_skeleton(Tokenizer *tokenizer, Mesh *mesh, char **error);
 
     bool32 load_mesh(Allocator *allocator, File_Data file_data,
                      Mesh **mesh_result, char **error_out);
@@ -379,6 +372,33 @@ Mesh_Loader::Token Mesh_Loader::get_token(Tokenizer *tokenizer) {
         
             uint32 length = tokenizer->index - start;
             token = make_token(LABEL, &tokenizer->contents[start], length);
+        } else if (*tokenizer->current == '{') {
+            int32 start = tokenizer->index;
+            increment_tokenizer(tokenizer);
+            int32 length = tokenizer->index - start;
+            token = make_token(OPEN_BRACKET, &tokenizer->contents[start], length);
+        } else if (*tokenizer->current == '}') {
+            int32 start = tokenizer->index;
+            increment_tokenizer(tokenizer);
+            int32 length = tokenizer->index - start;
+            token = make_token(CLOSE_BRACKET, &tokenizer->contents[start], length);
+        } else if (*tokenizer->current == '"') {
+            increment_tokenizer(tokenizer);
+            // set start after we increment tokenizer so that we don't include the quote in the token string.
+            int32 start = tokenizer->index;
+
+            while (!is_end(tokenizer) &&
+                   !(*tokenizer->current == '"')) {
+                increment_tokenizer(tokenizer);
+            }
+
+            if (*tokenizer->current != '"') {
+                assert(!"Expected a closing quote.");
+            } else {
+                int32 length = tokenizer->index - start;
+                increment_tokenizer(tokenizer);
+                token = make_token(STRING, &tokenizer->contents[start], length);
+            }
         } else {
             assert(!"Token type not recognized");
             return {};
@@ -519,6 +539,136 @@ bool32 Mesh_Loader::parse_triangle(Tokenizer *tokenizer, Mesh *mesh, uint32 tria
     return parse_vec3_uint32(tokenizer, triangle_indices, error);
 }
 
+bool32 Mesh_Loader::parse_bone(Tokenizer *tokenizer, Mesh *mesh, Bone *bone, char **error) {
+    Token token = get_token(tokenizer);
+    
+    if (!(token.type == LABEL && string_equals(token.string, "bone"))) {
+        return mesh_parse_error(error, "Expected bone label for bone block.");
+    }
+
+    String bone_name = {};
+
+    token = get_token(tokenizer);
+    if (token.type != STRING) {
+        return mesh_parse_error(error, "Expected bone name string.");
+    } else {
+        bone_name = copy(mesh->allocator, token.string);
+    }
+
+    token = get_token(tokenizer);
+    if (token.type != OPEN_BRACKET) {
+        deallocate(bone_name);
+        return mesh_parse_error(error, "Expected open bracket for bone block.");
+    }
+
+    token = get_token(tokenizer);
+    if (!(token.type == LABEL && string_equals(token.string, "inverse_bind"))) {
+        deallocate(bone_name);
+        return mesh_parse_error(error, "Expected inverse_bind label.");
+    }
+
+    // parse inverse bind 3x4 matrix
+    Mat4 inverse_bind = make_mat4_identity();
+
+    // the matrix in the file is stored in row-major order, while our Mat4 is
+    // in column-major order. (note that row vs. column major is different from
+    // whether we use column or row vectors (row*matrix vs matrix*col))
+    // they're the same matrix; it's just that the order in memory is different.
+    
+    // it's easier to read the matrix row by row from our file, but our Mat4
+    // is accessed by column. so, we just treat the rows as columns, then transpose.
+    // we only go up to 3 since there are only 3 rows (3x4 matrix) because the
+    // homogeneous row is useless in skinning.
+    for (int32 i = 0; i < 3; i++) {
+        if (!parse_vec4(tokenizer, &inverse_bind.values[i], error)) {
+            deallocate(bone_name);
+            return false;
+        }
+    }
+
+    int32 parent_index = -1;
+    token = get_token(tokenizer);
+    if (token.type != CLOSE_BRACKET) {
+        // parse parent index
+        token = get_token(tokenizer);
+        if (!(token.type == LABEL && string_equals(token.string, "parent"))) {
+            deallocate(bone_name);
+            return mesh_parse_error(error, "Expected parent label.");
+        }
+
+        if (!parse_int(tokenizer, &parent_index, error)) {
+            deallocate(bone_name);
+            return false;
+        }
+    }
+
+    // done
+    token = get_token(tokenizer);
+    if (token.type != CLOSE_BRACKET) {
+        deallocate(bone_name);
+        return mesh_parse_error(error, "Expected close bracket for bone block.");
+    }
+
+    bone->name = bone_name;
+    bone->parent_index = parent_index;
+    bone->model_to_bone_matrix = transpose(inverse_bind);
+
+    return true;
+}
+
+bool32 Mesh_Loader::parse_skeleton(Tokenizer *tokenizer, Mesh *mesh, char **error) {
+    // parse skeleton_info block
+    Token token = get_token(tokenizer);
+    if ((token.type == LABEL && string_equals(token.string, "skeleton"))) {
+        return mesh_parse_error(error, "Expected skeleton block.");
+    }
+
+    token = get_token(tokenizer);
+    if (token.type != OPEN_BRACKET) {
+        return mesh_parse_error(error, "Expected open bracket skeleton block.");
+    }
+
+    token = get_token(tokenizer);
+    if (!(token.type == LABEL && string_equals(token.string, "num_bones"))) {
+        return mesh_parse_error(error, "Expected num_bones label.");
+    }
+
+    Skeleton skeleton = {};
+    skeleton.allocator = mesh->allocator;
+    
+    token = get_token(tokenizer);
+    if (token.type == INTEGER) {
+        if (!parse_int(tokenizer, &skeleton.num_bones, error)) {
+            return false;
+        }
+    } else {
+        return mesh_parse_error(error, "Expected integer for num_bones.");
+    }
+
+    Bone *bones = (Bone *) allocate(skeleton.allocator, sizeof(Bone) * skeleton.num_bones);
+    for (int i = 0; i < skeleton.num_bones; i++) {
+        if (!parse_bone(tokenizer, mesh, &bones[i], error)) {
+            // parse_bone already deallocates the bone itself on error, so no need to do it here
+            deallocate(skeleton.allocator, bones);
+            return false;
+        }
+    }
+
+    skeleton.bones = bones;
+
+    mesh->skeleton = (Skeleton *) allocate(mesh->allocator, sizeof(Skeleton));
+    *mesh->skeleton = skeleton;
+
+    token = get_token(tokenizer);
+    if (token.type != CLOSE_BRACKET) {
+        deallocate(mesh->skeleton);
+        deallocate(mesh->allocator, mesh->skeleton);
+        return mesh_parse_error(error, "Expected close bracket skeleton block.");
+    }
+    
+    return true;
+}
+
 bool32 Mesh_Loader::load_mesh(Allocator *allocator, File_Data file_data,
                               Mesh **mesh_result, char **error_out) {
     Tokenizer tokenizer = make_tokenizer(file_data);
@@ -595,6 +745,16 @@ bool32 Mesh_Loader::load_mesh(Allocator *allocator, File_Data file_data,
     // parse triangle data
     for (uint32 i = 0; i < mesh.num_triangles; i++) {
         result = parse_triangle(&tokenizer, &mesh, i, error_out);
+        if (!result) {
+            deallocate(mesh.allocator, mesh.data);
+            deallocate(mesh.allocator, mesh.indices);
+            return false;
+        }
+    }
+
+    // parse skeleton data if it's a skinned mesh
+    if (mesh.is_skinned) {
+        result = parse_skeleton(&tokenizer, &mesh, error_out);
         if (!result) {
             deallocate(mesh.allocator, mesh.data);
             deallocate(mesh.allocator, mesh.indices);
