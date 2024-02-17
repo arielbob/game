@@ -3423,6 +3423,9 @@ void gl_render_editor(GL_Framebuffer framebuffer,
             Mat4 *bone_matrices = NULL;
             int32 num_bones = 0;
             if (current->mesh_id == ENGINE_DEFAULT_SKINNED_CUBE_MESH_ID) {
+                Mesh *mesh = get_mesh(current->mesh_id);
+
+                #if 0
                 // bind positions
                 static Vec3 bone_positions[] = {
                     { 0.0f, -0.5f, 0.0f },
@@ -3438,7 +3441,6 @@ void gl_render_editor(GL_Framebuffer framebuffer,
                                      bone_positions[1])
                 };
 
-                // TODO: debug mesh loading in visual studio
                 Bone bones[2] = {
                     { make_string("root"), inverse(bone_to_model_matrices[0]), -1 }, // root
                     { make_string("child"), inverse(bone_to_model_matrices[1]), 0 }
@@ -3449,6 +3451,7 @@ void gl_render_editor(GL_Framebuffer framebuffer,
                     2,
                     bones
                 };
+                #endif
 
                 const int num_bone_0_frames = 4;
                 Bone_Frame bone_0_frames[num_bone_0_frames] = {
@@ -3496,7 +3499,7 @@ void gl_render_editor(GL_Framebuffer framebuffer,
 
                 Skeletal_Animation animation = {
                     NULL,
-                    &skeleton,
+                    mesh->skeleton,
                     0,
                     make_string("test_skeleton"),
                     4.0f,

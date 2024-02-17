@@ -116,16 +116,20 @@ skeleton {
     num_bones 2
 
     bone "root" {
+        ;; inverse_bind is the transform needed to get from world space to
+        ;; bone space. i.e. the inverse of the transform that makes the bone go
+        ;; from 0 to its position in bind-space.
+
         ;; inverse_bind matrix is 3x4 (3 rows, 4 columns)
         ;; the order here is from top to bottom, left to right
         inverse_bind 1.0 0.0 0.0 0.0
-                     0.0 1.0 0.0 0.0
+                     0.0 1.0 0.0 0.5
                      0.0 0.0 1.0 0.0
     }
 
     bone "child1" {
         inverse_bind 1.0 0.0 0.0 0.0
-                     0.0 1.0 0.0 -5.0
+                     0.0 1.0 0.0 0.0
                      0.0 0.0 1.0 0.0
         parent 0
     }
