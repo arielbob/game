@@ -3437,7 +3437,8 @@ void gl_render_editor(GL_Framebuffer framebuffer,
                                      make_quaternion(),
                                      bone_positions[1])
                 };
-                
+
+                // TODO: debug mesh loading in visual studio
                 Bone bones[2] = {
                     { make_string("root"), inverse(bone_to_model_matrices[0]), -1 }, // root
                     { make_string("child"), inverse(bone_to_model_matrices[1]), 0 }

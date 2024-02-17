@@ -590,7 +590,6 @@ bool32 Mesh_Loader::parse_bone(Tokenizer *tokenizer, Mesh *mesh, Bone *bone, cha
     token = get_token(tokenizer);
     if (token.type != CLOSE_BRACKET) {
         // parse parent index
-        token = get_token(tokenizer);
         if (!(token.type == LABEL && string_equals(token.string, "parent"))) {
             deallocate(bone_name);
             return mesh_parse_error(error, "Expected parent label.");
@@ -600,10 +599,12 @@ bool32 Mesh_Loader::parse_bone(Tokenizer *tokenizer, Mesh *mesh, Bone *bone, cha
             deallocate(bone_name);
             return false;
         }
+
+        // basically try and get put back in the state before this block, i.e.
+        // expecting a close bracket.
+        token = get_token(tokenizer);
     }
 
-    // done
-    token = get_token(tokenizer);
     if (token.type != CLOSE_BRACKET) {
         deallocate(bone_name);
         return mesh_parse_error(error, "Expected close bracket for bone block.");
@@ -619,7 +620,7 @@ bool32 Mesh_Loader::parse_bone(Tokenizer *tokenizer, Mesh *mesh, Bone *bone, cha
 bool32 Mesh_Loader::parse_skeleton(Tokenizer *tokenizer, Mesh *mesh, char **error) {
     // parse skeleton_info block
     Token token = get_token(tokenizer);
-    if ((token.type == LABEL && string_equals(token.string, "skeleton"))) {
+    if (!(token.type == LABEL && string_equals(token.string, "skeleton"))) {
         return mesh_parse_error(error, "Expected skeleton block.");
     }
 
@@ -635,14 +636,9 @@ bool32 Mesh_Loader::parse_skeleton(Tokenizer *tokenizer, Mesh *mesh, char **erro
 
     Skeleton skeleton = {};
     skeleton.allocator = mesh->allocator;
-    
-    token = get_token(tokenizer);
-    if (token.type == INTEGER) {
-        if (!parse_int(tokenizer, &skeleton.num_bones, error)) {
-            return false;
-        }
-    } else {
-        return mesh_parse_error(error, "Expected integer for num_bones.");
+
+    if (!parse_int(tokenizer, &skeleton.num_bones, error)) {
+        return false;
     }
 
     Bone *bones = (Bone *) allocate(skeleton.allocator, sizeof(Bone) * skeleton.num_bones);
