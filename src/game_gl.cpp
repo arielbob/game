@@ -3509,8 +3509,14 @@ void gl_render_editor(GL_Framebuffer framebuffer,
                     NULL,
                     NULL
                 };
-                
+
+                // TODO: compare test_animation to above animation
+#if 1
                 bone_matrices = get_bone_matrices(frame_arena, mesh->skeleton, &animation, current->animation_t);
+#else
+                bone_matrices = get_bone_matrices(frame_arena, mesh->skeleton, test_animation,
+                                                  current->animation_t);
+#endif
                 
                 // TODO (done): fix mesh picking not being very accurate anymore
                 // - i think a recent commit broke that

@@ -380,6 +380,11 @@ bool32 Animation_Loader::parse_animation_info(Tokenizer *tokenizer, Skeletal_Ani
         return animation_parse_error(error, "Expected animation name string.");
     }
 
+    token = get_token(tokenizer);
+    if (!check_label(&token, "duration")) {
+        return animation_parse_error(error, "Expected animation duration label.");
+    }
+    
     Allocator *allocator = animation->allocator;
     animation->name = copy(allocator, token.string);
 
@@ -387,6 +392,11 @@ bool32 Animation_Loader::parse_animation_info(Tokenizer *tokenizer, Skeletal_Ani
         return false;
     }
 
+    token = get_token(tokenizer);
+    if (!check_label(&token, "num_bones")) {
+        return animation_parse_error(error, "Expected animation num_bones label.");
+    }
+    
     if (!parse_int(tokenizer, &animation->num_bones, error)) {
         return false;
     }
@@ -406,10 +416,15 @@ bool32 Animation_Loader::parse_bone_frame(Allocator *allocator, Tokenizer *token
         return animation_parse_error(error, "Expected frame open bracket.");
     }
 
+    bool32 has_position = false;
+    bool32 has_rotation = false;
+    bool32 has_scale = false;
+
     Vec3 position = {};
     Quaternion rotation = make_quaternion();
     Vec3 scale = { 1.0f, 1.0f, 1.0f };
-    
+
+    token = get_token(tokenizer);
     if (!check_label(&token, "timestamp")) {
         return animation_parse_error(error, "Expected bone label for bone channel.");
     }
@@ -425,21 +440,32 @@ bool32 Animation_Loader::parse_bone_frame(Allocator *allocator, Tokenizer *token
                 if (!parse_vec3(tokenizer, &position, error)) {
                     return false;
                 }
+                has_position = true;
             } else if (string_equals(token.string, "rot")) {
                 if (!parse_quaternion(tokenizer, &rotation, error)) {
                     return false;
                 }
+                has_rotation = true;
             } else if (string_equals(token.string, "scale")) {
                 if (!parse_vec3(tokenizer, &scale, error)) {
                     return false;
                 }
+                has_scale = true;
             } else {
                 return animation_parse_error(error, "Unknown transform label. Should be either pos, rot, or scale.");
             }
         } else {
             return animation_parse_error(error, "Expected close bracket or label (pos, rot, scale).");
         }
+
+        token = get_token(tokenizer);
     }
+
+    // TODO: i don't think we really want to inherit the last frame if an attribute is missing
+    //       on the current frame, but we may want to make scale optional..
+    if (!has_position) return animation_parse_error(error, "A bone frame was missing position.");
+    if (!has_rotation) return animation_parse_error(error, "A bone frame was missing rotation.");
+    //if (!has_scale) return animation_parse_error(error, "A bone frame was missing scale.");
     
     frame->local_transform = make_transform(position, rotation, scale);
     return true;
@@ -473,6 +499,7 @@ bool32 Animation_Loader::parse_bone_channel(Allocator *allocator, Tokenizer *tok
         return animation_parse_error(error, "Expected frames label for bone frames.");
     }
 
+    token = get_token(tokenizer);
     if (token.type != OPEN_BRACKET) {
         return animation_parse_error(error, "Expected bone frames open bracket.");
     }
@@ -483,6 +510,7 @@ bool32 Animation_Loader::parse_bone_channel(Allocator *allocator, Tokenizer *tok
         }
     }
 
+    token = get_token(tokenizer);
     if (token.type != CLOSE_BRACKET) {
         return animation_parse_error(error, "Expected bone frames close bracket.");
     }

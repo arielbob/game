@@ -1,7 +1,7 @@
 animation_info {
     name "cube_test"
-    duration 2.0
-    num_bones 16
+    duration 4.0
+    num_bones 2
 }
 
 ;; every bone should have a channel
@@ -12,22 +12,68 @@ animation_info {
 
 bones {
     bone {
-        num_frames 2
+        num_frames 4
         frames {
             {
                 timestamp 0.0
-                pos 0.0 0.0 0.0 (x, y, z)
-                rot 1.0 0.0 0.0 0.0 (w, x, y, z)
-                scale 1.0 1.0 1.0 (x, y, z)
+                pos 0.0 -0.5 0.0
+                rot 1.0 0.0 0.0 0.0 ;; (w, x, y, z)
             }
             {
                 timestamp 1.0
-                ;; maybe we can have these be optional?
-                ;; if a specific transform type is missing, then we just inherit from last frame.
-                ;; if there's no last frame? idk, maybe we should just always have every transform available
-                pos
-                rot
-                scale
+                pos 0.0 -0.5 0.0
+                rot 0.707106769 0 0.707106769 0
+            }
+            {
+            timestamp 2.0
+            pos 0.0 -0.5 0.0
+            rot 0 0 1 0
+            }
+            {
+            timestamp 3.0
+            pos 0.0 -0.5 0.0
+            rot -0.707106769 0 0.707106769 0
+            }
+        }
+    }
+
+    bone {
+        num_frames 6
+        frames {
+            {
+            timestamp 0.00000000
+            pos 0 0.5 0
+            rot 0.923879504 -0.382683456 0 0
+            }
+            
+            {
+            timestamp 0.666666687
+            pos 0 0.5 0
+            rot 0.923879504 0.382683456 0 0
+            }
+
+            {
+            timestamp 1.33333337
+            pos 0 0.5 0
+            rot 0.923879504 -0.382683456 0 0
+            }
+
+            {
+            timestamp 2.00000000
+            pos 0 0.5 0
+            rot 0.923879504 0.382683456 0 0
+            }
+
+            {
+            timestamp 2.66666675
+            pos 0 0.5 0
+            rot 0.923879504 -0.382683456 0 0
+            }
+
+            {
+            timestamp 3.33333349
+            pos 0 0.5 0
+            rot 0.923879504 0.382683456 0 0
             }
         }
     }

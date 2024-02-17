@@ -1508,12 +1508,28 @@ void draw_ui(real32 dt) {
     ui_pop_widget();
 }
 
+static Skeletal_Animation *test_animation;
+
 void update(Controller_State *controller_state,
             Sound_Output *sound_output, uint32 num_samples) {
     Display_Output *display_output = &game_state->render_state.display_output;
     if (!game_state->is_initted) {
         debug_print("initting game %d!\n", 123);
         init_game(sound_output, num_samples);
+
+        Allocator *temp_region = begin_region();
+
+        char *error = NULL;
+        File_Data file_data = platform_open_and_read_file(temp_region, "src/animations/test.animation");
+        bool32 result = Animation_Loader::load_animation(asset_manager->allocator,
+                                                         file_data, &test_animation, &error);
+
+        if (!result) {
+            debug_print(error);
+            assert(!"Animation loading failed!");
+        }
+        
+        end_region(temp_region);
     }
 
     real64 current_time = platform_get_wall_clock_time();
