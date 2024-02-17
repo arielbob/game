@@ -3425,7 +3425,7 @@ void gl_render_editor(GL_Framebuffer framebuffer,
             if (current->mesh_id == ENGINE_DEFAULT_SKINNED_CUBE_MESH_ID) {
                 Mesh *mesh = get_mesh(current->mesh_id);
 
-                #if 0
+#if 0
                 // bind positions
                 static Vec3 bone_positions[] = {
                     { 0.0f, -0.5f, 0.0f },
@@ -3451,8 +3451,9 @@ void gl_render_editor(GL_Framebuffer framebuffer,
                     2,
                     bones
                 };
-                #endif
+#endif
 
+#if 0
                 const int num_bone_0_frames = 4;
                 Bone_Frame bone_0_frames[num_bone_0_frames] = {
                     { 0.0f, make_transform({ 0.0f, -0.5f, 0.0f },
@@ -3511,49 +3512,56 @@ void gl_render_editor(GL_Framebuffer framebuffer,
                 };
 
                 // TODO: compare test_animation to above animation
-#if 1
-                bone_matrices = get_bone_matrices(frame_arena, mesh->skeleton, &animation, current->animation_t);
-#else
-                bone_matrices = get_bone_matrices(frame_arena, mesh->skeleton, test_animation,
-                                                  current->animation_t);
+                Skeletal_Animation *animations[2] = { &animation, test_animation };
+                for (int a = 0; a < 2; a++) {
+                    debug_print("ANIMATION %s\n\n", a == 0 ? "WORKING (animation)" : "BROKEN (test)");
+                    Skeletal_Animation *test_anim = animations[a];
+
+                    for (int i = 0; i < test_anim->num_bones; i++) {
+                        Bone_Channel *channel = &test_anim->bone_channels[i];
+                        debug_print("channel %d\n\n", i);
+                        for (int j = 0; j < channel->num_frames; j++) {
+                            debug_print("frame %d\n\n", j);
+
+                            Transform transform = channel->frames[j].local_transform;
+                            debug_print("position: %f %f %f, rotation: %f %f %f %f, scale: %f %f %f\n",
+                                        transform.position.x, transform.position.y, transform.position.z,
+                                        transform.rotation.w, transform.rotation.v.x, transform.rotation.v.y, transform.rotation.v.z,
+                                        transform.scale.x, transform.scale.y, transform.scale.z);
+                        }
+                    }
+
+                    debug_print("\n\n");
+                }
 #endif
                 
-                // TODO (done): fix mesh picking not being very accurate anymore
-                // - i think a recent commit broke that
-                // TODO (done): also fix collisions not working properly for some reason
-                // - this is probably related to first TODO
-                // - i don't think it is.. something about car.mesh is messing things up
-                // - looks like something is overwriting its data, causing it to have
-                // degenerate triangles, causing the collision code to do weird shit
-                // - just did Mesh > Clean Up > Degenerate Dissolve in Blender
-                // TODO (done): update blender script to automatically clean degenerate triangles
-                // - just use blender 3.6, i think
+                num_bones = mesh->skeleton->num_bones;
+                bone_matrices = get_bone_matrices(frame_arena, mesh->skeleton, test_animation,
+                                                  current->animation_t);
 
-                // do you really just do bone's bone->pose->model transform, then
-                // the parent's bone->pose->model transform?
-                // no, look at sketchbook.
-
+                
                 // we don't need any local transforms for the bind pose. to render the bind
                 // pose, we just render the model without a skeleton.
                 // we just need transforms for animations.
                 
-                // TODO: animation sampling
+                // TODO (done): animation sampling
                 // - TODO (done): write animation sampling, interpolation, matrix code
                 // - TODO (done): create test data and try and make skinned_cube animate
-                // - TODO: create file format
+                // - TODO (done): create file format
                 // - TODO (done): each bone can have keyframes independent from other bones
                 //   - bones should have names
                 // - TODO (nevermind): rotation, translation, scale need to be separate keyframeable channels
                 //   - it's fine if they aren't, honestly, i think
 
-                // TODO: mesh exporting with correct weights based on armature
+                // TODO (done): mesh exporting with correct weights based on armature
                 // - bone indices (of bones that influence vertices) and weights should be correct
+                // TODO (done): animation file format
 
                 // TODO: toggle viewing skinned meshes vs just bind pose in edit mode
                 // TODO: view skinned meshes in play mode
                 // - just viewing; we don't need to do collisions, since static geometry
                 // will usually not need skinning
-                // TODO: animation file format
+                
                 // TODO: animation exporting from blender
             }
             

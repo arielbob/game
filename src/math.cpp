@@ -2644,3 +2644,10 @@ inline void transform_triangle(Vec3 triangle[3], Mat4 *model_matrix) {
     }
 }
 
+void debug_print_matrix(Mat4 matrix) {
+    debug_print("%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n",
+                matrix.col1.x, matrix.col2.x, matrix.col3.x, matrix.col4.x,
+                matrix.col1.y, matrix.col2.y, matrix.col3.y, matrix.col4.y,
+                matrix.col1.z, matrix.col2.z, matrix.col3.z, matrix.col4.z,
+                matrix.col1.w, matrix.col2.w, matrix.col3.w, matrix.col4.w);
+}
