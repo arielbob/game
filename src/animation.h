@@ -30,7 +30,8 @@ struct Bone_Channel {
 
 struct Skeletal_Animation {
     Allocator *allocator;
-    Skeleton *skeleton;
+    int32 num_bones;
+    //Skeleton *skeleton;
 
     int32 id;
     String name;
@@ -41,6 +42,29 @@ struct Skeletal_Animation {
     Skeletal_Animation *table_next;
     Skeletal_Animation *table_prev;
 };
+
+Skeletal_Animation copy(Allocator *allocator, Skeletal_Animation *source) {
+    Skeletal_Animation result = *source;
+    result.allocator = allocator;
+
+    // copy name
+    result.name = copy(allocator, source->name);
+
+    // copy bone channels
+    result.bone_channels = (Bone_Channel *) allocate(allocator, sizeof(Bone_Channel) * source->num_bones);
+    memcpy(result.bone_channels, source->bone_channels, sizeof(Bone_Channel) * source->num_bones);
+
+    // copy each bone channel's frames
+    for (int32 i = 0; i < source->num_bones; i++) {
+        int32 num_frames = source->bone_channels[i].num_frames;
+        result.bone_channels[i].frames = (Bone_Frame *) allocate(allocator,
+                                                                 sizeof(Bone_Frame) * num_frames);
+        memcpy(result.bone_channels[i].frames, source->bone_channels[i].frames,
+               sizeof(Bone_Frame) * num_frames);
+    }
+
+    return result;
+}
 
 void deallocate(Skeletal_Animation *animation) {
     deallocate(animation->name);

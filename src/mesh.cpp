@@ -98,7 +98,7 @@ namespace Mesh_Loader {
 
     bool32 load_mesh(Allocator *allocator, File_Data file_data,
                      Mesh **mesh_result, char **error_out);
-    }
+}
 
 inline bool32 Mesh_Loader::mesh_parse_error(char **error_out, char *error_string) {
     *error_out = error_string;

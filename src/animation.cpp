@@ -1,15 +1,13 @@
 #include "animation.h"
 
-Mat4 *get_bone_matrices(Allocator *allocator, Skeletal_Animation *animation, real32 t) {
+Mat4 *get_bone_matrices(Allocator *allocator, Skeleton *skeleton, Skeletal_Animation *animation, real32 t) {
     // allocator should probably be the frame allocator
     assert(allocator == frame_arena);
 
     t = fmodf(t, animation->duration);
 
-    // TODO: go through each channel in the animation,
-    assert(animation->skeleton);
-    Skeleton *skeleton = animation->skeleton;
-
+    assert(skeleton->num_bones == animation->num_bones);
+    
     // it's assumed that bones/their transforms in arrays are laid out such that parents
     // always come before their children. this way, we can just iterate from start to end
     // and ensure that a bone will always have its parents transforms calculated already.
@@ -106,66 +104,454 @@ Mat4 *get_bone_matrices(Allocator *allocator, Skeletal_Animation *animation, rea
     return matrices;    
 }
 
-#if 0
-Mat4 *get_bone_matrices(Allocator *allocator, Skeletal_Animation *animation, real32 t) {
-    // allocator should probably be the frame allocator
-    assert(allocator == frame_arena);
+namespace Animation_Loader {
+    enum Token_Type {
+        END,
+        COMMENT,
+        INTEGER,
+        REAL,
+        LABEL,
+        OPEN_BRACKET,
+        CLOSE_BRACKET,
+        STRING
+    };
 
-    t = fmodf(t, animation->duration);
+    struct Token {
+        Token_Type type;
+        String string;
+    };
 
-    int32 frame_a_index = 0;
-    int32 frame_b_index = frame_a_index;
-
-    for (int32 i = 0; i < animation->num_frames; i++) {
-        Skeletal_Frame *frame = &animation->frames[i];
-        if (frame->timestamp > t) break;
-        frame_a_index = i;
-    }
-
-    frame_b_index = (frame_a_index + 1) % animation->num_frames;
-
-    // interpolate between frames
-    Skeletal_Frame *frame_a = &animation->frames[frame_a_index];
-    Skeletal_Frame *frame_b = &animation->frames[frame_b_index];
-
-    // we assume that the first frame's timestamp is 0
-    real32 start_t = frame_a->timestamp;
-    real32 end_t = frame_b->timestamp;
-    if (frame_b_index < frame_a_index) {
-        end_t += animation->duration;
-    }
-    real32 frame_t = (t - start_t) / (end_t - start_t);
-
-    // the final transforms array will be size of:
-    // num_bones * Mat4
-
-    Mat4 *matrices = (Mat4 *) allocate(allocator, animation->num_bones * sizeof(Mat4));
+    Token get_token(Tokenizer *tokenizer);
+    Token make_token(Token_Type type, char *contents, int32 length);
+    bool32 token_text_equals(Token token, char *str);
+    bool32 animation_parse_error(char **error_out, char *error_string);
+    bool32 check_label(Token *token, char *name);
     
-    // each frame has the transforms for every single bone in the skeleton!
-    #if 0
-    for (int32 i = 0; i < animation->num_bones; i++) {
-        Transform *bone_transform_a = &frame_a->bone_pose_model_transforms[i];
-        Transform *bone_transform_b = &frame_b->bone_pose_model_transforms[i];
+    bool32 parse_real(Tokenizer *tokenizer, real32 *result, char **error);
+    bool32 parse_int(Tokenizer *tokenizer, int32 *result, char **error);
+    bool32 parse_uint(Tokenizer *tokenizer, uint32 *result, char **error);
+    bool32 parse_vec2(Tokenizer *tokenizer, Vec2 *result, char **error);
+    bool32 parse_vec3(Tokenizer *tokenizer, Vec3 *result, char **error);
+    bool32 parse_vec4(Tokenizer *tokenizer, Vec4 *result, char **error);
+    bool32 parse_vec3_int32(Tokenizer *tokenizer, Vec3_int32 *result, char **error);
+    bool32 parse_vec3_uint32(Tokenizer *tokenizer, Vec3_uint32 *result, char **error);
+    bool32 parse_vec4_int32(Tokenizer *tokenizer, Vec4_int32 *result, char **error);
+    bool32 parse_vec4_uint32(Tokenizer *tokenizer, Vec4_uint32 *result, char **error);
+    bool32 parse_quaternion(Tokenizer *tokenizer, Quaternion *result, char **error);
 
-        // interpolate the bone transforms
-        Transform interpolated_transform;
-        interpolated_transform.position = lerp(bone_transform_a->position,
-                                               bone_transform_b->position,
-                                               t);
-        interpolated_transform.rotation = slerp(bone_transform_a->rotation,
-                                                bone_transform_b->rotation,
-                                                t);
+    bool32 parse_animation_info(Tokenizer *tokenizer, Skeletal_Animation *animation, char **error);
+    bool32 parse_bone_frame(Allocator *allocator, Tokenizer *tokenizer,
+                            Bone_Frame *frame, char **error);
+    bool32 parse_bone_channel(Allocator *allocator, Tokenizer *tokenizer,
+                              Bone_Channel *bone_channel, char **error);
+    bool32 parse_bones(Tokenizer *tokenizer, Skeletal_Animation *animation, char **error);
 
-        // this may not be necessary, and scale can just be assumed to always be 1
-        interpolated_transform.scale = lerp(bone_transform_a->scale,
-                                            bone_transform_b->scale,
-                                            t);
-
-        Mat4 model_to_bone = animation->model_to_bone_matrices[i];
-        matrices[i] = get_model_matrix(interpolated_transform) * model_to_bone;
-    }
-    #endif
-
-    return matrices;
+    bool32 load_animation(Allocator *allocator, File_Data file_data,
+                          Skeletal_Animation **animation_result, char **error_out);
 }
-#endif
+
+inline Animation_Loader::Token Animation_Loader::make_token(Token_Type type, char *contents, int32 length) {
+    Token token = {
+        type,
+        make_string(contents, length)
+    };
+    return token;
+}
+
+Animation_Loader::Token Animation_Loader::get_token(Tokenizer *tokenizer) {
+    Token token = {};
+
+    do {
+        consume_leading_whitespace(tokenizer);
+
+        if (is_end(tokenizer)) {
+            return make_token(END, NULL, 0);
+        }
+    
+        char c = *tokenizer->current;
+
+        if (is_digit(c) || c == '-' || c == '.') {
+            uint32 start = tokenizer->index;
+        
+            bool32 has_period = false;
+            bool32 is_negative = false;
+            if (c == '.') {
+                has_period = true;
+            } else if (c == '-') {
+                is_negative = true;
+            }
+
+            increment_tokenizer(tokenizer);
+        
+            while (!is_end(tokenizer) &&
+                   !is_whitespace(*tokenizer->current)) {
+
+                if (!is_digit(*tokenizer->current) &&
+                    *tokenizer->current != '.') {
+                    assert(!"Expected digit or period");
+                }
+            
+                if (*tokenizer->current == '.') {
+                    if (!has_period) {
+                        has_period = true;
+                    } else {
+                        assert(!"More than one period in number");
+                    }
+                }
+
+                if (*tokenizer->current == '-') {
+                    assert(!"Negatives can only be at the start of a number");
+                }
+
+                increment_tokenizer(tokenizer);
+            }
+        
+            uint32 length = tokenizer->index - start;
+
+            Token_Type token_type;
+            if (has_period) {
+                token_type = REAL;
+            } else {
+                token_type = INTEGER;
+            }
+
+            // NOTE: we don't include the null terminator here, and just set bounds using a length member
+            token = make_token(token_type, &tokenizer->contents[start], length);
+        } else if (tokenizer->current[0] == ';' &&
+                   tokenizer->current[1] == ';') {
+            increment_tokenizer(tokenizer, 2);
+            uint32 start = tokenizer->index;
+        
+            while (!is_end(tokenizer) &&
+                   !is_line_end(tokenizer->current)) {
+                increment_tokenizer(tokenizer);
+            }
+
+            uint32 length = tokenizer->index - start;
+            token = make_token(COMMENT, &tokenizer->contents[start], length);
+        } else if (is_letter(tokenizer->current[0])) {
+            uint32 start = tokenizer->index;
+
+            increment_tokenizer(tokenizer);
+        
+            while (!is_end(tokenizer) &&
+                   !is_whitespace(tokenizer->current[0])) {
+
+                char current_char = *tokenizer->current;
+                if (!(is_letter(current_char) || current_char == '_')) {
+                    assert(!"Labels can only contain letters and underscores.");
+                }
+
+                increment_tokenizer(tokenizer);
+            }
+
+        
+            uint32 length = tokenizer->index - start;
+            token = make_token(LABEL, &tokenizer->contents[start], length);
+        } else if (*tokenizer->current == '{') {
+            int32 start = tokenizer->index;
+            increment_tokenizer(tokenizer);
+            int32 length = tokenizer->index - start;
+            token = make_token(OPEN_BRACKET, &tokenizer->contents[start], length);
+        } else if (*tokenizer->current == '}') {
+            int32 start = tokenizer->index;
+            increment_tokenizer(tokenizer);
+            int32 length = tokenizer->index - start;
+            token = make_token(CLOSE_BRACKET, &tokenizer->contents[start], length);
+        } else if (*tokenizer->current == '"') {
+            increment_tokenizer(tokenizer);
+            // set start after we increment tokenizer so that we don't include the quote in the token string.
+            int32 start = tokenizer->index;
+
+            while (!is_end(tokenizer) &&
+                   !(*tokenizer->current == '"')) {
+                increment_tokenizer(tokenizer);
+            }
+
+            if (*tokenizer->current != '"') {
+                assert(!"Expected a closing quote.");
+            } else {
+                int32 length = tokenizer->index - start;
+                increment_tokenizer(tokenizer);
+                token = make_token(STRING, &tokenizer->contents[start], length);
+            }
+        } else {
+            assert(!"Token type not recognized");
+            return {};
+        }
+    } while (token.type == COMMENT);
+
+    return token;
+}
+
+inline bool32 Animation_Loader::animation_parse_error(char **error_out, char *error_string) {
+    *error_out = error_string;
+    return false;
+}
+
+bool32 Animation_Loader::check_label(Token *token, char *name) {
+    return (token->type == LABEL) && string_equals(token->string, name);
+}
+
+bool32 Animation_Loader::parse_real(Tokenizer *tokenizer, real32 *result, char **error) {
+    Token token = get_token(tokenizer);
+    real32 num;
+    
+    if (token.type == REAL || token.type == INTEGER) {
+        bool32 parse_result = string_to_real32(token.string, &num);
+
+        if (!parse_result) {
+            return animation_parse_error(error, "Invalid number value.");
+        } else {
+            *result = num;
+            return true;
+        }
+    } else {
+        return animation_parse_error(error, "Expected number.");
+    }
+}
+
+bool32 Animation_Loader::parse_int(Tokenizer *tokenizer, int32 *result, char **error) {
+    Token token = get_token(tokenizer);
+    int32 num;
+    
+    if (token.type == INTEGER) {
+        bool32 parse_result = string_to_int32(token.string, &num);
+
+        if (!parse_result) {
+            return animation_parse_error(error, "Invalid integer value.");
+        } else {
+            *result = num;
+            return true;
+        }
+    } else {
+        return animation_parse_error(error, "Expected integer.");
+    }
+}
+
+bool32 Animation_Loader::parse_vec3(Tokenizer *tokenizer, Vec3 *result, char **error) {
+    Vec3 v;
+    
+    for (int i = 0; i < 3; i++) {
+        if (!parse_real(tokenizer, &v[i], error)) {
+            return animation_parse_error(error, "Invalid number in Vec3.");
+        }
+    }
+
+    *result = v;
+    return true;
+}
+
+bool32 Animation_Loader::parse_quaternion(Tokenizer *tokenizer, Quaternion *result, char **error) {
+    Quaternion quat;
+    
+    if (!parse_real(tokenizer, &quat.w, error)) {
+        return false;
+    }
+    
+    for (int i = 0; i < 3; i++) {
+        if (!parse_real(tokenizer, &(quat.v[i]), error)) {
+            return false;
+        }
+    }
+
+    *result = quat;
+    return true;
+}
+
+bool32 Animation_Loader::parse_animation_info(Tokenizer *tokenizer, Skeletal_Animation *animation, char **error) {
+    Token token = get_token(tokenizer);
+    if (!check_label(&token, "animation_info")) {
+        return animation_parse_error(error, "Expected animation_info label.");
+    }
+
+    token = get_token(tokenizer);
+    if (token.type != OPEN_BRACKET) {
+        return animation_parse_error(error, "Expected animation_info open bracket.");
+    }
+
+    token = get_token(tokenizer);
+    if (!check_label(&token, "name")) {
+        return animation_parse_error(error, "Expected animation name label.");
+    }
+
+    token = get_token(tokenizer);
+    if (token.type != STRING) {
+        return animation_parse_error(error, "Expected animation name string.");
+    }
+
+    Allocator *allocator = animation->allocator;
+    animation->name = copy(allocator, token.string);
+
+    if (!parse_real(tokenizer, &animation->duration, error)) {
+        return false;
+    }
+
+    if (!parse_int(tokenizer, &animation->num_bones, error)) {
+        return false;
+    }
+
+    token = get_token(tokenizer);
+    if (token.type != CLOSE_BRACKET) {
+        return animation_parse_error(error, "Expected animation_info close bracket.");
+    }
+
+    return true;
+}
+
+bool32 Animation_Loader::parse_bone_frame(Allocator *allocator, Tokenizer *tokenizer,
+                                          Bone_Frame *frame, char **error) {
+    Token token = get_token(tokenizer);
+    if (token.type != OPEN_BRACKET) {
+        return animation_parse_error(error, "Expected frame open bracket.");
+    }
+
+    Vec3 position = {};
+    Quaternion rotation = make_quaternion();
+    Vec3 scale = { 1.0f, 1.0f, 1.0f };
+    
+    if (!check_label(&token, "timestamp")) {
+        return animation_parse_error(error, "Expected bone label for bone channel.");
+    }
+
+    if (!parse_real(tokenizer, &frame->timestamp, error)) {
+        return false;
+    }
+
+    token = get_token(tokenizer);
+    while (token.type != CLOSE_BRACKET) {
+        if (token.type == LABEL) {
+            if (string_equals(token.string, "pos")) {
+                if (!parse_vec3(tokenizer, &position, error)) {
+                    return false;
+                }
+            } else if (string_equals(token.string, "rot")) {
+                if (!parse_quaternion(tokenizer, &rotation, error)) {
+                    return false;
+                }
+            } else if (string_equals(token.string, "scale")) {
+                if (!parse_vec3(tokenizer, &scale, error)) {
+                    return false;
+                }
+            } else {
+                return animation_parse_error(error, "Unknown transform label. Should be either pos, rot, or scale.");
+            }
+        } else {
+            return animation_parse_error(error, "Expected close bracket or label (pos, rot, scale).");
+        }
+    }
+    
+    frame->local_transform = make_transform(position, rotation, scale);
+    return true;
+}
+
+bool32 Animation_Loader::parse_bone_channel(Allocator *allocator, Tokenizer *tokenizer,
+                                            Bone_Channel *bone_channel, char **error) {
+    Token token = get_token(tokenizer);
+    if (!check_label(&token, "bone")) {
+        return animation_parse_error(error, "Expected bone label for bone channel.");
+    }
+
+    token = get_token(tokenizer);
+    if (token.type != OPEN_BRACKET) {
+        return animation_parse_error(error, "Expected bone open bracket.");
+    }
+
+    token = get_token(tokenizer);
+    if (!check_label(&token, "num_frames")) {
+        return animation_parse_error(error, "Expected num_frames label for bone channel.");
+    }
+
+    if (!parse_int(tokenizer, &bone_channel->num_frames, error)) {
+        return false;
+    }
+
+    // parse bone frames
+    Bone_Frame *bone_frames = (Bone_Frame *) allocate(allocator, sizeof(Bone_Frame) * bone_channel->num_frames);
+    token = get_token(tokenizer);
+    if (!check_label(&token, "frames")) {
+        return animation_parse_error(error, "Expected frames label for bone frames.");
+    }
+
+    if (token.type != OPEN_BRACKET) {
+        return animation_parse_error(error, "Expected bone frames open bracket.");
+    }
+
+    for (int32 i = 0; i < bone_channel->num_frames; i++) {
+        if (!parse_bone_frame(allocator, tokenizer, &bone_frames[i], error)) {
+            return false;
+        }
+    }
+
+    if (token.type != CLOSE_BRACKET) {
+        return animation_parse_error(error, "Expected bone frames close bracket.");
+    }
+
+    // done bone channel
+    token = get_token(tokenizer);
+    if (token.type != CLOSE_BRACKET) {
+        return animation_parse_error(error, "Expected bone close bracket.");
+    }
+
+    bone_channel->frames = bone_frames;
+
+    return true;
+}
+
+bool32 Animation_Loader::parse_bones(Tokenizer *tokenizer, Skeletal_Animation *animation, char **error) {
+    Token token = get_token(tokenizer);
+    if (!check_label(&token, "bones")) {
+        return animation_parse_error(error, "Expected bones label.");
+    }
+
+    token = get_token(tokenizer);
+    if (token.type != OPEN_BRACKET) {
+        return animation_parse_error(error, "Expected bones open bracket.");
+    }
+
+    Bone_Channel *bone_channels = (Bone_Channel *) allocate(animation->allocator,
+                                                            sizeof(Bone_Channel) * animation->num_bones);
+    for (int32 i = 0; i < animation->num_bones; i++) {
+        parse_bone_channel(animation->allocator, tokenizer, &bone_channels[i], error);
+    }
+
+    animation->bone_channels = bone_channels;
+    
+    token = get_token(tokenizer);
+    if (token.type != CLOSE_BRACKET) {
+        return animation_parse_error(error, "Expected bones close bracket.");
+    }
+
+    return true;
+}
+
+bool32 Animation_Loader::load_animation(Allocator *allocator, File_Data file_data,
+                                        Skeletal_Animation **animation_result, char **error) {
+    Tokenizer tokenizer = make_tokenizer(file_data);
+
+    // do all allocations on the temp region, so that we don't have to do annoying conditional
+    // deletions based on what we've actually allocated up to a failure point.
+    // when we fail, we just throw away the temp region. when we succeed, we just do a copy.
+    // slow? maybe. when we really want to be fast, we'll just remove all error checking and
+    // just replace the temp region with the actual allocator. easy.
+    Allocator *temp_region = begin_region();
+
+    Skeletal_Animation animation = {};
+    animation.allocator = temp_region;
+
+    if (!parse_animation_info(&tokenizer, &animation, error)) {
+        end_region(temp_region);
+        return false;
+    }
+    
+    if (!parse_bones(&tokenizer, &animation, error)) {
+        end_region(temp_region);
+        return false;
+    }
+
+    *animation_result = (Skeletal_Animation *) allocate(allocator, sizeof(Skeletal_Animation));
+    **animation_result = copy(allocator, &animation);
+
+    end_region(temp_region);
+    return true;
+}

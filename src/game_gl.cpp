@@ -3497,9 +3497,11 @@ void gl_render_editor(GL_Framebuffer framebuffer,
                     { num_bone_1_frames, bone_1_frames }
                 };
 
+                num_bones = 2;
+                
                 Skeletal_Animation animation = {
                     NULL,
-                    mesh->skeleton,
+                    num_bones,
                     0,
                     make_string("test_skeleton"),
                     4.0f,
@@ -3508,7 +3510,7 @@ void gl_render_editor(GL_Framebuffer framebuffer,
                     NULL
                 };
                 
-                bone_matrices = get_bone_matrices(frame_arena, &animation, current->animation_t);
+                bone_matrices = get_bone_matrices(frame_arena, mesh->skeleton, &animation, current->animation_t);
                 
                 // TODO (done): fix mesh picking not being very accurate anymore
                 // - i think a recent commit broke that
@@ -3533,7 +3535,7 @@ void gl_render_editor(GL_Framebuffer framebuffer,
                 // - TODO (done): write animation sampling, interpolation, matrix code
                 // - TODO (done): create test data and try and make skinned_cube animate
                 // - TODO: create file format
-                // - TODO: each bone can have keyframes independent from other bones
+                // - TODO (done): each bone can have keyframes independent from other bones
                 //   - bones should have names
                 // - TODO (nevermind): rotation, translation, scale need to be separate keyframeable channels
                 //   - it's fine if they aren't, honestly, i think
@@ -3547,8 +3549,6 @@ void gl_render_editor(GL_Framebuffer framebuffer,
                 // will usually not need skinning
                 // TODO: animation file format
                 // TODO: animation exporting from blender
-
-                num_bones = 2;
             }
             
             gl_draw_mesh(current->mesh_id, material, current->transform,
