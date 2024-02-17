@@ -674,7 +674,7 @@ UI_Dropdown_State *ui_add_dropdown_state(UI_id id) {
 
     UI_Dropdown_State *dropdown_state = &state->dropdown;
     *dropdown_state = {};
-    dropdown_state->t = 1.0f;
+    dropdown_state->t = 0.0f;
         
     _ui_add_state(state);
 
@@ -2823,6 +2823,7 @@ void set_is_open(UI_Dropdown_State *state, bool32 is_open) {
     state->t = 0;
     state->start_y_offset = state->y_offset;
     state->is_open = is_open;
+    state->is_animating = true;
 }
 
 int32 do_dropdown(UI_Dropdown_Theme theme,
@@ -2857,6 +2858,7 @@ int32 do_dropdown(UI_Dropdown_Theme theme,
         UI_Dropdown_State old_state = *state;
         state = ui_add_dropdown_state(button_id);
         state->is_open        = old_state.is_open;
+        state->is_animating   = old_state.is_animating;
         state->y_offset       = old_state.y_offset;
         state->start_y_offset = old_state.start_y_offset;
         state->t              = old_state.t;
@@ -2868,8 +2870,10 @@ int32 do_dropdown(UI_Dropdown_Theme theme,
         dropdown_height = computed_scroll_region->computed_size.y;
     }
 
-    state->t += game_state->dt;
-    
+    if (state->is_animating) {
+        state->t += game_state->dt;
+    }
+
     UI_Theme column_theme = {};
     // these are for the container, basically that holds the button and the dropdown
     column_theme.size_type = theme.size_type;
@@ -2954,18 +2958,30 @@ int32 do_dropdown(UI_Dropdown_Theme theme,
             set_is_open(state, !state->is_open);
         }
 
-        real32 transition_time = 0.9f;
+        real32 transition_time = 1.0f;
         // state->t is just the linear percentage we've made it through the transition_time
-        state->t = min(state->t / transition_time, 1.0f);
+        state->t = min(state->t, 1.0f);
         // t is what we use for the transition timing, but it's based on state->t
-        real32 t = 1.0f - (1.0f - state->t) * (1.0f - state->t);
+        real32 t = state->t / transition_time;
+        //real32 t = 1.0f - (1.0f - state->t) * (1.0f - state->t);
+
+        if (t >= 1.0f) {
+            // TODO: is this not activating?
+            // TODO: also the dropdowns are moving so slowly
+            state->is_animating = false;
+        }
 
         // we save start_y_offset and just compress the curve for that distance. instead of
         // trying to convert the position to some t value.
         if (state->is_open) {
             state->y_offset = mix(state->start_y_offset, 0.0f, t);
         } else {
-            state->y_offset = mix(state->start_y_offset, -dropdown_height, t);
+            if (state->is_animating) {
+                state->y_offset = mix(state->start_y_offset, -dropdown_height, t);
+            } else {
+                state->y_offset = -dropdown_height;
+            }
+            
         }
 
         // this container is just so that the float container doesn't get put on top of the button.
@@ -2991,7 +3007,7 @@ int32 do_dropdown(UI_Dropdown_Theme theme,
             // a 20px high item got added, so that item goes past the end and gets show inside the
             // scissor region. to see the effect if this, you can add UI_WIDGET_DRAW_BACKGROUND to
             // list_container and add a bg color to list_container_theme.
-            bool32 show_dropdown = state->y_offset > -dropdown_height;
+            bool32 show_dropdown = state->is_animating;
 
             // note that we put UI_WIDGET_HIDE on this one and not the one above because
             // UI_WIDGET_FORCE_TO_TOP_OF_LAYER will force it up the tree and UI_WIDGET_HIDE

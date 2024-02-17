@@ -1522,7 +1522,9 @@ void update(Controller_State *controller_state,
         char *error = NULL;
         File_Data file_data = platform_open_and_read_file(temp_region, "src/animations/test.animation");
         bool32 result = Animation_Loader::load_animation(asset_manager->allocator,
-                                                         file_data, &test_animation, &error);
+                                                         make_string("test_animation"),
+                                                         make_string("src/animations/test.animation"),
+                                                         &test_animation, &error);
 
         if (!result) {
             debug_print(error);

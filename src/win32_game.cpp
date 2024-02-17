@@ -58,6 +58,7 @@ global_variable Render_State *render_state;
 #include "render.cpp"
 #include "render_queue.cpp"
 #include "font.cpp"
+#include "animation.cpp"
 #include "asset.cpp"
 #include "ui.cpp"
 #include "ui_render2.cpp"
@@ -72,7 +73,6 @@ global_variable Render_State *render_state;
 #include "collision_debugger.cpp"
 #include "editor.cpp"
 //#include "tree-test.cpp"
-#include "animation.cpp"
 #include "game.cpp"
 
 global_variable int64 perf_counter_frequency;

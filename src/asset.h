@@ -208,7 +208,7 @@ struct Asset_Manager {
     int32     total_materials_added_ever;
 
     Skeletal_Animation *animation_table[NUM_ANIMATION_BUCKETS];
-    int32 total_animations_ever;
+    int32 total_animations_added_ever;
     
     Font      *font_table[NUM_FONT_BUCKETS];
     Font_File *font_file_table[NUM_FONT_FILE_BUCKETS]; // for caching font files

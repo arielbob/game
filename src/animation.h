@@ -35,6 +35,7 @@ struct Skeletal_Animation {
 
     int32 id;
     String name;
+    String filename;
     
     real32 duration;
     Bone_Channel *bone_channels; // skeleton->num_bones channels
@@ -47,8 +48,9 @@ Skeletal_Animation copy(Allocator *allocator, Skeletal_Animation *source) {
     Skeletal_Animation result = *source;
     result.allocator = allocator;
 
-    // copy name
+    // copy strings
     result.name = copy(allocator, source->name);
+    result.filename = copy(allocator, source->filename);
 
     // copy bone channels
     result.bone_channels = (Bone_Channel *) allocate(allocator, sizeof(Bone_Channel) * source->num_bones);
@@ -67,6 +69,7 @@ Skeletal_Animation copy(Allocator *allocator, Skeletal_Animation *source) {
 }
 
 void deallocate(Skeletal_Animation *animation) {
+    assert(!"implement");
     deallocate(animation->name);
 }
 

@@ -146,8 +146,8 @@ namespace Animation_Loader {
                               Bone_Channel *bone_channel, char **error);
     bool32 parse_bones(Tokenizer *tokenizer, Skeletal_Animation *animation, char **error);
 
-    bool32 load_animation(Allocator *allocator, File_Data file_data,
-                          Skeletal_Animation **animation_result, char **error_out);
+    bool32 load_animation(Allocator *allocator, String name, String filename,
+                                            Skeletal_Animation **animation_result, char **error);
 }
 
 inline Animation_Loader::Token Animation_Loader::make_token(Token_Type type, char *contents, int32 length) {
@@ -553,10 +553,8 @@ bool32 Animation_Loader::parse_bones(Tokenizer *tokenizer, Skeletal_Animation *a
     return true;
 }
 
-bool32 Animation_Loader::load_animation(Allocator *allocator, File_Data file_data,
+bool32 Animation_Loader::load_animation(Allocator *allocator, String name, String filename,
                                         Skeletal_Animation **animation_result, char **error) {
-    Tokenizer tokenizer = make_tokenizer(file_data);
-
     // do all allocations on the temp region, so that we don't have to do annoying conditional
     // deletions based on what we've actually allocated up to a failure point.
     // when we fail, we just throw away the temp region. when we succeed, we just do a copy.
@@ -564,6 +562,9 @@ bool32 Animation_Loader::load_animation(Allocator *allocator, File_Data file_dat
     // just replace the temp region with the actual allocator. easy.
     Allocator *temp_region = begin_region();
 
+    File_Data file_data = platform_open_and_read_file(temp_region, filename);
+    Tokenizer tokenizer = make_tokenizer(file_data);
+    
     Skeletal_Animation animation = {};
     animation.allocator = temp_region;
 
@@ -577,6 +578,9 @@ bool32 Animation_Loader::load_animation(Allocator *allocator, File_Data file_dat
         return false;
     }
 
+    animation.name = name;
+    animation.filename = filename;
+    
     *animation_result = (Skeletal_Animation *) allocate(allocator, sizeof(Skeletal_Animation));
     **animation_result = copy(allocator, &animation);
 

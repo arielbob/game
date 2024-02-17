@@ -208,19 +208,24 @@ bool32 animation_exists(String name) {
     return animation != NULL;
 }
 
-#if 0
+#if 1
 Skeletal_Animation *add_animation(String name, String filename, int32 id = -1) {
     if (animation_exists(name)) {
         assert(!"Animation with name already exists.");
         return NULL;
     }
 
+    Allocator *allocator = asset_manager->allocator;
     Skeletal_Animation *animation;
+    char *error;
+
     // note that this should be called before we set animation->id, or else we would overwrite
     // the animation->id value with 0
-    bool32 result = load_animation(asset_manager->allocator, &animation, name, filename);
+    bool32 result = Animation_Loader::load_animation(allocator, name, filename, &animation, &error);
     if (!result) {
-        assert(!"Animation loading failed.");
+        debug_print(error);
+        add_message(Context::message_manager, make_string(error));
+
         return NULL;
     }
 
@@ -244,9 +249,6 @@ Skeletal_Animation *add_animation(String name, String filename, int32 id = -1) {
         current->table_prev = animation;
     }
     asset_manager->animation_table[hash] = animation;
-
-    // TODO: we don't need anything like this right?
-    //r_load_animation(animation->id);
     
     return animation;
 }

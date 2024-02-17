@@ -358,6 +358,7 @@ struct UI_Text_Field_Slider_Result {
 
 struct UI_Dropdown_State {
     bool32 is_open;
+    bool32 is_animating;
     real32 y_offset;
     real32 start_y_offset;
     real32 t;
