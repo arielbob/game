@@ -2675,6 +2675,11 @@ UI_Color_Picker_Result do_color_picker(Vec3 color,
     return result;
 }
 
+// TODO: different scrollable_region for when we know the height beforehand
+// - like push_precomputed_scrollable_region
+// - takes in a UI_Widget for the child region, but also takes in its dimensions
+//   that we precalculate, i.e. we know that the UI will be laid out in a certain way
+//   - we could provide to parents something.. actually, that seems way too complicated, idk
 void push_scrollable_region(UI_Scrollable_Region_Theme theme,
                             String id_string,
                             real32 max_height = -1.0f,
