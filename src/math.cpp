@@ -1139,6 +1139,10 @@ Vec3 lerp(Vec3 a, Vec3 b, real32 t) {
     return a + (b - a)*t;
 }
 
+real32 lerp(real32 a, real32 b, real32 t) {
+    return a + (b - a)*t;
+}
+
 inline Quaternion inverse(Quaternion q) {
     // we assume we're using a rotation quaternion (i.e. q.v is a unit vector, and thus magnitude(q) = 1)
     assert(fabsf(magnitude(q) - 1.0f) < EPSILON);

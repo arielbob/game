@@ -1697,6 +1697,18 @@ void do_y_centered_text(char *text) {
     ui_pop_widget();
 }
 
+void do_debug_text(char *text, Vec2 pos) {
+    ui_push_existing_widget(ui_manager->always_on_top_layer);
+    {
+        UI_Theme theme = NULL_THEME;
+        theme.text_color = { 1.0f, 1.0f, 1.0f, 1.0f };
+        theme.semantic_position = pos;
+    
+        do_text(text, "", theme);
+    }
+    ui_pop_widget();
+}
+
 bool32 do_button(UI_id id, UI_Theme theme) {
     UI_Widget *widget = ui_add_widget(id, theme, UI_WIDGET_DRAW_BACKGROUND | UI_WIDGET_IS_CLICKABLE);
     UI_Interact_Result interact_result = ui_interact(widget);
@@ -2820,10 +2832,12 @@ void push_scrollable_region(UI_Scrollable_Region_Theme theme,
 }
 
 void set_is_open(UI_Dropdown_State *state, bool32 is_open) {
-    state->t = 0;
-    state->start_y_offset = state->y_offset;
-    state->is_open = is_open;
-    state->is_animating = true;
+    if (state->is_open != is_open) {
+        state->t = 0;
+        state->start_y_offset = state->y_offset;
+        state->is_open = is_open;
+        state->is_animating = true;
+    }
 }
 
 int32 do_dropdown(UI_Dropdown_Theme theme,
@@ -2958,30 +2972,27 @@ int32 do_dropdown(UI_Dropdown_Theme theme,
             set_is_open(state, !state->is_open);
         }
 
-        real32 transition_time = 1.0f;
+        // TODO: honestly, i like the instant transition..
+        real32 transition_time = 0.0f;//0.2f;
         // state->t is just the linear percentage we've made it through the transition_time
-        state->t = min(state->t, 1.0f);
+        state->t = min(state->t / transition_time, 1.0f);
         // t is what we use for the transition timing, but it's based on state->t
-        real32 t = state->t / transition_time;
-        //real32 t = 1.0f - (1.0f - state->t) * (1.0f - state->t);
+        real32 t = 1.0f - (1.0f - state->t) * (1.0f - state->t);
 
         if (t >= 1.0f) {
-            // TODO: is this not activating?
-            // TODO: also the dropdowns are moving so slowly
             state->is_animating = false;
         }
 
         // we save start_y_offset and just compress the curve for that distance. instead of
         // trying to convert the position to some t value.
         if (state->is_open) {
-            state->y_offset = mix(state->start_y_offset, 0.0f, t);
+            state->y_offset = lerp(state->start_y_offset, 0.0f, t);
         } else {
             if (state->is_animating) {
-                state->y_offset = mix(state->start_y_offset, -dropdown_height, t);
+                state->y_offset = lerp(state->start_y_offset, -dropdown_height, t);
             } else {
                 state->y_offset = -dropdown_height;
             }
-            
         }
 
         // this container is just so that the float container doesn't get put on top of the button.
@@ -3007,7 +3018,7 @@ int32 do_dropdown(UI_Dropdown_Theme theme,
             // a 20px high item got added, so that item goes past the end and gets show inside the
             // scissor region. to see the effect if this, you can add UI_WIDGET_DRAW_BACKGROUND to
             // list_container and add a bg color to list_container_theme.
-            bool32 show_dropdown = state->is_animating;
+            bool32 show_dropdown = state->is_animating || state->is_open;
 
             // note that we put UI_WIDGET_HIDE on this one and not the one above because
             // UI_WIDGET_FORCE_TO_TOP_OF_LAYER will force it up the tree and UI_WIDGET_HIDE
