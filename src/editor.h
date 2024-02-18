@@ -17,6 +17,9 @@
 #define TEXTURE_FILE_FILTER_TITLE "Image Files (*.png; *.jpg; *.jpeg)"
 #define TEXTURE_FILE_FILTER_TYPE  "*.png;*.jpg;*.jpeg"
 
+#define ANIMATION_FILE_FILTER_TITLE "Animations (*.animation)"
+#define ANIMATION_FILE_FILTER_TYPE  "*.animation"
+
 #define SAVE_SUCCESS_MESSAGE      "Level saved!"
 #define ENTITY_DUPLICATED_MESSAGE "Entity duplicated!"
 
@@ -29,7 +32,8 @@
 enum class Asset_Library_Tab {
     MATERIALS,
     MESHES,
-    TEXTURES
+    TEXTURES,
+    ANIMATIONS
 };
 
 struct Asset_Library_State {
@@ -50,6 +54,7 @@ struct Asset_Library_State {
     int32 selected_material_id = -1;
     int32 selected_mesh_id = -1;
     int32 selected_texture_id = -1;
+    int32 selected_animation_id = -1;
 
     Asset_Library_Tab selected_tab = Asset_Library_Tab::MATERIALS;
 };

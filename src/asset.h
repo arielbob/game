@@ -103,8 +103,10 @@ void deallocate(Mesh *mesh) {
     deallocate(mesh->allocator, mesh->data);
     deallocate(mesh->allocator, mesh->indices);
 
-    deallocate(mesh->skeleton);
-    deallocate(mesh->allocator, mesh->skeleton);
+    if (mesh->skeleton) {
+        deallocate(mesh->skeleton);
+        deallocate(mesh->allocator, mesh->skeleton);
+    }
 }
 
 struct Texture {

@@ -76,10 +76,12 @@ void replace_entity_meshes(int32 mesh_id_to_replace, int32 new_mesh_id) {
     
     Entity *current = game_state->level.entities;
     while (current) {
-        if (current->flags & ENTITY_MESH) {
-            if (current->mesh_id == mesh_id_to_replace) {
-                set_mesh(current, new_mesh_id);
-            }
+        // no need to check for ENTITY_MESH here since all entities still have
+        // mesh_ids, even if they don't have that flag set. adding that check
+        // would make it so their mesh_id doesn't get deleted, so enabling that
+        // flag after would result in an invalid mesh id.
+        if (current->mesh_id == mesh_id_to_replace) {
+            set_mesh(current, new_mesh_id);
         }
 
         current = current->next;
@@ -203,6 +205,24 @@ inline Mesh *add_mesh(char *name, char *filename, Mesh_Type type, int32 id = 1) 
     return add_mesh(make_string(name), make_string(filename), type, id);
 }
 
+void set_mesh_file(int32 id, String new_filename) {
+    Mesh *mesh = get_mesh(id);
+    assert(mesh);
+
+    Allocator *temp_region = begin_region();
+    String name = copy(temp_region, mesh->name);
+    Mesh_Type type = mesh->type;
+
+    // delete it, then add it back. we keep the mesh id the same because
+    // we don't want any lists to change order, i.e., it should basically
+    // appear like we're really modifying the mesh. also this allows us
+    // not to have to replace any entity meshes with a new ID
+    delete_mesh_no_replace(id);
+    add_mesh(name, new_filename, type, id);
+
+    end_region(temp_region);
+}
+
 bool32 animation_exists(String name) {
     Skeletal_Animation *animation = get_animation(name);
     return animation != NULL;
@@ -252,20 +272,62 @@ Skeletal_Animation *add_animation(String name, String filename, int32 id = -1) {
     return animation;
 }
 
-void set_mesh_file(int32 id, String new_filename) {
-    Mesh *mesh = get_mesh(id);
-    assert(mesh);
+// remove animations from entities that have animation_id_to_remove
+void remove_entity_animations(int32 animation_id_to_remove) {
+    Entity *current = game_state->level.entities;
+    while (current) {
+        if (current->animation_id == animation_id_to_remove) {
+            set_animation(current, NULL);
+        }
+
+        current = current->next;
+    }
+}
+
+// delete a animation without replacing entities with that animation
+void delete_animation_no_replace(int32 id) {
+    Skeletal_Animation *animation = get_animation(id);
+
+    if (!animation) {
+        assert(!"Animation does not exist.");
+        return;
+    }
+    
+    uint32 hash = get_hash(id, NUM_ANIMATION_BUCKETS);
+    
+    if (animation->table_prev) {
+        animation->table_prev->table_next = animation->table_next;
+    } else {
+        // if we're first in list, we need to update bucket array when we delete
+        asset_manager->animation_table[hash] = animation->table_next;
+    }
+
+    if (animation->table_next) {
+        animation->table_next->table_prev = animation->table_prev;
+    }
+    
+    deallocate(animation);
+    deallocate(asset_manager->allocator, animation);
+}
+
+void delete_animation(int32 id) {
+    delete_animation_no_replace(id);
+    remove_entity_animations(id);
+}
+
+void set_animation_file(int32 id, String new_filename) {
+    Skeletal_Animation *animation = get_animation(id);
+    assert(animation);
 
     Allocator *temp_region = begin_region();
-    String name = copy(temp_region, mesh->name);
-    Mesh_Type type = mesh->type;
+    String name = copy(temp_region, animation->name);
 
-    // delete it, then add it back. we keep the mesh id the same because
+    // delete it, then add it back. we keep the animation id the same because
     // we don't want any lists to change order, i.e., it should basically
-    // appear like we're really modifying the mesh. also this allows us
-    // not to have to replace any entity meshes with a new ID
-    delete_mesh_no_replace(id);
-    add_mesh(name, new_filename, type, id);
+    // appear like we're really modifying the animation. also this allows us
+    // not to have to replace any entity animations with a new ID
+    delete_animation_no_replace(id);
+    add_animation(name, new_filename, id);
 
     end_region(temp_region);
 }
@@ -938,6 +1000,38 @@ void unload_level_textures() {
     }
 }
 
+void unload_level_animations() {
+    Skeletal_Animation **animation_table = asset_manager->animation_table;
+    
+    for (int32 i = 0; i < NUM_ANIMATION_BUCKETS; i++) {
+        Skeletal_Animation *current = animation_table[i];
+        while (current) {
+            Skeletal_Animation *next = current->table_next;
+
+            if (current->table_prev) {
+                current->table_prev->table_next = next;
+            } else {
+                // if we're first in list, we need to update bucket array when we delete
+                animation_table[i] = current->table_next;
+            }
+                
+            if (current->table_next) {
+                current->table_next->table_prev = current->table_prev;
+            }
+
+            deallocate(current);
+            deallocate(asset_manager->allocator, current);
+
+            if (current == animation_table[i]) {
+                // if it's first in the list, then we need to update animation table when we delete it
+                animation_table[i] = next;
+            }
+            
+            current = next;
+        }
+    }
+}
+
 void load_level_assets(Level_Info *level_info) {
     // we always copy strings in here; i don't think functions that take strings should copy them.
     // i think it's better to assume that functions never copy strings and the caller of those
@@ -960,6 +1054,12 @@ void load_level_assets(Level_Info *level_info) {
         Material_Info *material_info = &level_info->materials[i];
         add_material(material_info, Material_Type::LEVEL);
     }
+
+    for (int32 i = 0; i < level_info->num_animations; i++) {
+        Animation_Info *animation_info = &level_info->animations[i];
+        add_animation(animation_info->name,
+                      animation_info->filename);
+    }
 }
 
 // maybe a better word is delete, since we're just deleting the level assets from their tables
@@ -972,6 +1072,7 @@ void unload_level_assets() {
     unload_level_meshes();
     unload_level_materials();
     unload_level_textures();
+    unload_level_animations();
     
     asset_manager->gpu_should_unload_level_assets = true;
 }

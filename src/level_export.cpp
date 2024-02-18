@@ -162,6 +162,24 @@ void export_level(Level *level, char *filename) {
     }
     append_string(&working_buffer, "}\n\n");
 
+    append_string(&working_buffer, "animations {\n");
+    {
+        Skeletal_Animation **animation_table = asset_manager->animation_table;
+        for (int32 i = 0; i < NUM_ANIMATION_BUCKETS; i++) {
+            Skeletal_Animation *current = animation_table[i];
+            
+            while (current) {
+                append_string_add_quotes(&working_buffer, current->name);
+                append_string(&working_buffer, " ");
+                append_string_add_quotes(&working_buffer, current->filename);
+                append_string(&working_buffer, "\n");
+                
+                current = current->table_next;
+            }
+        }
+    }
+    append_string(&working_buffer, "}\n\n");
+    
     append_string(&working_buffer, "entities {\n");
     {
         Entity *current = level->entities;
@@ -183,6 +201,11 @@ void export_level(Level *level, char *filename) {
 
             if (current->flags & ENTITY_COLLIDER) {
                 append_string(&working_buffer, "has_collider %d\n", 1);
+            }
+
+            if (current->animation_id > -1) {
+                Skeletal_Animation *animation = get_animation(current->animation_id);
+                append_string_property(&working_buffer, "animation", animation->name);
             }
 
             if (current->flags & ENTITY_LIGHT) {

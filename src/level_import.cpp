@@ -1,37 +1,5 @@
 #include "level.h"
 
-#if 0
-bool32 mesh_name_exists(Level_Info *level_info, String mesh_name) {
-    FOR_LIST_NODES(Mesh_Info, level_info->meshes) {
-        Mesh_Info info = current_node->value;
-        if (string_equals(info.name, mesh_name)) {
-            return true;
-        }
-    }
-    return false;
-}
-
-bool32 texture_name_exists(Level_Info *level_info, String texture_name) {
-    FOR_LIST_NODES(Texture_Info, level_info->textures) {
-        Texture_Info info = current_node->value;
-        if (string_equals(info.name, texture_name)) {
-            return true;
-        }
-    }
-    return false;
-}
-
-bool32 material_name_exists(Level_Info *level_info, String material_name) {
-    FOR_LIST_NODES(Material_Info, level_info->materials) {
-        Material_Info info = current_node->value;
-        if (string_equals(info.name, material_name)) {
-            return true;
-        }
-    }
-    return false;
-}
-#endif
-
 void level_info_add_mesh(Level_Info *level_info, String mesh_name, String mesh_filename) {
     assert(level_info->num_meshes < MAX_LEVEL_INFO_ARRAY_SIZE);
     level_info->meshes[level_info->num_meshes++] = { mesh_name, mesh_filename };
@@ -45,6 +13,11 @@ void level_info_add_texture(Level_Info *level_info, String texture_name, String 
 void level_info_add_material(Level_Info *level_info, Material_Info material) {
     assert(level_info->num_materials < MAX_LEVEL_INFO_ARRAY_SIZE);
     level_info->materials[level_info->num_materials++] = material;
+}
+
+void level_info_add_animation(Level_Info *level_info, String animation_name, String animation_filename) {
+    assert(level_info->num_animations < MAX_LEVEL_INFO_ARRAY_SIZE);
+    level_info->animations[level_info->num_animations++] = { animation_name, animation_filename };
 }
 
 void level_info_add_entity(Level_Info *level_info, Entity_Info entity) {
@@ -610,6 +583,48 @@ bool32 Level_Loader::parse_materials_block(Allocator *temp_allocator, Tokenizer 
     return true;
 }
 
+bool32 Level_Loader::parse_animations_block(Allocator *temp_allocator, Tokenizer *tokenizer,
+                                            Level_Info *level_info, char **error) {
+    Token token = get_token(tokenizer);
+
+    if (!(token.type == KEYWORD && string_equals(token.string, "animations"))) {
+        return level_parse_error(error, "Expected animations keyword.");
+    }
+
+    token = get_token(tokenizer);
+    
+    if (token.type != OPEN_BRACKET) {
+        return level_parse_error(error, "Expected open bracket for animations block.");
+    }
+
+    token = get_token(tokenizer);
+
+    while (token.type == STRING) {
+        String animation_name, animation_filename;
+
+        animation_name = token.string;
+
+        token = get_token(tokenizer);
+        
+        if (token.type != STRING) {
+            return level_parse_error(error, "Expected string for animation filename.");
+        }
+
+        animation_filename = token.string;
+
+        level_info_add_animation(level_info, animation_name, animation_filename);
+
+        token = get_token(tokenizer);
+    }
+
+    if (token.type != CLOSE_BRACKET) {
+        return level_parse_error(error, "Expected close bracket or 2 strings for animation name and filename block.");
+    }
+    
+    return true;
+    
+}
+
 bool32 Level_Loader::parse_keyword(Allocator *temp_allocator, Tokenizer *tokenizer,
                                    char *token_string, char **error) {
     Token token = get_token(tokenizer);
@@ -706,6 +721,19 @@ bool32 Level_Loader::parse_entity(Allocator *temp_allocator, Tokenizer *tokenize
 
             entity_info.flags |= ENTITY_MATERIAL;
             entity_info.material_name = token.string;
+        } else if (string_equals(token.string, "animation")) {
+            token = get_token(tokenizer);
+            
+            if (token.type != STRING) {
+                return level_parse_error(error, "Expected entity animation name to be a string.");
+            }
+
+            if (token.string.length == 0) {
+                return level_parse_error(error, "Entity animation name cannot be empty.");
+            }
+
+            entity_info.has_animation = true;
+            entity_info.animation_name = token.string;
         } else if (string_equals(token.string, "light_type")) {
             token = get_token(tokenizer);
 
@@ -828,6 +856,12 @@ bool32 Level_Loader::parse_level(Allocator *temp_allocator, File_Data file_data,
 
     result = parse_materials_block(temp_allocator, &tokenizer, level_info, error_out);
     if (!result) return false;
+
+    Token peeked = peek_token(&tokenizer);
+    if ((peeked.type == KEYWORD) && string_equals(peeked.string, "animations")) {
+        result = parse_animations_block(temp_allocator, &tokenizer, level_info, error_out);
+        if (!result) return false;
+    }
     
     result = parse_entities_block(temp_allocator, &tokenizer, level_info, error_out);
     if (!result) return false;

@@ -16,6 +16,14 @@ Entity make_entity_from_info(Allocator *allocator, Entity_Info *info) {
         Material *material = get_material(info->material_name);
         result.material_id = material->id;
     }
+
+    if (info->has_animation) {
+        assert(info->flags & ENTITY_MESH);
+        // TODO: we may want to check if the animation is compatible..
+        Skeletal_Animation *animation = get_animation(info->animation_name);
+        assert(animation);
+        result.animation_id = animation->id;
+    }
     
     result.transformed_aabb = info->transformed_aabb;
 

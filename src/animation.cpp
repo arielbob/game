@@ -521,6 +521,7 @@ bool32 Animation_Loader::parse_bone_channel(Allocator *allocator, Tokenizer *tok
         return animation_parse_error(error, "Expected bone close bracket.");
     }
 
+    bone_channel->allocator = allocator;
     bone_channel->frames = bone_frames;
 
     return true;

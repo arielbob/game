@@ -1508,19 +1508,12 @@ void draw_ui(real32 dt) {
     ui_pop_widget();
 }
 
-static Skeletal_Animation *test_animation;
-
 void update(Controller_State *controller_state,
             Sound_Output *sound_output, uint32 num_samples) {
     Display_Output *display_output = &game_state->render_state.display_output;
     if (!game_state->is_initted) {
         debug_print("initting game %d!\n", 123);
         init_game(sound_output, num_samples);
-
-        char *error = NULL;
-        test_animation = add_animation(make_string("test_animation"),
-                                       make_string("src/animations/test.animation"));
-        assert(test_animation);
     }
 
     real64 current_time = platform_get_wall_clock_time();

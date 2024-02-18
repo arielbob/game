@@ -922,6 +922,240 @@ void draw_texture_library() {
     } ui_pop_widget(); // asset-library-texture-info-container
 }
 
+void draw_animation_library() {
+    using namespace Asset_Library_Themes;
+
+    Editor_State *editor_state = &game_state->editor_state;
+    Asset_Library_State *asset_library_state = &editor_state->asset_library_state;
+
+    const int32 MAX_ANIMATIONS = 256;
+    int32 animation_ids[MAX_ANIMATIONS];
+    int32 num_animations_listed = 0;
+    
+    Skeletal_Animation *selected_animation = NULL;
+        
+    ui_add_and_push_widget("asset-library-animation-list-container", list_container_theme);
+    {
+        ui_add_and_push_widget("", space_between_row_theme);
+        {
+            do_y_centered_text("Animations");
+            UI_Button_Theme add_button_theme = editor_button_theme;
+            add_button_theme.size_type.x = UI_SIZE_ABSOLUTE;
+            add_button_theme.size.x = 20.0f;
+
+            bool32 add_animation_clicked = do_text_button("+", add_button_theme, "add_animation_button");
+            if (add_animation_clicked) {
+                Allocator *temp_region = begin_region(256);
+
+                String new_animation_name;
+                bool32 gen_result = generate_asset_name(temp_region, "Animation", 256, get_remaining(temp_region),
+                                                        &new_animation_name, animation_exists);
+                assert(gen_result);
+
+                Skeletal_Animation *new_animation = add_animation(new_animation_name,
+                                                                  make_string("src/animations/test.animation"));
+                assert(new_animation);
+                asset_library_state->selected_animation_id = new_animation->id;
+
+                end_region(temp_region);
+            }
+        } ui_pop_widget();
+
+        ui_y_pad(5.0f);
+
+        UI_Scrollable_Region_Theme list_scroll_region_theme = {};
+        list_scroll_region_theme.background_color = rgb_to_vec4(0, 0, 0);
+        list_scroll_region_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
+
+        push_scrollable_region(list_scroll_region_theme,
+                               make_string("animation-list-scroll-region"));
+        ui_add_and_push_widget("asset-library-animation-list-container2", list_theme,
+                               UI_WIDGET_DRAW_BACKGROUND);
+        {
+            // don't use i for the button indices because that's for buckets and
+            // not the actual animations we've visited
+            for (int32 i = 0; i < NUM_ANIMATION_BUCKETS; i++) {
+                Skeletal_Animation *current = asset_manager->animation_table[i];
+                while (current) {
+                    assert(num_animations_listed < MAX_ANIMATIONS);
+                    animation_ids[num_animations_listed] = current->id;
+                            
+                    if (num_animations_listed == 0 && asset_library_state->selected_animation_id < 0) {
+                        // select the first one by default
+                        asset_library_state->selected_animation_id = current->id;
+                    }
+                            
+                    char *animation_name = to_char_array((Allocator *) &ui_manager->frame_arena,
+                                                    current->name);
+
+                    bool32 is_selected = current->id == asset_library_state->selected_animation_id;
+                    bool32 pressed = do_text_button(animation_name,
+                                                    is_selected ? selected_item_theme : item_theme,
+                                                    "asset-library-animation-list-item",
+                                                    num_animations_listed);
+
+                    if (pressed || is_selected) {
+                        asset_library_state->selected_animation_id = current->id;
+                        selected_animation = current;
+                    }
+
+                    num_animations_listed++;
+
+                    current = current->table_next;
+                }
+            }
+        }
+        ui_pop_widget(); // asset-library-animation-list-container
+        ui_pop_widget(); // scrollable region
+    }
+    ui_pop_widget();
+
+    ui_x_pad(5.0f);
+
+    ui_add_and_push_widget("asset-library-animation-info-container", properties_container_theme);
+    {
+
+        UI_Theme section_theme = {};
+        section_theme.layout_type = UI_LAYOUT_VERTICAL;
+        section_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };
+
+        ui_add_and_push_widget("", section_theme);
+        {
+            UI_Theme properties_header_theme = {};
+            properties_header_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
+            properties_header_theme.semantic_size = {  0.0f, editor_button_theme.size.y };
+            properties_header_theme.layout_type = UI_LAYOUT_VERTICAL;
+            ui_add_and_push_widget("", properties_header_theme); {
+                do_y_centered_text("Properties");
+            } ui_pop_widget();
+
+            if (selected_animation) {
+                ui_y_pad(5.0f);
+                {
+                    do_text("Animation Name");
+                    UI_Text_Field_Theme field_theme = editor_text_field_theme;
+                    field_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
+                    field_theme.size.x = 0.0f;
+                    UI_Text_Field_Result name_result = do_text_field(field_theme, selected_animation->name,
+                                                                     "animation_name_text_field",
+                                                                     "animation_name_text_field_text");
+
+                    if (name_result.committed) {
+                        if (!string_equals(name_result.text, selected_animation->name) && name_result.text.length > 0) {
+                            if (!animation_exists(name_result.text)) {
+                                replace_contents(&selected_animation->name, name_result.text);
+                            } else {
+                                add_message(Context::message_manager, make_string("Animation name already exists!"));
+                            }
+                        }
+                    }
+                }
+
+                ui_y_pad(5.0f);
+                
+                {
+                    do_text("Filepath");
+                    UI_Text_Field_Theme field_theme = editor_text_field_theme;
+                    field_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
+                    field_theme.size.x = 0.0f;
+
+                    ui_add_and_push_widget("", full_row_theme);
+                    {
+                        Allocator *temp_region = begin_region();
+
+                        UI_Text_Field_Result filepath_result = do_text_field(field_theme, selected_animation->filename,
+                                                                             "animation_filepath_text_field",
+                                                                             "animation_filepath_text_field_text",
+                                                                             PLATFORM_MAX_PATH - 1);
+
+                        if (filepath_result.committed) {
+                            if (filepath_result.text.length > 0) {
+                                if (platform_file_exists(filepath_result.text)) {
+                                    set_animation_file(selected_animation->id, filepath_result.text);
+                                } else {
+                                    add_message(Context::message_manager, make_string("File does not exist!"));
+                                }
+                            }
+                        }
+
+                        ui_x_pad(5.0f);
+
+                        UI_Button_Theme browse_theme = editor_button_theme;
+                        browse_theme.size_type.x = UI_SIZE_ABSOLUTE;
+                        browse_theme.size.x = 80.0f;
+
+                        bool32 browse_clicked = do_text_button("Browse", browse_theme, "animation_browse_button");
+                        if (browse_clicked) {
+                            char absolute_path[PLATFORM_MAX_PATH];
+                            if (platform_open_file_dialog(absolute_path,
+                                                          ANIMATION_FILE_FILTER_TITLE, ANIMATION_FILE_FILTER_TYPE,
+                                                          PLATFORM_MAX_PATH)) {
+
+                                char relative_path[PLATFORM_MAX_PATH];
+                                platform_get_relative_path(absolute_path, relative_path, PLATFORM_MAX_PATH);
+
+                                String relative_path_string = make_string(temp_region, relative_path);
+
+                                set_animation_file(selected_animation->id, relative_path_string);
+                            }
+                        }
+
+                        end_region(temp_region);
+                    } ui_pop_widget();
+                }
+            } // if (selected_animation)
+        } ui_pop_widget(); // section
+
+        UI_Theme footer_theme = {};
+        footer_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
+        footer_theme.layout_type = UI_LAYOUT_HORIZONTAL;
+
+        ui_add_and_push_widget("", footer_theme);
+        {
+            if (selected_animation) {
+                UI_Theme push_right = {};
+                push_right.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_ABSOLUTE };
+                ui_add_widget("", push_right);
+
+                UI_Button_Theme delete_theme = editor_button_danger_theme;
+                delete_theme.size_type.x = UI_SIZE_ABSOLUTE;
+                delete_theme.size.x = 120.0f;
+                
+                bool32 delete_pressed = do_text_button("Delete Animation", delete_theme, "delete-animation");
+
+                if (delete_pressed) {
+                    // find animation id in list
+                    int32 id_to_delete = selected_animation->id;
+
+                    for (int32 i = 0; i < num_animations_listed; i++) {
+                        if (animation_ids[i] == id_to_delete) {
+                            if (num_animations_listed >= 1) {
+                                int32 new_index;
+                                if (i == 0) {
+                                    new_index = i + 1;
+                                } else {
+                                    new_index = max(i - 1, 0);
+                                }
+                                asset_library_state->selected_animation_id = animation_ids[new_index];
+                            } else {
+                                // we're deleting the last one
+                                asset_library_state->selected_animation_id = -1;
+                            }
+
+                            break;
+                        }
+                    }
+
+                    selected_animation = get_animation(asset_library_state->selected_animation_id);
+
+                    delete_animation(id_to_delete);
+                    num_animations_listed = max(num_animations_listed--, 0);
+                }
+            }
+        } ui_pop_widget(); // footer
+    } ui_pop_widget(); // asset-library-animation-info-container
+}
+
 UI_Button_Theme get_tab_theme(Asset_Library_Tab tab) {
     using namespace Asset_Library_Themes;
     
@@ -1024,6 +1258,12 @@ void draw_asset_library() {
                                    "asset-library-textures-tab")) {
                     asset_library_state->selected_tab = Asset_Library_Tab::TEXTURES;
                 }
+                ui_x_pad(1.0f);
+                
+                if (do_text_button("Animations", get_tab_theme(Asset_Library_Tab::ANIMATIONS),
+                                   "asset-library-animations-tab")) {
+                    asset_library_state->selected_tab = Asset_Library_Tab::ANIMATIONS;
+                }
             } ui_pop_widget(); // asset-library-tab-row
 
             ui_y_pad(5.0f);
@@ -1039,6 +1279,9 @@ void draw_asset_library() {
                     } break;
                     case Asset_Library_Tab::TEXTURES: {
                         draw_texture_library();
+                    } break;
+                    case Asset_Library_Tab::ANIMATIONS: {
+                        draw_animation_library();
                     } break;
                     default: {
                         assert(!"Unhandled Asset_Library_State type!");

@@ -26,6 +26,11 @@ struct Texture_Info {
     String filename;
 };
 
+struct Animation_Info {
+    String name;
+    String filename;
+};
+
 struct Material_Info {
     // MATERIAL_FIELDS has the texture IDs, but we only use that in the actual Material struct.
     // we need these texture name strings because that's how we read them in from the level file.
@@ -41,6 +46,10 @@ struct Entity_Info {
     String material_name;
     // same for meshes
     String mesh_name;
+
+    bool32 has_animation;
+    // same for animations
+    String animation_name;
 
     ENTITY_FIELDS
 };
@@ -59,6 +68,9 @@ struct Level_Info {
     int32 num_textures;
     Texture_Info textures[MAX_LEVEL_INFO_ARRAY_SIZE];
 
+    int32 num_animations;
+    Animation_Info animations[MAX_LEVEL_INFO_ARRAY_SIZE];
+    
     int32 num_materials;
     Material_Info materials[MAX_LEVEL_INFO_ARRAY_SIZE];
 };
@@ -94,6 +106,8 @@ namespace Level_Loader {
                           Material_Info *material_info_out, char **error);
     bool32 parse_materials_block(Allocator *temp_allocator, Tokenizer *tokenizer,
                                  Level_Info *level_info, char **error);
+    bool32 parse_animations_block(Allocator *temp_allocator, Tokenizer *tokenizer,
+                                  Level_Info *level_info, char **error);
     bool32 parse_entity(Allocator *temp_allocator, Tokenizer *tokenizer,
                         Entity_Info *entity_info_out, char **error);
     bool32 parse_entities_block(Allocator *temp_allocator, Tokenizer *tokenizer,

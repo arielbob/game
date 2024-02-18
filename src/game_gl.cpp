@@ -3433,7 +3433,7 @@ void gl_render_editor(GL_Framebuffer framebuffer,
 
                     assert(mesh->skeleton);
                     num_bones = mesh->skeleton->num_bones;
-                    bone_matrices = get_bone_matrices(frame_arena, mesh->skeleton, test_animation,
+                    bone_matrices = get_bone_matrices(frame_arena, mesh->skeleton, animation,
                                                       current->animation_t);
 
                     do_skinning = true;

@@ -24,6 +24,7 @@ struct Bone_Frame {
 };
 
 struct Bone_Channel {
+    Allocator *allocator;
     int32 num_frames;
     Bone_Frame *frames;
 };
@@ -58,6 +59,8 @@ Skeletal_Animation copy(Allocator *allocator, Skeletal_Animation *source) {
 
     // copy each bone channel's frames
     for (int32 i = 0; i < source->num_bones; i++) {
+        result.bone_channels[i].allocator = allocator;
+
         int32 num_frames = source->bone_channels[i].num_frames;
         result.bone_channels[i].frames = (Bone_Frame *) allocate(allocator,
                                                                  sizeof(Bone_Frame) * num_frames);
@@ -68,13 +71,24 @@ Skeletal_Animation copy(Allocator *allocator, Skeletal_Animation *source) {
     return result;
 }
 
-void deallocate(Skeletal_Animation *animation) {
-    assert(!"implement");
-    deallocate(animation->name);
-}
-
 void deallocate(Bone *bone) {
     deallocate(bone->name);
+}
+
+void deallocate(Bone_Channel *bone_channel) {
+    // nothing to deallocate in Bone_Frame struct, just the allocation for the
+    // Bone_Frame themselves
+    deallocate(bone_channel->allocator, bone_channel->frames);
+}
+
+void deallocate(Skeletal_Animation *animation) {
+    deallocate(animation->name);
+    deallocate(animation->filename);
+
+    for (int32 i = 0; i < animation->num_bones; i++) {
+        deallocate(&animation->bone_channels[i]);
+    }
+    deallocate(animation->allocator, animation->bone_channels);
 }
 
 void deallocate(Skeleton *skeleton) {

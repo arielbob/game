@@ -93,5 +93,6 @@ void deallocate(Entity *entity) {
 
 void set_material(Entity *entity, int32 material_id);
 void set_mesh(Entity *entity, int32 id);
+void set_animation(Entity *entity, char *name);
 
 #endif
