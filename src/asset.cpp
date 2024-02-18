@@ -208,7 +208,6 @@ bool32 animation_exists(String name) {
     return animation != NULL;
 }
 
-#if 1
 Skeletal_Animation *add_animation(String name, String filename, int32 id = -1) {
     if (animation_exists(name)) {
         assert(!"Animation with name already exists.");
@@ -252,7 +251,6 @@ Skeletal_Animation *add_animation(String name, String filename, int32 id = -1) {
     
     return animation;
 }
-#endif
 
 void set_mesh_file(int32 id, String new_filename) {
     Mesh *mesh = get_mesh(id);

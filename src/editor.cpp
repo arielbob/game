@@ -1214,7 +1214,6 @@ void draw_entity_box_2(bool32 force_reset) {
                                                             selected_index,
                                                             "animation_dropdown",
                                                             force_reset);
-                #if 0
                 if (dropdown_selected_index != selected_index) {
                     selected_index = dropdown_selected_index;
                     if (dropdown_selected_index == 0) {
@@ -1225,7 +1224,6 @@ void draw_entity_box_2(bool32 force_reset) {
                     
                     editor_state->selected_entity_modified = true;
                 }
-                #endif
             }
         }
 

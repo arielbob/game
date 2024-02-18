@@ -157,3 +157,25 @@ void set_mesh(Entity *entity, char *name) {
     
     end_region(temp_region);
 }
+
+void set_animation(Entity *entity, String name) {
+    assert(entity->flags & ENTITY_MESH);
+
+    Skeletal_Animation *animation = get_animation(name);
+    assert(animation);
+
+    entity->animation_id = animation->id;
+}
+
+void set_animation(Entity *entity, char *name) {
+    if (!name) {
+        entity->animation_id = -1; // no animation
+        return;
+    }
+
+    Allocator *temp_region = begin_region();
+
+    set_animation(entity, make_string(temp_region, name));
+    
+    end_region(temp_region);
+}

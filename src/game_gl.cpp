@@ -3417,156 +3417,55 @@ void gl_render_editor(GL_Framebuffer framebuffer,
         bool32 has_collider = current->flags & ENTITY_COLLIDER;
         
         if (has_mesh && has_material) {
+            Mesh *mesh = get_mesh(current->mesh_id);
             Material *material = get_material(current->material_id);
             assert(material);
 
             Mat4 *bone_matrices = NULL;
             int32 num_bones = 0;
-            if (current->mesh_id == ENGINE_DEFAULT_SKINNED_CUBE_MESH_ID) {
-                Mesh *mesh = get_mesh(current->mesh_id);
 
-#if 0
-                // bind positions
-                static Vec3 bone_positions[] = {
-                    { 0.0f, -0.5f, 0.0f },
-                    { 0.0f, 0.0f, 0.0f }
-                };
+            bool32 do_skinning = false;
+            if (mesh->is_skinned) {
+                if (current->animation_id > -1) {
+                    
+                    Skeletal_Animation *animation = get_animation(current->animation_id);
+                    assert(animation);
 
-                Mat4 bone_to_model_matrices[] = {
-                    get_model_matrix({ 1.0f, 1.0f, 1.0f },
-                                     make_quaternion(),
-                                     bone_positions[0]),
-                    get_model_matrix({ 1.0f, 1.0f, 1.0f },
-                                     make_quaternion(),
-                                     bone_positions[1])
-                };
+                    assert(mesh->skeleton);
+                    num_bones = mesh->skeleton->num_bones;
+                    bone_matrices = get_bone_matrices(frame_arena, mesh->skeleton, test_animation,
+                                                      current->animation_t);
 
-                Bone bones[2] = {
-                    { make_string("root"), inverse(bone_to_model_matrices[0]), -1 }, // root
-                    { make_string("child"), inverse(bone_to_model_matrices[1]), 0 }
-                };
-
-                Skeleton skeleton = {
-                    NULL,
-                    2,
-                    bones
-                };
-#endif
-
-#if 0
-                const int num_bone_0_frames = 4;
-                Bone_Frame bone_0_frames[num_bone_0_frames] = {
-                    { 0.0f, make_transform({ 0.0f, -0.5f, 0.0f },
-                                           make_quaternion(0.0f, 0.0f, 0.0f),
-                                           make_vec3(1.0f, 1.0f, 1.0f)) },
-                    { 1.0f, make_transform({ 0.0f, -0.5f, 0.0f },
-                                           make_quaternion(0.0f, 0.0f, 90.0f),
-                                           make_vec3(1.0f, 1.0f, 1.0f)) },
-                    { 2.0f, make_transform({ 0.0f, -0.5f, 0.0f },
-                                           make_quaternion(0.0f, 0.0f, 180.0f),
-                                              make_vec3(1.0f, 1.0f, 1.0f)) },
-                    { 3.0f, make_transform({ 0.0f, -0.5f, 0.0f },
-                                              make_quaternion(0.0f, 0.0f, 270.0f),
-                                              make_vec3(1.0f, 1.0f, 1.0f)) },
-                };
-
-                const int num_bone_1_frames = 6;
-                real32 step = 4.0f / 6;
-                Bone_Frame bone_1_frames[num_bone_1_frames] = {
-                    { 0.0, make_transform({ 0.0f, 0.5f, 0.0f },
-                                           make_quaternion(0.0f, -45.0f, 0.0f),
-                                           make_vec3(1.0f, 1.0f, 1.0f)) },
-                    { step, make_transform({ 0.0f, 0.5f, 0.0f },
-                                           make_quaternion(0.0f, 45.0f, 0.0f),
-                                           make_vec3(1.0f, 1.0f, 1.0f)) },
-                    { step*2, make_transform({ 0.0f, 0.5f, 0.0f },
-                                           make_quaternion(0.0f, -45.0f, 0.0f),
-                                           make_vec3(1.0f, 1.0f, 1.0f)) },
-                    { step*3, make_transform({ 0.0f, 0.5f, 0.0f },
-                                           make_quaternion(0.0f, 45.0f, 0.0f),
-                                           make_vec3(1.0f, 1.0f, 1.0f)) },
-                    { step*4, make_transform({ 0.0f, 0.5f, 0.0f },
-                                           make_quaternion(0.0f, -45.0f, 0.0f),
-                                           make_vec3(1.0f, 1.0f, 1.0f)) },
-                    { step*5, make_transform({ 0.0f, 0.5f, 0.0f },
-                                           make_quaternion(0.0f, 45.0f, 0.0f),
-                                           make_vec3(1.0f, 1.0f, 1.0f)) }
-                };
-                
-                Bone_Channel bone_channels[2] = {
-                    { num_bone_0_frames, bone_0_frames },
-                    { num_bone_1_frames, bone_1_frames }
-                };
-
-                num_bones = 2;
-                
-                Skeletal_Animation animation = {
-                    NULL,
-                    num_bones,
-                    0,
-                    make_string("test_skeleton"),
-                    4.0f,
-                    bone_channels,
-                    NULL,
-                    NULL
-                };
-
-                // TODO: compare test_animation to above animation
-                Skeletal_Animation *animations[2] = { &animation, test_animation };
-                for (int a = 0; a < 2; a++) {
-                    debug_print("ANIMATION %s\n\n", a == 0 ? "WORKING (animation)" : "BROKEN (test)");
-                    Skeletal_Animation *test_anim = animations[a];
-
-                    for (int i = 0; i < test_anim->num_bones; i++) {
-                        Bone_Channel *channel = &test_anim->bone_channels[i];
-                        debug_print("channel %d\n\n", i);
-                        for (int j = 0; j < channel->num_frames; j++) {
-                            debug_print("frame %d\n\n", j);
-
-                            Transform transform = channel->frames[j].local_transform;
-                            debug_print("position: %f %f %f, rotation: %f %f %f %f, scale: %f %f %f\n",
-                                        transform.position.x, transform.position.y, transform.position.z,
-                                        transform.rotation.w, transform.rotation.v.x, transform.rotation.v.y, transform.rotation.v.z,
-                                        transform.scale.x, transform.scale.y, transform.scale.z);
-                        }
-                    }
-
-                    debug_print("\n\n");
+                    do_skinning = true;
                 }
-#endif
-                
-                num_bones = mesh->skeleton->num_bones;
-                bone_matrices = get_bone_matrices(frame_arena, mesh->skeleton, test_animation,
-                                                  current->animation_t);
-
-                
-                // we don't need any local transforms for the bind pose. to render the bind
-                // pose, we just render the model without a skeleton.
-                // we just need transforms for animations.
-                
-                // TODO (done): animation sampling
-                // - TODO (done): write animation sampling, interpolation, matrix code
-                // - TODO (done): create test data and try and make skinned_cube animate
-                // - TODO (done): create file format
-                // - TODO (done): each bone can have keyframes independent from other bones
-                //   - bones should have names
-                // - TODO (nevermind): rotation, translation, scale need to be separate keyframeable channels
-                //   - it's fine if they aren't, honestly, i think
-
-                // TODO (done): mesh exporting with correct weights based on armature
-                // - bone indices (of bones that influence vertices) and weights should be correct
-                // TODO (done): animation file format
-
-                // TODO: toggle viewing skinned meshes vs just bind pose in edit mode
-                // TODO: view skinned meshes in play mode
-                // - just viewing; we don't need to do collisions, since static geometry
-                // will usually not need skinning
-                
-                // TODO: animation exporting from blender
             }
+                
+            // we don't need any local transforms for the bind pose. to render the bind
+            // pose, we just render the model without a skeleton.
+            // we just need transforms for animations.
+                
+            // TODO (done): animation sampling
+            // - TODO (done): write animation sampling, interpolation, matrix code
+            // - TODO (done): create test data and try and make skinned_cube animate
+            // - TODO (done): create file format
+            // - TODO (done): each bone can have keyframes independent from other bones
+            //   - bones should have names
+            // - TODO (nevermind): rotation, translation, scale need to be separate keyframeable channels
+            //   - it's fine if they aren't, honestly, i think
+
+            // TODO (done): mesh exporting with correct weights based on armature
+            // - bone indices (of bones that influence vertices) and weights should be correct
+            // TODO (done): animation file format
+
+            // TODO: toggle viewing skinned meshes vs just bind pose in edit mode
+            // TODO: view skinned meshes in play mode
+            // - just viewing; we don't need to do collisions, since static geometry
+            // will usually not need skinning
+                
+            // TODO: animation exporting from blender
             
             gl_draw_mesh(current->mesh_id, material, current->transform,
-                         true, bone_matrices, num_bones);
+                         do_skinning, bone_matrices, num_bones);
         }
 
         if (editor_state->show_wireframe &&

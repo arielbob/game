@@ -2680,6 +2680,10 @@ UI_Color_Picker_Result do_color_picker(Vec3 color,
 // - takes in a UI_Widget for the child region, but also takes in its dimensions
 //   that we precalculate, i.e. we know that the UI will be laid out in a certain way
 //   - we could provide to parents something.. actually, that seems way too complicated, idk
+// TODO: actually, what we could do is just have a "force_second_pass" flag, that just
+//       forces a second pass on certain widgets. actually that doesn't really make sense.
+//       we don't run the actual do_whatever() code on UI passes. UI passes just figure out
+//       sizing and positioning by traversing the tree.
 void push_scrollable_region(UI_Scrollable_Region_Theme theme,
                             String id_string,
                             real32 max_height = -1.0f,
