@@ -91,6 +91,50 @@ def game_export(context, filename, replace_existing, is_skinned):
     bm.to_mesh(mesh_copy_data)
     bm.free()
     
+    # export skeleton data
+    # this goes at the end of the file, but we need the data before we append it 
+    skeleton_data_string = ''
+    bones = []
+    if is_skinned:
+        skeleton_data = mesh_copy.parent.data
+        
+        # we start by ordering the bones such that parents always come before
+        # their children
+        bone_stack = []
+            
+        # first, find all the bones without parents
+        for bone in skeleton_data.bones:
+            if bone.parent == None:
+                bone_stack.append(bone)
+                
+        while len(bone_stack):
+            current = bone_stack.pop()
+            bones.append(current)
+            for child in current.children:
+                bone_stack.append(child)
+        
+        skeleton_data_string += 'skeleton {\n'
+        skeleton_data_string += 'num_bones {:d}\n\n'.format(len(bones))
+        for bone in bones:
+            skeleton_data_string += 'bone "{:s} {\n".format(bone.name)'
+            skeleton_data_string += 'inverse_bind '
+            
+            # TODO: for some reason, matrix_local starts out with swapped y and z rows
+            # - matrix_local goes from bone space to model space
+            # - what the default matrix is saying that, to get to model space, make z negative,
+            #   then swap the y and z-coordinates
+            # - what this is saying is that in bone-space, y is up, and +z is out of the screen.
+            # - in model space (blender space, i guess) z is up, and -y is out of the screen.
+            # - so if you have, let's say, z=1 in bone-space, that point in model-space would be
+            #   y=-1.
+            # - in our engine, x is to the right, y is up, and +z is into the screen. so, we just
+            #   take the matrix_local and swap 2nd and 3rd rows. the 1.0 for the z is already
+            #   negative, so we don't need to do anything there.
+            
+            
+        skeleton_data_string += '}'        
+        
+    
     # we don't need to deal with the same vertex having different bone indices or weights,
     # so just loop through the object's vertices and get their bone stuff
     
