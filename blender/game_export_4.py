@@ -3,14 +3,18 @@ import bmesh
 from bpy.types import PropertyGroup
 
 class Vertex:
-    def __init__(self, co, normal, uv):
+    def __init__(self, co, normal, uv, bone_indices, bone_weights):
         self.co = co
         self.normal = normal
         self.uv = uv
+        self.bone_indices = bone_indices
+        self.bone_weights = bone_weights
     def __repr__(self):
-        return f'Vertex(co={self.co}, normal={self.normal}, uv={self.uv})\n'
+        # honestly have no clue what bone_indices and bone_weights prints here
+        return f'Vertex(co={self.co}, normal={self.normal}, uv={self.uv}, bone_indices={self.bone_indices}, bone_weights={self.bone_weights})\n'
     def __eq__(self, other):
         if isinstance(other, Vertex):
+            # TODO: pretty sure we don't need to compare bone_indices and bone_weights here?
             return ((self.co == other.co) and (self.normal == other.normal) and (self.uv == other.uv))
         else:
             return False
@@ -42,7 +46,7 @@ def apply_modifiers(obj):
 #    for m in obj.modifiers:
 #        obj.modifiers.remove(m)
 
-def game_export(context, filename, replace_existing):
+def game_export(context, filename, replace_existing, is_skinned):
     temp_output_file = None
     open_flag = ''
     
@@ -87,6 +91,40 @@ def game_export(context, filename, replace_existing):
     bm.to_mesh(mesh_copy_data)
     bm.free()
     
+    # we don't need to deal with the same vertex having different bone indices or weights,
+    # so just loop through the object's vertices and get their bone stuff
+    
+    # indexed by same index into object.data.vertices (i.e. non-duplicated vertices)
+    vertex_bone_data = []
+    if is_skinned:
+        # get object's skeleton
+        if mesh_copy.parent == None or mesh_copy.parent.type != 'ARMATURE':
+            show_message_box('Object must have an armature object as its parent', 'Error', 'ERROR')
+            return
+        
+        skeleton_data = mesh_copy.parent.data
+        bone_names = [bone.name for bone in skeleton_data.bones]
+        skeleton_bone_group_indices = [mesh_copy.vertex_groups[bone_name].index for bone_name in bone_names]
+        for v in mesh_copy_data.vertices:
+            bone_indices = []
+            bone_weights = []
+            for group in v.groups:
+                # group.group is the index into the object's vertex groups list
+                global_group_index = group.group
+                
+                # check if vertex group is a bone
+                if global_group_index in skeleton_bone_group_indices:
+                    bone_weight = group.weight
+                    if bone_weight > 0.0001:
+                        # we need the bone_index in the bone array, NOT the global vertex group index
+                        group_name = mesh_copy.vertex_groups[global_group_index].name
+                        bone_index = bone_names.index(group_name)
+                        
+                        bone_indices.append(bone_index)
+                        bone_weights.append(bone_weight)
+                        
+            vertex_bone_data.append((bone_indices, bone_weights))
+    
     #vertices_list = []
     faces_list = []
     
@@ -113,9 +151,17 @@ def game_export(context, filename, replace_existing):
             uv = mesh_copy_data.uv_layers.active.data[face_index*3 + i].uv.copy()
             vertex_uvs.append(uv)
             
+        vertex_bone_indices = []
+        vertex_bone_weights = []
+        
+        if is_skinned:
+            for index in face.vertices:
+                vertex_bone_indices.append(vertex_bone_data[index][0]);
+                vertex_bone_weights.append(vertex_bone_data[index][1]);
+            
         new_face_indices = []
         for i in range(3):
-            vertex_to_add = Vertex(vertex_positions[i], vertex_normals[i], vertex_uvs[i])
+            vertex_to_add = Vertex(vertex_positions[i], vertex_normals[i], vertex_uvs[i], vertex_bone_indices[i], vertex_bone_weights[i])
 
             # TODO: this is slow, but is very simple
             #       we could add them to a set instead, but then we would have to set the face vertex
@@ -125,6 +171,8 @@ def game_export(context, filename, replace_existing):
             
             vertex_index = vertex_indices_by_vertex.get(vertex_to_add)
             if vertex_index == None:
+                # note that these indices refer to the new indices in the final vertex list we export
+                # which includes the "duplicated" ones. this is used for the indices data in the file.
                 vertex_indices_by_vertex[vertex_to_add] = num_unique_vertices
                 vertex_index = num_unique_vertices
                 num_unique_vertices += 1
@@ -133,12 +181,13 @@ def game_export(context, filename, replace_existing):
             
         faces_list.append(new_face_indices)
 
-    vertices_list = list(vertex_indices_by_vertex.items())
+        vertices_list = list(vertex_indices_by_vertex.items())
     print(vertices_list)
     vertices_list = [entry[0] for entry in sorted(vertices_list, key=lambda x: x[1])]
     print(vertices_list)
 
-    # TODO: write data to file
+
+    temp_output_file.write('is_skinned {:d}\n\n'.format(is_skinned))
     temp_output_file.write(str(len(vertices_list)) + '\n')
     temp_output_file.write(str(len(faces_list)) + '\n\n')
     
@@ -157,6 +206,22 @@ def game_export(context, filename, replace_existing):
         
         u, v = vert.uv
         temp_output_file.write('uv {:.5f} {:.5f}\n'.format(u, v))
+        
+        if is_skinned:
+            if len(vert.bone_indices):
+                if len(vert.bone_indices) > 4:
+                    show_message_box('Each vertex can only have a maximum of 4 bones influencing it', 'Error', 'ERROR')
+                    return
+                
+                temp_output_file.write('bi')
+                for bone_index in vert.bone_indices:
+                    temp_output_file.write(' {:d}'.format(bone_index))
+                
+                temp_output_file.write('\nbw')
+                for bone_weight in vert.bone_weights:
+                    temp_output_file.write(' {:f}'.format(bone_weight))
+                    
+                temp_output_file.write('\n')
         
         temp_output_file.write('\n')
     
@@ -204,12 +269,13 @@ class GameExportOperator(bpy.types.Operator):
     def execute(self, context):
         props = context.scene.game_export_props
         print('filename: ' + props.filename)
-        game_export(context, props.filename, props.replace_existing)
+        game_export(context, props.filename, props.replace_existing, props.is_skinned)
         return {'FINISHED'}
 
 class GameExportPropertyGroup(PropertyGroup):
     filename: bpy.props.StringProperty(name="Filename")
     replace_existing: bpy.props.BoolProperty(name="Replace Existing")
+    is_skinned: bpy.props.BoolProperty(name="Enable Skinning")
 
 def show_message_box(message, title, icon='INFO'):
     def draw(self, context):
@@ -237,6 +303,8 @@ class GameExportPanel(bpy.types.Panel):
         row.prop(props, "filename", text="File name")
         row = layout.row()
         row.prop(props, "replace_existing", text="Replace Existing")
+        row = layout.row()
+        row.prop(props, "is_skinned", text="Skinned")
 
         row = layout.row()
         row.operator("object.game_export")

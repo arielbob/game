@@ -1,5 +1,4 @@
 animation_info {
-name "cube_test"
 duration 4.0
 num_bones 2
 }
@@ -62,4 +61,5 @@ rot 0.923879504 0.382683456 0 0
 }
 }
 }
+
 }

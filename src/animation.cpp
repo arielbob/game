@@ -371,16 +371,6 @@ bool32 Animation_Loader::parse_animation_info(Tokenizer *tokenizer, Skeletal_Ani
     }
 
     token = get_token(tokenizer);
-    if (!check_label(&token, "name")) {
-        return animation_parse_error(error, "Expected animation name label.");
-    }
-
-    token = get_token(tokenizer);
-    if (token.type != STRING) {
-        return animation_parse_error(error, "Expected animation name string.");
-    }
-
-    token = get_token(tokenizer);
     if (!check_label(&token, "duration")) {
         return animation_parse_error(error, "Expected animation duration label.");
     }
