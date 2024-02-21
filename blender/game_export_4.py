@@ -130,6 +130,12 @@ def game_export(context, filename, replace_existing, is_skinned):
             # - in our engine, x is to the right, y is up, and +z is into the screen. so, we just
             #   take the matrix_local and swap 2nd and 3rd rows. the 1.0 for the z is already
             #   negative, so we don't need to do anything there.
+            # - easier way of thinking about it is just that matrix_local goes from bone_space to
+            #   blender's model-space, then to convert to blender's model space, just swap y and
+            #   z-axes.
+            
+            # YOU NEED TO SAVE THE FILE BEFORE TRYING THINGS IN THE CONSOLE, OR ELSE WHAT YOU GET
+            # BACK FROM THE THINGS YOU CALL WILL BE OUTDATED!!!!!
             
             
         skeleton_data_string += '}'        
@@ -147,26 +153,41 @@ def game_export(context, filename, replace_existing, is_skinned):
             return
         
         skeleton_data = mesh_copy.parent.data
+        
+        # i think we actually want to export all the bones, even if they aren't associated with any weights.
+        # so, go through all the bone names and append the names to an array.
+        # then, for each vertex, go through all of their groups and try and find a corresponding bone.
+        # if it exists, then we append the bone index and weight.
+        # note that we export the entire skeleton, even if a bone doesn't have any vertex weights associated
+        # with it.
+        # we don't query for mesh_copy.vertex_groups[bone_name] because when a bone isn't associated with any
+        # vertex, then there is never a vertex_group assigned to that mesh for that bone.
+
+        # TODO: when we export animations, all bones in a skeleton need to have at least one frame.
+        #       i don't think it necessarily needs to be the first frame?
+        #       they all need at least one because if a bone has a parent, but that parent doesn't have any frames,
+        #       then the child will not know how to go to model-space. since the child's transform goes from bone
+        #       to parent-space, and the parent's computed transform goes from parent to world space.
+
         bone_names = [bone.name for bone in skeleton_data.bones]
-        skeleton_bone_group_indices = [mesh_copy.vertex_groups[bone_name].index for bone_name in bone_names]
+
         for v in mesh_copy_data.vertices:
             bone_indices = []
             bone_weights = []
             for group in v.groups:
                 # group.group is the index into the object's vertex groups list
+                # we need this because the group on the vertex object doesn't have the name.. we have to
+                # get the group from the mesh's vertex groups.
                 global_group_index = group.group
+                group_name = mesh_copy.vertex_groups[global_group_index].name
                 
-                # check if vertex group is a bone
-                if global_group_index in skeleton_bone_group_indices:
+                if group_name in bone_names:
                     bone_weight = group.weight
                     if bone_weight > 0.0001:
-                        # we need the bone_index in the bone array, NOT the global vertex group index
-                        group_name = mesh_copy.vertex_groups[global_group_index].name
                         bone_index = bone_names.index(group_name)
-                        
                         bone_indices.append(bone_index)
-                        bone_weights.append(bone_weight)
-                        
+                        bone_weights.append(bone_weight)    
+
             vertex_bone_data.append((bone_indices, bone_weights))
     
     #vertices_list = []
