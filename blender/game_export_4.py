@@ -137,6 +137,10 @@ def game_export(context, filename, replace_existing, is_skinned):
             # YOU NEED TO SAVE THE FILE BEFORE TRYING THINGS IN THE CONSOLE, OR ELSE WHAT YOU GET
             # BACK FROM THE THINGS YOU CALL WILL BE OUTDATED!!!!!
             
+            # TODO: figure out how to get local transforms (though this isn't really necessary
+            #       for this part - they're necessary only for animation exporting, not model
+            #       exporting, but i still would like to figure this out.. because it's weird)
+            
             
         skeleton_data_string += '}'        
         
