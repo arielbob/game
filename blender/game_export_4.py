@@ -1,5 +1,6 @@
 import bpy
 import bmesh
+from mathutils import Matrix
 from bpy.types import PropertyGroup
 
 class Vertex:
@@ -95,8 +96,13 @@ def game_export(context, filename, replace_existing, is_skinned):
     # this goes at the end of the file, but we need the data before we append it 
     skeleton_data_string = ''
     bones = []
+    bone_names = []
     if is_skinned:
         skeleton_data = mesh_copy.parent.data
+        
+        if mesh_copy.location != mesh_copy.parent.location:
+            show_message_box('Mesh origin and armature origin must match!', 'Error', 'ERROR')
+            return
         
         # we start by ordering the bones such that parents always come before
         # their children
@@ -113,10 +119,19 @@ def game_export(context, filename, replace_existing, is_skinned):
             for child in current.children:
                 bone_stack.append(child)
         
+        bone_names = [bone.name for bone in bones]
+        
         skeleton_data_string += 'skeleton {\n'
-        skeleton_data_string += 'num_bones {:d}\n\n'.format(len(bones))
+        skeleton_data_string += 'num_bones {:d}\n'.format(len(bones))
+        
+        # to swap the y and z of matrix_local to fit the game's coordinate-space
+        swap_matrix = Matrix(((1.0, 0.0, 0.0, 0.0),
+            (0.0, 0.0, 1.0, 0.0),
+            (0.0, 1.0, 0.0, 0.0),
+            (0.0, 0.0, 0.0, 1.0)))
+        
         for bone in bones:
-            skeleton_data_string += 'bone "{:s} {\n".format(bone.name)'
+            skeleton_data_string += '\nbone "{:s}" {{\n'.format(bone.name)
             skeleton_data_string += 'inverse_bind '
             
             # TODO: for some reason, matrix_local starts out with swapped y and z rows
@@ -133,7 +148,18 @@ def game_export(context, filename, replace_existing, is_skinned):
             # - easier way of thinking about it is just that matrix_local goes from bone_space to
             #   blender's model-space, then to convert to blender's model space, just swap y and
             #   z-axes.
+            swapped = swap_matrix @ bone.matrix_local
+            model_to_bone = swapped.inverted()
             
+            # don't need last row, since it's expected to just always have the homogenous 1
+            for i in range(3):
+                skeleton_data_string += '{:.5f} {:.5f} {:.5f} {:.5f}\n'.format(*model_to_bone[i]) # * is spread
+                
+            # append parent
+            if bone.parent:
+                skeleton_data_string += 'parent {:d}\n'.format(bone_names.index(bone.parent.name))
+            
+            skeleton_data_string += '}\n'
             # YOU NEED TO SAVE THE FILE BEFORE TRYING THINGS IN THE CONSOLE, OR ELSE WHAT YOU GET
             # BACK FROM THE THINGS YOU CALL WILL BE OUTDATED!!!!!
             
@@ -141,8 +167,21 @@ def game_export(context, filename, replace_existing, is_skinned):
             #       for this part - they're necessary only for animation exporting, not model
             #       exporting, but i still would like to figure this out.. because it's weird)
             
+            # should we expect the bone origin to be the same as the object origin?
+            # what are the implications if we just find the difference between them and apply
+            # that offset to the bone matrices and the transforms?
+            # it's much simpler if we just expect the animator to set the armature origin to
+            # be the same as the mesh's origin.
+            # i would assume that it's easier to work that way anyways..
+            # but, it really isn't an issue if we do calculate the offset and apply it. in the
+            # case they're the same, it'll just be 0 and nothing will happen.
+            # but in the case that the origins are different, it will be a lot nicer, since you
+            # won't have to debug why your animation is fucked up.
+            # i really don't know the implications of doing that though. i'm just not gonna
+            # bother, and maybe just show a message that the origins don't match, but they
+            # probably should.
             
-        skeleton_data_string += '}'        
+        skeleton_data_string += '}\n'        
         
     
     # we don't need to deal with the same vertex having different bone indices or weights,
@@ -172,8 +211,6 @@ def game_export(context, filename, replace_existing, is_skinned):
         #       they all need at least one because if a bone has a parent, but that parent doesn't have any frames,
         #       then the child will not know how to go to model-space. since the child's transform goes from bone
         #       to parent-space, and the parent's computed transform goes from parent to world space.
-
-        bone_names = [bone.name for bone in skeleton_data.bones]
 
         for v in mesh_copy_data.vertices:
             bone_indices = []
@@ -311,6 +348,10 @@ def game_export(context, filename, replace_existing, is_skinned):
     
     # TODO: store a mapping of object names -> file names so that we don't have to keep changing the name
     #       of the output file inside the input box
+    
+    if is_skinned:
+        temp_output_file.write('\n')
+        temp_output_file.write(skeleton_data_string)
     
     print('closing file and deleting copy of mesh\n')
     
