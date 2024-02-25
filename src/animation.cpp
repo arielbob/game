@@ -4,7 +4,8 @@ Mat4 *get_bone_matrices(Allocator *allocator, Skeleton *skeleton, Skeletal_Anima
     // allocator should probably be the frame allocator
     assert(allocator == frame_arena);
 
-    t = fmodf(t, animation->duration);
+    // TODO: we may want to actually set the entity's total_t to this modulo so that we don't overflow..
+    int current_frame_num = (int32) (t * animation->fps) % animation->frame_end;
 
     assert(skeleton->num_bones == animation->num_bones);
     
@@ -32,38 +33,40 @@ Mat4 *get_bone_matrices(Allocator *allocator, Skeleton *skeleton, Skeletal_Anima
         Bone_Channel *bone_channel = &animation->bone_channels[i];
 
         // it's assumed that an animation has at least 1 frame
-        assert(bone_channel->num_frames > 0);
+        assert(bone_channel->num_samples > 0);
         
         // find the two frames we're inbetween
         int32 frame_a_index = 0;
         int32 frame_b_index = frame_a_index;
         
-        for (int32 frame_i = 0; frame_i < bone_channel->num_frames; frame_i++) {
-            Bone_Frame *frame = &bone_channel->frames[frame_i];
-            if (frame->timestamp > t) break;
+        for (int32 sample_i = 0; sample_i < bone_channel->num_samples; sample_i++) {
+            Bone_Frame *frame = &bone_channel->samples[sample_i];
+            if (frame->frame_num > current_frame_num) break;
 
-            frame_a_index = frame_i;
+            frame_a_index = sample_i;
         }
 
-        frame_b_index = (frame_a_index + 1) % bone_channel->num_frames;
+        // don't loop to the end; if you want smooth loop, then you should author the
+        // animation such that end and last frame are the same.
+        frame_b_index = min(frame_a_index + 1, bone_channel->num_samples);
         
         // interpolate between the two frames
-        Bone_Frame *frame_a = &bone_channel->frames[frame_a_index];
-        Bone_Frame *frame_b = &bone_channel->frames[frame_b_index];
+        Bone_Frame *frame_a = &bone_channel->samples[frame_a_index];
+        Bone_Frame *frame_b = &bone_channel->samples[frame_b_index];
 
-        // we assume that the timestamp of the first frame in any animation  is 0
-        real32 start_t = frame_a->timestamp;
-        real32 end_t = frame_b->timestamp;
+        // we assume that the timestamp of the first frame in any animation is 0
+        int32 start_frame_num = frame_a->frame_num;
+        int32 end_frame_num = frame_b->frame_num;
 
-        // if we wrapped around, add the duration to make end_t come after
-        if (frame_b_index < frame_a_index) {
-            end_t += animation->duration;
+        // note that we don't actually ever get to the final sample. we only interpolate to it,
+        // unless the final sample's frame number is less than animation's frame_end.
+        real32 frame_t = 0.0;
+        // they're equal if we're past the last frame, and the last frame num < animation's
+        // frame_end. in that case, we just sample the last frame (frame_t = 0.0).
+        if (start_frame_num != end_frame_num) {
+            frame_t = (real32) (current_frame_num - start_frame_num) / (end_frame_num - start_frame_num);
         }
-        real32 frame_t = (t - start_t) / (end_t - start_t);
-        if (end_t - start_t < 0.00001f) {
-            frame_t = start_t;
-        }
-
+        
         Transform *transform_a = &frame_a->local_transform;
         Transform *transform_b = &frame_b->local_transform;
 
@@ -360,6 +363,8 @@ bool32 Animation_Loader::parse_quaternion(Tokenizer *tokenizer, Quaternion *resu
 }
 
 bool32 Animation_Loader::parse_animation_info(Tokenizer *tokenizer, Skeletal_Animation *animation, char **error) {
+    Allocator *allocator = animation->allocator;
+
     Token token = get_token(tokenizer);
     if (!check_label(&token, "animation_info")) {
         return animation_parse_error(error, "Expected animation_info label.");
@@ -370,18 +375,27 @@ bool32 Animation_Loader::parse_animation_info(Tokenizer *tokenizer, Skeletal_Ani
         return animation_parse_error(error, "Expected animation_info open bracket.");
     }
 
+    // frame_end
     token = get_token(tokenizer);
-    if (!check_label(&token, "duration")) {
-        return animation_parse_error(error, "Expected animation duration label.");
+    if (!check_label(&token, "frame_end")) {
+        return animation_parse_error(error, "Expected animation frame_end label.");
     }
     
-    Allocator *allocator = animation->allocator;
-    animation->name = copy(allocator, token.string);
-
-    if (!parse_real(tokenizer, &animation->duration, error)) {
+    if (!parse_int(tokenizer, &animation->frame_end, error)) {
         return false;
     }
 
+    // fps
+    token = get_token(tokenizer);
+    if (!check_label(&token, "fps")) {
+        return animation_parse_error(error, "Expected animation fps label.");
+    }
+    
+    if (!parse_int(tokenizer, &animation->fps, error)) {
+        return false;
+    }
+
+    // num_bones
     token = get_token(tokenizer);
     if (!check_label(&token, "num_bones")) {
         return animation_parse_error(error, "Expected animation num_bones label.");
@@ -401,9 +415,8 @@ bool32 Animation_Loader::parse_animation_info(Tokenizer *tokenizer, Skeletal_Ani
 
 bool32 Animation_Loader::parse_bone_frame(Allocator *allocator, Tokenizer *tokenizer,
                                           Bone_Frame *frame, char **error) {
-    Token token = get_token(tokenizer);
-    if (token.type != OPEN_BRACKET) {
-        return animation_parse_error(error, "Expected frame open bracket.");
+    if (!parse_int(tokenizer, &frame->frame_num, error)) {
+        return false;
     }
 
     bool32 has_position = false;
@@ -414,13 +427,9 @@ bool32 Animation_Loader::parse_bone_frame(Allocator *allocator, Tokenizer *token
     Quaternion rotation = make_quaternion();
     Vec3 scale = { 1.0f, 1.0f, 1.0f };
 
-    token = get_token(tokenizer);
-    if (!check_label(&token, "timestamp")) {
-        return animation_parse_error(error, "Expected bone label for bone channel.");
-    }
-
-    if (!parse_real(tokenizer, &frame->timestamp, error)) {
-        return false;
+    Token token = get_token(tokenizer);
+    if (token.type != OPEN_BRACKET) {
+        return animation_parse_error(error, "Expected frame open bracket.");
     }
 
     token = get_token(tokenizer);
@@ -474,27 +483,27 @@ bool32 Animation_Loader::parse_bone_channel(Allocator *allocator, Tokenizer *tok
     }
 
     token = get_token(tokenizer);
-    if (!check_label(&token, "num_frames")) {
-        return animation_parse_error(error, "Expected num_frames label for bone channel.");
+    if (!check_label(&token, "num_samples")) {
+        return animation_parse_error(error, "Expected num_samples label for bone channel.");
     }
 
-    if (!parse_int(tokenizer, &bone_channel->num_frames, error)) {
+    if (!parse_int(tokenizer, &bone_channel->num_samples, error)) {
         return false;
     }
 
     // parse bone frames
-    Bone_Frame *bone_frames = (Bone_Frame *) allocate(allocator, sizeof(Bone_Frame) * bone_channel->num_frames);
+    Bone_Frame *bone_frames = (Bone_Frame *) allocate(allocator, sizeof(Bone_Frame) * bone_channel->num_samples);
     token = get_token(tokenizer);
-    if (!check_label(&token, "frames")) {
-        return animation_parse_error(error, "Expected frames label for bone frames.");
+    if (!check_label(&token, "samples")) {
+        return animation_parse_error(error, "Expected samples label for bone samples.");
     }
 
     token = get_token(tokenizer);
     if (token.type != OPEN_BRACKET) {
-        return animation_parse_error(error, "Expected bone frames open bracket.");
+        return animation_parse_error(error, "Expected bone samples open bracket.");
     }
 
-    for (int32 i = 0; i < bone_channel->num_frames; i++) {
+    for (int32 i = 0; i < bone_channel->num_samples; i++) {
         if (!parse_bone_frame(allocator, tokenizer, &bone_frames[i], error)) {
             return false;
         }
@@ -502,7 +511,7 @@ bool32 Animation_Loader::parse_bone_channel(Allocator *allocator, Tokenizer *tok
 
     token = get_token(tokenizer);
     if (token.type != CLOSE_BRACKET) {
-        return animation_parse_error(error, "Expected bone frames close bracket.");
+        return animation_parse_error(error, "Expected bone samples close bracket. Does the bone channel's num_samples match the actual amount of samples there are?");
     }
 
     // done bone channel
@@ -512,7 +521,7 @@ bool32 Animation_Loader::parse_bone_channel(Allocator *allocator, Tokenizer *tok
     }
 
     bone_channel->allocator = allocator;
-    bone_channel->frames = bone_frames;
+    bone_channel->samples = bone_frames;
 
     return true;
 }
@@ -531,7 +540,9 @@ bool32 Animation_Loader::parse_bones(Tokenizer *tokenizer, Skeletal_Animation *a
     Bone_Channel *bone_channels = (Bone_Channel *) allocate(animation->allocator,
                                                             sizeof(Bone_Channel) * animation->num_bones);
     for (int32 i = 0; i < animation->num_bones; i++) {
-        parse_bone_channel(animation->allocator, tokenizer, &bone_channels[i], error);
+        if (!parse_bone_channel(animation->allocator, tokenizer, &bone_channels[i], error)) {
+            return false;
+        }
     }
 
     animation->bone_channels = bone_channels;

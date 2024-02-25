@@ -30,7 +30,7 @@ roughness 0.100342
 }
 
 animations {
-"test_animation" ".\src\animations\test.animation"
+;;"test_animation" ".\src\animations\test.animation"
 "test_animation2" "src/animations/test2.animation"
 }
 

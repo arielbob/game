@@ -18,15 +18,16 @@ struct Skeleton {
 
 // the terms "bone" and "joint" are used interchangeably, but they
 // both really mean joint.
+// TODO: Bone_Frame should probably be Bone_Sample..
 struct Bone_Frame {
-    real32 timestamp;
+    int32 frame_num;
     Transform local_transform; // relative to bone's parent
 };
 
 struct Bone_Channel {
     Allocator *allocator;
-    int32 num_frames;
-    Bone_Frame *frames;
+    int32 num_samples;
+    Bone_Frame *samples;
 };
 
 struct Skeletal_Animation {
@@ -38,7 +39,8 @@ struct Skeletal_Animation {
     String name;
     String filename;
     
-    real32 duration;
+    int32 frame_end;
+    int32 fps;
     Bone_Channel *bone_channels; // skeleton->num_bones channels
 
     Skeletal_Animation *table_next;
@@ -57,15 +59,15 @@ Skeletal_Animation copy(Allocator *allocator, Skeletal_Animation *source) {
     result.bone_channels = (Bone_Channel *) allocate(allocator, sizeof(Bone_Channel) * source->num_bones);
     memcpy(result.bone_channels, source->bone_channels, sizeof(Bone_Channel) * source->num_bones);
 
-    // copy each bone channel's frames
+    // copy each bone channel's samples
     for (int32 i = 0; i < source->num_bones; i++) {
         result.bone_channels[i].allocator = allocator;
 
-        int32 num_frames = source->bone_channels[i].num_frames;
-        result.bone_channels[i].frames = (Bone_Frame *) allocate(allocator,
-                                                                 sizeof(Bone_Frame) * num_frames);
-        memcpy(result.bone_channels[i].frames, source->bone_channels[i].frames,
-               sizeof(Bone_Frame) * num_frames);
+        int32 num_samples = source->bone_channels[i].num_samples;
+        result.bone_channels[i].samples = (Bone_Frame *) allocate(allocator,
+                                                                 sizeof(Bone_Frame) * num_samples);
+        memcpy(result.bone_channels[i].samples, source->bone_channels[i].samples,
+               sizeof(Bone_Frame) * num_samples);
     }
 
     return result;
@@ -78,7 +80,7 @@ void deallocate(Bone *bone) {
 void deallocate(Bone_Channel *bone_channel) {
     // nothing to deallocate in Bone_Frame struct, just the allocation for the
     // Bone_Frame themselves
-    deallocate(bone_channel->allocator, bone_channel->frames);
+    deallocate(bone_channel->allocator, bone_channel->samples);
 }
 
 void deallocate(Skeletal_Animation *animation) {

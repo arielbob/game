@@ -1,6 +1,7 @@
 animation_info {
-duration 4.0
-num_bones 2
+    frame_end 120 ;; 4 seconds
+    fps 30
+    num_bones 2
 }
 
 ;; every bone should have a channel
@@ -11,10 +12,9 @@ num_bones 2
 
 bones {
 bone {
-num_frames 1
-frames {
-{
-timestamp 0.0
+num_samples 1
+samples {
+0 {
 pos 0.0 -0.5 0.0
 rot 1.0 0.0 0.0 0.0 ;; (w, x, y, z)
 }
@@ -22,42 +22,41 @@ rot 1.0 0.0 0.0 0.0 ;; (w, x, y, z)
 }
 
 bone {
-num_frames 6
-frames {
-{
-timestamp 0.00000000
+num_samples 7
+samples {
+0 {
 pos 0 0.5 0
 rot 0.923879504 -0.382683456 0 0
 }
 
-{
-timestamp 0.666666687
+20 {
 pos 0 0.5 0
 rot 0.923879504 0.382683456 0 0
 }
 
-{
-timestamp 1.33333337
+40 {
 pos 0 0.5 0
 rot 0.923879504 -0.382683456 0 0
 }
 
-{
-timestamp 2.00000000
+60 {
 pos 0 0.5 0
 rot 0.923879504 0.382683456 0 0
 }
 
-{
-timestamp 2.66666675
+80 {
 pos 0 0.5 0
 rot 0.923879504 -0.382683456 0 0
 }
 
-{
-timestamp 3.33333349
+100 {
 pos 0 0.5 0
 rot 0.923879504 0.382683456 0 0
+}
+
+120 {
+pos 0 0.5 0
+rot 0.923879504 -0.382683456 0 0
 }
 }
 }
