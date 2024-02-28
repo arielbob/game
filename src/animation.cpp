@@ -58,8 +58,6 @@ Mat4 *get_bone_matrices(Allocator *allocator, Skeleton *skeleton, Skeletal_Anima
         int32 start_frame_num = frame_a->frame_num;
         int32 end_frame_num = frame_b->frame_num;
 
-        // note that we don't actually ever get to the final sample. we only interpolate to it,
-        // unless the final sample's frame number is less than animation's frame_end.
         real32 frame_t = 0.0;
         // they're equal if we're past the last frame, and the last frame num < animation's
         // frame_end. in that case, we just sample the last frame (frame_t = 0.0).

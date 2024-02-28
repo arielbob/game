@@ -365,6 +365,25 @@ def game_export(context, filename, replace_existing, is_skinned):
     show_message_box('Model exported succcessfully', 'Success', 'CHECKMARK')
 
 
+#class MyShortAddonProperties(bpy.types.PropertyGroup):
+#    mode_options = [
+#        ("mesh.primitive_plane_add", "Plane", '', 'MESH_PLANE', 0),
+#        ("mesh.primitive_cube_add", "Cube", '', 'MESH_CUBE', 1),
+#        ("mesh.primitive_circle_add", "Circle", '', 'MESH_CIRCLE', 2),
+#        ("mesh.primitive_uv_sphere_add", "UV Sphere", '', 'MESH_UVSPHERE', 3),
+#        ("mesh.primitive_ico_sphere_add", "Ico Sphere", '', 'MESH_ICOSPHERE', 4),
+#        ("mesh.primitive_cylinder_add", "Cylinder", '', 'MESH_CYLINDER', 5),
+#        ("mesh.primitive_cone_add", "Cone", '', 'MESH_CONE', 6),
+#        ("mesh.primitive_torus_add", "Torus", '', 'MESH_TORUS', 7)
+#    ]
+
+#    primitive = bpy.props.EnumProperty(
+#        items=mode_options,
+#        description="offers....",
+#        default="mesh.primitive_plane_add",
+#        update=execute_operator
+#    )
+
 class GameExportOperator(bpy.types.Operator):
     """Tooltip"""
     bl_idname = "object.game_export"
@@ -386,6 +405,11 @@ class GameExportPropertyGroup(PropertyGroup):
     filename: bpy.props.StringProperty(name="Filename")
     replace_existing: bpy.props.BoolProperty(name="Replace Existing")
     is_skinned: bpy.props.BoolProperty(name="Enable Skinning")
+    actions: bpy.props.EnumProperty(
+        name="",
+        description="select something",
+        items=[('op1', "cube", "")]
+    )
 
 def show_message_box(message, title, icon='INFO'):
     def draw(self, context):
@@ -418,6 +442,14 @@ class GameExportPanel(bpy.types.Panel):
 
         row = layout.row()
         row.operator("object.game_export")
+        
+        row = layout.row()
+        action_name = 'None'
+        if obj.animation_data.action:
+            action_name = obj.animation_data.action.name
+        row.label(text="Current action: " + action_name)
+        
+        # TODO: button to export action
 
 #def unregister_game_export_panel():
 #    bpy.utils.unregister_class(HelloWorldPanel)
