@@ -1,3 +1,4 @@
+import os
 import bpy
 import bmesh
 from mathutils import Matrix
@@ -57,7 +58,8 @@ def game_export(context, filename, replace_existing, is_skinned):
         open_flag = 'x'
     
     try:
-        filepath = bpy.path.abspath('//' + filename)
+        # convert relative path from blender file to absolute path
+        filepath = os.path.abspath(bpy.path.abspath('//' + filename))
         temp_output_file = open(filepath, open_flag)
     except FileExistsError:
         show_message_box('File already exists', 'Error', 'ERROR')
@@ -134,7 +136,7 @@ def game_export(context, filename, replace_existing, is_skinned):
             skeleton_data_string += '\nbone "{:s}" {{\n'.format(bone.name)
             skeleton_data_string += 'inverse_bind '
             
-            # TODO: for some reason, matrix_local starts out with swapped y and z rows
+            # TODO: for some reason, matrix_local starts out with swapped y and z rows - DONE
             # - matrix_local goes from bone space to model space
             # - what the default matrix is saying that, to get to model space, make z negative,
             #   then swap the y and z-coordinates
@@ -146,8 +148,12 @@ def game_export(context, filename, replace_existing, is_skinned):
             #   take the matrix_local and swap 2nd and 3rd rows. the 1.0 for the z is already
             #   negative, so we don't need to do anything there.
             # - easier way of thinking about it is just that matrix_local goes from bone_space to
-            #   blender's model-space, then to convert to blender's model space, just swap y and
+            #   blender's model-space, then to convert to game's model space, just swap y and
             #   z-axes.
+            
+            # so, this model_to_bone converts from game's model space to blender's bone space!!!
+            # so, if we're doing transforms in bone-space, it's expected that we're transforming
+            # in that weird swapped coordinate-system (i.e. in blender's bone-space).
             swapped = swap_matrix @ bone.matrix_local
             model_to_bone = swapped.inverted()
             
@@ -292,7 +298,6 @@ def game_export(context, filename, replace_existing, is_skinned):
     vertices_list = [entry[0] for entry in sorted(vertices_list, key=lambda x: x[1])]
     print(vertices_list)
 
-
     temp_output_file.write('is_skinned {:d}\n\n'.format(is_skinned))
     temp_output_file.write(str(len(vertices_list)) + '\n')
     temp_output_file.write(str(len(faces_list)) + '\n\n')
@@ -364,30 +369,30 @@ def game_export(context, filename, replace_existing, is_skinned):
     
     show_message_box('Model exported succcessfully', 'Success', 'CHECKMARK')
 
+def anim_export(context, filename, replace_existing):
+    temp_output_file = None
+    open_flag = ''
+    
+    if (replace_existing):
+        open_flag = 'w'
+    else:
+        open_flag = 'x'
+    
+    try:
+        # convert relative path from blender file to absolute path
+        filepath = os.path.abspath(bpy.path.abspath('//' + filename))
+        temp_output_file = open(filepath, open_flag)
+    except FileExistsError:
+        show_message_box('File already exists', 'Error', 'ERROR')
+        return
 
-#class MyShortAddonProperties(bpy.types.PropertyGroup):
-#    mode_options = [
-#        ("mesh.primitive_plane_add", "Plane", '', 'MESH_PLANE', 0),
-#        ("mesh.primitive_cube_add", "Cube", '', 'MESH_CUBE', 1),
-#        ("mesh.primitive_circle_add", "Circle", '', 'MESH_CIRCLE', 2),
-#        ("mesh.primitive_uv_sphere_add", "UV Sphere", '', 'MESH_UVSPHERE', 3),
-#        ("mesh.primitive_ico_sphere_add", "Ico Sphere", '', 'MESH_ICOSPHERE', 4),
-#        ("mesh.primitive_cylinder_add", "Cylinder", '', 'MESH_CYLINDER', 5),
-#        ("mesh.primitive_cone_add", "Cone", '', 'MESH_CONE', 6),
-#        ("mesh.primitive_torus_add", "Torus", '', 'MESH_TORUS', 7)
-#    ]
-
-#    primitive = bpy.props.EnumProperty(
-#        items=mode_options,
-#        description="offers....",
-#        default="mesh.primitive_plane_add",
-#        update=execute_operator
-#    )
+    bpy.ops.object.mode_set(mode='OBJECT')
+    active_object = context.active_object
 
 class GameExportOperator(bpy.types.Operator):
     """Tooltip"""
     bl_idname = "object.game_export"
-    bl_label = "Game Export Operator"
+    bl_label = "Export Mesh"
 
     filename: bpy.props.StringProperty(name='filename')
 
@@ -401,15 +406,34 @@ class GameExportOperator(bpy.types.Operator):
         game_export(context, props.filename, props.replace_existing, props.is_skinned)
         return {'FINISHED'}
 
+class AnimExportOperator(bpy.types.Operator):
+    """Tooltip"""
+    bl_idname = "object.anim_export"
+    bl_label = "Export Animation"
+
+    #filename: bpy.props.StringProperty(name='anim_filename')
+
+    @classmethod
+    def poll(cls, context):
+        return context.active_object is not None
+
+    def execute(self, context):
+        props = context.scene.game_export_props
+        print('anim_filename: ' + props.anim_filename)
+        anim_export(context, props.anim_filename, props.anim_replace_existing)
+        return {'FINISHED'}
+
 class GameExportPropertyGroup(PropertyGroup):
     filename: bpy.props.StringProperty(name="Filename")
     replace_existing: bpy.props.BoolProperty(name="Replace Existing")
     is_skinned: bpy.props.BoolProperty(name="Enable Skinning")
-    actions: bpy.props.EnumProperty(
-        name="",
-        description="select something",
-        items=[('op1', "cube", "")]
-    )
+    anim_filename: bpy.props.StringProperty(name="Animation filename")
+    anim_replace_existing: bpy.props.BoolProperty(name="Replace Existing Animation")
+#    actions: bpy.props.EnumProperty(
+#        name="",
+#        description="select something",
+#        items=[('op1', "cube", "")]
+#    )
 
 def show_message_box(message, title, icon='INFO'):
     def draw(self, context):
@@ -443,24 +467,144 @@ class GameExportPanel(bpy.types.Panel):
         row = layout.row()
         row.operator("object.game_export")
         
+        action_name = None
+        if obj.parent:
+            if obj.parent.type == 'ARMATURE' and obj.parent.animation_data.action:
+                action_name = obj.parent.animation_data.action.name
         row = layout.row()
-        action_name = 'None'
-        if obj.animation_data.action:
-            action_name = obj.animation_data.action.name
-        row.label(text="Current action: " + action_name)
+        row.label(text="Current action: " + (action_name if action_name else 'None' ))
         
-        # TODO: button to export action
+        if action_name:
+            row = layout.row()
+            row.prop(props, "anim_filename", text="File name")
+            
+            row = layout.row()
+            row.prop(props, "anim_replace_existing", text="Replace Existing")
+            
+            row = layout.row()
+            row.operator("object.anim_export")
+        
+        # TODO: you need to put the action on the armature, not the mesh - DONE
+        # TODO: button to export action - DONE
+        
+        # bone.matrix converts from bone-space to armature space
+        # - i think armature space is actually same coordinate-system as blender world-space
+        #
+        # bpy.context.active_object.pose.bones[0].matrix.inverted() @ bpy.context.active_object.pose.bones[0].matrix
+        # = pose.parent_bone.matrix.inverted() * pose.bone.matrix
+        # = the bone's local transform matrix
+        # 
+        # - should we extract the transforms here? or should we like somehow use the transforms
+        #   that are listed in the "N" menu?
+        # - does it matter? i think it might matter, honestly..
+        # - actually, i don't think it does. the translation, rotation, scale are like
+        #   independent from each other in the matrix, aren't they?
+        # - the sign ambiguity of the rotation (since we're using quaternions, -q = q), does
+        #   not matter, since we always just take shortest path when we slerp
+        # - the thing you can't do is interpolate the matrices themselves; you must extract
+        #   the components of the transform out of the matrix and interpolate those
+        #
+        # - so we have the bone-local transform (i.e. relative to the parent)
+        # - this is enough data to export. we just have to go through all the frames now
+        # TODO: try extracting the stuff, and see if it's in bone-space
+        # - bone.matrix is in armature-space, not bone-space. we need to do the parent inverse
+        #   multiplication to get it in bone-space
+        # NOTE: when we 
+        # bone.matrix is bone->armature
+        # so transform extracted from decomposed bone.matrix is in armature-space.
+        # so we MUST multiply by inverse(bone.matrix) to go from armature->bone.
+        # and now the transforms will work properly when we're in bone-space.
+        #
+        # what do we multiply the root bone by?
+        # just do swap_matrix @ bone.matrix, and that'll convert it from 
+        # this is confusing. my C++ code for getting the matrices kind of assumes that
+        # the bone and model-space coordinate systems are the same, but they're not in
+        # blender. but should that even matter?
+        #
+        # let's start at the root bone.
+        # - parent_to_model = identity
+        # - no parent
+        # - get_model_matrix(interpolated_transform);
+        #   - this is matrix to pose the bone, but it's still in bone-space
+        # - parent_to_model * get_model_matrix(interpolated_transform);
+        #   - this is wrong, because parent_to_model in this case does not transform to
+        #     model-space. it's still just a posed bone, but still in bone-space.
+        # - the interpolated_transform should really transform it from bone-space to
+        #   armature-space. so, does the local bone transform, but then converts it to
+        #   armature-space's coordinate system.
+        # - we want the transform that goes from bone-space to armature-space.
+        #   - so, we assume that parent-space is in armature-space
+        #
+        # okay, so the bone.matrix is in armature-space.
+        # if we decompose it, the transforms are in armature-space's coordinate-space, i.e.
+        # blender's normal coordinate-space.
+        # the model->bone (inverse_bind) matrix converts points to bone-space, though.
+        # so, first, it's expected that the local transform transforms to armature-space
+        #
+        # rel_to_parent = bpy.context.active_object.pose.bones[0].matrix.inverted() @ bpy.context.active_object.pose.bones[1].matrix
+        # = pose.parent.matrix.inverted() * pose.bone.matrix()
+        # parent armature->bone * bone->armature * bone_p
+        # so, if you imagine a point bone_p here in bone_space (we get from multiplying our
+        # model-space point by inverse_bind), multiplying by bone->armature converts it to
+        # armature-space.
+        # - at this point, it's posed and in model-space (good coordinate-space), but the
+        #   problem is that it's not relative to the parent.
+        # - we want it relative to the parent, but still in good coordinate-space.
+        # - imagine the transforms in your head...
+        # - if you're in armature-space, and you multiply by parent armature->bone, now
+        #   your point is just relative to the parent bone. which is what we want, is it not?
+        # - now that we're relative to the parent, we just need to multiply by swap_matrix
+        #   - and then, just extract?
+        # - i think we're good?
+        #
+        # so final equation is just swap_matrix * parent.matrix.inverted() * bone.matrix.
+        # then, decompose it, and the pos, rot, scale are the correct parent-relative
+        # transforms that go from bone-space to parent-space.
+        # it makes sense, i think.
+        # imagine just like a vertical stack of two bones.
+        # we have a point in the top bone's space. bone.matrix * p = point in armature-space.
+        # multiply by parent.matrix.inverted(), now that's relative to parent.
+        # finally, multiply by swap, and you have the proper matrix that you can extract the
+        # parent-relative transform out of.
+        #
+        # to remind us what we're doing: we're trying to figure out the transform that
+        # transforms points in bone-local space to the pose, except with the new point being
+        # in that bone's parent space, but also using the game's coordinate-system.
+        # - an alternative is to just have us pass a special matrix and use that as the
+        #   initial parent_to_model matrix, so then we automatically convert from bone-space
+        #   to the game's coordinate system..
+        # - i actually think this might be better... maybe just do this
+        
+        # TODO: test this method out on some test armature - DONE, seems like it works?
+        # - why is rotation not the same?
+        # - scale is the same, but all negatives..
+        # - ACTUALLY, this is expected!!! because it's converting from bone-space to
+        #   armature-space!!! the weird rotation and scales are expected
+        # - this is kind of complicated, but i think any alternative would just have us
+        #   doing these same conversions elsewhere..
+
+        # TODO: figure out how to go through all the frames
+        # TODO: export the data for each frame for every bone
+        # TODO: use the special initial parent_to_model matrix thing, so that we can keep
+        #       the weird transforming stuff out of this code..
+        #       - i think it makes more sense, anyways, since parent-space is still technically
+        #         relative to a bone, and i think should use the bone's local coordinate-system.
+        #       - and the naming of parent_to_model in the C++ exporting code is still valid,
+        #         because the initial matrix will convert from parent to model, then every thing
+        #         after will eventually be multiplied by that.
 
 #def unregister_game_export_panel():
 #    bpy.utils.unregister_class(HelloWorldPanel)
 
 def unregister():
     bpy.utils.unregister_class(GameExportOperator)
+    bpy.utils.unregister_class(AnimExportOperator)
     del bpy.types.Scene.GameExportPropertyGroup
 
 if __name__ == "__main__":
     bpy.utils.register_class(GameExportPropertyGroup)
     bpy.types.Scene.game_export_props = bpy.props.PointerProperty(type=GameExportPropertyGroup)
     bpy.utils.register_class(GameExportOperator)
+    bpy.utils.register_class(AnimExportOperator)
     bpy.utils.register_class(GameExportPanel)
     
