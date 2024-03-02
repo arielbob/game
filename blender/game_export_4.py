@@ -388,6 +388,56 @@ def anim_export(context, filename, replace_existing):
 
     bpy.ops.object.mode_set(mode='OBJECT')
     active_object = context.active_object
+    
+    armature_object = active_object.parent
+    assert(armature_object.type == 'ARMATURE')
+    
+    keyframe_positions_by_bone = {}
+
+    # NOTE: we might eventually have interpolations other than linear, but for now we
+    #       just linearly interpolate between an animation's keyframes
+    
+    # TODO: export keyframe positions - DONE
+    # TODO: create transform samples from those positions
+    #       - https://blender.stackexchange.com/questions/8387/how-to-get-keyframe-data-from-python
+    #       - just do that from the link
+    #       - note that that link just samples every frame, instead of only
+    #         the frames that have keyframes (we want to do the latter)
+    
+    # TODO: verify that frame_start has a keyframe
+    # TODO: export from frame_start to frame_end only
+    #       - only put in keyframes that are inside the range
+    #       - need to create key frame and frame_end if it doesn't exist
+    #       - since you can have keyframes outside of the bounds
+    
+    for fcurve in armature_object.animation_data.action.fcurves:
+        bone_name = None
+        data_path = fcurve.data_path
+        
+        assert(data_path.find('[') > -1)
+        assert(data_path.find(']') > -1)
+        
+        # we need to do this because bones can have [] in them
+        open_square_bracket_index = data_path.find('[')
+        close_square_bracket_index = len(data_path) - 1 - data_path[::-1].find(']')
+        
+        # skip the quotes
+        name_start = open_square_bracket_index + 2 # inclusive
+        name_end = close_square_bracket_index - 1 # exclusive
+        
+        bone_name = data_path[name_start:name_end]
+        
+        for keyframe in fcurve.keyframe_points:
+            if bone_name in keyframe_positions_by_bone:
+                if keyframe.co.x not in keyframe_positions_by_bone[bone_name]:
+                    keyframe_positions_by_bone[bone_name].append(keyframe.co.x)
+            else:
+                keyframe_positions_by_bone[bone_name] = [keyframe.co.x]
+                
+        # we really don't need any animation about the transform at the keyframe.
+        # we just need to know where keyframes exist for any property of the bone.
+        #       print(key.co) # prints the position on the timeline
+    print(keyframe_positions_by_bone)
 
 class GameExportOperator(bpy.types.Operator):
     """Tooltip"""
