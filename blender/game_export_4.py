@@ -584,6 +584,24 @@ class GameExportPanel(bpy.types.Panel):
         #   doing these same conversions elsewhere..
 
         # TODO: figure out how to go through all the frames
+        # active_object.animation_data.action.fcurves[1].keyframe_points[0].co
+        # for fc in fcurves:
+        #   for key in keyframe_points:
+        #       print(key.co) # prints the position on the timeline
+        #
+        # you could literally just find the positions of all the keyframes, then loop
+        # through them from start to finish, and just create samples for pos, rot, scale.
+        # (it would be every part of the transform, since our format expects that for now)
+        # - you do need to categorize the keyframes by bone, then loop through each bone
+        #   and then loop for each keyframe within each bone
+        # - for an fcurve, you can do fcurve.data_path, which shows you which object it's
+        #   operating on. you can see if it's a location or rotation or scale, but i don't
+        #   know how to see the specific axis. but we don't really need that since we're
+        #   sampling everything anyways.
+        # - anyways, you do need to do some special data_path parsing, i think, to extract
+        #   the bone name
+        #   - right, just split on ", then get whatever's at index 1
+
         # TODO: export the data for each frame for every bone
         # TODO: use the special initial parent_to_model matrix thing, so that we can keep
         #       the weird transforming stuff out of this code..
