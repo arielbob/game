@@ -48,6 +48,25 @@ def apply_modifiers(obj):
 #    for m in obj.modifiers:
 #        obj.modifiers.remove(m)
 
+def get_ordered_bones(skeleton_data):
+    bones = []
+    # we start by ordering the bones such that parents always come before
+    # their children
+    bone_stack = []
+
+    # first, find all the bones without parents
+    for bone in skeleton_data.bones:
+        if bone.parent == None:
+            bone_stack.append(bone)
+            
+    while len(bone_stack):
+        current = bone_stack.pop()
+        bones.append(current)
+        for child in current.children:
+            bone_stack.append(child)
+            
+    return bones
+
 def game_export(context, filename, replace_existing, is_skinned):
     temp_output_file = None
     open_flag = ''
@@ -97,8 +116,10 @@ def game_export(context, filename, replace_existing, is_skinned):
     # export skeleton data
     # this goes at the end of the file, but we need the data before we append it 
     skeleton_data_string = ''
+
     bones = []
     bone_names = []
+    
     if is_skinned:
         skeleton_data = mesh_copy.parent.data
         
@@ -106,21 +127,7 @@ def game_export(context, filename, replace_existing, is_skinned):
             show_message_box('Mesh origin and armature origin must match!', 'Error', 'ERROR')
             return
         
-        # we start by ordering the bones such that parents always come before
-        # their children
-        bone_stack = []
-            
-        # first, find all the bones without parents
-        for bone in skeleton_data.bones:
-            if bone.parent == None:
-                bone_stack.append(bone)
-                
-        while len(bone_stack):
-            current = bone_stack.pop()
-            bones.append(current)
-            for child in current.children:
-                bone_stack.append(child)
-        
+        bones = get_ordered_bones(skeleton_data)
         bone_names = [bone.name for bone in bones]
         
         skeleton_data_string += 'skeleton {\n'
@@ -410,6 +417,8 @@ def anim_export(context, filename, replace_existing):
     #       - need to create key frame and frame_end if it doesn't exist
     #       - since you can have keyframes outside of the bounds
     
+    scene = bpy.context.scene
+    
     for fcurve in armature_object.animation_data.action.fcurves:
         bone_name = None
         data_path = fcurve.data_path
@@ -438,6 +447,76 @@ def anim_export(context, filename, replace_existing):
         # we just need to know where keyframes exist for any property of the bone.
         #       print(key.co) # prints the position on the timeline
     print(keyframe_positions_by_bone)
+    
+    frame_start = scene.frame_start
+    frame_end = scene.frame_end # inclusive
+    
+    bones = get_ordered_bones(armature_object.data)
+    
+    samples_str = ''
+    for bone in bones:
+        keyframe_positions = keyframe_positions_by_bone[bone.name]
+        keyframe_positions - frame_start
+        if keyframe_positions is None:
+            # just go to frame_start and take a sample there
+            scene.frame_set(frame_start)
+            # output the transform
+            # this can have parent shit though can't it???
+            # actually, it's fine, i think? because the parent transform will already
+            # be applied to it
+            # oh yeah, if the parent has a transform and it's applied at some keyframe,
+            # we will automatically generate a keyframe for the child bone?
+            # that's not actually the case...
+            # yeah, it's weird.. we just should NOT use the "inherit rotation" checkbox
+            # under the relations options for a bone
+            # actually, it's somewhat unreasonable to do that, i think...
+            
+            # does our C++ code automatically inherit rotations? i don't think so.
+            # i think it does actually... yeah, fuck, it does automatically inherit.
+            
+            # so, let's say it does automatically inherit..
+            # the matrix of the child bone is affected, but not the transform
+            # i'm thinking that we should get the transforms from the matrix and not
+            # from the transform.
+            
+            # IMPORTANT:
+            # the bone matrix is affected by whether or not "inherit rotation" is
+            # enabled.
+            # when it's enabled, it does what we expect. so blender's parent matrix
+            # multiplication is the same as ours, i.e. blender also by default, applies
+            # parent rotations to its children.
+            
+            # when you disable it, the child bone's matrix is changed to compensate.
+            # since the multiplication that blender does automatically applies the 
+            # parent's rotation.
+            
+            # so BASICALLY, we really don't need to care about whether "inherit rotation"
+            # is enabled or disabled.
+            
+            # there is still the issue of, do we need to create keyframes for these
+            # bones that don't inherit rotation? yes we do, because then the parent will
+            # be rotating or whatever and the child will be rotating along with it when
+            # it shouldn't because it's supposed to be ignoring its parent's rotation.
+            
+            # basically if we're not inheriting rotation, the child node should always
+            # have a keyframe wherever the parent has a keyframe. i'm pretty sure that
+            # should work and we wouldn't have to sample every single frame.
+            # you basically just have to process the bones in the parent to child order,
+            # which is the order we get from get_ordered_bones()
+            
+            # something we might want to do is creating a linear curve from a curve.
+            # i think blender might already have a feature like that though.
+            # - yeah, you can do this manually in blender. you just go to the graph
+            #   editor, then Key > Density > Sample Keyframes, then in the same menu,
+            #   do Clean Keyframes, and you can specifiy a threshold.
+            #   what it's basically doing, i think, is, actually, i have no clue.
+        
+        for pos in keyframe_positions:
+            # TODO: write the keyframe stuff to the string
+            # - if we aren't inheriting rotation, create keyframes for every parent keyframe
+            # - actually, this can probably end up in some weird results.. ACTUALLY, i think
+            #   it's fine, since if the parent is being linearly interpolated, so will the
+            #   child. it's fine. just do it.
 
 class GameExportOperator(bpy.types.Operator):
     """Tooltip"""

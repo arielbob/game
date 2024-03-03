@@ -89,6 +89,9 @@ Mat4 *get_bone_matrices(Allocator *allocator, Skeleton *skeleton, Skeletal_Anima
 
         // local_transform * p_in_bone_space -> parent-space
         // parent_to_model * local_transform * p_in_bone_space -> model-space
+
+        // note that the parent-space here means in the parent-space in the bind pose.
+        // that's why we still need to multiply by parent->model.
         Mat4 bone_to_model = parent_to_model * get_model_matrix(interpolated_transform);
 
         // matrix we send to the shader needs the inverse bind matrix sent as well, since
