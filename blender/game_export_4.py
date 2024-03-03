@@ -499,11 +499,62 @@ def anim_export(context, filename, replace_existing):
             keyframe_positions.insert(0, frame_start)
         if keyframe_positions[-1] != frame_end:
             keyframe_positions.append(frame_end)
-                
-            # just go to frame_start and take a sample there
-            scene.frame_set(frame_start)
+    
+    # TODO: generate the samples
+    old_current_frame = scene.frame_current
+
+    # bone->parent transforms (still in bone-space coordinate-space)
+    keyframe_transforms_by_bone = {}
+    for pose_bone in pose_bones:
+        assert(pose_bone.rotation_mode == 'QUATERNION')
+        
+        transforms = []
+        keyframe_positions = keyframe_positions_by_bone[pose_bone.name]
+        for keyframe_pos in keyframe_positions:
+            scene.frame_set(keyframe_pos)
             
-    print(keyframe_positions_by_bone)        
+            bone_to_parent_matrix = pose_bone.matrix
+            if pose_bone.parent:
+                # armature->parent * bone->armature
+                # so, it's in parent-space (still using bone-space coordinate-space (the weird one))
+                bone_to_parent_matrix = pose_bone.parent.matrix.inverted() @ pose_bone.matrix
+                
+            position, rotation, scale = bone_to_parent_matrix.decompose()
+            transforms.append({
+                'position': position,
+                'rotation': rotation,
+                'scale': scale
+            })
+
+        keyframe_transforms_by_bone[pose_bone.name] = transforms
+
+    # TODO: actually output the text!    
+    # TODO: remember to output the initial parent->model matrix (swap_matrix)
+    # - just put this in animation_info probably
+    
+    # animation_info
+    '''
+    temp_output_file.write('animation_info {{\n')
+    num_frames = frame_end - frame_start + 1
+    
+    temp_output_file.write('frame_end {:d}\n'.format(num_frames))
+    temp_output_file.write('fps {:d}\n'.format(scene.render.fps))
+    temp_output_file.write('num_bones {:d}\n'.format(len(normal_bones)))
+    temp_output_file.write('}\n\n')
+
+    temp_output_file.write('bones {{\n'.format(bone.name))
+    for bone in normal_bones:
+        temp_output_file.write('bone "{:s}" {{\n'.format(bone.name))
+        temp_output_file.write('num_samples {:d}\n'.format(
+    '''
+    
+    
+
+    print(keyframe_positions_by_bone)
+    print(keyframe_transforms_by_bone)
+    
+    temp_output_file.close()    
+    show_message_box('Animation exported succcessfully', 'Success', 'CHECKMARK')  
             
             
             

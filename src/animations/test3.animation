@@ -1,5 +1,5 @@
 animation_info {
-frame_end 120 ;; 4 seconds; this is actually inclusive
+frame_end 120 ;; 4 seconds; animations go from 0 to frame_end (inclusive)
 fps 30
 num_bones 2
 }
