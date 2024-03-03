@@ -237,7 +237,7 @@ def game_export(context, filename, replace_existing, is_skinned):
                 
                 if group_name in bone_names:
                     bone_weight = group.weight
-                    if bone_weight > 0.0001:
+                    if bone_weight > 0.001:
                         bone_index = bone_names.index(group_name)
                         bone_indices.append(bone_index)
                         bone_weights.append(bone_weight)    
@@ -332,12 +332,26 @@ def game_export(context, filename, replace_existing, is_skinned):
                     return
                 
                 temp_output_file.write('bi')
+                num_bone_indices = 0
                 for bone_index in vert.bone_indices:
                     temp_output_file.write(' {:d}'.format(bone_index))
+                    num_bone_indices += 1
+                    
+                # just fill it out with bone indices that will later be weighted 0 because
+                # we don't support variable amounts yet in the file format
+                while num_bone_indices < 4:
+                    temp_output_file.write(' 0')
+                    num_bone_indices += 1
                 
                 temp_output_file.write('\nbw')
+                num_bone_weights = 0
                 for bone_weight in vert.bone_weights:
                     temp_output_file.write(' {:f}'.format(bone_weight))
+                    num_bone_weights += 1
+                
+                while num_bone_weights < 4:
+                    temp_output_file.write(' 0')
+                    num_bone_weights += 1
                     
                 temp_output_file.write('\n')
         
@@ -513,11 +527,14 @@ def anim_export(context, filename, replace_existing):
         for keyframe_pos in keyframe_positions:
             scene.frame_set(keyframe_pos)
             
-            bone_to_parent_matrix = pose_bone.matrix
+            # these convert to game's coordinate-space, but still relative to parent bone
+            bone_to_parent_matrix = swap_matrix @ pose_bone.matrix
             if pose_bone.parent:
+                # below comment is incomplete. we're multiplying by swap_matrix now.
                 # armature->parent * bone->armature
                 # so, it's in parent-space (still using bone-space coordinate-space (the weird one))
-                bone_to_parent_matrix = pose_bone.parent.matrix.inverted() @ pose_bone.matrix
+                
+                bone_to_parent_matrix = swap_matrix @ pose_bone.parent.matrix.inverted() @ pose_bone.matrix
                 
             position, rotation, scale = bone_to_parent_matrix.decompose()
             transforms.append({
@@ -542,9 +559,11 @@ def anim_export(context, filename, replace_existing):
     temp_output_file.write('fps {:d}\n'.format(scene.render.fps))
     temp_output_file.write('num_bones {:d}\n'.format(len(normal_bones)))
     
+    '''
     temp_output_file.write('bone_to_model ')
     for i in range(4):
         temp_output_file.write('{:.5f} {:.5f} {:.5f} {:.5f}\n'.format(*swap_matrix[i])) # * is spread
+    '''
 
     temp_output_file.write('}\n\n')
 

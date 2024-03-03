@@ -48,7 +48,7 @@ Mat4 *get_bone_matrices(Allocator *allocator, Skeleton *skeleton, Skeletal_Anima
 
         // don't loop to the end; if you want smooth loop, then you should author the
         // animation such that end and last frame are the same.
-        frame_b_index = min(frame_a_index + 1, bone_channel->num_samples);
+        frame_b_index = min(frame_a_index + 1, bone_channel->num_samples - 1);
         
         // interpolate between the two frames
         Bone_Frame *frame_a = &bone_channel->samples[frame_a_index];
@@ -478,6 +478,13 @@ bool32 Animation_Loader::parse_bone_channel(Allocator *allocator, Tokenizer *tok
         return animation_parse_error(error, "Expected bone label for bone channel.");
     }
 
+    token = get_token(tokenizer);
+    if (token.type != STRING) {
+        return animation_parse_error(error, "Expected string for bone name of bone channel.");
+    }
+
+    bone_channel->name = token.string;
+    
     token = get_token(tokenizer);
     if (token.type != OPEN_BRACKET) {
         return animation_parse_error(error, "Expected bone open bracket.");

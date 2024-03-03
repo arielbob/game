@@ -71,12 +71,14 @@ namespace Mesh_Loader {
     struct Token {
         Token_Type type;
         String string;
+        int32 line;
     };
 
     Token get_token(Tokenizer *tokenizer);
-    Token make_token(Token_Type type, char *contents, int32 length);
+    Token make_token(Token_Type type, char *contents, int32 length, int32 line = -1);
     bool32 token_text_equals(Token token, char *str);
     bool32 mesh_parse_error(char **error_out, char *error_string);
+    bool32 mesh_parse_error(Token token, char **error_out, char *error_string);
     
     bool32 parse_real(Tokenizer *tokenizer, real32 *result, char **error);
     bool32 parse_int(Tokenizer *tokenizer, int32 *result, char **error);
@@ -100,8 +102,9 @@ namespace Mesh_Loader {
                      Mesh **mesh_result, char **error_out);
 }
 
-inline bool32 Mesh_Loader::mesh_parse_error(char **error_out, char *error_string) {
-    *error_out = error_string;
+inline bool32 Mesh_Loader::mesh_parse_error(Token token, char **error_out, char *error_string) {
+    Allocator *allocator = frame_arena;
+    *error_out = string_format(allocator, "Error at line %d: %s", token.line, error_string);
     return false;
 }
 
@@ -113,13 +116,13 @@ bool32 Mesh_Loader::parse_real(Tokenizer *tokenizer, real32 *result, char **erro
         bool32 parse_result = string_to_real32(token.string, &num);
 
         if (!parse_result) {
-            return mesh_parse_error(error, "Invalid number value.");
+            return mesh_parse_error(token, error, "Invalid number value.");
         } else {
             *result = num;
             return true;
         }
     } else {
-        return mesh_parse_error(error, "Expected number.");
+        return mesh_parse_error(token, error, "Expected number.");
     }
 }
 
@@ -131,13 +134,13 @@ bool32 Mesh_Loader::parse_int(Tokenizer *tokenizer, int32 *result, char **error)
         bool32 parse_result = string_to_int32(token.string, &num);
 
         if (!parse_result) {
-            return mesh_parse_error(error, "Invalid integer value.");
+            return mesh_parse_error(token, error, "Invalid integer value.");
         } else {
             *result = num;
             return true;
         }
     } else {
-        return mesh_parse_error(error, "Expected integer.");
+        return mesh_parse_error(token, error, "Expected integer.");
     }
 }
 
@@ -149,13 +152,13 @@ bool32 Mesh_Loader::parse_uint(Tokenizer *tokenizer, uint32 *result, char **erro
         bool32 parse_result = string_to_uint32(token.string, &num);
 
         if (!parse_result) {
-            return mesh_parse_error(error, "Invalid unsigned integer value.");
+            return mesh_parse_error(token, error, "Invalid unsigned integer value.");
         } else {
             *result = num;
             return true;
         }
     } else {
-        return mesh_parse_error(error, "Expected unsigned integer.");
+        return mesh_parse_error(token, error, "Expected unsigned integer.");
     }
 }
 
@@ -164,7 +167,8 @@ bool32 Mesh_Loader::parse_vec2(Tokenizer *tokenizer, Vec2 *result, char **error)
     
     for (int i = 0; i < 2; i++) {
         if (!parse_real(tokenizer, &v[i], error)) {
-            return mesh_parse_error(error, "Invalid number in Vec2.");
+            debug_print("Invalid number in Vec2.");
+            return false;
         }
     }
 
@@ -177,7 +181,8 @@ bool32 Mesh_Loader::parse_vec3(Tokenizer *tokenizer, Vec3 *result, char **error)
     
     for (int i = 0; i < 3; i++) {
         if (!parse_real(tokenizer, &v[i], error)) {
-            return mesh_parse_error(error, "Invalid number in Vec3.");
+            debug_print("Invalid number in Vec3.");
+            return false;
         }
     }
 
@@ -190,7 +195,8 @@ bool32 Mesh_Loader::parse_vec4(Tokenizer *tokenizer, Vec4 *result, char **error)
     
     for (int i = 0; i < 4; i++) {
         if (!parse_real(tokenizer, &v[i], error)) {
-            return mesh_parse_error(error, "Invalid number in Vec4.");
+            debug_print("Invalid number in Vec4.");
+            return false;
         }
     }
 
@@ -203,7 +209,8 @@ bool32 Mesh_Loader::parse_vec3_int32(Tokenizer *tokenizer, Vec3_int32 *result, c
     
     for (int i = 0; i < 3; i++) {
         if (!parse_int(tokenizer, &v[i], error)) {
-            return mesh_parse_error(error, "Invalid number in Vec3.");
+            debug_print("Invalid number in Vec3.");
+            return false;
         }
     }
 
@@ -216,7 +223,8 @@ bool32 Mesh_Loader::parse_vec3_uint32(Tokenizer *tokenizer, Vec3_uint32 *result,
     
     for (int i = 0; i < 3; i++) {
         if (!parse_uint(tokenizer, &v[i], error)) {
-            return mesh_parse_error(error, "Invalid number in Vec3_uint32.");
+            debug_print("Invalid number in Vec3_uint32.");
+            return false;
         }
     }
 
@@ -229,7 +237,8 @@ bool32 Mesh_Loader::parse_vec4_int32(Tokenizer *tokenizer, Vec4_int32 *result, c
     
     for (int i = 0; i < 4; i++) {
         if (!parse_int(tokenizer, &v[i], error)) {
-            return mesh_parse_error(error, "Invalid number in Vec4.");
+            debug_print("Invalid number in Vec4.");
+            return false;
         }
     }
 
@@ -242,7 +251,8 @@ bool32 Mesh_Loader::parse_vec4_uint32(Tokenizer *tokenizer, Vec4_uint32 *result,
     
     for (int i = 0; i < 4; i++) {
         if (!parse_uint(tokenizer, &v[i], error)) {
-            return mesh_parse_error(error, "Invalid number in Vec4_uint32.");
+            debug_print("Invalid number in Vec4_uint32.");
+            return false;
         }
     }
 
@@ -274,10 +284,11 @@ inline bool32 Mesh_Loader::token_text_equals(Token token, char *str) {
 }
 #endif
 
-inline Mesh_Loader::Token Mesh_Loader::make_token(Token_Type type, char *contents, int32 length) {
+inline Mesh_Loader::Token Mesh_Loader::make_token(Token_Type type, char *contents, int32 length, int32 line) {
     Token token = {
         type,
-        make_string(contents, length)
+        make_string(contents, length),
+        line
     };
     return token;
 }
@@ -289,13 +300,14 @@ Mesh_Loader::Token Mesh_Loader::get_token(Tokenizer *tokenizer) {
         consume_leading_whitespace(tokenizer);
 
         if (is_end(tokenizer)) {
-            return make_token(END, NULL, 0);
+            return make_token(END, NULL, 0, tokenizer->line);
         }
     
         char c = *tokenizer->current;
 
         if (is_digit(c) || c == '-' || c == '.') {
             uint32 start = tokenizer->index;
+            int32 line = tokenizer->line;
         
             bool32 has_period = false;
             bool32 is_negative = false;
@@ -340,9 +352,10 @@ Mesh_Loader::Token Mesh_Loader::get_token(Tokenizer *tokenizer) {
             }
 
             // NOTE: we don't include the null terminator here, and just set bounds using a length member
-            token = make_token(token_type, &tokenizer->contents[start], length);
+            token = make_token(token_type, &tokenizer->contents[start], length, line);
         } else if (tokenizer->current[0] == ';' &&
                    tokenizer->current[1] == ';') {
+            int32 line = tokenizer->line;
             increment_tokenizer(tokenizer, 2);
             uint32 start = tokenizer->index;
         
@@ -352,9 +365,10 @@ Mesh_Loader::Token Mesh_Loader::get_token(Tokenizer *tokenizer) {
             }
 
             uint32 length = tokenizer->index - start;
-            token = make_token(COMMENT, &tokenizer->contents[start], length);
+            token = make_token(COMMENT, &tokenizer->contents[start], length, line);
         } else if (is_letter(tokenizer->current[0])) {
             uint32 start = tokenizer->index;
+            int32 line = tokenizer->line;
 
             increment_tokenizer(tokenizer);
         
@@ -371,18 +385,23 @@ Mesh_Loader::Token Mesh_Loader::get_token(Tokenizer *tokenizer) {
 
         
             uint32 length = tokenizer->index - start;
-            token = make_token(LABEL, &tokenizer->contents[start], length);
+            token = make_token(LABEL, &tokenizer->contents[start], length, line);
         } else if (*tokenizer->current == '{') {
             int32 start = tokenizer->index;
+            int32 line = tokenizer->line;
+
             increment_tokenizer(tokenizer);
             int32 length = tokenizer->index - start;
-            token = make_token(OPEN_BRACKET, &tokenizer->contents[start], length);
+            token = make_token(OPEN_BRACKET, &tokenizer->contents[start], length, line);
         } else if (*tokenizer->current == '}') {
             int32 start = tokenizer->index;
+            int32 line = tokenizer->line;
+
             increment_tokenizer(tokenizer);
             int32 length = tokenizer->index - start;
-            token = make_token(CLOSE_BRACKET, &tokenizer->contents[start], length);
+            token = make_token(CLOSE_BRACKET, &tokenizer->contents[start], length, line);
         } else if (*tokenizer->current == '"') {
+            int32 line = tokenizer->line;
             increment_tokenizer(tokenizer);
             // set start after we increment tokenizer so that we don't include the quote in the token string.
             int32 start = tokenizer->index;
@@ -397,7 +416,7 @@ Mesh_Loader::Token Mesh_Loader::get_token(Tokenizer *tokenizer) {
             } else {
                 int32 length = tokenizer->index - start;
                 increment_tokenizer(tokenizer);
-                token = make_token(STRING, &tokenizer->contents[start], length);
+                token = make_token(STRING, &tokenizer->contents[start], length, line);
             }
         } else {
             assert(!"Token type not recognized");
@@ -411,28 +430,28 @@ Mesh_Loader::Token Mesh_Loader::get_token(Tokenizer *tokenizer) {
 bool32 Mesh_Loader::parse_num_vertices(Tokenizer *tokenizer, uint32 *result, char **error) {
     Token token = get_token(tokenizer);
     if (token.type != INTEGER) {
-        return mesh_parse_error(error, "Expected num_vertices integer.");
+        return mesh_parse_error(token, error, "Expected num_vertices integer.");
     }
 
     bool32 parse_result = string_to_uint32(token.string, result);
     if (parse_result) {
         return true;
     } else {
-        return mesh_parse_error(error, "Invalid num_vertices unsigned integer.");
+        return mesh_parse_error(token, error, "Invalid num_vertices unsigned integer.");
     }
 }
 
 bool32 Mesh_Loader::parse_num_triangles(Tokenizer *tokenizer, uint32 *result, char **error) {
     Token token = get_token(tokenizer);
     if (token.type != INTEGER) {
-        return mesh_parse_error(error, "Expected num_triangles integer.");
+        return mesh_parse_error(token, error, "Expected num_triangles integer.");
     }
 
     bool32 parse_result = string_to_uint32(token.string, result);
     if (parse_result) {
         return true;
     } else {
-        return mesh_parse_error(error, "Invalid num_triangles unsigned integer.");
+        return mesh_parse_error(token, error, "Invalid num_triangles unsigned integer.");
     }
 }
 
@@ -442,7 +461,7 @@ bool32 Mesh_Loader::parse_vertex(Tokenizer *tokenizer, Mesh *mesh, uint32 vertex
     // vertex position
     Token token = get_token(tokenizer);
     if (token.type != LABEL || !string_equals(token.string, "v")) {
-        return mesh_parse_error(error, "Expected 'v' label for vertex position.");
+        return mesh_parse_error(token, error, "Expected 'v' label for vertex position.");
     }
 
     uint8 *data_position = (uint8 *) &mesh->data[vertex_index * mesh->vertex_stride];
@@ -467,7 +486,7 @@ bool32 Mesh_Loader::parse_vertex(Tokenizer *tokenizer, Mesh *mesh, uint32 vertex
     // vertex normal
     token = get_token(tokenizer);
     if (token.type != LABEL || !string_equals(token.string, "n")) {
-        return mesh_parse_error(error, "Expected 'n' label for vertex normal.");
+        return mesh_parse_error(token, error, "Expected 'n' label for vertex normal.");
     }
 
     Vec3 *normal = (Vec3 *) data_position;
@@ -481,7 +500,7 @@ bool32 Mesh_Loader::parse_vertex(Tokenizer *tokenizer, Mesh *mesh, uint32 vertex
     // vertex uv
     token = get_token(tokenizer);
     if (token.type != LABEL || !string_equals(token.string, "uv")) {
-        return mesh_parse_error(error, "Expected 'uv' label for vertex normal.");
+        return mesh_parse_error(token, error, "Expected 'uv' label for vertex normal.");
     }
 
     Vec2 *uv = (Vec2 *) data_position;
@@ -496,7 +515,7 @@ bool32 Mesh_Loader::parse_vertex(Tokenizer *tokenizer, Mesh *mesh, uint32 vertex
         // bone indices
         token = get_token(tokenizer);
         if (token.type != LABEL || !string_equals(token.string, "bi")) {
-            return mesh_parse_error(error, "Expected 'bi' label for vertex bone indices.");
+            return mesh_parse_error(token, error, "Expected 'bi' label for vertex bone indices.");
         }
 
         Vec4_int32 *bone_indices = (Vec4_int32 *) data_position;
@@ -510,7 +529,7 @@ bool32 Mesh_Loader::parse_vertex(Tokenizer *tokenizer, Mesh *mesh, uint32 vertex
         // bone weights
         token = get_token(tokenizer);
         if (token.type != LABEL || !string_equals(token.string, "bw")) {
-            return mesh_parse_error(error, "Expected 'bw' label for vertex bone weights.");
+            return mesh_parse_error(token, error, "Expected 'bw' label for vertex bone weights.");
         }
 
         Vec4 *bone_weights = (Vec4 *) data_position;
@@ -523,7 +542,7 @@ bool32 Mesh_Loader::parse_vertex(Tokenizer *tokenizer, Mesh *mesh, uint32 vertex
                      ((*bone_weights)[0] +
                       (*bone_weights)[1] +
                       (*bone_weights)[2] +
-                      (*bone_weights)[3])) < EPSILON);
+                      (*bone_weights)[3])) < 0.0001f);
 
         data_position += mesh->n_bone_weights * sizeof(real32);
     }
@@ -543,14 +562,14 @@ bool32 Mesh_Loader::parse_bone(Tokenizer *tokenizer, Mesh *mesh, Bone *bone, cha
     Token token = get_token(tokenizer);
     
     if (!(token.type == LABEL && string_equals(token.string, "bone"))) {
-        return mesh_parse_error(error, "Expected bone label for bone block.");
+        return mesh_parse_error(token, error, "Expected bone label for bone block.");
     }
 
     String bone_name = {};
 
     token = get_token(tokenizer);
     if (token.type != STRING) {
-        return mesh_parse_error(error, "Expected bone name string.");
+        return mesh_parse_error(token, error, "Expected bone name string.");
     } else {
         bone_name = copy(mesh->allocator, token.string);
     }
@@ -558,13 +577,13 @@ bool32 Mesh_Loader::parse_bone(Tokenizer *tokenizer, Mesh *mesh, Bone *bone, cha
     token = get_token(tokenizer);
     if (token.type != OPEN_BRACKET) {
         deallocate(bone_name);
-        return mesh_parse_error(error, "Expected open bracket for bone block.");
+        return mesh_parse_error(token, error, "Expected open bracket for bone block.");
     }
 
     token = get_token(tokenizer);
     if (!(token.type == LABEL && string_equals(token.string, "inverse_bind"))) {
         deallocate(bone_name);
-        return mesh_parse_error(error, "Expected inverse_bind label.");
+        return mesh_parse_error(token, error, "Expected inverse_bind label.");
     }
 
     // parse inverse bind 3x4 matrix
@@ -592,7 +611,7 @@ bool32 Mesh_Loader::parse_bone(Tokenizer *tokenizer, Mesh *mesh, Bone *bone, cha
         // parse parent index
         if (!(token.type == LABEL && string_equals(token.string, "parent"))) {
             deallocate(bone_name);
-            return mesh_parse_error(error, "Expected parent label.");
+            return mesh_parse_error(token, error, "Expected parent label.");
         }
 
         if (!parse_int(tokenizer, &parent_index, error)) {
@@ -607,7 +626,7 @@ bool32 Mesh_Loader::parse_bone(Tokenizer *tokenizer, Mesh *mesh, Bone *bone, cha
 
     if (token.type != CLOSE_BRACKET) {
         deallocate(bone_name);
-        return mesh_parse_error(error, "Expected close bracket for bone block.");
+        return mesh_parse_error(token, error, "Expected close bracket for bone block.");
     }
 
     bone->name = bone_name;
@@ -621,17 +640,17 @@ bool32 Mesh_Loader::parse_skeleton(Tokenizer *tokenizer, Mesh *mesh, char **erro
     // parse skeleton_info block
     Token token = get_token(tokenizer);
     if (!(token.type == LABEL && string_equals(token.string, "skeleton"))) {
-        return mesh_parse_error(error, "Expected skeleton block.");
+        return mesh_parse_error(token, error, "Expected skeleton block.");
     }
 
     token = get_token(tokenizer);
     if (token.type != OPEN_BRACKET) {
-        return mesh_parse_error(error, "Expected open bracket skeleton block.");
+        return mesh_parse_error(token, error, "Expected open bracket skeleton block.");
     }
 
     token = get_token(tokenizer);
     if (!(token.type == LABEL && string_equals(token.string, "num_bones"))) {
-        return mesh_parse_error(error, "Expected num_bones label.");
+        return mesh_parse_error(token, error, "Expected num_bones label.");
     }
 
     Skeleton skeleton = {};
@@ -659,7 +678,7 @@ bool32 Mesh_Loader::parse_skeleton(Tokenizer *tokenizer, Mesh *mesh, char **erro
     if (token.type != CLOSE_BRACKET) {
         deallocate(mesh->skeleton);
         deallocate(mesh->allocator, mesh->skeleton);
-        return mesh_parse_error(error, "Expected close bracket skeleton block.");
+        return mesh_parse_error(token, error, "Expected close bracket skeleton block.");
     }
     
     return true;
@@ -690,7 +709,7 @@ bool32 Mesh_Loader::load_mesh(Allocator *allocator, File_Data file_data,
         if (!result) {
             return false;
         } else if (is_skinned != 0 && is_skinned != 1) {
-            return mesh_parse_error(error_out, "Invalid value for is_skinned. Expected 0 or 1.");
+            return mesh_parse_error(token, error_out, "Invalid value for is_skinned. Expected 0 or 1.");
         }
 
         mesh.is_skinned = is_skinned;
@@ -762,7 +781,7 @@ bool32 Mesh_Loader::load_mesh(Allocator *allocator, File_Data file_data,
     if (token.type != END) {
         deallocate(mesh.allocator, mesh.data);
         deallocate(mesh.allocator, mesh.indices);
-        return mesh_parse_error(error_out, "Expected end of mesh file.");
+        return mesh_parse_error(token, error_out, "Expected end of mesh file.");
     }
 
     *mesh_result = (Mesh *) allocate(allocator, sizeof(Mesh));

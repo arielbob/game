@@ -11,17 +11,17 @@ num_bones 2
 ;; bones here are in same order as they are defined in the skeleton
 
 bones {
-bone {
+bone "bone_0" {
 num_samples 1
 samples {
 0 {
 pos 0.0 -0.5 0.0
-rot 0.923879504 -0.382683456 0 0
+rot 1 0 0 0
 }
 }
 }
 
-bone {
+bone "bone_1" {
 num_samples 1
 samples {
 0 {

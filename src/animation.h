@@ -26,6 +26,8 @@ struct Bone_Frame {
 
 struct Bone_Channel {
     Allocator *allocator;
+
+    String name; // the bone name; should correspond with bone in skeleton
     int32 num_samples;
     Bone_Frame *samples;
 };
@@ -63,6 +65,7 @@ Skeletal_Animation copy(Allocator *allocator, Skeletal_Animation *source) {
     for (int32 i = 0; i < source->num_bones; i++) {
         result.bone_channels[i].allocator = allocator;
 
+        result.bone_channels[i].name = copy(allocator, source->bone_channels[i].name);
         int32 num_samples = source->bone_channels[i].num_samples;
         result.bone_channels[i].samples = (Bone_Frame *) allocate(allocator,
                                                                  sizeof(Bone_Frame) * num_samples);
@@ -81,6 +84,7 @@ void deallocate(Bone_Channel *bone_channel) {
     // nothing to deallocate in Bone_Frame struct, just the allocation for the
     // Bone_Frame themselves
     deallocate(bone_channel->allocator, bone_channel->samples);
+    deallocate(bone_channel->name);
 }
 
 void deallocate(Skeletal_Animation *animation) {

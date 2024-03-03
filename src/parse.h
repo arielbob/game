@@ -8,6 +8,7 @@ struct Tokenizer {
     char *contents; // start pointer of the contents we're tokenizing
     int32 index;
     int32 size;
+    int32 line; // 1-indexed
 };
 
 Tokenizer make_tokenizer(File_Data file_data) {
@@ -16,6 +17,7 @@ Tokenizer make_tokenizer(File_Data file_data) {
     tokenizer.contents = (char *) file_data.contents;
     tokenizer.index = 0;
     tokenizer.size = file_data.size;
+    tokenizer.line = 1;
     return tokenizer;
 }
 
@@ -283,8 +285,26 @@ inline bool32 is_letter(Tokenizer *tokenizer) {
 }
 
 inline void increment_tokenizer(Tokenizer *tokenizer, int32 amount = 1) {
-    tokenizer->current += amount;
-    tokenizer->index += amount;
+    if (amount < 0) {
+        amount = abs(amount);
+        for (int i = 0; i < amount && tokenizer->index >= 0; i++) {
+            if (tokenizer->index < tokenizer->size) {
+                if (*tokenizer->current == '\n') {
+                    tokenizer->line--;
+                }
+            }
+            tokenizer->current--;
+            tokenizer->index--;
+        }
+    } else {
+        for (int i = 0; i < amount && tokenizer->index < tokenizer->size; i++) {
+            if (*tokenizer->current == '\n') {
+                tokenizer->line++;
+            }
+            tokenizer->current++;
+            tokenizer->index++;
+        }
+    }
 }
 
 internal bool32 is_end(Tokenizer *tokenizer) {

@@ -32,6 +32,7 @@ roughness 0.100342
 animations {
 "test_animation2" "src/animations/test2.animation"
 "test_animation3" "src/animations/test3.animation"
+"test_blender_animation" ".\src\animations\blender_test.animation"
 }
 
 entities {
@@ -41,7 +42,7 @@ rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
 mesh "skinned_cube"
 material "default_material"
-animation "test_animation3"
+animation "test_blender_animation"
 }
 entity {
 position 2.645750 1.023805 -21.230968
