@@ -4,6 +4,12 @@ import bmesh
 from mathutils import Matrix
 from bpy.types import PropertyGroup
 
+# to swap the y and z of matrix_local to fit the game's coordinate-space
+swap_matrix = Matrix(((1.0, 0.0, 0.0, 0.0),
+    (0.0, 0.0, 1.0, 0.0),
+    (0.0, 1.0, 0.0, 0.0),
+    (0.0, 0.0, 0.0, 1.0)))
+
 class Vertex:
     def __init__(self, co, normal, uv, bone_indices, bone_weights):
         self.co = co
@@ -132,12 +138,6 @@ def game_export(context, filename, replace_existing, is_skinned):
         
         skeleton_data_string += 'skeleton {\n'
         skeleton_data_string += 'num_bones {:d}\n'.format(len(bones))
-        
-        # to swap the y and z of matrix_local to fit the game's coordinate-space
-        swap_matrix = Matrix(((1.0, 0.0, 0.0, 0.0),
-            (0.0, 0.0, 1.0, 0.0),
-            (0.0, 1.0, 0.0, 0.0),
-            (0.0, 0.0, 0.0, 1.0)))
         
         for bone in bones:
             skeleton_data_string += '\nbone "{:s}" {{\n'.format(bone.name)
@@ -521,6 +521,7 @@ def anim_export(context, filename, replace_existing):
                 
             position, rotation, scale = bone_to_parent_matrix.decompose()
             transforms.append({
+                'frame_num': keyframe_pos,
                 'position': position,
                 'rotation': rotation,
                 'scale': scale
@@ -529,26 +530,49 @@ def anim_export(context, filename, replace_existing):
         keyframe_transforms_by_bone[pose_bone.name] = transforms
 
     # TODO: actually output the text!    
-    # TODO: remember to output the initial parent->model matrix (swap_matrix)
+    # TODO: remember to output the initial parent->model matrix (swap_matrix) - DONE
     # - just put this in animation_info probably
     
     # animation_info
-    '''
-    temp_output_file.write('animation_info {{\n')
-    num_frames = frame_end - frame_start + 1
+    temp_output_file.write('animation_info {\n')
+    # offset frame_end to start at zero
+    offset_frame_end = frame_end - frame_start
     
-    temp_output_file.write('frame_end {:d}\n'.format(num_frames))
+    temp_output_file.write('frame_end {:d}\n'.format(offset_frame_end))
     temp_output_file.write('fps {:d}\n'.format(scene.render.fps))
     temp_output_file.write('num_bones {:d}\n'.format(len(normal_bones)))
+    
+    temp_output_file.write('bone_to_model ')
+    for i in range(4):
+        temp_output_file.write('{:.5f} {:.5f} {:.5f} {:.5f}\n'.format(*swap_matrix[i])) # * is spread
+
     temp_output_file.write('}\n\n')
 
-    temp_output_file.write('bones {{\n'.format(bone.name))
+    temp_output_file.write('bones {')
     for bone in normal_bones:
-        temp_output_file.write('bone "{:s}" {{\n'.format(bone.name))
-        temp_output_file.write('num_samples {:d}\n'.format(
-    '''
-    
-    
+        samples = keyframe_transforms_by_bone[bone.name]
+        num_samples = len(samples)
+        
+        temp_output_file.write('\nbone "{:s}" {{\n'.format(bone.name))
+        temp_output_file.write('num_samples {:d}\n'.format(num_samples))
+        temp_output_file.write('samples {')
+        
+        # output samples
+        for sample in samples:
+            temp_output_file.write('\n{:d} {{\n'.format(sample['frame_num']))
+            
+            temp_output_file.write('pos {:f} {:f} {:f}\n'.format(sample['position'].x, sample['position'].y, sample['position'].z))
+            temp_output_file.write('rot {:f} {:f} {:f} {:f}\n'.format(sample['rotation'].w, sample['rotation'].x, sample['rotation'].y, sample['rotation'].z))
+            
+            temp_output_file.write('}\n')
+
+        # samples end brace        
+        temp_output_file.write('}\n')
+        # bone end brace
+        temp_output_file.write('}\n')
+
+    # bones end brace        
+    temp_output_file.write('}\n')
 
     print(keyframe_positions_by_bone)
     print(keyframe_transforms_by_bone)
