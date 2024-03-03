@@ -419,6 +419,9 @@ def anim_export(context, filename, replace_existing):
     
     scene = bpy.context.scene
     
+    frame_start = scene.frame_start
+    frame_end = scene.frame_end # inclusive
+    
     for fcurve in armature_object.animation_data.action.fcurves:
         bone_name = None
         data_path = fcurve.data_path
@@ -437,29 +440,75 @@ def anim_export(context, filename, replace_existing):
         bone_name = data_path[name_start:name_end]
         
         for keyframe in fcurve.keyframe_points:
+            keyframe_pos = int(keyframe.co.x)
+            if keyframe_pos < frame_start or keyframe_pos > frame_end:
+                continue
+            
             if bone_name in keyframe_positions_by_bone:
-                if keyframe.co.x not in keyframe_positions_by_bone[bone_name]:
-                    keyframe_positions_by_bone[bone_name].append(keyframe.co.x)
+                if keyframe_pos not in keyframe_positions_by_bone[bone_name]:
+                    keyframe_positions_by_bone[bone_name].append(keyframe_pos)
             else:
-                keyframe_positions_by_bone[bone_name] = [keyframe.co.x]
+                keyframe_positions_by_bone[bone_name] = [keyframe_pos]
                 
         # we really don't need any animation about the transform at the keyframe.
         # we just need to know where keyframes exist for any property of the bone.
         #       print(key.co) # prints the position on the timeline
-    print(keyframe_positions_by_bone)
     
-    frame_start = scene.frame_start
-    frame_end = scene.frame_end # inclusive
-    
-    bones = get_ordered_bones(armature_object.data)
+    # PoseBones are basically the same as regular Bones
+    # they have all the properties that we use on regular Bones, so we can use
+    # this function interchangeably.
+    pose_bones = get_ordered_bones(armature_object.pose)
+    # we need some data that we can only get from regular Bones, such as use_inherit_rotation
+    normal_bones = get_ordered_bones(armature_object.data)
     
     samples_str = ''
-    for bone in bones:
-        keyframe_positions = keyframe_positions_by_bone[bone.name]
-        keyframe_positions - frame_start
-        if keyframe_positions is None:
+    
+    # generate keyframe points for frame_start/frame_end if they don't exist.
+    # also, generate keyframe points for bones that don't inherit rotation.
+    for idx, pose_bone in enumerate(pose_bones):
+        use_inherit_rotation = normal_bones[idx].use_inherit_rotation
+        
+        if pose_bone.name not in keyframe_positions_by_bone:
+            if not use_inherit_rotation and pose_bone.parent:
+                # need to generate keyframes based on parent keyframes
+                parent_keyframe_positions = keyframe_positions_by_bone[pose_bone.parent.name]
+                for parent_keyframe_pos in parent_keyframe_positions:
+                    keyframe_positions_by_bone[pose_bone.name] = parent_keyframe_positions.copy()
+            else:
+                keyframe_positions_by_bone[pose_bone.name] = [frame_start]
+        else:
+            keyframe_positions = keyframe_positions_by_bone[pose_bone.name]
+            assert(len(keyframe_positions))
+
+            if not use_inherit_rotation and pose_bone.parent:
+                # generate keyframes based on parent keyframes if there isn't already
+                # a keyframe at that position
+                parent_keyframe_positions = keyframe_positions_by_bone[pose_bone.parent.name]
+                for parent_keyframe_pos in parent_keyframe_positions:
+                    if parent_keyframe_pos not in keyframe_positions_by_bone[pose_bone.name]:
+                        keyframe_positions.append(parent_keyframe_pos)
+                
+        keyframe_positions = keyframe_positions_by_bone[pose_bone.name]        
+        assert(len(keyframe_positions))
+        keyframe_positions.sort()
+                
+        # verify that we have keyframes at frame_start and frame_end
+        if keyframe_positions[0] != frame_start:
+            # TODO: this might be slow; may look into using deque, or just do
+            #       this in the initial generation of these keyframes
+            keyframe_positions.insert(0, frame_start)
+        if keyframe_positions[-1] != frame_end:
+            keyframe_positions.append(frame_end)
+                
             # just go to frame_start and take a sample there
             scene.frame_set(frame_start)
+            
+    print(keyframe_positions_by_bone)        
+            
+            
+            
+            
+            
             # output the transform
             # this can have parent shit though can't it???
             # actually, it's fine, i think? because the parent transform will already
@@ -511,12 +560,13 @@ def anim_export(context, filename, replace_existing):
             #   do Clean Keyframes, and you can specifiy a threshold.
             #   what it's basically doing, i think, is, actually, i have no clue.
         
-        for pos in keyframe_positions:
+        #for pos in keyframe_positions:
             # TODO: write the keyframe stuff to the string
             # - if we aren't inheriting rotation, create keyframes for every parent keyframe
             # - actually, this can probably end up in some weird results.. ACTUALLY, i think
             #   it's fine, since if the parent is being linearly interpolated, so will the
             #   child. it's fine. just do it.
+            
 
 class GameExportOperator(bpy.types.Operator):
     """Tooltip"""
