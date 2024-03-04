@@ -10,6 +10,11 @@ swap_matrix = Matrix(((1.0, 0.0, 0.0, 0.0),
     (0.0, 1.0, 0.0, 0.0),
     (0.0, 0.0, 0.0, 1.0)))
 
+bone_to_game = Matrix(((1.0, 0.0, 0.0, 0.0),
+    (0.0, 1.0, 0.0, 0.0),
+    (0.0, 0.0, -1.0, 0.0),
+    (0.0, 0.0, 0.0, 1.0)))
+
 class Vertex:
     def __init__(self, co, normal, uv, bone_indices, bone_weights):
         self.co = co
@@ -157,6 +162,7 @@ def game_export(context, filename, replace_existing, is_skinned):
             # - easier way of thinking about it is just that matrix_local goes from bone_space to
             #   blender's model-space, then to convert to game's model space, just swap y and
             #   z-axes.
+            # - to go from bone-space to game-space, just negate z
             
             # so, this model_to_bone converts from game's model space to blender's bone space!!!
             # so, if we're doing transforms in bone-space, it's expected that we're transforming
@@ -535,7 +541,24 @@ def anim_export(context, filename, replace_existing):
                 # so, it's in parent-space (still using bone-space coordinate-space (the weird one))
                 
                 bone_to_parent_matrix = swap_matrix @ pose_bone.parent.matrix.inverted() @ pose_bone.matrix
-                
+            
+            '''
+            - you could get the local transform by multiplying by inverse of the rest pose matrix
+            - bpy.context.active_object.data.bones[0].matrix_local.inverted() @ bpy.context.active_object.pose.bones[0].matrix
+            - so we have the bone local transform
+            - but we don't actually want the bone local transform.. we still need the offset!
+            - it feels like we just want to do what we were doing before
+              - that works for the bones with a parent
+              - but what if we don't have a parent?
+              - like what is the transform and in what coordinate-space is it happening in?
+              
+            - is our swap matrix wrong? swap_matrix assumes we're going from blender->game
+              - it's not the same as bone->blender->game
+            
+            - TODO: try the new bone_to_game matrix instead of swap_matrix above
+              - are the transforms from the decomposed matrix still weird?
+            '''
+            
             position, rotation, scale = bone_to_parent_matrix.decompose()
             transforms.append({
                 'frame_num': keyframe_pos,
@@ -582,6 +605,7 @@ def anim_export(context, filename, replace_existing):
             
             temp_output_file.write('pos {:f} {:f} {:f}\n'.format(sample['position'].x, sample['position'].y, sample['position'].z))
             temp_output_file.write('rot {:f} {:f} {:f} {:f}\n'.format(sample['rotation'].w, sample['rotation'].x, sample['rotation'].y, sample['rotation'].z))
+            temp_output_file.write('scale {:f} {:f} {:f}\n'.format(sample['scale'].x, sample['scale'].y, sample['scale'].z))
             
             temp_output_file.write('}\n')
 
