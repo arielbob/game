@@ -15,6 +15,8 @@ bone_to_game = Matrix(((1.0, 0.0, 0.0, 0.0),
     (0.0, 0.0, -1.0, 0.0),
     (0.0, 0.0, 0.0, 1.0)))
 
+armature_to_game = swap_matrix
+
 class Vertex:
     def __init__(self, co, normal, uv, bone_indices, bone_weights):
         self.co = co
@@ -523,6 +525,12 @@ def anim_export(context, filename, replace_existing):
     # TODO: generate the samples
     old_current_frame = scene.frame_current
 
+    # to swap rows to convert armature coordinate-space to bone coordinate-space
+    armature_to_bone_swap = Matrix(((1.0, 0.0, 0.0, 0.0),
+                                    (0.0, 0.0, 1.0, 0.0),
+                                    (0.0, -1.0, 0.0, 0.0),
+                                    (0.0, 0.0, 0.0, 1.0)))
+
     # bone->parent transforms (still in bone-space coordinate-space)
     keyframe_transforms_by_bone = {}
     for pose_bone in pose_bones:
@@ -533,14 +541,17 @@ def anim_export(context, filename, replace_existing):
         for keyframe_pos in keyframe_positions:
             scene.frame_set(keyframe_pos)
             
-            # these convert to game's coordinate-space, but still relative to parent bone
-            bone_to_parent_matrix = swap_matrix @ pose_bone.matrix
+            # this is in bone-space, but relative to the parent
+            bone_to_parent_matrix = None
             if pose_bone.parent:
-                # below comment is incomplete. we're multiplying by swap_matrix now.
                 # armature->parent * bone->armature
                 # so, it's in parent-space (still using bone-space coordinate-space (the weird one))
                 
-                bone_to_parent_matrix = swap_matrix @ pose_bone.parent.matrix.inverted() @ pose_bone.matrix
+                bone_to_parent_matrix = pose_bone.parent.matrix.inverted() @ pose_bone.matrix
+            else:
+                # no need for multiply when bone has parent because in that case, the multiply we do
+                # makes it end up in bone-space
+                bone_to_parent_matrix = armature_to_bone_swap @ pose_bone.matrix
             
             '''
             - you could get the local transform by multiplying by inverse of the rest pose matrix
@@ -557,6 +568,22 @@ def anim_export(context, filename, replace_existing):
             
             - TODO: try the new bone_to_game matrix instead of swap_matrix above
               - are the transforms from the decomposed matrix still weird?
+              - yes, i'm pretty sure they will still be weird because you're changing the handedness of the coordinate-space
+              
+            - TODO: just figure out the offset the root bone is from its rest pose - NEVERMIND, see below
+            
+            - the root is just armature_to_bone @ bone.matrix
+              - no need to offset, since bone.matrix is just bone->armature
+              - armature_to_bone is just a swap matrix to make it so we don't swap axes or invert them
+                - this is just so the transforms we get when we decompose actually make sense
+                - i'm not sure if there's a way to do a swap, then decompose, and have the transforms actually work,
+                  so just gonna do this
+            - for children, you just do pose_bone.parent.matrix.inverted() @ pose_bone.matrix
+            
+            - if we wanted to be able to have everything in the game's coordinate-space, then we would first need to
+              change the inverse_bind matrices, such that the bone-space is assumed to be in the game's coordinate-space
+              
+            - TODO: export the parent swap matrix
             '''
             
             position, rotation, scale = bone_to_parent_matrix.decompose()

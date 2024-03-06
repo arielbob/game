@@ -58,11 +58,10 @@ Mat4 *get_bone_matrices(Allocator *allocator, Skeleton *skeleton, Skeletal_Anima
         int32 start_frame_num = frame_a->frame_num;
         int32 end_frame_num = frame_b->frame_num;
 
-        real32 frame_t = 0.0;
-        // they're equal if we're past the last frame, and the last frame num < animation's
-        // frame_end. in that case, we just sample the last frame (frame_t = 0.0).
+        real32 frame_t = fmodf(t * animation->fps, (real32) animation->frame_end);
+        // make frame_t be the t between the frames relative to frame_a
         if (start_frame_num != end_frame_num) {
-            frame_t = (real32) (current_frame_num - start_frame_num) / (end_frame_num - start_frame_num);
+            frame_t = (real32) (frame_t - start_frame_num) / (end_frame_num - start_frame_num);
         }
         
         Transform *transform_a = &frame_a->local_transform;
@@ -82,7 +81,12 @@ Mat4 *get_bone_matrices(Allocator *allocator, Skeleton *skeleton, Skeletal_Anima
                                             transform_b->scale,
                                             frame_t);
 
-        Mat4 parent_to_model = make_mat4_identity();
+        //Mat4 parent_to_model = make_mat4_identity();
+        // to convert from bone/armature coordinate-space to model-space (object-space)
+        Mat4 parent_to_model = make_mat4(1.0f, 0.0f, 0.0f, 0.0f,
+                                         0.0f, 1.0f, 0.0f, 0.0f,
+                                         0.0f, 0.0f, -1.0f, 0.0f,
+                                         0.0f, 0.0f, 0.0f, 1.0f);
         if (bone->parent_index >= 0) {
             parent_to_model = bone_to_model_matrices[bone->parent_index];
         }
@@ -90,7 +94,8 @@ Mat4 *get_bone_matrices(Allocator *allocator, Skeleton *skeleton, Skeletal_Anima
         // local_transform * p_in_bone_space -> parent-space
         // parent_to_model * local_transform * p_in_bone_space -> model-space
 
-        // note that the parent-space here means in the parent-space in the bind pose.
+        // note that the parent-space here means in the parent-space in the bone
+        // coordinate-space
         // that's why we still need to multiply by parent->model.
         Mat4 bone_to_model = parent_to_model * get_model_matrix(interpolated_transform);
 
