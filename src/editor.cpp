@@ -170,7 +170,7 @@ void update_gizmo(Editor_State *editor_state) {
     Gizmo_State *gizmo_state = &editor_state->gizmo_state;
     Camera *camera = &editor_state->camera;
 
-    real32 gizmo_scale_factor = distance(gizmo_state->transform.position - camera->position) / 5.0f;
+    real32 gizmo_scale_factor = distance(gizmo_state->transform.position - camera->position) / 4.0f;
     gizmo_state->transform.scale = make_vec3(gizmo_scale_factor, gizmo_scale_factor, gizmo_scale_factor);
 
     Entity *entity = get_selected_entity(editor_state);
@@ -210,9 +210,16 @@ Gizmo_Handle pick_gizmo(Editor_State *editor_state, Ray cursor_ray, real32 *t_re
     Gizmo_Handle gizmo_translation_handles[3] = { GIZMO_TRANSLATE_X, GIZMO_TRANSLATE_Y, GIZMO_TRANSLATE_Z };
     Mesh *arrow_mesh = get_mesh(gizmo_state->arrow_mesh_name);
 
+    // make the translation and scale handles a bit bigger to make them easier to click
+    real32 buffer_scale = 3.0f;
+    
     real32 t_min = FLT_MAX;
     for (int32 i = 0; i < 3; i++) {
         Transform gizmo_handle_transform = gizmo_handle_transforms[i];
+
+        gizmo_handle_transform.scale.y *= buffer_scale;
+        gizmo_handle_transform.scale.z *= buffer_scale;
+
         Ray_Intersects_Mesh_Result result;
         if (ray_intersects_mesh(cursor_ray, arrow_mesh, gizmo_handle_transform, true, &result) &&
             (result.t < t_min)) {
@@ -227,6 +234,10 @@ Gizmo_Handle pick_gizmo(Editor_State *editor_state, Ray cursor_ray, real32 *t_re
 
     for (int32 i = 0; i < 3; i++) {
         Transform gizmo_handle_transform = gizmo_handle_transforms[i];
+
+        gizmo_handle_transform.scale.y *= buffer_scale;
+        gizmo_handle_transform.scale.z *= buffer_scale;
+        
         Ray_Intersects_Mesh_Result result;
         if (ray_intersects_mesh(cursor_ray, gizmo_cube_mesh, gizmo_handle_transform, true, &result) &&
             (result.t < t_min)) {

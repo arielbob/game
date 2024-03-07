@@ -3243,7 +3243,7 @@ void gl_draw_gizmo(Gizmo_State *gizmo_state) {
         z_transform = gizmo_state->transform;
         z_transform.rotation = gizmo_state->transform.rotation*make_quaternion(-90.0f, y_axis);
     }
-    
+
     using namespace Gizmo_Constants;
 
     Gizmo_Handle hovered_handle = gizmo_state->hovered_gizmo_handle;
