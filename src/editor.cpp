@@ -210,13 +210,14 @@ Gizmo_Handle pick_gizmo(Editor_State *editor_state, Ray cursor_ray, real32 *t_re
     Gizmo_Handle gizmo_translation_handles[3] = { GIZMO_TRANSLATE_X, GIZMO_TRANSLATE_Y, GIZMO_TRANSLATE_Z };
     Mesh *arrow_mesh = get_mesh(gizmo_state->arrow_mesh_name);
 
-    // make the translation and scale handles a bit bigger to make them easier to click
-    real32 buffer_scale = 3.0f;
+    
     
     real32 t_min = FLT_MAX;
     for (int32 i = 0; i < 3; i++) {
         Transform gizmo_handle_transform = gizmo_handle_transforms[i];
 
+        // make the handle a bit bigger to make it easier to click
+        real32 buffer_scale = 3.0f;
         gizmo_handle_transform.scale.y *= buffer_scale;
         gizmo_handle_transform.scale.z *= buffer_scale;
 
@@ -235,6 +236,7 @@ Gizmo_Handle pick_gizmo(Editor_State *editor_state, Ray cursor_ray, real32 *t_re
     for (int32 i = 0; i < 3; i++) {
         Transform gizmo_handle_transform = gizmo_handle_transforms[i];
 
+        real32 buffer_scale = 2.0f;
         gizmo_handle_transform.scale.y *= buffer_scale;
         gizmo_handle_transform.scale.z *= buffer_scale;
         

@@ -85,6 +85,8 @@ Mat4 *get_bone_matrices(Allocator *allocator, Skeleton *skeleton, Skeletal_Anima
         // animation specifies it because it can differ between animation programs.
         // if the coordinate systems are the same, then this is just the identity matrix.
         // usually it just involves a swap or negation of rows.
+        // we only need to multiply it once at skeleton root bones because the transforms are
+        // inherited down the line.
         Mat4 parent_to_model = animation->bone_to_model;
         
         if (bone->parent_index >= 0) {
