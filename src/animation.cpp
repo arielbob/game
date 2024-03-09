@@ -81,12 +81,14 @@ Mat4 *get_bone_matrices(Allocator *allocator, Skeleton *skeleton, Skeletal_Anima
                                             transform_b->scale,
                                             frame_t);
 
-        //Mat4 parent_to_model = make_mat4_identity();
-        // to convert from bone/armature coordinate-space to model-space (object-space)
-        Mat4 parent_to_model = make_mat4(1.0f, 0.0f, 0.0f, 0.0f,
-                                         0.0f, 1.0f, 0.0f, 0.0f,
-                                         0.0f, 0.0f, -1.0f, 0.0f,
-                                         0.0f, 0.0f, 0.0f, 1.0f);
+        // to convert from bone/armature coordinate-space to game's model-space (object-space).
+        // animation specifies it because it can differ between animation programs.
+        // if the coordinate systems are the same, then this is just the identity matrix.
+        // usually it just involves a swap or negation of rows.
+        // we only need to multiply it once at skeleton root bones because the transforms are
+        // inherited down the line.
+        Mat4 parent_to_model = animation->bone_to_model;
+        
         if (bone->parent_index >= 0) {
             parent_to_model = bone_to_model_matrices[bone->parent_index];
         }
@@ -351,6 +353,19 @@ bool32 Animation_Loader::parse_vec3(Tokenizer *tokenizer, Vec3 *result, char **e
     return true;
 }
 
+bool32 Animation_Loader::parse_vec4(Tokenizer *tokenizer, Vec4 *result, char **error) {
+    Vec4 v;
+    
+    for (int i = 0; i < 4; i++) {
+        if (!parse_real(tokenizer, &v[i], error)) {
+            return animation_parse_error(error, "Invalid number in Vec4.");
+        }
+    }
+
+    *result = v;
+    return true;
+}
+
 bool32 Animation_Loader::parse_quaternion(Tokenizer *tokenizer, Quaternion *result, char **error) {
     Quaternion quat;
     
@@ -410,6 +425,26 @@ bool32 Animation_Loader::parse_animation_info(Tokenizer *tokenizer, Skeletal_Ani
     if (!parse_int(tokenizer, &animation->num_bones, error)) {
         return false;
     }
+
+    // bone_to_model matrix
+    token = get_token(tokenizer);
+    if (!(token.type == LABEL && string_equals(token.string, "bone_to_model"))) {
+        return animation_parse_error(error, "Expected bone_to_model label.");
+    }
+
+    // parse bone_to_model matrix; this converts the animation's bone-space coordinate-system
+    // to our game's coordinate-system. it's easier to do this than converting everything in
+    // the script to the game's coordinate-system because it makes extracting transforms from
+    // matrices more difficult when the matrix contains a coordinate-system change (like a row
+    // swap.
+    Mat4 bone_to_model = make_mat4_identity();
+    for (int32 i = 0; i < 4; i++) {
+        // this is setting columns, though we're reading by row, so need to take transpose later
+        if (!parse_vec4(tokenizer, &bone_to_model.values[i], error)) {
+            return false;
+        }
+    }
+    animation->bone_to_model = transpose(bone_to_model);
 
     token = get_token(tokenizer);
     if (token.type != CLOSE_BRACKET) {

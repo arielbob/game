@@ -169,6 +169,8 @@ def game_export(context, filename, replace_existing, is_skinned):
             # so, this model_to_bone converts from game's model space to blender's bone space!!!
             # so, if we're doing transforms in bone-space, it's expected that we're transforming
             # in that weird swapped coordinate-system (i.e. in blender's bone-space).
+            
+            # armature-space -> game model-space
             swapped = swap_matrix @ bone.matrix_local
             model_to_bone = swapped.inverted()
             
@@ -582,7 +584,9 @@ def anim_export(context, filename, replace_existing):
             
             - if we wanted to be able to have everything in the game's coordinate-space, then we would first need to
               change the inverse_bind matrices, such that the bone-space is assumed to be in the game's coordinate-space
-              
+              - but, we would still need to do the weird math to deal with decomposing a transform matrix
+                that has swapped rows (something about negative determinants)
+
             - TODO: export the parent swap matrix
             '''
             
@@ -609,11 +613,10 @@ def anim_export(context, filename, replace_existing):
     temp_output_file.write('fps {:d}\n'.format(scene.render.fps))
     temp_output_file.write('num_bones {:d}\n'.format(len(normal_bones)))
     
-    '''
+    # the initial matrix to convert points in bone-space to model-space
     temp_output_file.write('bone_to_model ')
     for i in range(4):
-        temp_output_file.write('{:.5f} {:.5f} {:.5f} {:.5f}\n'.format(*swap_matrix[i])) # * is spread
-    '''
+        temp_output_file.write('{:.5f} {:.5f} {:.5f} {:.5f}\n'.format(*bone_to_game[i])) # * is spread
 
     temp_output_file.write('}\n\n')
 

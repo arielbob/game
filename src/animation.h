@@ -43,6 +43,7 @@ struct Skeletal_Animation {
     
     int32 frame_end;
     int32 fps;
+    Mat4 bone_to_model;
     Bone_Channel *bone_channels; // skeleton->num_bones channels
 
     Skeletal_Animation *table_next;
