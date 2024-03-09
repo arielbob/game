@@ -30,7 +30,7 @@ roughness 0.100342
 }
 
 animations {
-"test_blender_animation" ".\src\animations\blender_test.animation"
+"test_blender_animation" "assets/animations/blender_test.animation"
 }
 
 entities {
