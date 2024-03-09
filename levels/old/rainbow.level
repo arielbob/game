@@ -1,0 +1,158 @@
+level_info {
+level_name "rainbow"
+}
+
+meshes {
+mesh "sphere" "blender/sphere.mesh"
+mesh "suzanne2" "blender/suzanne2.mesh"
+}
+
+textures {
+texture "debug" "src/textures/debug_texture.png"
+texture "white" "src/textures/white.bmp"
+}
+
+materials {
+material {
+name "debug"use_albedo_texture 1
+albedo_texture "debug"
+albedo_color 1.000000 0.000000 0.000000
+metalness 0.500000
+roughness 0.500000
+}
+
+material {
+name "shiny_monkey"albedo_color 1.000000 1.000000 1.000000
+metalness 0.500000
+roughness 0.500000
+}
+
+}
+
+entities {
+entity {
+position 0.000000 3.554870 -0.087621
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+light_type point
+light_color 0.139500 0.265980 0.930000
+falloff_start 0.000000
+falloff_end 5.000000
+}
+entity {
+position 1.781886 0.000000 4.171795
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+light_type point
+light_color 0.531100 0.940000 0.122200
+falloff_start 0.000000
+falloff_end 5.000000
+}
+entity {
+position -2.126903 0.000000 -4.601583
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+light_type point
+light_color 0.328000 0.160000 1.000000
+falloff_start 0.000000
+falloff_end 5.000000
+}
+entity {
+position 2.535510 0.000000 -4.517696
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+light_type point
+light_color 0.995000 0.074625 0.074625
+falloff_start 0.000000
+falloff_end 5.000000
+}
+entity {
+position -3.984671 0.000000 0.000000
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+light_type point
+light_color 0.635000 0.142875 0.142875
+falloff_start 0.000000
+falloff_end 5.000000
+}
+entity {
+position -3.908582 0.000000 -3.790836
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+light_type point
+light_color 0.238900 1.000000 0.115000
+falloff_start 0.000000
+falloff_end 5.339808
+}
+entity {
+position 0.000000 0.000000 -4.586646
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+light_type point
+light_color 1.000000 0.220000 0.851800
+falloff_start 0.000000
+falloff_end 5.000000
+}
+entity {
+position 0.000000 0.000000 7.492579
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+light_type point
+light_color 1.000000 0.010000 0.010000
+falloff_start 0.000000
+falloff_end 5.000000
+}
+entity {
+position 5.265507 0.000000 0.000000
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+light_type point
+light_color 0.286750 0.465460 0.925000
+falloff_start 0.000000
+falloff_end 5.000000
+}
+entity {
+position -3.870535 2.679159 0.000000
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+light_type point
+light_color 0.785000 0.137375 0.137375
+falloff_start 0.000000
+falloff_end 4.854373
+}
+entity {
+position -1.000000 1.500000 -1.530419
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+light_type point
+light_color 0.000000 0.000000 1.000000
+falloff_start 0.000000
+falloff_end 5.000000
+}
+entity {
+position 0.800000 1.800000 -2.300000
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+light_type point
+light_color 0.215000 0.215000 0.215000
+falloff_start 0.000000
+falloff_end 3.000000
+}
+entity {
+position 0.137951 2.731141 -2.520771
+rotation 0.919117 0.000000 -0.393984 0.000000
+scale 1.000000 1.000000 1.000000
+light_type point
+light_color 1.000000 1.000000 1.000000
+falloff_start 0.000000
+falloff_end 0.000000
+}
+entity {
+position 0.481942 0.659598 0.000000
+rotation 0.577672 -0.781183 -0.168870 -0.165924
+scale 1.000000 1.000000 1.000000
+mesh "suzanne2"
+material "debug"
+}
+}
+

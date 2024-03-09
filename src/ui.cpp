@@ -1915,7 +1915,7 @@ void ui_push_container(UI_Container_Theme theme, char *id = "", uint32 flags = 0
     ui_push_existing_widget(inner);
 }
 
-void push_window(char *title, UI_Window_Theme theme, char *id_str, char *title_bar_id_str, int32 index = 0) {
+bool32 push_window(char *title, UI_Window_Theme theme, char *id_str, char *title_bar_id_str, char *close_id_str, int32 index = 0) {
     UI_id id = make_ui_id(id_str, index);
     UI_Widget_State *state_variant = ui_get_state(id);
     UI_Window_State *state;
@@ -1947,34 +1947,69 @@ void push_window(char *title, UI_Window_Theme theme, char *id_str, char *title_b
                                     UI_WIDGET_DRAW_BORDER | UI_WIDGET_IS_WINDOW);
     ui_add_and_push_widget(window);
     ui_interact(window);
+
+    bool32 should_stay_open = true;
     
     {
-        UI_Theme title_bar_theme = {};
-        title_bar_theme.size_type               = { UI_SIZE_PERCENTAGE, UI_SIZE_FIT_CHILDREN };
-        title_bar_theme.semantic_size           = { 1.0f, 20.0f };
-        title_bar_theme.layout_type             = UI_LAYOUT_CENTER;
-        title_bar_theme.background_color        = theme.title_bgc;
-        title_bar_theme.hot_background_color    = theme.title_hot_bgc;
-        title_bar_theme.active_background_color = theme.title_active_bgc;
-        title_bar_theme.text_color              = theme.title_text_color;
-        UI_Widget *title_bar = make_widget(title_bar_id_str, title_bar_theme,
-                                           UI_WIDGET_IS_CLICKABLE | UI_WIDGET_DRAW_BACKGROUND);
-        ui_add_and_push_widget(title_bar);
-        {
-            UI_Interact_Result title_bar_interact = ui_interact(title_bar);
-            do_text(title, "");
+        UI_Theme row_theme = {};
+        row_theme.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
+        row_theme.semantic_size = { 0.0f, 0.0f };
+        row_theme.layout_type = UI_LAYOUT_HORIZONTAL;
 
-            if (title_bar_interact.just_pressed) {
-                state->relative_start = title_bar_interact.relative_mouse;
-            }
+        ui_add_and_push_widget("", row_theme);
+        {
+            UI_Theme title_bar_theme = {};
+            title_bar_theme.size_type               = { UI_SIZE_FILL_REMAINING, UI_SIZE_FIT_CHILDREN };
+            title_bar_theme.semantic_size           = { 1.0f, 20.0f };
+            title_bar_theme.layout_type             = UI_LAYOUT_CENTER;
+            title_bar_theme.background_color        = theme.title_bgc;
+            title_bar_theme.hot_background_color    = theme.title_hot_bgc;
+            title_bar_theme.active_background_color = theme.title_active_bgc;
+            title_bar_theme.text_color              = theme.title_text_color;
+            UI_Widget *title_bar = make_widget(title_bar_id_str, title_bar_theme,
+                                               UI_WIDGET_IS_CLICKABLE | UI_WIDGET_DRAW_BACKGROUND);
+
+            ui_add_and_push_widget(title_bar);
+            {
+                UI_Interact_Result title_bar_interact = ui_interact(title_bar);
+                do_text(title, "");
+
+                if (title_bar_interact.just_pressed) {
+                    state->relative_start = title_bar_interact.relative_mouse;
+                }
             
-            if (title_bar_interact.holding) {
-                state->position = platform_get_cursor_pos() - state->relative_start;
-                // set it right away to reduce lag.
-                // we can do this because the window is float and a direct child of root, so
-                // semantic_position will always be computed_position.
-                window->semantic_position = state->position;
+                if (title_bar_interact.holding) {
+                    state->position = platform_get_cursor_pos() - state->relative_start;
+                    // set it right away to reduce lag.
+                    // we can do this because the window is float and a direct child of root, so
+                    // semantic_position will always be computed_position.
+                    window->semantic_position = state->position;
+                }
             }
+            ui_pop_widget();
+
+            UI_Theme close_window_theme = {};
+            close_window_theme.size_type               = { UI_SIZE_ABSOLUTE, UI_SIZE_FILL_REMAINING };
+            close_window_theme.semantic_size           = { 30.0f, 0.0f };
+            close_window_theme.layout_type             = UI_LAYOUT_CENTER;
+            close_window_theme.background_color        = DANGER_BUTTON_BACKGROUND;
+            close_window_theme.hot_background_color    = DANGER_BUTTON_HOT_BACKGROUND;
+            close_window_theme.active_background_color = DANGER_BUTTON_ACTIVE_BACKGROUND;
+            close_window_theme.text_color              = theme.title_text_color;
+            UI_Widget *close_window = make_widget(close_id_str, close_window_theme,
+                                                  UI_WIDGET_IS_CLICKABLE | UI_WIDGET_DRAW_BACKGROUND);
+
+            ui_add_and_push_widget(close_window);
+            {
+                UI_Interact_Result close_window_interact = ui_interact(close_window);
+                do_text("X");
+
+                if (close_window_interact.released) {
+                    should_stay_open = false;
+                }
+            }
+            ui_pop_widget();
+
         }
         ui_pop_widget();
     }
@@ -1982,6 +2017,8 @@ void push_window(char *title, UI_Window_Theme theme, char *id_str, char *title_b
     ui_pop_widget(); // pop window_layer
 
     ui_push_existing_widget(window);
+
+    return should_stay_open;
 }
 
 void handle_text_field_input(UI_Text_Field_State *state) {

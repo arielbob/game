@@ -1087,17 +1087,17 @@ void load_default_assets() {
     // we don't need default materials. materials reference meshes and textures but materials themselves
     // don't directly require any files.
 
-    add_mesh("gizmo_arrow",      "blender/gizmo_arrow.mesh",  Mesh_Type::ENGINE, ENGINE_GIZMO_ARROW_MESH_ID);
-    add_mesh("gizmo_ring",       "blender/gizmo_ring.mesh",   Mesh_Type::ENGINE, ENGINE_GIZMO_RING_MESH_ID);
-    add_mesh("gizmo_sphere",     "blender/gizmo_sphere.mesh", Mesh_Type::ENGINE, ENGINE_GIZMO_SPHERE_MESH_ID);
-    add_mesh("gizmo_cube",       "blender/gizmo_cube.mesh",   Mesh_Type::ENGINE, ENGINE_GIZMO_CUBE_MESH_ID);
-    add_mesh("capsule_cylinder", "blender/capsule_cylinder.mesh",
+    add_mesh("gizmo_arrow",      "assets/meshes/engine/gizmo_arrow.mesh",  Mesh_Type::ENGINE, ENGINE_GIZMO_ARROW_MESH_ID);
+    add_mesh("gizmo_ring",       "assets/meshes/engine/gizmo_ring.mesh",   Mesh_Type::ENGINE, ENGINE_GIZMO_RING_MESH_ID);
+    add_mesh("gizmo_sphere",     "assets/meshes/engine/gizmo_sphere.mesh", Mesh_Type::ENGINE, ENGINE_GIZMO_SPHERE_MESH_ID);
+    add_mesh("gizmo_cube",       "assets/meshes/engine/gizmo_cube.mesh",   Mesh_Type::ENGINE, ENGINE_GIZMO_CUBE_MESH_ID);
+    add_mesh("capsule_cylinder", "assets/meshes/engine/capsule_cylinder.mesh",
              Mesh_Type::ENGINE, ENGINE_CAPSULE_CYLINDER_MESH_ID);
-    add_mesh("capsule_cap",      "blender/capsule_cap.mesh",
+    add_mesh("capsule_cap",      "assets/meshes/engine/capsule_cap.mesh",
              Mesh_Type::ENGINE, ENGINE_CAPSULE_CAP_MESH_ID);
-    add_mesh("cube",             "blender/cube.mesh",  Mesh_Type::PRIMITIVE, ENGINE_DEFAULT_CUBE_MESH_ID);
+    add_mesh("cube",             "assets/meshes/engine/cube.mesh",  Mesh_Type::PRIMITIVE, ENGINE_DEFAULT_CUBE_MESH_ID);
 
-    add_mesh("skinned_cube",     "src/meshes/skinned_mesh_test.mesh", Mesh_Type::PRIMITIVE,
+    add_mesh("skinned_cube",     "assets/meshes/skinned_mesh_test.mesh", Mesh_Type::PRIMITIVE,
              ENGINE_DEFAULT_SKINNED_CUBE_MESH_ID);
 
     // if you're seeing white borders around semi-transparent parts of exported PNGs, make sure the
@@ -1107,15 +1107,15 @@ void load_default_assets() {
     // outlines of the light icons. when the fully transparent background wasn't RGB(0, 0, 0), opengl
     // was blending between the black outline and the white fully transparent background when scaling
     // the texture, which resulted in faint white artifacts on the edges of the outlines.
-    add_texture("texture_default",   "blender/debug-texture.jpg",          Texture_Type::DEFAULT,
+    add_texture("texture_default",   "assets/textures/debug-texture.jpg",          Texture_Type::DEFAULT,
                 ENGINE_DEBUG_TEXTURE_ID);
-    add_texture("lightbulb",         "src/textures/lightbulb.png",         Texture_Type::ENGINE,
+    add_texture("lightbulb",         "assets/textures/lightbulb.png",         Texture_Type::ENGINE,
                 ENGINE_LIGHTBULB_TEXTURE_ID);
-    add_texture("editor_down_arrow", "src/textures/editor_down_arrow.png", Texture_Type::ENGINE,
+    add_texture("editor_down_arrow", "assets/textures/editor_down_arrow.png", Texture_Type::ENGINE,
                 ENGINE_EDITOR_DOWN_ARROW_TEXTURE_ID);
-    add_texture("editor_check",      "src/textures/editor_check.png",      Texture_Type::ENGINE,
+    add_texture("editor_check",      "assets/textures/editor_check.png",      Texture_Type::ENGINE,
                 ENGINE_EDITOR_CHECK_TEXTURE_ID);
-    add_texture("sun_icon",          "src/textures/sun-icon.png",          Texture_Type::ENGINE,
+    add_texture("sun_icon",          "assets/textures/sun-icon.png",          Texture_Type::ENGINE,
                 ENGINE_SUN_TEXTURE_ID);
 
     add_font("times32",         "c:/windows/fonts/times.ttf",    32.0f);

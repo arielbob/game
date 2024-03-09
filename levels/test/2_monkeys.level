@@ -1,0 +1,61 @@
+level_info {
+level_name "2"
+}
+
+meshes {
+mesh "house" ".\blender\house.mesh"
+mesh "suzanne" ".\blender\suzanne2.mesh"
+}
+
+textures {
+}
+
+materials {
+material {
+name "glossy red"
+albedo_color 0.743333 0.032211 0.032211
+metalness 0.000000
+roughness 0.038063
+}
+
+material {
+name "matte blue"
+albedo_color 0.000000 0.080000 1.000000
+metalness 0.000000
+roughness 0.204147
+}
+
+}
+
+entities {
+entity {
+position -3.291274 3.808974 -2.597950
+rotation 0.908205 0.091635 -0.279682 -0.297565
+scale 1.000000 1.000000 1.000000
+light_type sun
+sun_color 1.000000 0.779000 0.350000
+sun_intensity 2185.000000
+}
+entity {
+position 1.861936 -0.214412 0.000000
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 19.978497 0.435126 14.620658
+mesh "cube"
+material "default_material"
+}
+entity {
+position -0.381705 0.685194 0.000000
+rotation 0.950983 0.253512 -0.168103 0.055712
+scale 1.000000 1.075399 1.000000
+mesh "suzanne"
+material "glossy red"
+}
+entity {
+position 3.216114 0.748059 0.443192
+rotation 0.878177 0.308634 0.344772 -0.121170
+scale 2.000000 2.000000 2.000000
+mesh "suzanne"
+material "matte blue"
+}
+}
+

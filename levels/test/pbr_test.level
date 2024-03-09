@@ -1,0 +1,192 @@
+level_info {
+level_name "this is a test"
+}
+
+meshes {
+mesh "tree" ".\blender\tree.mesh"
+mesh "sphere" ".\blender\sphere.mesh"
+mesh "suzanne2" ".\blender\suzanne2.mesh"
+mesh "low-poly suzanne" ".\blender\suzanne.mesh"
+mesh "ground3" ".\blender\ground3.mesh"
+mesh "torus" ".\blender\torus.mesh"
+}
+
+textures {
+texture "white" "src/textures/white.bmp"
+texture "grass" ".\src\textures\grass.png"
+}
+
+materials {
+material {
+name "shiny red"
+albedo_color 0.823333 0.030189 0.030189
+metalness 0.000000
+roughness 0.028168
+}
+
+material {
+name "shiny debug"
+use_albedo_texture 1
+albedo_texture "texture_default"
+albedo_color 0.029600 0.740000 0.000000
+metalness 0.000000
+roughness 0.031140
+}
+
+material {
+name "shiny blue"
+albedo_color 0.000000 0.060000 1.000000
+metalness 0.000000
+roughness 0.010563
+}
+
+material {
+name "pink check"
+use_albedo_texture 1
+albedo_texture "grass"
+albedo_color 1.000000 0.143333 0.777266
+metalness 0.000000
+roughness 0.021126
+}
+
+material {
+name "beige"
+albedo_color 1.000000 0.503133 0.143333
+metalness 0.000000
+use_roughness_texture 1
+roughness_texture "texture_default"
+roughness 0.035210
+}
+
+material {
+name "grass"
+albedo_color 0.017890 0.050000 0.008833
+metalness 0.000000
+roughness 0.000000
+}
+
+material {
+name "debug squares"
+use_albedo_texture 1
+albedo_texture "texture_default"
+albedo_color 0.500000 0.500000 0.500000
+metalness 1.000000
+roughness 1.000000
+}
+
+}
+
+animations {
+"New Animation" ".\src\animations\blender_test.animation"
+}
+
+entities {
+entity {
+position 0.000000 6.988622 0.000000
+rotation 0.604164 0.150893 -0.778992 -0.073406
+scale 1.000000 1.000000 1.000000
+light_type sun
+sun_color 0.363333 0.465200 1.000000
+sun_intensity 1573.000000
+}
+entity {
+position 1.392019 -0.726975 -8.814487
+rotation 0.965931 0.000000 0.000000 -0.258799
+scale 5.384958 0.163586 1.000000
+mesh "cube"
+material "default_material"
+has_collider 1
+}
+entity {
+position 4.897921 -2.388843 -8.796309
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+mesh "torus"
+material "shiny blue"
+has_collider 1
+}
+entity {
+position 0.000000 30.628136 -24.403343
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+light_type point
+light_color 1.000000 1.000000 1.000000
+point_light_intensity 0.000000
+falloff_start 0.000000
+falloff_end 49.000000
+}
+entity {
+position 0.000000 -2.587458 0.000000
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 0.500000 0.500000 0.500000
+mesh "ground3"
+material "debug squares"
+has_collider 1
+}
+entity {
+position -0.380305 -0.403196 5.304492
+rotation 0.955092 0.287344 0.071621 -0.010202
+scale 2.000000 2.000000 2.000000
+mesh "suzanne2"
+material "pink check"
+}
+entity {
+position 1.983263 0.000000 -2.828268
+rotation 0.153559 0.104728 0.937697 -0.293558
+scale 1.000000 1.000000 1.000000
+mesh "low-poly suzanne"
+material "shiny debug"
+}
+entity {
+position 3.183504 0.000000 -0.193760
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+mesh "skinned_cube"
+material "default_material"
+has_collider 1
+animation "New Animation"
+}
+entity {
+position -4.271520 -0.819887 0.222117
+rotation 0.863695 0.258482 -0.402920 0.157714
+scale 1.000000 1.000000 1.000000
+mesh "low-poly suzanne"
+material "shiny red"
+has_collider 1
+}
+entity {
+position -3.558386 3.283484 2.876131
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+light_type point
+light_color 0.040000 0.021280 0.014000
+point_light_intensity 0.000000
+falloff_start 0.000000
+falloff_end 10.000000
+}
+entity {
+position 0.177281 5.683138 -3.576767
+rotation 0.919117 0.000000 -0.393984 0.000000
+scale 1.000000 1.000000 1.000000
+light_type point
+light_color 0.017189 0.025084 0.056667
+point_light_intensity 0.000000
+falloff_start 0.000000
+falloff_end 7.500000
+}
+entity {
+position 6.433689 -2.123394 0.271011
+rotation 0.381343 -0.009363 -0.922670 0.056304
+scale 1.000000 1.000000 1.000000
+mesh "tree"
+material "beige"
+}
+entity {
+position -0.709515 0.000000 -2.470970
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+mesh "gizmo_sphere"
+material "beige"
+}
+}
+

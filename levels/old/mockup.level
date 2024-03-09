@@ -1,0 +1,79 @@
+level_info {
+level_name "startup"
+}
+
+meshes {
+mesh "cube" "blender/cube.mesh"
+mesh "suzanne" "blender/suzanne2.mesh"
+mesh "sphere" "blender/sphere.mesh"
+mesh "house" ".\blender\house.mesh"
+mesh "ground" ".\blender\ground2.mesh"
+mesh "stairs" ".\blender\staircase.mesh"
+mesh "car" ".\blender\car.mesh"
+mesh "layout" ".\blender\layout1.mesh"
+mesh "ground2" ".\blender\hill.mesh"
+mesh "tree" ".\blender\tree.mesh"
+}
+
+textures {
+texture "debug" "src/textures/debug_texture.png"
+texture "white" "src/textures/white.bmp"
+}
+
+materials {
+material "shiny_monkey" {
+texture "debug"
+gloss 0.800000
+color_override 1.000000 0.335000 0.335000
+use_color_override 1
+}
+
+material "diffuse_sphere" {
+texture "debug"
+gloss 48.735294
+color_override 0.900000 0.900000 0.900000
+use_color_override 0
+}
+}
+
+entities {
+entity {
+type normal
+position 1.755084 -0.274429 1.162980
+rotation 0.908249 0.169228 0.376208 -0.070097
+scale 1.000000 1.000000 1.000000
+mesh_primitive "cube"
+material "shiny_monkey"
+is_walkable 1
+}
+
+entity {
+type normal
+position -1.500000 1.500000 -0.279660
+rotation 0.818524 -0.324278 0.457405 0.125074
+scale 1.149342 0.142868 7.272684
+mesh_primitive "cube"
+material "diffuse_sphere"
+is_walkable 1
+}
+
+entity {
+type point_light
+position 1.820840 8.628439 0.440687
+rotation 0.951728 0.000000 -0.306943 0.000000
+scale 1.000000 1.000000 1.000000
+light_color 0.160000 0.160000 0.160000
+falloff_start 0.000000
+falloff_end 100.000000
+}
+
+entity {
+type point_light
+position -10.201349 3.757783 3.353169
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+light_color 0.500000 0.500000 0.500000
+falloff_start 0.000000
+falloff_end 5.000000
+}
+}

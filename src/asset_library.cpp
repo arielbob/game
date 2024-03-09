@@ -1225,8 +1225,10 @@ void draw_asset_library() {
     selected_item_theme.active_background_color = selected_item_theme.background_color;
 #endif
     
-    push_window("Asset Library", window_theme,
-                "asset-library-window", "asset-library-window-title-bar");
+    editor_state->is_asset_library_window_open = push_window("Asset Library", window_theme,
+                                                             "asset-library-window",
+                                                             "asset-library-window-title-bar",
+                                                             "asset-library-close");
 
     UI_Theme inner_column = {};
     inner_column.size_type = { UI_SIZE_FILL_REMAINING, UI_SIZE_FILL_REMAINING };

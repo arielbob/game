@@ -90,8 +90,10 @@ void draw_collision_debugger() {
 
     window_theme.size_type = { UI_SIZE_FIT_CHILDREN, UI_SIZE_FIT_CHILDREN };
 
-    push_window("Collision Debugger", window_theme,
-                "collision-debugger-window", "collision-debugger-window-title-bar");
+    editor_state->is_collision_debugger_window_open = push_window("Collision Debugger", window_theme,
+                                                                  "collision-debugger-window",
+                                                                  "collision-debugger-window-title-bar",
+                                                                  "collision-debugger-close");
 
     UI_Container_Theme container_theme = {
         { 5.0f, 5.0f, 5.0f, 5.0f },

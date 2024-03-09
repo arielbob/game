@@ -843,8 +843,8 @@ void draw_entity_box_2(bool32 force_reset) {
     window_theme.size_type = { UI_SIZE_ABSOLUTE, UI_SIZE_FIT_CHILDREN };
     window_theme.semantic_size = { 200.0f, 0.0f };
     
-    push_window("Entity Properties", window_theme,
-                "entity-properties-window", "entity-properties-window-title-bar");
+    bool32 stay_open = push_window("Entity Properties", window_theme,
+                                   "entity-properties-window", "entity-properties-window-title-bar", "entity-properties-close");
 
     Editor_State *editor_state = &game_state->editor_state;
     assert(editor_state->selected_entity_id > -1);
@@ -1288,6 +1288,10 @@ void draw_entity_box_2(bool32 force_reset) {
     } ui_pop_widget();
     
     ui_pop_widget();
+
+    if (!stay_open) {
+        editor_state->selected_entity_id = -1;
+    }
 }
 
 void draw_level_box() {

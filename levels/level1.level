@@ -1,0 +1,78 @@
+level_info {
+level_name "level1"
+}
+
+meshes {
+mesh "ground" ".\blender\ground3.mesh"
+mesh "car-blockout" ".\blender\car2.mesh"
+mesh "house-layout" ".\blender\layout1.mesh"
+mesh "plane" ".\blender\plane.mesh"
+}
+
+textures {
+}
+
+materials {
+material {
+name "car"
+albedo_color 1.000000 0.000000 0.000000
+metalness 0.500000
+roughness 0.500000
+}
+
+material {
+name "ground"
+albedo_color 0.369364 0.525000 0.322875
+metalness 0.500000
+use_roughness_texture 1
+roughness_texture "texture_default"
+roughness 0.500000
+}
+
+material {
+name "basic-white"
+albedo_color 1.000000 1.000000 1.000000
+metalness 0.500000
+roughness 0.500000
+}
+
+}
+
+animations {
+}
+
+entities {
+entity {
+position 0.000000 -0.010000 0.000000
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+mesh "ground"
+material "ground"
+has_collider 1
+}
+entity {
+position -27.268349 -0.187756 -17.569902
+rotation 0.800367 0.000000 0.599510 0.000000
+scale 1.000000 1.000000 1.000000
+mesh "car-blockout"
+material "car"
+has_collider 1
+}
+entity {
+position -11.156768 3.170330 13.288171
+rotation 0.842501 0.000000 0.538694 0.000000
+scale 1.000000 1.000000 1.000000
+mesh "house-layout"
+material "basic-white"
+has_collider 1
+}
+entity {
+position -24.979940 7.084499 -16.622726
+rotation 0.892187 0.095786 -0.379699 -0.225071
+scale 1.000000 1.000000 1.000000
+light_type sun
+sun_color 0.756667 0.844267 1.000000
+sun_intensity 1236.000000
+}
+}
+

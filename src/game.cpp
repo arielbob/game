@@ -6,7 +6,6 @@
 global_variable int32 samples_written_2;
 
 void init_asset_manager(Arena_Allocator *game_data) {
-    // TODO: just make this a heap allocator. when we remove the editor, it can change to an arena
     uint32 heap_size = ASSET_HEAP_SIZE;
     void *heap_base = arena_push(game_data, heap_size);
 
@@ -476,6 +475,7 @@ void init_player() {
     *player = {};
     player->height = Player_Constants::player_height;
     player->speed = Player_Constants::initial_speed;
+    player->position.y = 10.0f;
 }
 
 void init_game(Sound_Output *sound_output, uint32 num_samples) {
@@ -520,7 +520,7 @@ void init_game(Sound_Output *sound_output, uint32 num_samples) {
     init_level(&game_state->level, &memory.game_data);
     
     // load default level
-    read_and_load_level(&game_state->level, "src/levels/train.level");
+    read_and_load_level(&game_state->level, "levels/train.level");
     
     // init camera
     init_camera(&game_state->camera, display_output, CAMERA_FOV);

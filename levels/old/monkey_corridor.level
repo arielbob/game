@@ -1,0 +1,110 @@
+level_info {
+level_name "monkey_corridor"
+}
+
+meshes {
+mesh "suzanne" "blender/suzanne2.mesh"
+mesh "sphere" "blender/sphere.mesh"
+}
+
+textures {
+texture "debug" "src/textures/debug_texture.png"
+texture "white" "src/textures/white.bmp"
+}
+
+materials {
+material "shiny_monkey"
+texture "debug"
+gloss 100.000000
+color_override 0.600000 0.600000 0.600000
+use_color_override 1
+
+material "diffuse_plane"
+gloss 1.000000
+color_override 0.900000 0.900000 0.900000
+use_color_override 1
+
+material "arrow_material"
+gloss 100.000000
+color_override 1.000000 0.000000 0.000000
+use_color_override 1
+
+material "white_light"
+gloss 0.000000
+color_override 1.000000 1.000000 1.000000
+use_color_override 1
+
+material "blue_light"
+gloss 0.000000
+color_override 0.000000 0.000000 1.000000
+use_color_override 1
+
+material "diffuse_sphere"
+gloss 98.381042
+color_override 1.000000 0.000000 0.000000
+use_color_override 1
+
+material "wall"
+texture "debug"
+gloss 15.764706
+color_override 0.000000 0.000000 0.000000
+use_color_override 0
+}
+
+entities {
+type normal
+position 2.000000 1.000000 0.000000
+rotation 0.923880 0.000000 0.382683 0.000000
+scale 6.169563 9.953970 0.437790
+mesh_primitive "cube"
+material "wall"
+is_walkable 1
+
+type normal
+position 0.739681 0.000000 -2.057553
+rotation 0.961036 0.000000 -0.276421 0.000000
+scale 21.014915 0.433334 30.213097
+mesh_primitive "cube"
+material "wall"
+is_walkable 1
+
+type normal
+position -3.005479 3.826950 10.725139
+rotation 0.970540 -0.217959 -0.100166 -0.022495
+scale 5.000000 5.000000 5.000000
+mesh "suzanne"
+material "diffuse_sphere"
+is_walkable 0
+
+type normal
+position -2.114316 0.276045 0.000000
+rotation 0.987322 0.000000 -0.158729 0.000000
+scale 0.225584 10.362688 18.333334
+mesh_primitive "cube"
+material "wall"
+is_walkable 1
+
+type normal
+position 5.876761 3.040720 -1.195346
+rotation 0.976159 0.000000 -0.217055 0.000000
+scale 4.000000 6.166668 1.000000
+mesh_primitive "cube"
+material "wall"
+is_walkable 0
+
+type point_light
+position 6.649916 9.852208 -6.270094
+rotation 0.952600 0.000000 -0.304226 0.000000
+scale 0.100000 0.100000 0.100000
+light_color 0.800000 0.800000 0.800000
+falloff_start 0.000000
+falloff_end 26.855604
+
+type point_light
+position -1.000000 1.500000 0.000000
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 0.100000 0.100000 0.100000
+light_color 0.000000 0.000000 1.000000
+falloff_start 0.000000
+falloff_end 5.000000
+}

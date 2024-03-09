@@ -2308,39 +2308,39 @@ void gl_init(Arena_Allocator *game_data, Display_Output display_output) {
     gl_add_mesh(ENGINE_CIRCLE_MESH_ID, Mesh_Type::ENGINE, vao, vbo, 0);
 
     // NOTE: shaders
-    gl_load_shader("src/shaders/basic.vs",                    "src/shaders/basic.fs",
+    gl_load_shader("assets/shaders/basic.vs",                    "assets/shaders/basic.fs",
                    "basic");
-    gl_load_shader("src/shaders/basic2.vs",                   "src/shaders/basic2.fs",
+    gl_load_shader("assets/shaders/basic2.vs",                   "assets/shaders/basic2.fs",
                    "basic2");
-    gl_load_shader("src/shaders/text.vs",                     "src/shaders/text.fs",
+    gl_load_shader("assets/shaders/text.vs",                     "assets/shaders/text.fs",
                    "text");
-    gl_load_shader("src/shaders/solid.vs",                    "src/shaders/solid.fs",
+    gl_load_shader("assets/shaders/solid.vs",                    "assets/shaders/solid.fs",
                    "solid");
-    gl_load_shader("src/shaders/basic_3d.vs",                 "src/shaders/basic_3d.fs",
+    gl_load_shader("assets/shaders/basic_3d.vs",                 "assets/shaders/basic_3d.fs",
                    "basic_3d");
-    gl_load_shader("src/shaders/basic_3d_textured.vs",        "src/shaders/basic_3d_textured.fs",
+    gl_load_shader("assets/shaders/basic_3d_textured.vs",        "assets/shaders/basic_3d_textured.fs",
                    "basic_3d_textured");
-    gl_load_shader("src/shaders/debug_wireframe.vs",          "src/shaders/debug_wireframe.fs",
+    gl_load_shader("assets/shaders/debug_wireframe.vs",          "assets/shaders/debug_wireframe.fs",
                    "debug_wireframe");
-    gl_load_shader("src/shaders/framebuffer.vs",              "src/shaders/framebuffer.fs",
+    gl_load_shader("assets/shaders/framebuffer.vs",              "assets/shaders/framebuffer.fs",
                    "framebuffer");
-    gl_load_shader("src/shaders/multisampled_framebuffer.vs", "src/shaders/multisampled_framebuffer.fs",
+    gl_load_shader("assets/shaders/multisampled_framebuffer.vs", "assets/shaders/multisampled_framebuffer.fs",
                    "multisampled_framebuffer");
-    gl_load_shader("src/shaders/hue_slider.vs",               "src/shaders/hue_slider.fs",
+    gl_load_shader("assets/shaders/hue_slider.vs",               "assets/shaders/hue_slider.fs",
                    "hue_slider");
-    gl_load_shader("src/shaders/hsv.vs",                      "src/shaders/hsv.fs",
+    gl_load_shader("assets/shaders/hsv.vs",                      "assets/shaders/hsv.fs",
                    "hsv");
-    gl_load_shader("src/shaders/mesh_2d.vs",                  "src/shaders/mesh_2d.fs",
+    gl_load_shader("assets/shaders/mesh_2d.vs",                  "assets/shaders/mesh_2d.fs",
                    "mesh_2d");
-    gl_load_shader("src/shaders/line_3d.vs",                  "src/shaders/line_3d.fs",
+    gl_load_shader("assets/shaders/line_3d.vs",                  "assets/shaders/line_3d.fs",
                    "line_3d");
-    gl_load_shader("src/shaders/constant_facing_quad.vs",     "src/shaders/constant_facing_quad.fs",
+    gl_load_shader("assets/shaders/constant_facing_quad.vs",     "assets/shaders/constant_facing_quad.fs",
                    "constant_facing_quad");
-    gl_load_shader("src/shaders/rounded_quad.vs",             "src/shaders/rounded_quad.fs",
+    gl_load_shader("assets/shaders/rounded_quad.vs",             "assets/shaders/rounded_quad.fs",
                    "rounded_quad");
-    gl_load_shader("src/shaders/pbr.vs",                      "src/shaders/pbr.fs",
+    gl_load_shader("assets/shaders/pbr.vs",                      "assets/shaders/pbr.fs",
                    "pbr");
-    gl_load_shader("src/shaders/ui.vs",                       "src/shaders/ui.fs",
+    gl_load_shader("assets/shaders/ui.vs",                       "assets/shaders/ui.fs",
                    "ui");
 
     // NOTE: ui buffer
