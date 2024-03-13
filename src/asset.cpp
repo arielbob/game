@@ -693,13 +693,10 @@ void get_mesh_names(Allocator *allocator, Mesh_Type types, char **names, int max
                 break;
             }
 
-            // TODO: fix this; for some reason it results in duplicates
-            // - i don't think we have duplicates?
             if (current->type & types) {
                 names[num_mesh_names++] = to_char_array(allocator, current->name);
             }
-            
-            names[num_mesh_names++] = to_char_array(allocator, current->name);
+
             current = current->table_next;
         }
 
