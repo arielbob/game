@@ -18,7 +18,7 @@ bone_to_game = Matrix(((1.0, 0.0, 0.0, 0.0),
 armature_to_game = swap_matrix
 
 class Vertex:
-    def __init__(self, co, normal, uv, bone_indices, bone_weights):
+    def __init__(self, co, normal, uv, bone_indices=[], bone_weights=[]):
         self.co = co
         self.normal = normal
         self.uv = uv
@@ -290,7 +290,11 @@ def game_export(context, filename, replace_existing, is_skinned):
             
         new_face_indices = []
         for i in range(3):
-            vertex_to_add = Vertex(vertex_positions[i], vertex_normals[i], vertex_uvs[i], vertex_bone_indices[i], vertex_bone_weights[i])
+            vertex_to_add = None
+            if is_skinned:
+                vertex_to_add = Vertex(vertex_positions[i], vertex_normals[i], vertex_uvs[i], vertex_bone_indices[i], vertex_bone_weights[i])
+            else:
+                vertex_to_add = Vertex(vertex_positions[i], vertex_normals[i], vertex_uvs[i])
 
             # TODO: this is slow, but is very simple
             #       we could add them to a set instead, but then we would have to set the face vertex

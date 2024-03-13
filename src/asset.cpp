@@ -681,7 +681,7 @@ void get_material_names(Allocator *allocator, char **names, int max_names, int *
     *num_names = num_material_names;
 }
 
-void get_mesh_names(Allocator *allocator, Mesh_Type type, char **names, int max_names, int *num_names) {
+void get_mesh_names(Allocator *allocator, Mesh_Type types, char **names, int max_names, int *num_names) {
     int32 num_mesh_names = 0;
     for (int32 i = 0; i < NUM_MESH_BUCKETS; i++) {
         Mesh *current = asset_manager->mesh_table[i];
@@ -692,11 +692,13 @@ void get_mesh_names(Allocator *allocator, Mesh_Type type, char **names, int max_
                 should_exit = true;
                 break;
             }
-            #if 0
-            if (current->type == type) {
+
+            // TODO: fix this; for some reason it results in duplicates
+            // - i don't think we have duplicates?
+            if (current->type & types) {
                 names[num_mesh_names++] = to_char_array(allocator, current->name);
             }
-            #endif
+            
             names[num_mesh_names++] = to_char_array(allocator, current->name);
             current = current->table_next;
         }

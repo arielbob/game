@@ -1,0 +1,34 @@
+level_info {
+level_name "beach night"
+}
+
+meshes {
+}
+
+textures {
+}
+
+materials {
+}
+
+animations {
+}
+
+entities {
+entity {
+position 0.000000 0.000000 0.000000
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+mesh "cube"
+material "default_material"
+}
+entity {
+position 0.025938 4.180701 0.000000
+rotation 0.979584 -0.135613 -0.020351 -0.147004
+scale 1.000000 1.000000 1.000000
+light_type sun
+sun_color 1.000000 1.000000 1.000000
+sun_intensity 87.000000
+}
+}
+

@@ -1157,7 +1157,8 @@ void draw_entity_box_2(bool32 force_reset) {
                 const int32 MAX_MESH_NAMES = 256;
                 char *mesh_names[MAX_MESH_NAMES];
                 int32 num_mesh_names;
-                get_mesh_names((Allocator *) &ui_manager->frame_arena, Mesh_Type::LEVEL,
+                get_mesh_names((Allocator *) &ui_manager->frame_arena,
+                               Mesh_Type::LEVEL | Mesh_Type::PRIMITIVE,
                                mesh_names, MAX_MESH_NAMES,
                                &num_mesh_names);
                 assert(num_mesh_names > 0);

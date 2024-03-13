@@ -60,7 +60,7 @@ void draw_mesh_library() {
                                                         &new_mesh_name, mesh_exists);
                 assert(gen_result);
 
-                Mesh *new_mesh = add_mesh(new_mesh_name, make_string("blender/cube.mesh"), Mesh_Type::LEVEL);
+                Mesh *new_mesh = add_mesh(new_mesh_name, make_string("assets/meshes/engine/cube.mesh"), Mesh_Type::LEVEL);
                 assert(new_mesh);
                 asset_library_state->selected_mesh_id = new_mesh->id;
 

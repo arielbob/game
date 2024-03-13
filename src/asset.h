@@ -47,7 +47,21 @@
 // PRIMITIVE is for meshes you can use in levels, but can't be deleted. also used for default meshes when a
 // mesh can't be found or an entity is just created in the editor.
 // ENGINE is for rendering code or for the editor, like glyph quads and gizmo arrows.
-enum class Mesh_Type     { NONE, LEVEL, PRIMITIVE, ENGINE };
+enum class Mesh_Type {
+    NONE = 0,
+    LEVEL = 1 << 0,
+    PRIMITIVE = 1 << 1,
+    ENGINE = 1 << 2
+};
+
+int32 operator&(Mesh_Type& a, Mesh_Type& b) {
+    return ((int) a & (int) b);
+}
+
+Mesh_Type operator|(Mesh_Type a, Mesh_Type b) {
+    return (Mesh_Type) ((int32) a | (int32) b);
+}
+
 enum class Texture_Type  { NONE, LEVEL, DEFAULT, ENGINE };
 enum class Material_Type  { NONE, LEVEL, DEFAULT };
 

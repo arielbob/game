@@ -520,7 +520,7 @@ void init_game(Sound_Output *sound_output, uint32 num_samples) {
     init_level(&game_state->level, &memory.game_data);
     
     // load default level
-    read_and_load_level(&game_state->level, "levels/train.level");
+    read_and_load_level(&game_state->level, "levels/beach-night.level");
     
     // init camera
     init_camera(&game_state->camera, display_output, CAMERA_FOV);
