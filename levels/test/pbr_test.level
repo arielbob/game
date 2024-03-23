@@ -3,17 +3,17 @@ level_name "this is a test"
 }
 
 meshes {
-mesh "tree" ".\blender\tree.mesh"
-mesh "sphere" ".\blender\sphere.mesh"
-mesh "suzanne2" ".\blender\suzanne2.mesh"
-mesh "low-poly suzanne" ".\blender\suzanne.mesh"
-mesh "ground3" ".\blender\ground3.mesh"
-mesh "torus" ".\blender\torus.mesh"
+mesh "tree" "assets/meshes/tree.mesh"
+mesh "sphere" "assets/meshes/sphere.mesh"
+mesh "suzanne2" "assets/meshes/suzanne2.mesh"
+mesh "low-poly suzanne" "assets/meshes/suzanne.mesh"
+mesh "ground3" "assets/meshes/ground3.mesh"
+mesh "torus" "assets/meshes/torus.mesh"
 }
 
 textures {
-texture "white" "src/textures/white.bmp"
-texture "grass" ".\src\textures\grass.png"
+texture "white" "assets/textures/white.bmp"
+texture "grass" "assets/textures/grass.png"
 }
 
 materials {
@@ -77,7 +77,7 @@ roughness 1.000000
 }
 
 animations {
-"New Animation" ".\src\animations\blender_test.animation"
+"New Animation" "assets/animations/blender_test.animation"
 }
 
 entities {
