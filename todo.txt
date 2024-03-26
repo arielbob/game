@@ -1,0 +1,8 @@
+TODO: win32 platform layer threading support
+TODO: mutexes
+TODO: filesystem watching
+- https://learn.microsoft.com/en-us/windows/win32/fileio/obtaining-directory-change-notifications
+- https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-findfirstchangenotificationa
+- WaitForMultipleObjects
+- ReadDirectoryChangesW: https://gist.github.com/nickav/a57009d4fcc3b527ed0f5c9cf30618f8
+TODO: updating on asset file changes

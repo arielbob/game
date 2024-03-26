@@ -4,12 +4,28 @@ level_name "beach night"
 
 meshes {
 mesh "plane" ".\assets\meshes\plane.mesh"
+mesh "beach woods" ".\assets\meshes\beach-woods.mesh"
+mesh "beach woods terrain" ".\assets\meshes\beach-woods-terrain.mesh"
 }
 
 textures {
 }
 
 materials {
+material {
+name "grass"
+albedo_color 0.127997 0.430000 0.078833
+metalness 0.000000
+roughness 0.000000
+}
+
+material {
+name "wood"
+albedo_color 0.080000 0.056320 0.020800
+metalness 0.000000
+roughness 0.000000
+}
+
 }
 
 animations {
@@ -17,56 +33,24 @@ animations {
 
 entities {
 entity {
-position 1.865726 1.717635 -1.401662
-rotation 0.988725 0.000000 0.149740 0.000000
-scale 0.912076 3.700128 1.023775
-mesh "cube"
-material "default_material"
-has_collider 1
-}
-entity {
-position -0.799114 1.717635 -2.645648
-rotation 0.988725 0.000000 0.149740 0.000000
-scale 0.912076 3.700128 1.023775
-mesh "cube"
-material "default_material"
-has_collider 1
-}
-entity {
-position 2.500502 1.717635 -3.003222
-rotation 0.968658 0.000000 -0.248399 0.000000
-scale 0.912076 3.700128 1.023775
-mesh "cube"
-material "default_material"
-has_collider 1
-}
-entity {
-position 2.500502 1.717635 -4.596478
-rotation 0.968658 0.000000 -0.248399 0.000000
-scale 0.912076 3.700128 1.023775
-mesh "cube"
-material "default_material"
-has_collider 1
-}
-entity {
-position -1.567656 1.717635 -4.188183
-rotation 0.985411 0.000000 0.170193 0.000000
-scale 0.912076 3.700128 1.023775
-mesh "cube"
-material "default_material"
+position 0.000000 0.000000 0.000000
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+mesh "beach woods terrain"
+material "grass"
 has_collider 1
 }
 entity {
 position 0.000000 0.000000 0.000000
 rotation 1.000000 0.000000 0.000000 0.000000
-scale 20.000000 1.000000 18.000000
-mesh "plane"
-material "default_material"
+scale 1.000000 1.000000 1.000000
+mesh "beach woods"
+material "wood"
 has_collider 1
 }
 entity {
 position 0.025938 4.180701 0.000000
-rotation 0.923425 -0.127838 -0.049623 -0.358444
+rotation 0.923424 -0.127838 -0.049623 -0.358444
 scale 1.000000 1.000000 1.000000
 light_type sun
 sun_color 0.105467 0.132587 0.376667
