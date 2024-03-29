@@ -5,4 +5,31 @@ TODO: filesystem watching
 - https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-findfirstchangenotificationa
 - WaitForMultipleObjects
 - ReadDirectoryChangesW: https://gist.github.com/nickav/a57009d4fcc3b527ed0f5c9cf30618f8
+  - https://qualapps.blogspot.com/2010/05/understanding-readdirectorychangesw_19.html
 TODO: updating on asset file changes
+
+
+
+have a thread that calls ReadDirectoryChanges
+- then just call SleepEx(), so that it can run its completion routine when it gets changes
+- the completion routine just pushes our own structure onto a queue that is protected by a mutex
+
+- when we read, we just do the synchronization scheme that we did before, where we pause any of the queue updating
+- then we read from the queue and update any entities based on the changes
+- we unpause, then signal so that the queue updater can continue if necessary
+
+
+
+
+
+main TODOs:
+- circular buffer to store changes (this is basically a queue)
+  - just store a first and end pointer
+  - on adding, increment end pointer
+  - on removing, just return whatever's at the first pointer, then increment the first pointer
+    - shouldn't go past the end
+- some type of synchronization scheme for protecting the buffer
+- creating a thread that calls ReadDirectoryChanges
+  - completion routine that pushes changes onto the queue in a thread-safe manner
+- in the main update loop, read changes from the queue in a thread-safe manner
+  - update entities accordingly
