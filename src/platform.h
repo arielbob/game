@@ -3,6 +3,8 @@
 
 #include "memory.h"
 
+#define MAX_FILE_CHANGES 128
+
 struct Platform_File {
     HANDLE file_handle;
     uint32 file_size;

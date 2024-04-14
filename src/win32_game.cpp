@@ -208,6 +208,7 @@ internal real32 win32_get_elapsed_time(int64 start_perf_counter) {
 // gets wall clock time in seconds
 real64 platform_get_wall_clock_time() {
     LARGE_INTEGER perf_counter;
+    
     QueryPerformanceCounter(&perf_counter);
     return (real64) perf_counter.QuadPart / perf_counter_frequency;
 }
@@ -219,6 +220,7 @@ void debug_print(char *format, ...) {
     int32 num_chars_no_null = vsnprintf(NULL, 0, format, args);
     int32 n = num_chars_no_null + 1;
 
+    // TODO: this is not thread safe...
     Allocator *temp_region = begin_region();
     char *buf = (char *) allocate(temp_region, n);
 
@@ -1091,6 +1093,49 @@ bool32 platform_write_file(char *filename, void *buffer, uint32 num_bytes_to_wri
     return true;
 }
 
+void file_watcher_completion_routine(DWORD errorCode, DWORD bytesTransferred, LPOVERLAPPED overlapped) {
+    OutputDebugStringA("something changed!!!!!\n");
+}
+
+DWORD watch_files_thread_function(void *param) {
+    OutputDebugString("watching files...\n");
+
+    Win32_Directory_Watcher_Data *dir_watcher_data = (Win32_Directory_Watcher_Data *) param;
+
+    char *directory = "C:\\Users\\Ariel\\source\\game\\assets";
+    // create handle to the directory
+    HANDLE dir_handle = CreateFile(
+        directory,
+        FILE_LIST_DIRECTORY,
+        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+        NULL,
+        OPEN_EXISTING,
+        FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
+        NULL);
+
+    assert(dir_handle != INVALID_HANDLE_VALUE);
+
+    DWORD bytesReturned = 0;
+    OVERLAPPED overlapped = {};
+    
+    BOOL success = ReadDirectoryChangesW(
+        dir_handle,
+        dir_watcher_data->dir_changes_buffer,
+        dir_watcher_data->dir_changes_buffer_size,
+        true,
+        FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_CREATION | FILE_NOTIFY_CHANGE_FILE_NAME,
+        &bytesReturned,
+        &overlapped,
+        file_watcher_completion_routine
+    );
+
+    assert(success);
+
+    SleepEx(INFINITE, true);
+
+    return 0;
+}
+
 int WinMain(HINSTANCE hInstance,
             HINSTANCE hPrevInstance,
             LPSTR lpCmdLine,
@@ -1243,6 +1288,37 @@ int WinMain(HINSTANCE hInstance,
                 game_state->render_state.display_output = initial_display_output;
                 render_state = &game_state->render_state;
 
+                //File_Watcher_State file_watcher = {};
+                uint32 file_watcher_buffer_size = MEGABYTES(64);
+                void *file_watcher_buffer = arena_push(&memory.game_data, file_watcher_buffer_size);
+                Arena_Allocator file_watcher_arena = make_arena_allocator(file_watcher_buffer,
+                                                                          file_watcher_buffer_size);
+
+                int32 dir_changes_buffer_size = MEGABYTES(32);
+                void *dir_changes_buffer = arena_push(&file_watcher_arena, dir_changes_buffer_size,
+                                                            false, sizeof(DWORD));
+
+                Win32_Directory_Watcher_Data dir_watcher_data = {
+                    &file_watcher_arena,
+                    dir_changes_buffer,
+                    dir_changes_buffer_size
+                };
+
+                // TODO: we need to make sure that before we exit this scope, i.e. after the game
+                //       loop ends, but before we exit this scope, we end the file watching thread, so
+                //       it doesn't try and access these stack variables.
+                //file_watcher->allocator = &file_watcher_arena;
+                DWORD thread_id;
+                HANDLE file_watcher_thread_handle = CreateThread(
+                    NULL,
+                    0,
+                    watch_files_thread_function,
+                    &dir_watcher_data,
+                    0,
+                    &thread_id);
+
+                assert(file_watcher_thread_handle);
+                
                 using namespace Context;
 
                 Controller_State init_controller_state = {};
@@ -1418,10 +1494,17 @@ int WinMain(HINSTANCE hInstance,
 
                     last_perf_counter = win32_get_perf_counter();
                 }
+
+                // game loop finished
+
+                // wait for file watcher thread to complete
+                WaitForSingleObject(file_watcher_thread_handle, INFINITE);
             } else {
                 // TODO: logging
             }
+
             
+
             // clean up opengl
             wglMakeCurrent(NULL, NULL);
             

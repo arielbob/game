@@ -220,6 +220,7 @@ struct Game_State {
     Render_State render_state;
     Editor_State editor_state;
     Debug_State debug_state;
+    //File_Watcher_State file_watcher_state;
 
     Asset_Manager asset_manager;
     Message_Manager message_manager;

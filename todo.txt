@@ -33,3 +33,20 @@ main TODOs:
   - completion routine that pushes changes onto the queue in a thread-safe manner
 - in the main update loop, read changes from the queue in a thread-safe manner
   - update entities accordingly
+
+
+
+
+TODO: create a thread that calls ReadDirectoryChanges - DONE
+TODO: get the completion routine to run on a file change - DONE
+
+TODO: re-run the ReadDirectoryChanges once it runs once
+- we can re-use the same OVERLAPPED structure, i think, since it's only being accessed by a single thread
+  - (our file watching thread that we create)
+TODO: interrupt the sleep thing when we exit, so that we don't just hang on program exit
+- can't we just have a condition variable?
+  - you wait on it, so you get put in the alertable state
+  - except, now we can also just signal the condition variable when we want the thread to exit
+TODO: actually handle the different change notifications
+- just put in the switch
+- then, actually make it affect the game
