@@ -1102,10 +1102,13 @@ DWORD watch_files_thread_function(void *param) {
 
     Win32_Directory_Watcher_Data *dir_watcher_data = (Win32_Directory_Watcher_Data *) param;
 
-    char *directory = "C:\\Users\\Ariel\\source\\game\\assets";
+    char *path_to_watch = "assets";
+    char abs_path_to_watch[MAX_PATH];
+    platform_get_absolute_path(path_to_watch, abs_path_to_watch, MAX_PATH);
+
     // create handle to the directory
     HANDLE dir_handle = CreateFile(
-        directory,
+        abs_path_to_watch,
         FILE_LIST_DIRECTORY,
         FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
         NULL,
