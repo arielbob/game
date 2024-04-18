@@ -1095,6 +1095,27 @@ bool32 platform_write_file(char *filename, void *buffer, uint32 num_bytes_to_wri
 
 void file_watcher_completion_routine(DWORD errorCode, DWORD bytesTransferred, LPOVERLAPPED overlapped) {
     OutputDebugStringA("something changed!!!!!\n");
+
+    Win32_Directory_Watcher_Data *dir_watcher_data = (Win32_Directory_Watcher_Data *) overlapped->hEvent;
+
+    // make sure to clear this before using it again
+    dir_watcher_data->overlapped = {};
+    dir_watcher_data->overlapped.hEvent = dir_watcher_data;
+
+    DWORD bytesReturned = 0;
+
+    BOOL success = ReadDirectoryChangesW(
+        dir_watcher_data->dir_handle,
+        dir_watcher_data->dir_changes_buffer,
+        dir_watcher_data->dir_changes_buffer_size,
+        true,
+        FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_CREATION | FILE_NOTIFY_CHANGE_FILE_NAME,
+        &bytesReturned,
+        &dir_watcher_data->overlapped,
+        file_watcher_completion_routine
+    );
+
+    assert(success);
 }
 
 DWORD watch_files_thread_function(void *param) {
@@ -1135,7 +1156,12 @@ DWORD watch_files_thread_function(void *param) {
     assert(dir_watcher_data->dir_handle != INVALID_HANDLE_VALUE);
 
     DWORD bytesReturned = 0;
-    OVERLAPPED overlapped = {};
+
+    dir_watcher_data->overlapped = {};
+
+    // hEvent is not used by ReadDirectoryChangesW, so store our own data in it that we can use
+    // in the completion routine
+    dir_watcher_data->overlapped.hEvent = dir_watcher_data;
     
     BOOL success = ReadDirectoryChangesW(
         dir_watcher_data->dir_handle,
@@ -1144,15 +1170,17 @@ DWORD watch_files_thread_function(void *param) {
         true,
         FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_CREATION | FILE_NOTIFY_CHANGE_FILE_NAME,
         &bytesReturned,
-        &overlapped,
+        &dir_watcher_data->overlapped,
         file_watcher_completion_routine
     );
 
     assert(success);
 
-    OutputDebugString("SLEEPING");
-    SleepEx(INFINITE, true);
-    OutputDebugString("AWAKE!!!");
+    while (true) {
+        OutputDebugString("SLEEPING");
+        SleepEx(INFINITE, true);
+        OutputDebugString("AWAKE!!!");
+    }
 
     OutputDebugString("ending file watching thread...");
     
@@ -1364,7 +1392,6 @@ int WinMain(HINSTANCE hInstance,
                     while (PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) {
                         if (message.message == WM_QUIT) {
                             is_running = false;
-                            return 0;
                         }
 
                         UINT message_code = message.message;
@@ -1517,6 +1544,8 @@ int WinMain(HINSTANCE hInstance,
 
                 // wait for file watcher thread to complete
                 WaitForSingleObject(file_watcher_thread_handle, INFINITE);
+
+                debug_print("exiting program");
             } else {
                 // TODO: logging
             }

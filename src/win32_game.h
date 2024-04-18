@@ -63,6 +63,7 @@ struct Win32_Directory_Watcher_Data {
     void *dir_changes_buffer;
     HANDLE dir_handle;
     String dir_path;
+    OVERLAPPED overlapped;
 };
 
 #endif

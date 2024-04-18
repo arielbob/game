@@ -40,9 +40,10 @@ main TODOs:
 TODO: create a thread that calls ReadDirectoryChanges - DONE
 TODO: get the completion routine to run on a file change - DONE
 
-TODO: re-run the ReadDirectoryChanges once it runs once
+TODO: re-run the ReadDirectoryChanges once it runs once - DONE
 - we can re-use the same OVERLAPPED structure, i think, since it's only being accessed by a single thread
   - (our file watching thread that we create)
+
 
 
 TODO: interrupt the sleep thing when we exit, so that we don't just hang on program exit
@@ -56,7 +57,16 @@ TODO: interrupt the sleep thing when we exit, so that we don't just hang on prog
   - so you could just put the SleepEx call in a while (running) loop and when you want to end it, you can
   send something to the thread to put something on the async queue that sets running = false, the thread will
   be alerted, return from SleepEx, running = false, and end.
+- ACTUALLY, we were hanging when pressing ESC to close, but not when clicking the X button on the window.
+  - it's just that our WM_QUIT message handler was just returning, so we would just exit without waiting for any thread to finish
+  - we want to close cleanly after WM_QUIT
+  - now, WM_QUIT just sets is_running to false without returning and it hangs now like pressing ESC does.
+    - we can still do the put SleepEx in a loop thing as mentioned above
 
 TODO: actually handle the different change notifications
 - just put in the switch
 - then, actually make it affect the game
+
+TODO: error handling (bytesReturned + bytesTransferred)
+TODO: close handles
+TODO: break from loop on WM_QUIT? instead of having loop run a single time after getting message
