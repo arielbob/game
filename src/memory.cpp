@@ -218,9 +218,41 @@ inline void *region_push(uint32 size, bool32 zero_memory = true, uint32 alignmen
     return stack_region_allocate(memory.global_stack.top_region, size, zero_memory, alignment_bytes);
 }
 
-Allocator *begin_region(uint32 size) {
-    assert(memory.is_initted);
+Allocator *begin_region(Allocator *allocator, uint32 size) {
+    if (!allocator) {
+        // should only do this on main thread   
+        assert(memory.is_initted);
+        allocator = (Allocator *) &memory.global_stack;
+    }
+    assert(allocator->type == STACK_ALLOCATOR);
 
+    Stack_Allocator *stack = (Stack_Allocator *) allocator;
+
+    void *base = stack->top;
+    Stack_Region *region = (Stack_Region *) region_push(stack, sizeof(Stack_Region), false);
+
+    uint32 info_struct_size = (uint32) ((uint8 *) stack->top - (uint8 *) base);
+    size += info_struct_size;
+
+    region->type = STACK_REGION_ALLOCATOR;
+    region->base = base;
+    region->size = size;
+    region->used = info_struct_size;
+
+    region->stack = stack;
+    region->prev = stack->top_region;
+    stack->top_region = region;
+    stack->top = (uint8 *) region->base + region->size;
+    
+    Allocator *region_allocator = (Allocator *) region;
+    return region_allocator;
+}
+
+#if 1
+Allocator *begin_region(uint32 size) {
+    return begin_region((Allocator *) &memory.global_stack, size);
+
+#if 0
     void *base = memory.global_stack.top;
     Stack_Region *region = (Stack_Region *) region_push(&memory.global_stack, sizeof(Stack_Region), false);
 
@@ -239,23 +271,25 @@ Allocator *begin_region(uint32 size) {
 
     Allocator *region_allocator = (Allocator *) region;
     return region_allocator;
+#endif
 }
+#endif
 
 void end_region(Allocator *allocator) {
     assert(allocator->type == STACK_REGION_ALLOCATOR);
     Stack_Region *region = (Stack_Region *) allocator;
 
-    if (memory.global_stack.top_region != region) {
+    if (region->stack->top_region != region) {
         assert(!"A region was not closed by end_region() or you are trying to end a stack region that was already ended. Regions should be closed in the reverse order that they are created.");
     }
 
-    memory.global_stack.top_region = region->prev;
+    region->stack->top_region = region->prev;
 
-    Stack_Region *top_region = memory.global_stack.top_region;
+    Stack_Region *top_region = region->stack->top_region;
     if (top_region) {
-        memory.global_stack.top = (uint8 *) top_region->base + top_region->used;
+        region->stack->top = (uint8 *) top_region->base + top_region->used;
     } else {
-        memory.global_stack.top = memory.global_stack.base;
+        region->stack->top = memory.global_stack.base;
     }
     
 }

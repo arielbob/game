@@ -1102,27 +1102,43 @@ DWORD watch_files_thread_function(void *param) {
 
     Win32_Directory_Watcher_Data *dir_watcher_data = (Win32_Directory_Watcher_Data *) param;
 
-    char *path_to_watch = "assets";
+    // init changes buffer
+    dir_watcher_data->dir_changes_buffer_size = MEGABYTES(32);
+    dir_watcher_data->dir_changes_buffer = arena_push(&dir_watcher_data->arena,
+                                                      dir_watcher_data->dir_changes_buffer_size,
+                                                      false, sizeof(DWORD));
+
+    // init thread stack
+    uint32 temp_stack_size = KILOBYTES(64);
+    void *stack_base = allocate((Allocator *) &dir_watcher_data->arena, temp_stack_size);
+    dir_watcher_data->thread_stack = make_stack_allocator(stack_base, temp_stack_size);
+    Allocator *thread_stack = (Allocator *) &dir_watcher_data->thread_stack;
+
+    dir_watcher_data->dir_path = make_string("assets");
+    Allocator *temp_region = begin_region(thread_stack);
+
+    char *path_c_string = to_char_array(temp_region, dir_watcher_data->dir_path);
     char abs_path_to_watch[MAX_PATH];
-    platform_get_absolute_path(path_to_watch, abs_path_to_watch, MAX_PATH);
+    platform_get_absolute_path(path_c_string, abs_path_to_watch, MAX_PATH);
 
     // create handle to the directory
-    HANDLE dir_handle = CreateFile(
-        abs_path_to_watch,
-        FILE_LIST_DIRECTORY,
-        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-        NULL,
-        OPEN_EXISTING,
-        FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
-        NULL);
+    dir_watcher_data->dir_handle = CreateFile(abs_path_to_watch,
+                                              FILE_LIST_DIRECTORY,
+                                              FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                                              NULL,
+                                              OPEN_EXISTING,
+                                              FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
+                                              NULL);
 
-    assert(dir_handle != INVALID_HANDLE_VALUE);
+    end_region(temp_region);
+
+    assert(dir_watcher_data->dir_handle != INVALID_HANDLE_VALUE);
 
     DWORD bytesReturned = 0;
     OVERLAPPED overlapped = {};
     
     BOOL success = ReadDirectoryChangesW(
-        dir_handle,
+        dir_watcher_data->dir_handle,
         dir_watcher_data->dir_changes_buffer,
         dir_watcher_data->dir_changes_buffer_size,
         true,
@@ -1134,8 +1150,12 @@ DWORD watch_files_thread_function(void *param) {
 
     assert(success);
 
+    OutputDebugString("SLEEPING");
     SleepEx(INFINITE, true);
+    OutputDebugString("AWAKE!!!");
 
+    OutputDebugString("ending file watching thread...");
+    
     return 0;
 }
 
@@ -1291,20 +1311,15 @@ int WinMain(HINSTANCE hInstance,
                 game_state->render_state.display_output = initial_display_output;
                 render_state = &game_state->render_state;
 
-                //File_Watcher_State file_watcher = {};
                 uint32 file_watcher_buffer_size = MEGABYTES(64);
                 void *file_watcher_buffer = arena_push(&memory.game_data, file_watcher_buffer_size);
+                
+                // don't use this arena outside of the file watching thread...
                 Arena_Allocator file_watcher_arena = make_arena_allocator(file_watcher_buffer,
                                                                           file_watcher_buffer_size);
 
-                int32 dir_changes_buffer_size = MEGABYTES(32);
-                void *dir_changes_buffer = arena_push(&file_watcher_arena, dir_changes_buffer_size,
-                                                            false, sizeof(DWORD));
-
                 Win32_Directory_Watcher_Data dir_watcher_data = {
-                    &file_watcher_arena,
-                    dir_changes_buffer,
-                    dir_changes_buffer_size
+                    file_watcher_arena
                 };
 
                 // TODO: we need to make sure that before we exit this scope, i.e. after the game

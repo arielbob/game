@@ -43,10 +43,20 @@ TODO: get the completion routine to run on a file change - DONE
 TODO: re-run the ReadDirectoryChanges once it runs once
 - we can re-use the same OVERLAPPED structure, i think, since it's only being accessed by a single thread
   - (our file watching thread that we create)
+
+
 TODO: interrupt the sleep thing when we exit, so that we don't just hang on program exit
 - can't we just have a condition variable?
   - you wait on it, so you get put in the alertable state
   - except, now we can also just signal the condition variable when we want the thread to exit
+- ACTUALLY, i think we were hanging for some other reason...
+  - the thread automatically closes, since when the completion procedure runs on the altertable thread,
+  the thread returns from the function that put it in the alertable state (SleepEx, in our case), and so the
+  thread just finishes execution.
+  - so you could just put the SleepEx call in a while (running) loop and when you want to end it, you can
+  send something to the thread to put something on the async queue that sets running = false, the thread will
+  be alerted, return from SleepEx, running = false, and end.
+
 TODO: actually handle the different change notifications
 - just put in the switch
 - then, actually make it affect the game

@@ -2,6 +2,7 @@
 #define WIN32_GAME_H
 
 #include "memory.h"
+#include "string.h"
 
 #define PLATFORM_MAX_PATH MAX_PATH
 
@@ -56,9 +57,12 @@ struct Wav_Data {
 #pragma pack(pop)
 
 struct Win32_Directory_Watcher_Data {
-    Arena_Allocator *arena;
-    void *dir_changes_buffer;
+    Arena_Allocator arena;
+    Stack_Allocator thread_stack;
     int32 dir_changes_buffer_size;
+    void *dir_changes_buffer;
+    HANDLE dir_handle;
+    String dir_path;
 };
 
 #endif
