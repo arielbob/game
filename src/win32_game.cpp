@@ -1096,6 +1096,11 @@ bool32 platform_write_file(char *filename, void *buffer, uint32 num_bytes_to_wri
 void file_watcher_completion_routine(DWORD errorCode, DWORD bytesTransferred, LPOVERLAPPED overlapped) {
     OutputDebugStringA("something changed!!!!!\n");
 
+    if (errorCode == ERROR_OPERATION_ABORTED) {
+        // CancelIo was called
+        return;
+    }
+    
     Win32_Directory_Watcher_Data *dir_watcher_data = (Win32_Directory_Watcher_Data *) overlapped->hEvent;
 
     // make sure to clear this before using it again
@@ -1116,6 +1121,14 @@ void file_watcher_completion_routine(DWORD errorCode, DWORD bytesTransferred, LP
     );
 
     assert(success);
+}
+
+void file_watcher_end_routine(ULONG_PTR param) {
+    Win32_Directory_Watcher_Data *dir_watcher_data = (Win32_Directory_Watcher_Data *) param;
+    
+    dir_watcher_data->is_running = false;
+    CancelIo(dir_watcher_data->dir_handle);
+    CloseHandle(dir_watcher_data->dir_handle);
 }
 
 DWORD watch_files_thread_function(void *param) {
@@ -1158,6 +1171,7 @@ DWORD watch_files_thread_function(void *param) {
     DWORD bytesReturned = 0;
 
     dir_watcher_data->overlapped = {};
+    dir_watcher_data->is_running = true;
 
     // hEvent is not used by ReadDirectoryChangesW, so store our own data in it that we can use
     // in the completion routine
@@ -1176,7 +1190,7 @@ DWORD watch_files_thread_function(void *param) {
 
     assert(success);
 
-    while (true) {
+    while (dir_watcher_data->is_running) {
         OutputDebugString("SLEEPING");
         SleepEx(INFINITE, true);
         OutputDebugString("AWAKE!!!");
@@ -1542,6 +1556,7 @@ int WinMain(HINSTANCE hInstance,
 
                 // game loop finished
 
+                QueueUserAPC(file_watcher_end_routine, file_watcher_thread_handle, (ULONG_PTR) &dir_watcher_data);
                 // wait for file watcher thread to complete
                 WaitForSingleObject(file_watcher_thread_handle, INFINITE);
 
@@ -1549,8 +1564,6 @@ int WinMain(HINSTANCE hInstance,
             } else {
                 // TODO: logging
             }
-
-            
 
             // clean up opengl
             wglMakeCurrent(NULL, NULL);

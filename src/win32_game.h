@@ -64,6 +64,7 @@ struct Win32_Directory_Watcher_Data {
     HANDLE dir_handle;
     String dir_path;
     OVERLAPPED overlapped;
+    bool32 is_running;
 };
 
 #endif

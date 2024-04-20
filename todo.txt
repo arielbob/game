@@ -44,9 +44,7 @@ TODO: re-run the ReadDirectoryChanges once it runs once - DONE
 - we can re-use the same OVERLAPPED structure, i think, since it's only being accessed by a single thread
   - (our file watching thread that we create)
 
-
-
-TODO: interrupt the sleep thing when we exit, so that we don't just hang on program exit
+TODO: interrupt the sleep thing when we exit, so that we don't just hang on program exit - DONE
 - can't we just have a condition variable?
   - you wait on it, so you get put in the alertable state
   - except, now we can also just signal the condition variable when we want the thread to exit
@@ -69,4 +67,11 @@ TODO: actually handle the different change notifications
 
 TODO: error handling (bytesReturned + bytesTransferred)
 TODO: close handles
+- CloseHandle()
 TODO: break from loop on WM_QUIT? instead of having loop run a single time after getting message
+TODO: watching multiple folders
+- you need to just call multiple ReadDirectoryChanges on the same thread
+
+
+
+
