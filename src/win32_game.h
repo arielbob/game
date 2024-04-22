@@ -56,6 +56,10 @@ struct Wav_Data {
 };
 #pragma pack(pop)
 
+struct Win32_Directory_Watcher_Manager {
+    
+};
+
 struct Win32_Directory_Watcher_Data {
     Arena_Allocator arena;
     Stack_Allocator thread_stack;
@@ -66,5 +70,10 @@ struct Win32_Directory_Watcher_Data {
     OVERLAPPED overlapped;
     bool32 is_running;
 };
+
+struct Platform_Critical_Section {
+    CRITICAL_SECTION critical_section;
+};
+
 
 #endif

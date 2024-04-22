@@ -1093,6 +1093,26 @@ bool32 platform_write_file(char *filename, void *buffer, uint32 num_bytes_to_wri
     return true;
 }
 
+// we can't copy CRITICAL_SECTION objects, so all thse functions should take pointer
+// arguments. if we wanted to change the API such that we return the object, i guess
+// we could have some type of CRITICAL_SECTION pool and just set the struct member to
+// a pointer to their CRITICAL_SECTION in the pool.
+void platform_make_critical_section(Platform_Critical_Section *platform_critical_section) {
+    InitializeCriticalSection(&platform_critical_section->critical_section);
+}
+
+void platform_enter_critical_scetion(Platform_Critical_Section *platform_critical_section) {
+    EnterCriticalSection(&platform_critical_section->critical_section);
+}
+
+void platform_leave_critical_scetion(Platform_Critical_Section *platform_critical_section) {
+    LeaveCriticalSection(&platform_critical_section->critical_section);
+}
+
+void platform_delete_critical_section(Platform_Critical_Section *platform_critical_section) {
+    DeleteCriticalSection(&platform_critical_section->critical_section);
+}
+
 void file_watcher_completion_routine(DWORD errorCode, DWORD bytesTransferred, LPOVERLAPPED overlapped) {
     OutputDebugStringA("something changed!!!!!\n");
 
@@ -1121,6 +1141,14 @@ void file_watcher_completion_routine(DWORD errorCode, DWORD bytesTransferred, LP
     );
 
     assert(success);
+}
+
+void file_watcher_add_directory_routine(ULONG_PTR param) {
+    Win32_Directory_Watcher_Data *dir_watcher_data = (Win32_Directory_Watcher_Data *) param;
+    
+    dir_watcher_data->is_running = false;
+    CancelIo(dir_watcher_data->dir_handle);
+    CloseHandle(dir_watcher_data->dir_handle);
 }
 
 void file_watcher_end_routine(ULONG_PTR param) {
@@ -1250,6 +1278,12 @@ int WinMain(HINSTANCE hInstance,
     }
 }
 #endif
+
+    Platform_Critical_Section cs = {};
+    platform_make_critical_section(&cs);
+    platform_enter_critical_scetion(&cs);
+    platform_leave_critical_scetion(&cs);
+    platform_delete_critical_section(&cs);
 
     LARGE_INTEGER perf_counter_frequency_result;
     QueryPerformanceFrequency(&perf_counter_frequency_result);

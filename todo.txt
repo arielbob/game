@@ -61,6 +61,21 @@ TODO: interrupt the sleep thing when we exit, so that we don't just hang on prog
   - now, WM_QUIT just sets is_running to false without returning and it hangs now like pressing ESC does.
     - we can still do the put SleepEx in a loop thing as mentioned above
 
+TODO: implement platform critical sections - DONE
+
+TODO: make thread-safe heap
+
+Mutex m;
+get_mutex(m);
+release_mutex(m);
+
+it's basically the same as a critical section..
+
+
+
+
+
+
 TODO: actually handle the different change notifications
 - just put in the switch
 - then, actually make it affect the game
