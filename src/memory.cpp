@@ -467,6 +467,8 @@ void *heap_allocate(Heap_Allocator *heap, uint32 size, bool32 zero_memory = fals
     assert(alignment_bytes >= 4);
     assert(((alignment_bytes) & (alignment_bytes - 1)) == 0); // ensure that alignment_bytes is a power of 2
 
+    platform_enter_critical_section(&heap->critical_section);
+    
     void *start_byte = NULL;
     Heap_Block *block = heap->first_block;
     Heap_Block *previous_block = NULL;
@@ -586,6 +588,8 @@ void *heap_allocate(Heap_Allocator *heap, uint32 size, bool32 zero_memory = fals
 
     assert(start_byte < (heap_get_unaligned_address(heap->base) + heap->size));
 
+    platform_leave_critical_section(&heap->critical_section);
+    
     return start_byte;
 }
 
@@ -602,6 +606,9 @@ void heap_deallocate(Heap_Allocator *heap, void *address) {
     uint32 aligned_free_block_size, free_block_align_offset;
     Heap_Block *free_block = (Heap_Block *) get_aligned_address(unaligned_block_address, sizeof(Heap_Block),
                                                                 &aligned_free_block_size, &free_block_align_offset);
+
+    platform_enter_critical_section(&heap->critical_section);
+    
     free_block->size = size;
 
     assert(heap->used >= size);
@@ -650,6 +657,8 @@ void heap_deallocate(Heap_Allocator *heap, void *address) {
 #endif
 
     heap_coalesce_blocks(heap);
+
+    platform_leave_critical_section(&heap->critical_section);
 }
 
 void clear_heap(Heap_Allocator *heap) {
@@ -661,6 +670,8 @@ void clear_heap(Heap_Allocator *heap) {
 
     void *base = (void *) ((uint8 *) unaligned_base + align_offset);
 
+    platform_enter_critical_section(&heap->critical_section);
+
     heap->used = 0;
 
     assert(base == heap->base);
@@ -669,6 +680,8 @@ void clear_heap(Heap_Allocator *heap) {
     first_block->next = NULL;
     first_block->size = heap->size;
     heap->first_block = first_block;
+
+    platform_leave_critical_section(&heap->critical_section);
 }
 
 inline void *allocate(Arena_Allocator *arena, uint32 size, bool32 zero_memory = false) {
@@ -818,7 +831,10 @@ uint32 get_remaining(Allocator *allocator) {
         }
         case HEAP_ALLOCATOR: {
             Heap_Allocator *heap = (Heap_Allocator *) allocator;
-            return heap->size - heap->used;
+            platform_enter_critical_section(&heap->critical_section);
+            uint32 used = heap->size - heap->used;
+            platform_leave_critical_section(&heap->critical_section);
+            return used;
         }
         case STACK_REGION_ALLOCATOR: {
             Stack_Region *region = (Stack_Region *) allocator;

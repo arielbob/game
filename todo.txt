@@ -62,19 +62,22 @@ TODO: interrupt the sleep thing when we exit, so that we don't just hang on prog
     - we can still do the put SleepEx in a loop thing as mentioned above
 
 TODO: implement platform critical sections - DONE
-
-TODO: make thread-safe heap
+TODO: make thread-safe heap - DONE
 
 Mutex m;
 get_mutex(m);
 release_mutex(m);
 
 it's basically the same as a critical section..
+- complete file_watcher_add_directory_routine()
+- make the path string allocation in the passed in Win32_Directory_Watcher_Data struct
+- we deallocate when we're done with it
 
 
 
 
 
+TODO: adding folders to watcher
 
 TODO: actually handle the different change notifications
 - just put in the switch
