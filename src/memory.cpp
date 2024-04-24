@@ -411,6 +411,7 @@ Heap_Allocator make_heap_allocator(void *base, uint32 size) {
     heap.base = base;
     heap.size = size;
     heap.used = 0;
+    heap.critical_section = platform_make_critical_section();
     
     Heap_Block *first_block = (Heap_Block *) base;
     *((uint8 *) first_block - 1) = (uint8) align_offset;

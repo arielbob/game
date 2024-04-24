@@ -31,6 +31,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "lib/stb_image.h"
 
+#include "win32_threads.h"
 #include "win32_game.h"
 
 #include "utils.h"
@@ -74,6 +75,8 @@ global_variable Render_State *render_state;
 #include "editor.cpp"
 //#include "tree-test.cpp"
 #include "game.cpp"
+
+
 
 global_variable int64 perf_counter_frequency;
 global_variable bool32 is_running = true;
@@ -1093,26 +1096,6 @@ bool32 platform_write_file(char *filename, void *buffer, uint32 num_bytes_to_wri
     return true;
 }
 
-// we can't copy CRITICAL_SECTION objects, so all thse functions should take pointer
-// arguments. if we wanted to change the API such that we return the object, i guess
-// we could have some type of CRITICAL_SECTION pool and just set the struct member to
-// a pointer to their CRITICAL_SECTION in the pool.
-void platform_make_critical_section(Platform_Critical_Section *platform_critical_section) {
-    InitializeCriticalSection(&platform_critical_section->critical_section);
-}
-
-void platform_enter_critical_scetion(Platform_Critical_Section *platform_critical_section) {
-    EnterCriticalSection(&platform_critical_section->critical_section);
-}
-
-void platform_leave_critical_scetion(Platform_Critical_Section *platform_critical_section) {
-    LeaveCriticalSection(&platform_critical_section->critical_section);
-}
-
-void platform_delete_critical_section(Platform_Critical_Section *platform_critical_section) {
-    DeleteCriticalSection(&platform_critical_section->critical_section);
-}
-
 void file_watcher_completion_routine(DWORD errorCode, DWORD bytesTransferred, LPOVERLAPPED overlapped) {
     OutputDebugStringA("something changed!!!!!\n");
 
@@ -1279,12 +1262,6 @@ int WinMain(HINSTANCE hInstance,
 }
 #endif
 
-    Platform_Critical_Section cs = {};
-    platform_make_critical_section(&cs);
-    platform_enter_critical_scetion(&cs);
-    platform_leave_critical_scetion(&cs);
-    platform_delete_critical_section(&cs);
-
     LARGE_INTEGER perf_counter_frequency_result;
     QueryPerformanceFrequency(&perf_counter_frequency_result);
     perf_counter_frequency = perf_counter_frequency_result.QuadPart;
@@ -1354,6 +1331,12 @@ int WinMain(HINSTANCE hInstance,
             HDC hdc = GetDC(window);
             bool32 opengl_is_valid = win32_init_opengl(hdc);
             bool32 directsound_is_valid = win32_init_directsound(&sound_output);
+            win32_init_critical_sections();
+
+            Platform_Critical_Section cs = platform_make_critical_section();
+            platform_enter_critical_section(&cs);
+            platform_leave_critical_section(&cs);
+            platform_delete_critical_section(&cs);
 
             bool32 memory_is_valid = win32_init_memory();
 

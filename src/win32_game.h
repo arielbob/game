@@ -71,9 +71,4 @@ struct Win32_Directory_Watcher_Data {
     bool32 is_running;
 };
 
-struct Platform_Critical_Section {
-    CRITICAL_SECTION critical_section;
-};
-
-
 #endif

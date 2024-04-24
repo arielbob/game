@@ -1,6 +1,8 @@
 #ifndef MEMORY_H
 #define MEMORY_H
 
+struct Platform_Critical_Section;
+
 // we have an allocator type for read only memory where allocating is an error and deallocating is a no-op.
 // we do this so we don't have to check if an allocator is null. we treat a null allocator differently from
 // having a type of READ_ONLY_ALLOCATOR, since we can easily assert if an allocator is null in the case where we
@@ -74,6 +76,7 @@ struct Heap_Block {
 
 struct Heap_Allocator {
     Allocator_Type type;
+    Platform_Critical_Section critical_section;
     void *base;
     uint32 size;
     uint32 used;
