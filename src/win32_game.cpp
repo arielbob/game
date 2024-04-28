@@ -52,6 +52,7 @@ global_variable UI_Manager *ui_manager;
 global_variable Asset_Manager *asset_manager;
 global_variable Game_State *game_state;
 global_variable Render_State *render_state;
+global_variable Win32_Directory_Watcher_Manager directory_watcher_manager;
 
 #include "memory.cpp"
 #include "math.cpp"
@@ -1127,26 +1128,145 @@ void file_watcher_completion_routine(DWORD errorCode, DWORD bytesTransferred, LP
 }
 
 void file_watcher_add_directory_routine(ULONG_PTR param) {
-    Win32_Directory_Watcher_Data *dir_watcher_data = (Win32_Directory_Watcher_Data *) param;
+    // the request holds the directory
+    Win32_Directory_Watcher_Start_Request *request = (Win32_Directory_Watcher_Start_Request *) param;
+    Win32_Directory_Watcher_Manager *manager = request->manager;
+
+    Win32_Directory_Watcher_Data *data = NULL;
     
-    dir_watcher_data->is_running = false;
-    CancelIo(dir_watcher_data->dir_handle);
-    CloseHandle(dir_watcher_data->dir_handle);
+    if (manager->first_free_watcher) {
+        data = manager->first_free_watcher;
+        manager->first_free_watcher = data->next_free;
+    } else {
+        // TODO: assert that we don't hit the pool limit
+        Allocator *manager_allocator = (Allocator *) &manager->arena;
+
+        int32 watcher_arena_size = MEGABYTES(1) + KILOBYTES(128);
+        void *arena_start = allocate(manager_allocator, watcher_arena_size);
+        
+        // initialize the stuff
+        data = (Win32_Directory_Watcher_Data *) allocate(manager_allocator, sizeof(Win32_Directory_Watcher_Data));
+
+        // add an arena for the watcher data (strings and changes buffer)
+        data->arena = make_arena_allocator(arena_start, watcher_arena_size);
+
+        int32 changes_buffer_size = MEGABYTES(1);
+        data->dir_changes_buffer_size = changes_buffer_size;
+        data->dir_changes_buffer = allocate(&data->arena, changes_buffer_size);
+    }
+
+    Arena_Allocator *watcher_arena = &data->arena;
+
+    char *path_c_string = to_char_array((Allocator *) watcher_arena, request->filepath);
+    deallocate(request->filepath);
+    
+    char abs_path_to_watch[MAX_PATH];
+    platform_get_absolute_path(path_c_string, abs_path_to_watch, MAX_PATH);
+
+    data->dir_abs_path = make_string((Allocator *) watcher_arena, abs_path_to_watch);
+
+    // create handle to the directory
+    data->dir_handle = CreateFile(abs_path_to_watch,
+                                  FILE_LIST_DIRECTORY,
+                                  FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                                  NULL,
+                                  OPEN_EXISTING,
+                                  FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
+                                  NULL);
+
+    //end_region(temp_region);
+
+    assert(data->dir_handle != INVALID_HANDLE_VALUE);
+
+    DWORD bytesReturned = 0;
+
+    // hEvent is not used by ReadDirectoryChangesW, so store our own data in it that we can use
+    // in the completion routine
+    data->overlapped = {};
+    data->overlapped.hEvent = data;
+    data->is_running = true;
+    
+    BOOL success = ReadDirectoryChangesW(
+        data->dir_handle,
+        data->dir_changes_buffer,
+        data->dir_changes_buffer_size,
+        true,
+        FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_CREATION | FILE_NOTIFY_CHANGE_FILE_NAME,
+        &bytesReturned,
+        &data->overlapped,
+        file_watcher_completion_routine
+    );
+
+    assert(success);
+
+    data->next = manager->watchers;
+    manager->watchers = data;
+    
+    while (data->is_running) {
+        OutputDebugString("SLEEPING");
+        SleepEx(INFINITE, true);
+        OutputDebugString("AWAKE!!!");
+    }
+
+    OutputDebugString("ending watcher for single directory...");
 }
 
 void file_watcher_end_routine(ULONG_PTR param) {
-    Win32_Directory_Watcher_Data *dir_watcher_data = (Win32_Directory_Watcher_Data *) param;
+    Win32_Directory_Watcher_End_Request *end_request = (Win32_Directory_Watcher_End_Request *) param;
+
+    Win32_Directory_Watcher_Manager *manager = (Win32_Directory_Watcher_Manager *) param;
+    Win32_Directory_Watcher_Data *prev = NULL;
+    Win32_Directory_Watcher_Data *current = manager->watchers;
+
+    while (current) {
+        // MAX_PATH includes null-terminator
+        char end_dir_path_c_string[MAX_PATH];
+        char end_dir_abs_path[MAX_PATH];
+        to_char_array(end_request->filepath, end_dir_path_c_string, MAX_PATH);
+        platform_get_absolute_path(end_dir_path_c_string, end_dir_abs_path, MAX_PATH);
+        
+        if (string_equals(current->dir_abs_path, end_dir_abs_path)) {
+            break;
+        }
+        prev = current;
+        current = current->next;
+    }
+
+    if (!current) {
+        assert(!"Watcher not found for that filepath!");
+
+        // TODO: uhh, deallocate the request probably, but who cares
+        
+        return;
+    }
+
+    deallocate(end_request->filepath);
     
-    dir_watcher_data->is_running = false;
-    CancelIo(dir_watcher_data->dir_handle);
-    CloseHandle(dir_watcher_data->dir_handle);
+    current->is_running = false;
+    CancelIo(current->dir_handle);
+    CloseHandle(current->dir_handle);
+
+    clear_arena(&current->arena);
+
+    if (prev) {
+        // remove from list of watchers
+        prev->next = current->next;
+    } else {
+        // was first in list, so set manager->watchers
+        manager->watchers = current->next;
+    }
+
+    // add to free-list
+    current->next_free = manager->first_free_watcher;
+    manager->first_free_watcher = current;
 }
 
 DWORD watch_files_thread_function(void *param) {
     OutputDebugString("watching files...\n");
 
-    Win32_Directory_Watcher_Data *dir_watcher_data = (Win32_Directory_Watcher_Data *) param;
+    Win32_Directory_Watcher_Manager *manager = (Win32_Directory_Watcher_Manager *) param;
 
+#if 0
     // init changes buffer
     dir_watcher_data->dir_changes_buffer_size = MEGABYTES(32);
     dir_watcher_data->dir_changes_buffer = arena_push(&dir_watcher_data->arena,
@@ -1175,7 +1295,7 @@ DWORD watch_files_thread_function(void *param) {
                                               FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
                                               NULL);
 
-    end_region(temp_region);
+    //end_region(temp_region);
 
     assert(dir_watcher_data->dir_handle != INVALID_HANDLE_VALUE);
 
@@ -1208,6 +1328,7 @@ DWORD watch_files_thread_function(void *param) {
     }
 
     OutputDebugString("ending file watching thread...");
+#endif
     
     return 0;
 }
@@ -1370,15 +1491,15 @@ int WinMain(HINSTANCE hInstance,
                 game_state->render_state.display_output = initial_display_output;
                 render_state = &game_state->render_state;
 
-                uint32 file_watcher_buffer_size = MEGABYTES(64);
-                void *file_watcher_buffer = arena_push(&memory.game_data, file_watcher_buffer_size);
-                
-                // don't use this arena outside of the file watching thread...
-                Arena_Allocator file_watcher_arena = make_arena_allocator(file_watcher_buffer,
-                                                                          file_watcher_buffer_size);
+                uint32 file_watcher_arena_size = MEGABYTES(128);
+                void *file_watcher_arena_start = arena_push(&memory.game_data, file_watcher_arena_size);
 
-                Win32_Directory_Watcher_Data dir_watcher_data = {
-                    file_watcher_arena
+                uint32 file_watcher_heap_size = MEGABYTES(8);
+                void *file_watcher_heap_start = arena_push(&memory.game_data, file_watcher_heap_size);
+
+                directory_watcher_manager = {
+                    make_heap_allocator(file_watcher_heap_start, file_watcher_heap_size),
+                    make_arena_allocator(file_watcher_arena_start, file_watcher_arena_size)
                 };
 
                 // TODO: we need to make sure that before we exit this scope, i.e. after the game
@@ -1390,7 +1511,7 @@ int WinMain(HINSTANCE hInstance,
                     NULL,
                     0,
                     watch_files_thread_function,
-                    &dir_watcher_data,
+                    &directory_watcher_manager,
                     0,
                     &thread_id);
 
@@ -1573,7 +1694,9 @@ int WinMain(HINSTANCE hInstance,
 
                 // game loop finished
 
-                QueueUserAPC(file_watcher_end_routine, file_watcher_thread_handle, (ULONG_PTR) &dir_watcher_data);
+                // TODO: end all of them
+                //QueueUserAPC(file_watcher_end_routine, file_watcher_thread_handle, (ULONG_PTR) &dir_watcher_data);
+
                 // wait for file watcher thread to complete
                 WaitForSingleObject(file_watcher_thread_handle, INFINITE);
 

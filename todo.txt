@@ -10,6 +10,19 @@ TODO: updating on asset file changes
 
 
 
+
+
+vvvvv LEFT OFF HERE vvvvv
+TODO: actually test adding and removing folders...
+
+TODO: end the file watchers at end of game loop
+TODO: increment/decrement num_watchers when adding/deleting/folders
+
+
+
+
+
+
 have a thread that calls ReadDirectoryChanges
 - then just call SleepEx(), so that it can run its completion routine when it gets changes
 - the completion routine just pushes our own structure onto a queue that is protected by a mutex
@@ -72,6 +85,10 @@ it's basically the same as a critical section..
 - complete file_watcher_add_directory_routine()
 - make the path string allocation in the passed in Win32_Directory_Watcher_Data struct
 - we deallocate when we're done with it
+
+
+
+TODO: could we really not just have had a CRITICAL_SECTION object in the win32_directory_watcher code?
 
 
 

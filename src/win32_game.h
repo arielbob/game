@@ -5,6 +5,7 @@
 #include "string.h"
 
 #define PLATFORM_MAX_PATH MAX_PATH
+#define DIRECTORY_WATCHER_MAX_WATCHERS 256
 
 struct Win32_Display_Output {
     int32 width;
@@ -56,19 +57,35 @@ struct Wav_Data {
 };
 #pragma pack(pop)
 
-struct Win32_Directory_Watcher_Manager {
-    
-};
-
 struct Win32_Directory_Watcher_Data {
     Arena_Allocator arena;
-    Stack_Allocator thread_stack;
+    //Stack_Allocator thread_stack;
     int32 dir_changes_buffer_size;
     void *dir_changes_buffer;
     HANDLE dir_handle;
-    String dir_path;
+    String dir_abs_path;
     OVERLAPPED overlapped;
     bool32 is_running;
+    Win32_Directory_Watcher_Data *next_free;
+    Win32_Directory_Watcher_Data *next; // to iterate through them
+};
+
+struct Win32_Directory_Watcher_Manager {
+    Heap_Allocator heap; // when we need to share things from main thread to watcher thread
+    Arena_Allocator arena;
+    int32 num_watchers;
+    Win32_Directory_Watcher_Data *first_free_watcher;
+    Win32_Directory_Watcher_Data *watchers;
+};
+
+struct Win32_Directory_Watcher_Start_Request {
+    Win32_Directory_Watcher_Manager *manager;
+    String filepath;
+};
+
+struct Win32_Directory_Watcher_End_Request {
+    Win32_Directory_Watcher_Manager *manager;
+    String filepath;
 };
 
 #endif
