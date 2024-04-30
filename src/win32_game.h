@@ -65,7 +65,6 @@ struct Win32_Directory_Watcher_Data {
     HANDLE dir_handle;
     String dir_abs_path;
     OVERLAPPED overlapped;
-    bool32 is_running;
     Win32_Directory_Watcher_Data *next_free;
     Win32_Directory_Watcher_Data *next; // to iterate through them
 };
@@ -73,7 +72,9 @@ struct Win32_Directory_Watcher_Data {
 struct Win32_Directory_Watcher_Manager {
     Heap_Allocator heap; // when we need to share things from main thread to watcher thread
     Arena_Allocator arena;
-    int32 num_watchers;
+    CRITICAL_SECTION critical_section;
+    bool32 is_running;
+    volatile uint32 num_watchers;
     Win32_Directory_Watcher_Data *first_free_watcher;
     Win32_Directory_Watcher_Data *watchers;
 };

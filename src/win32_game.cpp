@@ -1102,6 +1102,7 @@ void file_watcher_completion_routine(DWORD errorCode, DWORD bytesTransferred, LP
 
     if (errorCode == ERROR_OPERATION_ABORTED) {
         // CancelIo was called
+        OutputDebugStringA("COMPLETION ROUTINE GOT ABORTED SIGNAL!!!\n");
         return;
     }
     
@@ -1133,6 +1134,12 @@ void file_watcher_add_directory_routine(ULONG_PTR param) {
     Win32_Directory_Watcher_Manager *manager = request->manager;
 
     Win32_Directory_Watcher_Data *data = NULL;
+
+    EnterCriticalSection(&manager->critical_section);
+
+    if (!manager->is_running) {
+        return;
+    }
     
     if (manager->first_free_watcher) {
         data = manager->first_free_watcher;
@@ -1149,12 +1156,14 @@ void file_watcher_add_directory_routine(ULONG_PTR param) {
 
         // add an arena for the watcher data (strings and changes buffer)
         data->arena = make_arena_allocator(arena_start, watcher_arena_size);
-
-        int32 changes_buffer_size = MEGABYTES(1);
-        data->dir_changes_buffer_size = changes_buffer_size;
-        data->dir_changes_buffer = allocate(&data->arena, changes_buffer_size);
     }
 
+    // initialize the changes buffer again, since we clear the watcher's arena when we
+    // stop that watcher
+    int32 changes_buffer_size = MEGABYTES(1);
+    data->dir_changes_buffer_size = changes_buffer_size;
+    data->dir_changes_buffer = allocate(&data->arena, changes_buffer_size);
+    
     Arena_Allocator *watcher_arena = &data->arena;
 
     char *path_c_string = to_char_array((Allocator *) watcher_arena, request->filepath);
@@ -1184,8 +1193,13 @@ void file_watcher_add_directory_routine(ULONG_PTR param) {
     // in the completion routine
     data->overlapped = {};
     data->overlapped.hEvent = data;
-    data->is_running = true;
-    
+
+    data->next = manager->watchers;
+    manager->watchers = data;
+    InterlockedIncrement(&manager->num_watchers);
+
+    // we're sleeping in the function we pass to CreateThread, so no need to sleep here; i'm
+    // pretty sure you shouldn't sleep in APCs anyways..
     BOOL success = ReadDirectoryChangesW(
         data->dir_handle,
         data->dir_changes_buffer,
@@ -1196,26 +1210,19 @@ void file_watcher_add_directory_routine(ULONG_PTR param) {
         &data->overlapped,
         file_watcher_completion_routine
     );
-
     assert(success);
 
-    data->next = manager->watchers;
-    manager->watchers = data;
-    
-    while (data->is_running) {
-        OutputDebugString("SLEEPING");
-        SleepEx(INFINITE, true);
-        OutputDebugString("AWAKE!!!");
-    }
-
-    OutputDebugString("ending watcher for single directory...");
+    // if CreateFile fails.. we might be deadlocked.. but let's just hope that doesn't happen
+    LeaveCriticalSection(&manager->critical_section);
 }
 
 void file_watcher_end_routine(ULONG_PTR param) {
     Win32_Directory_Watcher_End_Request *end_request = (Win32_Directory_Watcher_End_Request *) param;
 
-    Win32_Directory_Watcher_Manager *manager = (Win32_Directory_Watcher_Manager *) param;
+    Win32_Directory_Watcher_Manager *manager = end_request->manager;
     Win32_Directory_Watcher_Data *prev = NULL;
+
+    EnterCriticalSection(&manager->critical_section);
     Win32_Directory_Watcher_Data *current = manager->watchers;
 
     while (current) {
@@ -1242,7 +1249,6 @@ void file_watcher_end_routine(ULONG_PTR param) {
 
     deallocate(end_request->filepath);
     
-    current->is_running = false;
     CancelIo(current->dir_handle);
     CloseHandle(current->dir_handle);
 
@@ -1259,6 +1265,9 @@ void file_watcher_end_routine(ULONG_PTR param) {
     // add to free-list
     current->next_free = manager->first_free_watcher;
     manager->first_free_watcher = current;
+
+    InterlockedDecrement(&manager->num_watchers);
+    LeaveCriticalSection(&manager->critical_section);
 }
 
 DWORD watch_files_thread_function(void *param) {
@@ -1327,10 +1336,28 @@ DWORD watch_files_thread_function(void *param) {
         OutputDebugString("AWAKE!!!");
     }
 
-    OutputDebugString("ending file watching thread...");
 #endif
+
+    while (manager->num_watchers || manager->is_running) {
+        SleepEx(INFINITE, true);
+        OutputDebugString("awaken from infinite sleep!\n");
+    }
+    
+    OutputDebugString("ending file watching thread...\n");
     
     return 0;
+}
+
+void platform_watch_directory(String directory) {
+    // TODO: finish this
+#if 0
+    Win32_Directory_Watcher_Start_Request start_request = {
+        &directory_watcher_manager,
+        make_string((Allocator *) &directory_watcher_manager.heap, "assets")
+    };
+    QueueUserAPC(file_watcher_add_directory_routine, file_watcher_thread_handle,
+                 (ULONG_PTR) &start_request);
+#endif
 }
 
 int WinMain(HINSTANCE hInstance,
@@ -1502,6 +1529,10 @@ int WinMain(HINSTANCE hInstance,
                     make_arena_allocator(file_watcher_arena_start, file_watcher_arena_size)
                 };
 
+                directory_watcher_manager.is_running = true;
+
+                InitializeCriticalSection(&directory_watcher_manager.critical_section);
+
                 // TODO: we need to make sure that before we exit this scope, i.e. after the game
                 //       loop ends, but before we exit this scope, we end the file watching thread, so
                 //       it doesn't try and access these stack variables.
@@ -1516,6 +1547,22 @@ int WinMain(HINSTANCE hInstance,
                     &thread_id);
 
                 assert(file_watcher_thread_handle);
+
+                Win32_Directory_Watcher_Start_Request start_request = {
+                    &directory_watcher_manager,
+                    make_string((Allocator *) &directory_watcher_manager.heap, "assets")
+                };
+                QueueUserAPC(file_watcher_add_directory_routine, file_watcher_thread_handle,
+                             (ULONG_PTR) &start_request);
+
+#if 0
+                Win32_Directory_Watcher_End_Request end_request = {
+                    &directory_watcher_manager,
+                    make_string((Allocator *) &directory_watcher_manager.heap, "assets")
+                };
+                QueueUserAPC(file_watcher_end_routine, file_watcher_thread_handle,
+                             (ULONG_PTR) &end_request);
+#endif
                 
                 using namespace Context;
 
@@ -1686,7 +1733,6 @@ int WinMain(HINSTANCE hInstance,
                                                                   &sound_output.markers[sound_output.marker_index].flip_write_cursor);
 #endif
                     
-                    
                     SwapBuffers(hdc);
 
                     last_perf_counter = win32_get_perf_counter();
@@ -1695,10 +1741,73 @@ int WinMain(HINSTANCE hInstance,
                 // game loop finished
 
                 // TODO: end all of them
-                //QueueUserAPC(file_watcher_end_routine, file_watcher_thread_handle, (ULONG_PTR) &dir_watcher_data);
+                // TODO: we need to have a lock on num_watchers
+                // TODO: we need to figure out how we get the thread to end
+                // - each thread will decrement the num_watchers
+                // - the main thread needs to maybe just Sleep forever and exists when num_watchers = 0?
+                // - or we set a flag?
+                // - i'm not sure how we're even running right now since we don't do any loop in  the
+                //   function of the thread we create..
+
+                /*
+                  looping in thread function, infinite sleep (s0)
+                  - call add_directory (d1)
+                  - call another add_directory (d2)
+                  - set manager->is_running to false
+                  - call remove_directory(d1), calls CancelIo
+                    - completion routine runs, s0 returns
+                    - is_running is false, but num_watchers still > 0
+                  - call remove_directory(d2)
+                    - completion routine runs, s0 returns
+                    - TODO (done): which runs first, the completion routine or what's after s0?
+                      - if what's after s0 runs first, then the thread ends.. then what happens to the APC queue?
+                        - they just don't get called, which i mean, is fine, i think, because we do all the
+                          cleanup before the completion routine for CancelIo gets ran
+                        - the documentation says "After the thread is in an alertable state, the thread handles all pending APCs in first in, first out (FIFO) order"
+                        - that seems like it runs all the queued APCs and then returns from the function that put
+                          the thread in an alertable state, i.e. SleepEx() in our case
+                        - if we assume that CancelIo works the same way QueueUserAPC does, then the completion
+                          routine should run first before returning from SleepEx
+                  - anyways, s0 returns, num_watchers is 0 and manager->is running is false, so thread exits
+
+                  what happens if we try and add a directory while we're ending them???
+                  - i think it's fine.. we set is_running=false in the critical section, then in the
+                    add directory routine, we just verify that it's still running
+                  - if we just had a random Queue(add_routine), it would just add it, but we set is_running
+                    to false, so any adds after that will be rejected
+
+                 */
+
+                EnterCriticalSection(&directory_watcher_manager.critical_section);
+
+                directory_watcher_manager.is_running = false;
+                Win32_Directory_Watcher_Data *current = directory_watcher_manager.watchers;
+                
+                while (current) {
+                    // end all the watchers
+                    Win32_Directory_Watcher_End_Request end_request = {
+                        &directory_watcher_manager,
+                        copy((Allocator *) &directory_watcher_manager.heap, current->dir_abs_path)
+                    };
+
+                    QueueUserAPC(file_watcher_end_routine, file_watcher_thread_handle,
+                                 (ULONG_PTR) &end_request);
+                    current = current->next;
+                }
+
+                LeaveCriticalSection(&directory_watcher_manager.critical_section);
+
+                Win32_Directory_Watcher_Start_Request start_request2 = {
+                    &directory_watcher_manager,
+                    make_string((Allocator *) &directory_watcher_manager.heap, "assets")
+                };
+                QueueUserAPC(file_watcher_add_directory_routine, file_watcher_thread_handle,
+                             (ULONG_PTR) &start_request2);
 
                 // wait for file watcher thread to complete
                 WaitForSingleObject(file_watcher_thread_handle, INFINITE);
+
+                DeleteCriticalSection(&directory_watcher_manager.critical_section);
 
                 debug_print("exiting program");
             } else {
