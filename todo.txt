@@ -28,6 +28,8 @@ TODO: increment/decrement num_watchers when adding/deleting/folders - DONE
 
 
 vvvvv LEFT OFF HERE vvvvv
+TODO: check if folder is already being watched - DONE
+
 TODO: create API for game to add and remove folders to watch
 TODO: we need to mark entities as needing an update
 - we could just have an array in a critical section with IDs in it, then every game loop, just go through

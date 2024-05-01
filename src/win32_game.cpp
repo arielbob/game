@@ -369,6 +369,34 @@ bool32 platform_open_file(char *filename, Platform_File *file_result) {
     return false;
 }
 
+// given a filepath (relative or absolute), remove the file and backslash, if they exist.
+// note that if you have something like "test/", you'll just get "test".
+// if you have something like "a/test", you'll get "a".
+// so basically, if you're using this function, you should ensure that what you're passing
+// in is in fact a path to a file.
+void platform_get_folder_path(char *path, char *folder_path, int32 folder_path_size) {
+    assert(folder_path_size >= string_length(path));
+
+    char abs_path[MAX_PATH];
+    // get the absolute path because this function also converts non-windows paths to
+    // windows paths, i.e. converts / to \. PathRemoveFileSpecA() doesn't work correctly
+    // with non-windows paths
+    platform_get_absolute_path(path, abs_path, MAX_PATH);
+    PathRemoveFileSpecA(abs_path);
+
+    copy_string(folder_path, abs_path, folder_path_size);
+}
+
+bool32 platform_path_is_directory(char *path) {
+    char abs_path[MAX_PATH];
+    platform_get_absolute_path(path, abs_path, MAX_PATH);
+    
+    DWORD file_attributes = GetFileAttributesA(abs_path);
+    assert(file_attributes != INVALID_FILE_ATTRIBUTES);
+
+    return (file_attributes & FILE_ATTRIBUTE_DIRECTORY);
+}
+
 bool32 platform_read_file(Platform_File platform_file, File_Data *file_data) {
     assert(platform_file.file_handle);
     uint32 file_size_32 = platform_file.file_size;
@@ -1118,7 +1146,7 @@ void file_watcher_completion_routine(DWORD errorCode, DWORD bytesTransferred, LP
         dir_watcher_data->dir_handle,
         dir_watcher_data->dir_changes_buffer,
         dir_watcher_data->dir_changes_buffer_size,
-        true,
+        false, // not recursive
         FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_CREATION | FILE_NOTIFY_CHANGE_FILE_NAME,
         &bytesReturned,
         &dir_watcher_data->overlapped,
@@ -1139,6 +1167,29 @@ void file_watcher_add_directory_routine(ULONG_PTR param) {
 
     if (!manager->is_running) {
         return;
+    }
+
+    // see if it exists first
+    Win32_Directory_Watcher_Data *current = manager->watchers;
+    char dir_c_string[MAX_PATH];
+    to_char_array(request->filepath, dir_c_string, MAX_PATH);
+
+    // verify that it's a directory
+    bool32 is_directory = platform_path_is_directory(dir_c_string);
+    if (!is_directory) {
+        assert(!"Path is not a directory!");
+        return;
+    }
+
+    char dir_abs_path[MAX_PATH];
+    platform_get_absolute_path(dir_c_string, dir_abs_path, MAX_PATH);
+
+    while (current) {
+        if (string_equals(current->dir_abs_path, dir_abs_path)) {
+            assert(!"Directory is already being watched!");
+            return;
+        }
+        current = current->next;
     }
     
     if (manager->first_free_watcher) {
@@ -1204,7 +1255,7 @@ void file_watcher_add_directory_routine(ULONG_PTR param) {
         data->dir_handle,
         data->dir_changes_buffer,
         data->dir_changes_buffer_size,
-        true,
+        false,
         FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_CREATION | FILE_NOTIFY_CHANGE_FILE_NAME,
         &bytesReturned,
         &data->overlapped,
@@ -1321,7 +1372,7 @@ DWORD watch_files_thread_function(void *param) {
         dir_watcher_data->dir_handle,
         dir_watcher_data->dir_changes_buffer,
         dir_watcher_data->dir_changes_buffer_size,
-        true,
+        false,
         FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_CREATION | FILE_NOTIFY_CHANGE_FILE_NAME,
         &bytesReturned,
         &dir_watcher_data->overlapped,
@@ -1364,6 +1415,12 @@ int WinMain(HINSTANCE hInstance,
             HINSTANCE hPrevInstance,
             LPSTR lpCmdLine,
             int nShowCmd) {
+#if 0
+    char result[MAX_PATH];
+    platform_get_folder_path(relative_path, result, MAX_PATH);
+    platform_get_folder_path(abs_path, result, MAX_PATH);
+#endif
+    
 #if 0
     Vec3 v = make_vec3(3.0f, -2.0f, 0.0f);
     real32 test = dot(make_vec3(6.0f, -4.0f, 0.0f), normalize(v) / distance(v));
