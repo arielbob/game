@@ -63,7 +63,7 @@ struct Win32_Directory_Watcher_Data {
     int32 dir_changes_buffer_size;
     void *dir_changes_buffer;
     HANDLE dir_handle;
-    String dir_abs_path;
+    WString dir_abs_path;
     OVERLAPPED overlapped;
     Win32_Directory_Watcher_Data *next_free;
     Win32_Directory_Watcher_Data *next; // to iterate through them
@@ -86,7 +86,7 @@ struct Win32_Directory_Watcher_Start_Request {
 
 struct Win32_Directory_Watcher_End_Request {
     Win32_Directory_Watcher_Manager *manager;
-    String filepath;
+    WString filepath; // TODO: we may want to convert some of our stuff use wide strings...
 };
 
 #endif

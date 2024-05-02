@@ -16,6 +16,8 @@
 #undef near
 #undef far
 
+typedef WCHAR wchar16;
+
 #define TARGET_FRAMERATE 60
 #define SAMPLE_RATE 44100
 // NOTE: sound buffer holds a 10th of a second of audio
@@ -335,6 +337,16 @@ void platform_get_absolute_path(char *relative_path,
     assert(path_length_without_null > 0 && path_length_without_null < MAX_PATH);
 }
 
+void platform_get_absolute_path(wchar16 *relative_path,
+                                wchar16 *absolute_path_buffer, uint32 absolute_path_buffer_size) {
+    assert(sizeof(TCHAR) == 1);
+    assert(absolute_path_buffer_size >= MAX_PATH*sizeof(wchar16));
+
+    DWORD path_length_without_null = GetFullPathNameW(relative_path,
+                                                      absolute_path_buffer_size, absolute_path_buffer, NULL);
+    assert(path_length_without_null > 0 && path_length_without_null < absolute_path_buffer_size);
+}
+
 // NOTE: we create a file handle so that we deny other processes from writing to it before we're done with it.
 //       this is done with the FILE_SHARE_READ flag. other processes can only read it, but not write or delete it
 //       until we close the file.
@@ -392,6 +404,16 @@ bool32 platform_path_is_directory(char *path) {
     platform_get_absolute_path(path, abs_path, MAX_PATH);
     
     DWORD file_attributes = GetFileAttributesA(abs_path);
+    assert(file_attributes != INVALID_FILE_ATTRIBUTES);
+
+    return (file_attributes & FILE_ATTRIBUTE_DIRECTORY);
+}
+
+bool32 platform_path_is_directory(wchar16 *path) {
+    WCHAR abs_path[MAX_PATH];
+    platform_get_absolute_path(path, abs_path, MAX_PATH*sizeof(WCHAR));
+    
+    DWORD file_attributes = GetFileAttributesW(abs_path);
     assert(file_attributes != INVALID_FILE_ATTRIBUTES);
 
     return (file_attributes & FILE_ATTRIBUTE_DIRECTORY);
@@ -1133,8 +1155,28 @@ void file_watcher_completion_routine(DWORD errorCode, DWORD bytesTransferred, LP
         OutputDebugStringA("COMPLETION ROUTINE GOT ABORTED SIGNAL!!!\n");
         return;
     }
+
+    assert(bytesTransferred);
     
     Win32_Directory_Watcher_Data *dir_watcher_data = (Win32_Directory_Watcher_Data *) overlapped->hEvent;
+
+    // TODO: finish this
+#if 0
+    FILE_NOTIFY_INFORMATION *event  = (FILE_NOTIFY_INFORMATION *) dir_watcher_data->dir_changes_buffer;
+    WCHAR filepath[MAX_PATH];
+    event->FileName
+        switch (event->Action) {
+            case FILE_ACTION_MODIFIED: {
+                OutputDebugString("file modified!\n");
+            } break;
+            case FILE_ACTION_RENAMED_OLD_NAME: {
+            
+            } break;
+            case FILE_ACTION_RENAMED_NEW_NAME: {
+
+            } break;
+        }
+#endif
 
     // make sure to clear this before using it again
     dir_watcher_data->overlapped = {};
@@ -1169,20 +1211,29 @@ void file_watcher_add_directory_routine(ULONG_PTR param) {
         return;
     }
 
+    // convert the ascii string to a WCHAR (16-bit chars) string
+    WCHAR wide_filepath[MAX_PATH];
+    int mb_to_wide_result = MultiByteToWideChar(CP_ACP, 0, request->filepath.contents, request->filepath.length,
+                                                wide_filepath, MAX_PATH);
+    assert(mb_to_wide_result);
+
     // see if it exists first
     Win32_Directory_Watcher_Data *current = manager->watchers;
+
+    #if 0
     char dir_c_string[MAX_PATH];
     to_char_array(request->filepath, dir_c_string, MAX_PATH);
+    #endif
 
     // verify that it's a directory
-    bool32 is_directory = platform_path_is_directory(dir_c_string);
+    bool32 is_directory = platform_path_is_directory(wide_filepath);
     if (!is_directory) {
         assert(!"Path is not a directory!");
         return;
     }
 
-    char dir_abs_path[MAX_PATH];
-    platform_get_absolute_path(dir_c_string, dir_abs_path, MAX_PATH);
+    WCHAR dir_abs_path[MAX_PATH];
+    platform_get_absolute_path(wide_filepath, dir_abs_path, MAX_PATH*sizeof(WCHAR));
 
     while (current) {
         if (string_equals(current->dir_abs_path, dir_abs_path)) {
@@ -1217,22 +1268,19 @@ void file_watcher_add_directory_routine(ULONG_PTR param) {
     
     Arena_Allocator *watcher_arena = &data->arena;
 
-    char *path_c_string = to_char_array((Allocator *) watcher_arena, request->filepath);
-    deallocate(request->filepath);
-    
-    char abs_path_to_watch[MAX_PATH];
-    platform_get_absolute_path(path_c_string, abs_path_to_watch, MAX_PATH);
+    // copy absolute filepath string to arena
+    data->dir_abs_path = make_wstring((Allocator *) watcher_arena, dir_abs_path);
 
-    data->dir_abs_path = make_string((Allocator *) watcher_arena, abs_path_to_watch);
+    deallocate(request->filepath);
 
     // create handle to the directory
-    data->dir_handle = CreateFile(abs_path_to_watch,
-                                  FILE_LIST_DIRECTORY,
-                                  FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-                                  NULL,
-                                  OPEN_EXISTING,
-                                  FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
-                                  NULL);
+    data->dir_handle = CreateFileW(dir_abs_path,
+                                   FILE_LIST_DIRECTORY,
+                                   FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                                   NULL,
+                                   OPEN_EXISTING,
+                                   FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
+                                   NULL);
 
     //end_region(temp_region);
 
@@ -1276,13 +1324,26 @@ void file_watcher_end_routine(ULONG_PTR param) {
     EnterCriticalSection(&manager->critical_section);
     Win32_Directory_Watcher_Data *current = manager->watchers;
 
+    // let's assume that end_request's filepath is a wide string already
+#if 0
+    // MAX_PATH includes null-terminator
+    WCHAR wide_end_dir_path[MAX_PATH];
+    // TODO: move this conversion to a platform-independent function
+    int mb_to_wide_result = MultiByteToWideChar(CP_ACP, 0,
+                                                end_request->filepath.contents, end_request->filepath.length,
+                                                wide_end_dir_path, MAX_PATH);
+    assert(mb_to_wide_result);
+#endif
+
+    WCHAR end_dir_c_string[MAX_PATH];
+    to_c_string(end_request->filepath, end_dir_c_string, MAX_PATH*sizeof(WCHAR));
+    
+    WCHAR end_dir_abs_path[MAX_PATH];
+    platform_get_absolute_path(end_dir_c_string, end_dir_abs_path, MAX_PATH*sizeof(WCHAR));
+    
+    deallocate(end_request->filepath);
+
     while (current) {
-        // MAX_PATH includes null-terminator
-        char end_dir_path_c_string[MAX_PATH];
-        char end_dir_abs_path[MAX_PATH];
-        to_char_array(end_request->filepath, end_dir_path_c_string, MAX_PATH);
-        platform_get_absolute_path(end_dir_path_c_string, end_dir_abs_path, MAX_PATH);
-        
         if (string_equals(current->dir_abs_path, end_dir_abs_path)) {
             break;
         }
@@ -1297,8 +1358,6 @@ void file_watcher_end_routine(ULONG_PTR param) {
         
         return;
     }
-
-    deallocate(end_request->filepath);
     
     CancelIo(current->dir_handle);
     CloseHandle(current->dir_handle);

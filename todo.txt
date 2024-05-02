@@ -27,10 +27,36 @@ TODO: increment/decrement num_watchers when adding/deleting/folders - DONE
 
 
 
-vvvvv LEFT OFF HERE vvvvv
 TODO: check if folder is already being watched - DONE
 
 TODO: create API for game to add and remove folders to watch
+- pass in function pointer to handle the file changes
+- need to create platform-independent types of file change types
+  - like PLATFORM_FILE_MODIFIED or whatever
+
+
+
+vvvvv LEFT OFF HERE vvvvv
+TODO: fix stack overrun error in visual studio when running
+
+TODO: we may want to convert the strings we get for paths to add to WCHAR strings and store them
+- https://learn.microsoft.com/en-us/windows/win32/api/stringapiset/nf-stringapiset-multibytetowidechar
+- just so it's easier to compare..
+- or we just convert the filepaths we get from FILE_NOTIFY_INFORMATION to ascii strings...
+  - i'm pretty sure we can just convert the filepaths we get there to "multibyte" strings
+  - and since all our paths are ascii, we can just do string_equals and it'll be completely fine
+  - TODO: honestly, it's better to just convert our ascii paths to unicode and use WCHAR
+    - it's more annoying and more prone to error converting from unicode to multibyte
+    - https://stackoverflow.com/questions/748965/what-is-a-multibyte-character-set
+    - multibyte seems to refer to legacy variable-length encodings, like specific codepages
+      - https://learn.microsoft.com/en-us/cpp/c-runtime-library/unicode-the-wide-character-set?view=msvc-170
+        - "Only one locale can be represented at a time in multibyte encoding"
+      - https://learn.microsoft.com/en-us/cpp/c-runtime-library/single-byte-and-multibyte-character-sets?view=msvc-170&redirectedfrom=MSDN
+        - "A multibyte character set can consist of both 1-byte and 2-byte characters."
+        - so, multibyte character doesn't seem to refer to utf-8, since utf-8 uses 1-4 code units (of size 1 byte each) to represent code points
+
+
+
 TODO: we need to mark entities as needing an update
 - we could just have an array in a critical section with IDs in it, then every game loop, just go through
 them and update them if they're in the array

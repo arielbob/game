@@ -20,11 +20,27 @@ int32 string_length(char* str) {
     return count;
 }
 
+int32 string_length(wchar16* str) {
+    if (!str) return 0;
+    int32 count = 0;
+    while (*(str++) != '\0') {
+        count++;
+    }
+    return count;
+}
+
 struct String {
     // allocator should be NULL when contents are in read-only memory
     Allocator *allocator;
     char *contents;
     int32 length;
+};
+
+struct WString {
+    // allocator should be NULL when contents are in read-only memory
+    Allocator *allocator;
+    wchar16 *contents;
+    int32 length; // in characters, NOT bytes
 };
 
 struct String_Buffer {
@@ -85,6 +101,16 @@ String copy(Allocator *allocator, String src) {
     result.length = src.length;
     result.contents = (char *) allocate(allocator, src.length);
     memcpy(result.contents, src.contents, src.length);
+    return result;
+}
+
+WString copy(Allocator *allocator, WString src) {
+    WString result;
+    result.allocator = allocator;
+    result.length = src.length;
+    int32 buffer_size = src.length * sizeof(wchar16);
+    result.contents = (wchar16 *) allocate(allocator, buffer_size);
+    memcpy(result.contents, src.contents, buffer_size);
     return result;
 }
 
@@ -240,6 +266,14 @@ String make_string(char *contents) {
     return result;
 }
 
+WString make_wstring(wchar16 *contents) {
+    WString result = {};
+    result.allocator = read_only_allocator;
+    result.contents = contents;
+    result.length = string_length(contents);
+    return result;
+}
+
 // this copies
 String make_string(Allocator *allocator, char *contents) {
     String result = {};
@@ -249,6 +283,20 @@ String make_string(Allocator *allocator, char *contents) {
     result.length = len;
 
     char *buf = (char *) allocate(allocator, len);
+    memcpy(buf, contents, len);
+    result.contents = buf;
+
+    return result;
+}
+
+WString make_wstring(Allocator *allocator, wchar16 *contents) {
+    WString result = {};
+    result.allocator = allocator;
+
+    int32 len = string_length(contents);
+    result.length = len;
+
+    wchar16 *buf = (wchar16 *) allocate(allocator, len*sizeof(wchar16));
     memcpy(buf, contents, len);
     result.contents = buf;
 
@@ -295,6 +343,10 @@ String make_string(Allocator *allocator, char *base, char *to_append) {
 }
 
 void deallocate(String string) {
+    deallocate(string.allocator, string.contents);
+}
+
+void deallocate(WString string) {
     deallocate(string.allocator, string.contents);
 }
 
@@ -364,6 +416,20 @@ bool32 string_equals(String a, String b) {
     return true;
 }
 
+bool32 string_equals(WString a, WString b) {
+    if (a.length != b.length) {
+        return false;
+    } else {
+        for (int32 i = 0; i < a.length; i++) {
+            if (a.contents[i] != b.contents[i]) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
 inline bool32 string_equals(char *a, char *b) {
     return string_equals(make_string(a), make_string(b));
 }
@@ -371,6 +437,30 @@ inline bool32 string_equals(char *a, char *b) {
 // NOTE: b is a null-terminated string
 inline bool32 string_equals(String a, char *b) {
     return string_equals(a, make_string(b));
+}
+
+inline bool32 string_equals(WString a, wchar16 *b) {
+    return string_equals(a, make_wstring(b));
+}
+
+// TODO: wide strings
+inline bool32 string_equals(WCHAR *a, WCHAR *b) {
+    int32 a_length = string_length(a);
+    int32 b_length = string_length(b);
+
+    if (a_length != b_length) {
+        return false;
+    } else {
+        // there's no need to check for null-terminator because they
+        // just won't be equal and we'll return false.
+        for (int32 i = 0; i < a_length; i++) {
+            if (a[i] != b[i]) {
+                return false;
+            }
+        }
+    }
+
+    return true;
 }
 
 bool32 string_contains(String string, char chars[], int32 num_chars) {
@@ -489,6 +579,15 @@ void splice_insert(String_Buffer *buffer, int32 index, char c) {
 // TODO: rename these to to_c_string or something
 void to_char_array(String string, char *buffer, int32 buffer_size) {
     assert(buffer_size >= string.length + 1);
+    for (int32 i = 0; i < string.length; i++) {
+        buffer[i] = string.contents[i];
+    }
+    
+    buffer[string.length] = '\0';
+}
+
+void to_c_string(WString string, wchar16 *buffer, int32 buffer_size) {
+    assert(buffer_size >= string.length*sizeof(wchar16) + sizeof(wchar16));
     for (int32 i = 0; i < string.length; i++) {
         buffer[i] = string.contents[i];
     }
