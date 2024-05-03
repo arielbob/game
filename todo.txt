@@ -39,6 +39,11 @@ TODO: create API for game to add and remove folders to watch
 vvvvv LEFT OFF HERE vvvvv
 TODO: fix stack overrun error in visual studio when running
 
+TODO: the End_Request needs to be allocated on the manager's heap, and NOT THE STACK!!!
+
+TODO: GetFullPathNameW shouldn't be used with relative paths on other threads
+- we should convert it on main thread before passing it to the watcher thread
+
 TODO: we may want to convert the strings we get for paths to add to WCHAR strings and store them
 - https://learn.microsoft.com/en-us/windows/win32/api/stringapiset/nf-stringapiset-multibytetowidechar
 - just so it's easier to compare..

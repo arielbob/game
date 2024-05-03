@@ -73,6 +73,7 @@ struct Win32_Directory_Watcher_Manager {
     Heap_Allocator heap; // when we need to share things from main thread to watcher thread
     Arena_Allocator arena;
     CRITICAL_SECTION critical_section;
+    HANDLE thread_handle;
     bool32 is_running;
     volatile uint32 num_watchers;
     Win32_Directory_Watcher_Data *first_free_watcher;
@@ -81,7 +82,7 @@ struct Win32_Directory_Watcher_Manager {
 
 struct Win32_Directory_Watcher_Start_Request {
     Win32_Directory_Watcher_Manager *manager;
-    String filepath;
+    WString abs_filepath;
 };
 
 struct Win32_Directory_Watcher_End_Request {

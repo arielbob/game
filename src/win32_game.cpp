@@ -342,8 +342,14 @@ void platform_get_absolute_path(wchar16 *relative_path,
     assert(sizeof(TCHAR) == 1);
     assert(absolute_path_buffer_size >= MAX_PATH*sizeof(wchar16));
 
+    // the docs say that the 2nd argument is the size of the output buffer in TCHARs..
+    // i assumed that since our TCHAR is 1 (we don't compile with -DUNICODE or -D_UNICODE), this argument
+    // would be MAX_PATH*sizeof(WCHAR), so 260*2, but doing this results in a buffer overrun.
+    // which is weird, because i would assume that if we put just MAX_PATH, it would be too small and
+    // result in a buffer overrun.
+    
     DWORD path_length_without_null = GetFullPathNameW(relative_path,
-                                                      absolute_path_buffer_size, absolute_path_buffer, NULL);
+                                                      MAX_PATH, absolute_path_buffer, NULL);
     assert(path_length_without_null > 0 && path_length_without_null < absolute_path_buffer_size);
 }
 
@@ -1211,11 +1217,14 @@ void file_watcher_add_directory_routine(ULONG_PTR param) {
         return;
     }
 
-    // convert the ascii string to a WCHAR (16-bit chars) string
-    WCHAR wide_filepath[MAX_PATH];
-    int mb_to_wide_result = MultiByteToWideChar(CP_ACP, 0, request->filepath.contents, request->filepath.length,
+    WCHAR abs_filepath[MAX_PATH];
+    to_c_string(request->abs_filepath, abs_filepath, MAX_PATH*sizeof(WCHAR));
+
+#if 0
+    int mb_to_wide_result = MultiByteToWideChar(CP_ACP, 0, filepath_c_str, -1,
                                                 wide_filepath, MAX_PATH);
     assert(mb_to_wide_result);
+#endif
 
     // see if it exists first
     Win32_Directory_Watcher_Data *current = manager->watchers;
@@ -1225,18 +1234,12 @@ void file_watcher_add_directory_routine(ULONG_PTR param) {
     to_char_array(request->filepath, dir_c_string, MAX_PATH);
     #endif
 
-    // verify that it's a directory
-    bool32 is_directory = platform_path_is_directory(wide_filepath);
-    if (!is_directory) {
-        assert(!"Path is not a directory!");
-        return;
-    }
+#if 1
 
-    WCHAR dir_abs_path[MAX_PATH];
-    platform_get_absolute_path(wide_filepath, dir_abs_path, MAX_PATH*sizeof(WCHAR));
+#endif
 
     while (current) {
-        if (string_equals(current->dir_abs_path, dir_abs_path)) {
+        if (string_equals(current->dir_abs_path, abs_filepath)) {
             assert(!"Directory is already being watched!");
             return;
         }
@@ -1269,12 +1272,13 @@ void file_watcher_add_directory_routine(ULONG_PTR param) {
     Arena_Allocator *watcher_arena = &data->arena;
 
     // copy absolute filepath string to arena
-    data->dir_abs_path = make_wstring((Allocator *) watcher_arena, dir_abs_path);
+    data->dir_abs_path = make_wstring((Allocator *) watcher_arena, abs_filepath);
 
-    deallocate(request->filepath);
+    deallocate((Allocator *) &manager->heap, request);
+    deallocate(request->abs_filepath);
 
     // create handle to the directory
-    data->dir_handle = CreateFileW(dir_abs_path,
+    data->dir_handle = CreateFileW(abs_filepath,
                                    FILE_LIST_DIRECTORY,
                                    FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
                                    NULL,
@@ -1459,25 +1463,89 @@ DWORD watch_files_thread_function(void *param) {
 }
 
 void platform_watch_directory(String directory) {
+    assert(directory.length <= MAX_PATH);
     // TODO: finish this
-#if 0
-    Win32_Directory_Watcher_Start_Request start_request = {
+
+    // convert the ascii string to a WCHAR (16-bit chars) string
+    // before converting, we need to convert the string to be a null-terminated string.
+    // MultiByteToWideChar doesn't automatically add a null-terminator if the original
+    // string didn't already include one.
+    char filepath_c_str[MAX_PATH];
+    to_char_array(directory, filepath_c_str, MAX_PATH);
+    
+    WCHAR wide_filepath[MAX_PATH];
+    int mb_to_wide_result = MultiByteToWideChar(CP_ACP, 0, filepath_c_str, -1,
+                                                wide_filepath, MAX_PATH);
+
+    // verify that it's a directory
+    bool32 is_directory = platform_path_is_directory(wide_filepath);
+    if (!is_directory) {
+        assert(!"Path is not a directory!");
+        return;
+    }
+    
+    Allocator *heap = (Allocator *) &directory_watcher_manager.heap;
+    WString abs_dir = make_wstring(heap, wide_filepath);
+
+    
+    Win32_Directory_Watcher_Start_Request *start_request = (Win32_Directory_Watcher_Start_Request *) allocate(heap,
+                                                                    sizeof(Win32_Directory_Watcher_Start_Request));
+
+    *start_request = {
         &directory_watcher_manager,
-        make_string((Allocator *) &directory_watcher_manager.heap, "assets")
+        abs_dir
     };
-    QueueUserAPC(file_watcher_add_directory_routine, file_watcher_thread_handle,
-                 (ULONG_PTR) &start_request);
+    QueueUserAPC(file_watcher_add_directory_routine, directory_watcher_manager.thread_handle,
+                 (ULONG_PTR) start_request);
+}
+
+void test_crash() {
+    WCHAR *wide_test = L"C:\\Users\\Ariel\\source\\game\\assets\\animations\\blender_test.animation";
+
+    // TODO: it's this absolute_path code...
+    //WCHAR abs_path[MAX_PATH];
+    //platform_get_absolute_path(wide_test, abs_path, MAX_PATH*sizeof(WCHAR));
+
+#ifdef UNICODE
+    printf("unicode");
 #endif
+
+#ifdef _UNICODE
+    printf("unicode");
+#endif
+    
+    // sizeof(TCHAR) == 1
+    // the second arg in GetFullPathNameW is supposed to be the size of the buffer in TCHARs...
+    // so i put in MAX_PATH * sizeof(WCHAR), since that's the size in TCHARs... but for whatever reason
+    // it results in a buffer overrun...
+    int32 tchar_size = sizeof(TCHAR);
+    WCHAR absolute_path_buffer[MAX_PATH];
+    int32 absolute_path_buffer_size = sizeof(absolute_path_buffer) / sizeof(TCHAR);//MAX_PATH * sizeof(WCHAR);
+    DWORD result = GetFullPathNameW(wide_test,
+                                    absolute_path_buffer_size, absolute_path_buffer, NULL);
+    assert(result);
+    
+    DWORD file_attributes = GetFileAttributesW(wide_test);
+    assert(file_attributes != INVALID_FILE_ATTRIBUTES);
+
+    bool32 is_directory = (file_attributes & FILE_ATTRIBUTE_DIRECTORY);
 }
 
 int WinMain(HINSTANCE hInstance,
             HINSTANCE hPrevInstance,
             LPSTR lpCmdLine,
             int nShowCmd) {
+
+    #if 0
+    char *test = "C:\\Users\\Ariel\\source\\game\\assets\\animations\\blender_test.animation";
+    
+    WCHAR wide_filepath[MAX_PATH];
+    int mb_to_wide_result = MultiByteToWideChar(CP_UTF8, 0, test, -1,
+                                                wide_filepath, MAX_PATH);
+    #endif
+
 #if 0
-    char result[MAX_PATH];
-    platform_get_folder_path(relative_path, result, MAX_PATH);
-    platform_get_folder_path(abs_path, result, MAX_PATH);
+    test_crash();
 #endif
     
 #if 0
@@ -1664,12 +1732,18 @@ int WinMain(HINSTANCE hInstance,
 
                 assert(file_watcher_thread_handle);
 
+                directory_watcher_manager.thread_handle = file_watcher_thread_handle;
+
+                platform_watch_directory(make_string("assets"));
+
+#if 0
                 Win32_Directory_Watcher_Start_Request start_request = {
                     &directory_watcher_manager,
                     make_string((Allocator *) &directory_watcher_manager.heap, "assets")
                 };
                 QueueUserAPC(file_watcher_add_directory_routine, file_watcher_thread_handle,
                              (ULONG_PTR) &start_request);
+#endif
 
 #if 0
                 Win32_Directory_Watcher_End_Request end_request = {
@@ -1913,12 +1987,14 @@ int WinMain(HINSTANCE hInstance,
 
                 LeaveCriticalSection(&directory_watcher_manager.critical_section);
 
+                #if 0
                 Win32_Directory_Watcher_Start_Request start_request2 = {
                     &directory_watcher_manager,
                     make_string((Allocator *) &directory_watcher_manager.heap, "assets")
                 };
                 QueueUserAPC(file_watcher_add_directory_routine, file_watcher_thread_handle,
                              (ULONG_PTR) &start_request2);
+                #endif
 
                 // wait for file watcher thread to complete
                 WaitForSingleObject(file_watcher_thread_handle, INFINITE);

@@ -289,6 +289,7 @@ String make_string(Allocator *allocator, char *contents) {
     return result;
 }
 
+// this copies
 WString make_wstring(Allocator *allocator, wchar16 *contents) {
     WString result = {};
     result.allocator = allocator;
@@ -296,8 +297,9 @@ WString make_wstring(Allocator *allocator, wchar16 *contents) {
     int32 len = string_length(contents);
     result.length = len;
 
-    wchar16 *buf = (wchar16 *) allocate(allocator, len*sizeof(wchar16));
-    memcpy(buf, contents, len);
+    int32 buf_size = len*sizeof(wchar16);
+    wchar16 *buf = (wchar16 *) allocate(allocator, buf_size);
+    memcpy(buf, contents, buf_size);
     result.contents = buf;
 
     return result;
