@@ -29,22 +29,15 @@ TODO: increment/decrement num_watchers when adding/deleting/folders - DONE
 
 TODO: check if folder is already being watched - DONE
 
-TODO: create API for game to add and remove folders to watch
-- pass in function pointer to handle the file changes
-- need to create platform-independent types of file change types
-  - like PLATFORM_FILE_MODIFIED or whatever
-
 
 
 vvvvv LEFT OFF HERE vvvvv
-TODO: fix stack overrun error in visual studio when running
-
+TODO: fix stack overrun error in visual studio when running - DONE
 TODO: the End_Request needs to be allocated on the manager's heap, and NOT THE STACK!!!
-
-TODO: GetFullPathNameW shouldn't be used with relative paths on other threads
+TODO: GetFullPathNameW shouldn't be used with relative paths on other threads - maybe later; this wasn't the cause of the crash
 - we should convert it on main thread before passing it to the watcher thread
-
-TODO: we may want to convert the strings we get for paths to add to WCHAR strings and store them
+TODO: fix end_request - DONE
+TODO: we may want to convert the strings we get for paths to add to WCHAR strings and store them - DONE
 - https://learn.microsoft.com/en-us/windows/win32/api/stringapiset/nf-stringapiset-multibytetowidechar
 - just so it's easier to compare..
 - or we just convert the filepaths we get from FILE_NOTIFY_INFORMATION to ascii strings...
@@ -59,6 +52,13 @@ TODO: we may want to convert the strings we get for paths to add to WCHAR string
       - https://learn.microsoft.com/en-us/cpp/c-runtime-library/single-byte-and-multibyte-character-sets?view=msvc-170&redirectedfrom=MSDN
         - "A multibyte character set can consist of both 1-byte and 2-byte characters."
         - so, multibyte character doesn't seem to refer to utf-8, since utf-8 uses 1-4 code units (of size 1 byte each) to represent code points
+
+
+
+TODO: create API for game to add and remove folders to watch
+- pass in function pointer to handle the file changes
+- need to create platform-independent types of file change types
+- like PLATFORM_FILE_MODIFIED or whatever
 
 
 
