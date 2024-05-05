@@ -3,8 +3,6 @@
 
 #include "memory.h"
 
-#define MAX_FILE_CHANGES 128
-
 // TODO: i think this file is supposed to be platform-independent...
 // - HANDLE is win32-specific. each [platform]_game.h should have the platform-specific
 //   implementations for stuff.

@@ -1166,40 +1166,60 @@ void file_watcher_completion_routine(DWORD errorCode, DWORD bytesTransferred, LP
 
     assert(bytesTransferred);
     
-    Win32_Directory_Watcher_Data *dir_watcher_data = (Win32_Directory_Watcher_Data *) overlapped->hEvent;
-
+    Win32_Directory_Watcher_Data *data = (Win32_Directory_Watcher_Data *) overlapped->hEvent;
+    assert(data->change_callback);
+    
     // TODO: finish this
-#if 0
-    FILE_NOTIFY_INFORMATION *event  = (FILE_NOTIFY_INFORMATION *) dir_watcher_data->dir_changes_buffer;
-    WCHAR filepath[MAX_PATH];
-    event->FileName
+    FILE_NOTIFY_INFORMATION *event  = (FILE_NOTIFY_INFORMATION *) data->dir_changes_buffer;
+    while (event) {
+        // event->FileName isn't null-terminated, so just make this WString manually
+        WString filename = {};
+        filename.contents = event->FileName;
+        // FileNameLength is in bytes, WString length is in characters
+        filename.length = event->FileNameLength / sizeof(WCHAR);
+
+        Directory_Change_Type change_type = DIR_CHANGE_NONE;
         switch (event->Action) {
             case FILE_ACTION_MODIFIED: {
                 OutputDebugString("file modified!\n");
+                change_type = DIR_CHANGE_FILE_MODIFIED;
             } break;
             case FILE_ACTION_RENAMED_OLD_NAME: {
-            
+                // TODO: we need to be able to convert this to a single event
+                // - like we set a flag if we get this, then on the new name event,
+                //   we call the callback. we would have to modify the callback to
+                //   have an extra optional parameter.
+                OutputDebugString("file renamed (old name event)!\n");
             } break;
             case FILE_ACTION_RENAMED_NEW_NAME: {
-
+                OutputDebugString("file renamed (new name event)!\n");
             } break;
         }
-#endif
+
+        data->change_callback(change_type, filename);
+        
+        if (event->NextEntryOffset) {
+            *((uint8 **) &event) += event->NextEntryOffset;
+        } else {
+            event = NULL;
+            break;
+        }
+    }
 
     // make sure to clear this before using it again
-    dir_watcher_data->overlapped = {};
-    dir_watcher_data->overlapped.hEvent = dir_watcher_data;
+    data->overlapped = {};
+    data->overlapped.hEvent = data;
 
     DWORD bytesReturned = 0;
 
     BOOL success = ReadDirectoryChangesW(
-        dir_watcher_data->dir_handle,
-        dir_watcher_data->dir_changes_buffer,
-        dir_watcher_data->dir_changes_buffer_size,
+        data->dir_handle,
+        data->dir_changes_buffer,
+        data->dir_changes_buffer_size,
         false, // not recursive
         FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_CREATION | FILE_NOTIFY_CHANGE_FILE_NAME,
         &bytesReturned,
-        &dir_watcher_data->overlapped,
+        &data->overlapped,
         file_watcher_completion_routine
     );
 
@@ -1253,7 +1273,8 @@ void file_watcher_add_directory_routine(ULONG_PTR param) {
     // stop that watcher
     int32 changes_buffer_size = MEGABYTES(1);
     data->dir_changes_buffer_size = changes_buffer_size;
-    data->dir_changes_buffer = allocate(&data->arena, changes_buffer_size);
+    // changes buffer needs to be DWORD aligned
+    data->dir_changes_buffer = allocate(&data->arena, changes_buffer_size, sizeof(DWORD));
     
     Arena_Allocator *watcher_arena = &data->arena;
 
@@ -1282,7 +1303,8 @@ void file_watcher_add_directory_routine(ULONG_PTR param) {
     // in the completion routine
     data->overlapped = {};
     data->overlapped.hEvent = data;
-
+    data->change_callback = request->change_callback;
+        
     data->next = manager->watchers;
     manager->watchers = data;
     InterlockedIncrement(&manager->num_watchers);
@@ -1449,7 +1471,7 @@ DWORD watch_files_thread_function(void *param) {
     return 0;
 }
 
-void platform_watch_directory(String directory) {
+void platform_watch_directory(String directory, Directory_Change_Callback change_callback) {
     assert(directory.length <= MAX_PATH);
 
     // convert the ascii string to a WCHAR (16-bit chars) string
@@ -1482,7 +1504,8 @@ void platform_watch_directory(String directory) {
                                                                     sizeof(Win32_Directory_Watcher_Start_Request));
     *start_request = {
         &directory_watcher_manager,
-        abs_dir
+        abs_dir,
+        change_callback
     };
     QueueUserAPC(file_watcher_add_directory_routine, directory_watcher_manager.thread_handle,
                  (ULONG_PTR) start_request);
@@ -1491,12 +1514,13 @@ void platform_watch_directory(String directory) {
 void platform_unwatch_directory(String directory) {
     assert(directory.length <= MAX_PATH);
 
+    // TODO: finish this
 }
 
 void test_crash() {
     WCHAR *wide_test = L"C:\\Users\\Ariel\\source\\game\\assets\\animations\\blender_test.animation";
 
-    // TODO: it's this absolute_path code...
+    // it's this absolute_path code...
     //WCHAR abs_path[MAX_PATH];
     //platform_get_absolute_path(wide_test, abs_path, MAX_PATH*sizeof(WCHAR));
 
@@ -1523,6 +1547,20 @@ void test_crash() {
     assert(file_attributes != INVALID_FILE_ATTRIBUTES);
 
     bool32 is_directory = (file_attributes & FILE_ATTRIBUTE_DIRECTORY);
+}
+
+// filename is allocated on the directory watcher's buffer. don't try and
+// keep it because it will get overwritten.
+// btw, this gets ran on the directory watcher thread..
+void watcher_callback(Directory_Change_Type change_type, WString filename) {
+    //assert(change_type != DIR_CHANGE_NONE);
+
+    switch (change_type) {
+        case DIR_CHANGE_FILE_MODIFIED:
+        {
+            OutputDebugString("file modified (in callback)\n");
+        } break;
+    }
 }
 
 int WinMain(HINSTANCE hInstance,
@@ -1728,7 +1766,7 @@ int WinMain(HINSTANCE hInstance,
 
                 directory_watcher_manager.thread_handle = file_watcher_thread_handle;
 
-                platform_watch_directory(make_string("assets"));
+                platform_watch_directory(make_string("assets"), watcher_callback);
 
 #if 0
                 Win32_Directory_Watcher_Start_Request start_request = {

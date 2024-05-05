@@ -7,6 +7,15 @@
 #define PLATFORM_MAX_PATH MAX_PATH
 #define DIRECTORY_WATCHER_MAX_WATCHERS 256
 
+// TODO: these probably should be in platform.h, but oh well..
+#define MAX_FILE_CHANGES 128
+enum Directory_Change_Type {
+    DIR_CHANGE_NONE,
+    DIR_CHANGE_FILE_MODIFIED,
+    DIR_CHANGE_FILE_RENAMED
+};
+typedef void (*Directory_Change_Callback)(Directory_Change_Type, WString);
+
 struct Win32_Display_Output {
     int32 width;
     int32 height;
@@ -64,6 +73,7 @@ struct Win32_Directory_Watcher_Data {
     void *dir_changes_buffer;
     HANDLE dir_handle;
     WString dir_abs_path;
+    Directory_Change_Callback change_callback;
     OVERLAPPED overlapped;
     Win32_Directory_Watcher_Data *next_free;
     Win32_Directory_Watcher_Data *next; // to iterate through them
@@ -83,6 +93,7 @@ struct Win32_Directory_Watcher_Manager {
 struct Win32_Directory_Watcher_Start_Request {
     Win32_Directory_Watcher_Manager *manager;
     WString abs_filepath;
+    Directory_Change_Callback change_callback;
 };
 
 struct Win32_Directory_Watcher_End_Request {

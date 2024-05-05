@@ -56,9 +56,19 @@ TODO: we may want to convert the strings we get for paths to add to WCHAR string
 
 
 TODO: create API for game to add and remove folders to watch
+- TODO: adding - DONE
+- TODO: removing
 - pass in function pointer to handle the file changes
 - need to create platform-independent types of file change types
 - like PLATFORM_FILE_MODIFIED or whatever
+
+TODO: verify that we're aligning the buffer to DWORD - DONE
+
+TODO: it's listening recursively.. but we don't want that? the false i set isn't for recursive i think..
+- actually, i don't think it is listening recursively; it's just that the change propagated up to the folder
+  - and the folder is what's getting modified
+  - we get a modified for the file past the root layer, but we don't get the file renamed event, since i think
+  it's just the folder that is seen as modified
 
 
 
