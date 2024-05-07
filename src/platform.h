@@ -47,5 +47,10 @@ void platform_set_cursor_visible(bool32 is_visible);
 Vec2 platform_get_cursor_pos();
 void platform_set_cursor_pos(Vec2 cursor_pos);
 bool32 platform_window_has_focus();
+String platform_get_folder_path(Allocator *allocator, String path);
+void platform_watch_directory(String directory, Directory_Change_Callback change_callback);
+
+// TODO: remove this and put the callback in asset.cpp or whatever
+void watcher_callback(Directory_Change_Type change_type, WString filename);
 
 #endif

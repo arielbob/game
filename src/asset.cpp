@@ -198,6 +198,13 @@ Mesh *add_mesh(String name, String filename, Mesh_Type type, int32 id = -1) {
 
     r_load_mesh(mesh->id);
     
+    // watch the directory
+    Allocator *temp_region = begin_region();
+    String folder_to_watch = platform_get_folder_path(temp_region, filename);
+    platform_watch_directory(folder_to_watch, watcher_callback);
+
+    end_region(temp_region);
+    
     return mesh;
 }
 

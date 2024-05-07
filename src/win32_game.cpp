@@ -390,12 +390,13 @@ bool32 platform_open_file(char *filename, Platform_File *file_result) {
 }
 
 // given a filepath (relative or absolute), remove the file and backslash, if they exist.
+// this also converts relative filepaths to absolute.
 // note that if you have something like "test/", you'll just get "test".
 // if you have something like "a/test", you'll get "a".
 // so basically, if you're using this function, you should ensure that what you're passing
 // in is in fact a path to a file.
-void platform_get_folder_path(char *path, char *folder_path, int32 folder_path_size) {
-    assert(folder_path_size >= string_length(path));
+void platform_get_folder_path(char *path, char *abs_folder_path, int32 abs_folder_path_size) {
+    assert(abs_folder_path_size >= string_length(path));
 
     char abs_path[MAX_PATH];
     // get the absolute path because this function also converts non-windows paths to
@@ -404,7 +405,28 @@ void platform_get_folder_path(char *path, char *folder_path, int32 folder_path_s
     platform_get_absolute_path(path, abs_path, MAX_PATH);
     PathRemoveFileSpecA(abs_path);
 
-    copy_string(folder_path, abs_path, folder_path_size);
+    copy_string(abs_folder_path, abs_path, abs_folder_path_size);
+}
+
+String platform_get_folder_path(Allocator *allocator, String path) {
+    char *abs_path = (char *) allocate(allocator, MAX_PATH);
+
+    // get the absolute path because this function also converts non-windows paths to
+    // windows paths, i.e. converts / to \. PathRemoveFileSpecA() doesn't work correctly
+    // with non-windows paths
+
+    char path_c_str[MAX_PATH];
+    to_char_array(path, path_c_str, MAX_PATH);
+    
+    platform_get_absolute_path(path_c_str, abs_path, MAX_PATH);
+    PathRemoveFileSpecA(abs_path);
+
+    String ret = {};
+    ret.allocator = allocator;
+    ret.contents = abs_path;
+    ret.length = string_length(abs_path);
+
+    return ret;
 }
 
 bool32 platform_path_is_directory(char *path) {
@@ -1236,17 +1258,23 @@ void file_watcher_add_directory_routine(ULONG_PTR param) {
     EnterCriticalSection(&manager->critical_section);
 
     if (!manager->is_running) {
+        deallocate(request->abs_filepath);
+        deallocate((Allocator *) &manager->heap, request);
         return;
     }
     
     WCHAR abs_filepath[MAX_PATH];
     to_c_string(request->abs_filepath, abs_filepath, MAX_PATH*sizeof(WCHAR));
 
+    deallocate(request->abs_filepath);
+    deallocate((Allocator *) &manager->heap, request);
+
     // see if it exists first
     Win32_Directory_Watcher_Data *current = manager->watchers;
     while (current) {
         if (string_equals(current->dir_abs_path, abs_filepath)) {
-            assert(!"Directory is already being watched!");
+            // not an error; just don't add it again
+            OutputDebugStringA("Directory is already being watched!");
             return;
         }
         current = current->next;
@@ -1280,9 +1308,6 @@ void file_watcher_add_directory_routine(ULONG_PTR param) {
 
     // copy absolute filepath string to arena
     data->dir_abs_path = make_wstring((Allocator *) watcher_arena, abs_filepath);
-
-    deallocate(request->abs_filepath);
-    deallocate((Allocator *) &manager->heap, request);
 
     // create handle to the directory
     data->dir_handle = CreateFileW(abs_filepath,

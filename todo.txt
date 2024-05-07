@@ -57,18 +57,12 @@ TODO: we may want to convert the strings we get for paths to add to WCHAR string
 
 
 
-TODO: create API for game to add and remove folders to watch
+TODO: create API for game to add and remove folders to watch - DONE
 - TODO: adding - DONE
-- TODO: removing <<<<<<<<<<<<<<<<<<<<<<<<<<<<<< LEFT OFF HERE
-
-
-
-
-
-- pass in function pointer to handle the file changes
-- need to create platform-independent types of file change types
-- like PLATFORM_FILE_MODIFIED or whatever
-
+- TODO: removing - DONE
+- TODO: pass in function pointer to handle the file changes - DONE
+- TODO: need to create platform-independent types of file change types - DONE
+  - like PLATFORM_FILE_MODIFIED or whatever
 TODO: verify that we're aligning the buffer to DWORD - DONE
 
 TODO: it's listening recursively.. but we don't want that? the false i set isn't for recursive i think..
@@ -77,7 +71,19 @@ TODO: it's listening recursively.. but we don't want that? the false i set isn't
   - we get a modified for the file past the root layer, but we don't get the file renamed event, since i think
   it's just the folder that is seen as modified
 
+TODO: watch directories when we add assets
+- TODO: meshes - DONE
+- TODO: levels
+- TODO: textures
+- TODO: animations
 
+TODO: actually update the stuff when the file changes
+- TODO: meshes - DONE
+- TODO: levels
+- TODO: textures
+- TODO: animations
+
+TODO: do logging for the updates we get
 
 TODO: we need to mark entities as needing an update
 - we could just have an array in a critical section with IDs in it, then every game loop, just go through
