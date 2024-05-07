@@ -55,9 +55,16 @@ TODO: we may want to convert the strings we get for paths to add to WCHAR string
 
 
 
+
+
 TODO: create API for game to add and remove folders to watch
 - TODO: adding - DONE
-- TODO: removing
+- TODO: removing <<<<<<<<<<<<<<<<<<<<<<<<<<<<<< LEFT OFF HERE
+
+
+
+
+
 - pass in function pointer to handle the file changes
 - need to create platform-independent types of file change types
 - like PLATFORM_FILE_MODIFIED or whatever

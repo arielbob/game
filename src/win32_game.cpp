@@ -1365,10 +1365,11 @@ void file_watcher_end_routine(ULONG_PTR param) {
     }
 
     if (!current) {
-        assert(!"Watcher not found for that filepath!");
-
-        // TODO: uhh, deallocate the request probably, but who cares
-        
+        // we didn't find it.. this isn't really an error.
+        // it could happen that you try and stop watching, then the end all watchers
+        // loop runs before the queue has ran, so we get two end requests for the same
+        // filepath.
+        LeaveCriticalSection(&manager->critical_section);
         return;
     }
     
@@ -1391,6 +1392,10 @@ void file_watcher_end_routine(ULONG_PTR param) {
 
     InterlockedDecrement(&manager->num_watchers);
     LeaveCriticalSection(&manager->critical_section);
+}
+
+void file_watcher_wake_routine(ULONG_PTR param) {
+    // nothing; just to wake up the thread
 }
 
 DWORD watch_files_thread_function(void *param) {
@@ -1511,10 +1516,45 @@ void platform_watch_directory(String directory, Directory_Change_Callback change
                  (ULONG_PTR) start_request);
 }
 
+// notice that we know that we need to convert to wide string, because arg is String
+// and not WString
 void platform_unwatch_directory(String directory) {
     assert(directory.length <= MAX_PATH);
 
-    // TODO: finish this
+    // convert the ascii string to a WCHAR (16-bit chars) string
+    // before converting, we need to convert the string to be a null-terminated string.
+    // MultiByteToWideChar doesn't automatically add a null-terminator if the original
+    // string didn't already include one.
+    char filepath_c_str[MAX_PATH];
+    to_char_array(directory, filepath_c_str, MAX_PATH);
+
+    // convert to absolute path
+    char abs_path_c_str[MAX_PATH];
+    platform_get_absolute_path(filepath_c_str, abs_path_c_str, MAX_PATH);
+
+    // convert to wide string
+    WCHAR wide_filepath[MAX_PATH];
+    int mb_to_wide_result = MultiByteToWideChar(CP_UTF8, 0, abs_path_c_str, -1,
+                                                wide_filepath, MAX_PATH);
+    
+    // verify that it's a directory
+    bool32 is_directory = platform_path_is_directory(wide_filepath);
+    if (!is_directory) {
+        assert(!"Path is not a directory!");
+        return;
+    }
+    
+    Allocator *heap = (Allocator *) &directory_watcher_manager.heap;
+    WString abs_dir = make_wstring(heap, wide_filepath);
+
+    Win32_Directory_Watcher_End_Request *end_request = (Win32_Directory_Watcher_End_Request *) allocate(heap,
+                                                                                                        sizeof(Win32_Directory_Watcher_End_Request));
+    *end_request = {
+        &directory_watcher_manager,
+        abs_dir
+    };
+    QueueUserAPC(file_watcher_end_routine, directory_watcher_manager.thread_handle,
+                 (ULONG_PTR) end_request);
 }
 
 void test_crash() {
@@ -1767,6 +1807,7 @@ int WinMain(HINSTANCE hInstance,
                 directory_watcher_manager.thread_handle = file_watcher_thread_handle;
 
                 platform_watch_directory(make_string("assets"), watcher_callback);
+                platform_unwatch_directory(make_string("assets"));
 
 #if 0
                 Win32_Directory_Watcher_Start_Request start_request = {
@@ -2006,6 +2047,7 @@ int WinMain(HINSTANCE hInstance,
                 Win32_Directory_Watcher_Data *current = directory_watcher_manager.watchers;
                 
                 while (current) {
+                    
                     Allocator *heap = (Allocator *) &directory_watcher_manager.heap;
                     Win32_Directory_Watcher_End_Request *end_request = (Win32_Directory_Watcher_End_Request *) allocate(heap,
                                                                                                                         sizeof(Win32_Directory_Watcher_End_Request));
@@ -2031,6 +2073,11 @@ int WinMain(HINSTANCE hInstance,
                 QueueUserAPC(file_watcher_add_directory_routine, file_watcher_thread_handle,
                              (ULONG_PTR) &start_request2);
                 #endif
+
+                // queue something, in case we never queued anything, ex. when there
+                // are no watchers, we need to wake up the watching the thread so that
+                // it can finish execution.
+                QueueUserAPC(file_watcher_wake_routine, file_watcher_thread_handle, NULL);
 
                 // wait for file watcher thread to complete
                 WaitForSingleObject(file_watcher_thread_handle, INFINITE);
