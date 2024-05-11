@@ -1275,6 +1275,7 @@ void file_watcher_add_directory_routine(ULONG_PTR param) {
         if (string_equals(current->dir_abs_path, abs_filepath)) {
             // not an error; just don't add it again
             OutputDebugStringA("Directory is already being watched!");
+            LeaveCriticalSection(&manager->critical_section);
             return;
         }
         current = current->next;
@@ -1377,6 +1378,10 @@ void file_watcher_end_routine(ULONG_PTR param) {
     
     WCHAR end_dir_abs_path[MAX_PATH];
     platform_get_absolute_path(end_dir_c_string, end_dir_abs_path, MAX_PATH*sizeof(WCHAR));
+
+    OutputDebugStringA("unwatching: ");
+    OutputDebugStringW(end_dir_abs_path);
+    OutputDebugStringA("\n");
     
     deallocate(end_request->filepath);
     deallocate((Allocator *) &manager->heap, end_request);
@@ -1581,6 +1586,66 @@ void platform_unwatch_directory(String directory) {
     QueueUserAPC(file_watcher_end_routine, directory_watcher_manager.thread_handle,
                  (ULONG_PTR) end_request);
 }
+
+void platform_wide_char_to_multi_byte(WString wstring, char *buffer, int32 buffer_size) {
+    int num_bytes_needed = WideCharToMultiByte(CP_UTF8,
+                                               0,
+                                               wstring.contents,
+                                               wstring.length,
+                                               NULL,
+                                               0,
+                                               NULL,
+                                               NULL);
+    assert(num_bytes_needed);
+
+    // we need + 1 for null-terminator
+    if (buffer_size < (num_bytes_needed + 1)) {
+        assert(!"Buffer is too small for conversion!");
+        return;
+    }
+
+    int result = WideCharToMultiByte(CP_UTF8,
+                                     0,
+                                     wstring.contents,
+                                     wstring.length,
+                                     buffer,
+                                     buffer_size,
+                                     NULL,
+                                     NULL);
+    assert(result);
+};
+
+String platform_wide_char_to_multi_byte(Allocator *allocator, WString wstring) {
+    int num_bytes_needed = WideCharToMultiByte(CP_UTF8,
+                                               0,
+                                               wstring.contents,
+                                               wstring.length,
+                                               NULL,
+                                               0,
+                                               NULL,
+                                               NULL);
+    assert(num_bytes_needed);
+
+    char *buffer = (char *) allocate(allocator, num_bytes_needed);
+    int result = WideCharToMultiByte(CP_UTF8,
+                                     0,
+                                     wstring.contents,
+                                     wstring.length,
+                                     buffer,
+                                     num_bytes_needed,
+                                     NULL,
+                                     NULL);
+    assert(result);
+
+    String ret = {};
+    ret.contents = buffer;
+    // technically, we shouldn't do this because string_length assumes each character is
+    // a single byte. but, we only ever use ascii strings, so we should be fine for now..
+    ret.length = string_length(buffer);
+    ret.allocator = allocator;
+
+    return ret;
+};
 
 void test_crash() {
     WCHAR *wide_test = L"C:\\Users\\Ariel\\source\\game\\assets\\animations\\blender_test.animation";

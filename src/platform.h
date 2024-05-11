@@ -49,6 +49,7 @@ void platform_set_cursor_pos(Vec2 cursor_pos);
 bool32 platform_window_has_focus();
 String platform_get_folder_path(Allocator *allocator, String path);
 void platform_watch_directory(String directory, Directory_Change_Callback change_callback);
+void platform_wide_char_to_multi_byte(WString wstring, char *buffer, int32 buffer_size);
 
 // TODO: remove this and put the callback in asset.cpp or whatever
 void watcher_callback(Directory_Change_Type change_type, WString filename);

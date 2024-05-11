@@ -73,6 +73,12 @@ TODO: it's listening recursively.. but we don't want that? the false i set isn't
 
 TODO: watch directories when we add assets
 - TODO: meshes - DONE
+
+TODO: fix bugs with mesh directory watching
+- crash when exiting - DONE
+
+
+
 - TODO: levels
 - TODO: textures
 - TODO: animations
@@ -84,6 +90,12 @@ TODO: actually update the stuff when the file changes
 - TODO: animations
 
 TODO: do logging for the updates we get
+
+TODO: thread-local temp regions
+- can use GetCurrentThreadId()
+- so we can use begin_region() without having to use locks
+
+
 
 TODO: we need to mark entities as needing an update
 - we could just have an array in a critical section with IDs in it, then every game loop, just go through

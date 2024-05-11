@@ -12,6 +12,24 @@ Material_Info default_material_info = {
     0, 0.0f
 };
 
+void mesh_file_update_callback(Directory_Change_Type change_type, WString filename) {
+    // note that this callback runs on the file watcher thread
+
+    char filepath[MAX_PATH];
+    platform_wide_char_to_multi_byte(filename, filepath, MAX_PATH);
+    OutputDebugStringA("mesh_changed");
+
+    // TODO: get mesh
+}
+
+// filename should be the file itself
+void watch_directory_for_file(String filename, Directory_Change_Callback callback) {
+    Allocator *temp_region = begin_region();
+    String folder_to_watch = platform_get_folder_path(temp_region, filename);
+    platform_watch_directory(folder_to_watch, callback);
+    end_region(temp_region);
+}
+
 Mesh *get_mesh(String name) {
     for (int32 i = 0; i < NUM_MESH_BUCKETS; i++) {
         Mesh *current = asset_manager->mesh_table[i];
@@ -199,11 +217,7 @@ Mesh *add_mesh(String name, String filename, Mesh_Type type, int32 id = -1) {
     r_load_mesh(mesh->id);
     
     // watch the directory
-    Allocator *temp_region = begin_region();
-    String folder_to_watch = platform_get_folder_path(temp_region, filename);
-    platform_watch_directory(folder_to_watch, watcher_callback);
-
-    end_region(temp_region);
+    watch_directory_for_file(filename, mesh_file_update_callback);
     
     return mesh;
 }
