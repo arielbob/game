@@ -66,9 +66,11 @@ struct Wav_Data {
 };
 #pragma pack(pop)
 
+struct Win32_Directory_Watcher_Manager;
+
 struct Win32_Directory_Watcher_Data {
+    Win32_Directory_Watcher_Manager *manager;
     Arena_Allocator arena;
-    //Stack_Allocator thread_stack;
     int32 dir_changes_buffer_size;
     void *dir_changes_buffer;
     HANDLE dir_handle;
@@ -81,7 +83,8 @@ struct Win32_Directory_Watcher_Data {
 
 struct Win32_Directory_Watcher_Manager {
     Heap_Allocator heap; // when we need to share things from main thread to watcher thread
-    Arena_Allocator arena;
+    Arena_Allocator arena; // for storing Watcher_Data structs for each watcher
+    Stack_Allocator temp_stack; // for thread-local begin_region()
     CRITICAL_SECTION critical_section;
     HANDLE thread_handle;
     bool32 is_running;

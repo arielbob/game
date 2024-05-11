@@ -101,8 +101,8 @@ struct Memory {
 
 // allocator at the end just so that we can do begin_region(256) or whatever without
 // specifying an allocator
-Allocator *begin_region(Allocator *allocator, uint32 size = 0);
-Allocator *begin_region(uint32 size = 0);
+Allocator *begin_region(Allocator *allocator = NULL, uint32 size = 0);
+//Allocator *begin_region(uint32 size = 0);
 void end_region(Allocator *region);
 // TODO: does this need to be default true?
 void *allocate(Allocator *allocator, uint32 size, bool32 zero_memory = true); 

@@ -12,16 +12,6 @@ Material_Info default_material_info = {
     0, 0.0f
 };
 
-void mesh_file_update_callback(Directory_Change_Type change_type, WString filename) {
-    // note that this callback runs on the file watcher thread
-
-    char filepath[MAX_PATH];
-    platform_wide_char_to_multi_byte(filename, filepath, MAX_PATH);
-    OutputDebugStringA("mesh_changed");
-
-    // TODO: get mesh
-}
-
 // filename should be the file itself
 void watch_directory_for_file(String filename, Directory_Change_Callback callback) {
     Allocator *temp_region = begin_region();
@@ -44,6 +34,20 @@ Mesh *get_mesh(String name) {
     return NULL;
 }
 
+Mesh *get_mesh_by_path(String path) {
+    for (int32 i = 0; i < NUM_MESH_BUCKETS; i++) {
+        Mesh *current = asset_manager->mesh_table[i];
+        while (current) {
+            if (path_equals(current->filename, path)) {
+                return current;
+            }
+            current = current->table_next;
+        }
+    }
+
+    return NULL;
+}
+
 Mesh *get_mesh(int32 id) {
     uint32 hash = get_hash(id, NUM_MESH_BUCKETS);
 
@@ -57,6 +61,20 @@ Mesh *get_mesh(int32 id) {
     }
 
     return NULL;
+}
+
+
+void mesh_file_update_callback(Directory_Change_Type change_type, WString path) {
+    // note that this callback runs on the file watcher thread
+
+    char filepath_c_str[MAX_PATH];
+    platform_wide_char_to_multi_byte(path, filepath_c_str, MAX_PATH);
+    String filepath = make_string(filepath_c_str);
+
+    OutputDebugStringA("mesh_changed");
+    Mesh *mesh = get_mesh_by_path(filepath);
+
+    // TODO: update the mesh!
 }
 
 Skeletal_Animation *get_animation(int32 id) {

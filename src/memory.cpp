@@ -220,7 +220,8 @@ inline void *region_push(uint32 size, bool32 zero_memory = true, uint32 alignmen
 
 Allocator *begin_region(Allocator *allocator, uint32 size) {
     if (!allocator) {
-        // should only do this on main thread   
+        // should only do this on main thread
+        assert(platform_is_main_thread());
         assert(memory.is_initted);
         allocator = (Allocator *) &memory.global_stack;
     }

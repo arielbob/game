@@ -79,12 +79,17 @@ TODO: fix bugs with mesh directory watching
 
 
 
+TODO: update mesh when file updated
+- probably need to delete everything, then reload it
+- or maybe load it first, and then delete the old stuff
+  - just in case load fails
+
 - TODO: levels
 - TODO: textures
 - TODO: animations
 
 TODO: actually update the stuff when the file changes
-- TODO: meshes - DONE
+- TODO: meshes
 - TODO: levels
 - TODO: textures
 - TODO: animations

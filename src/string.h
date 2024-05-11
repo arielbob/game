@@ -50,6 +50,13 @@ struct String_Buffer {
     Allocator *allocator;
 };
 
+struct WString_Buffer {
+    wchar16 *contents;
+    int32 current_length;
+    int32 size_chars;
+    Allocator *allocator;
+};
+
 struct String_Iterator {
     String string;
     int32 index;
@@ -91,6 +98,13 @@ void copy_string(String_Buffer *dest, String src) {
     assert(dest->size >= src.length);
 
     memcpy(dest->contents, src.contents, src.length);
+    dest->current_length = src.length;
+}
+
+void copy_string(WString_Buffer *dest, WString src) {
+    assert(dest->size_chars >= src.length);
+
+    memcpy(dest->contents, src.contents, src.length*sizeof(wchar16));
     dest->current_length = src.length;
 }
 
@@ -183,6 +197,20 @@ String_Buffer make_string_buffer(Allocator *allocator, String initial_value, int
     return buffer;
 }
 
+WString_Buffer make_string_buffer(Allocator *allocator, WString initial_value, int32 size_chars) {
+    assert(initial_value.length <= size_chars);
+    WString_Buffer buffer;
+
+    wchar16 *contents = (wchar16 *) allocate(allocator, size_chars*sizeof(wchar16));
+    buffer.contents = contents;
+    buffer.size_chars = size_chars;
+    buffer.allocator = allocator;
+
+    copy_string(&buffer, initial_value);
+
+    return buffer;
+}
+
 String_Buffer copy(Allocator *allocator, String_Buffer source_buffer) {
     String_Buffer buffer = {};
 
@@ -213,6 +241,21 @@ String substring_after(Allocator *allocator, String_Buffer source_buffer, int32 
     return string;
 }
 
+// sets string buffer to [0, end_index)
+void set_string_buffer_end(String_Buffer *string_buffer, int32 end_index) {
+    assert(end_index >= 0);
+    assert(end_index <= string_buffer->current_length);
+    int32 diff = string_buffer->current_length - end_index;
+    string_buffer->current_length -= diff;
+}
+
+void set_string_buffer_end(WString_Buffer *string_buffer, int32 end_index) {
+    assert(end_index >= 0);
+    assert(end_index <= string_buffer->current_length);
+    int32 diff = string_buffer->current_length - end_index;
+    string_buffer->current_length -= diff;
+}
+
 void set_string_buffer_text(String_Buffer *string_buffer, char *text) {
     int32 len = string_length(text);
     assert(len < string_buffer->size);
@@ -222,9 +265,16 @@ void set_string_buffer_text(String_Buffer *string_buffer, char *text) {
 }
 
 void set_string_buffer_text(String_Buffer *string_buffer, String text) {
-    assert(text.length < string_buffer->size);
+    assert(text.length <= string_buffer->size);
 
     memcpy(string_buffer->contents, text.contents, text.length);
+    string_buffer->current_length = text.length;
+}
+
+void set_string_buffer_text(WString_Buffer *string_buffer, WString text) {
+    assert(text.length <= string_buffer->size_chars);
+
+    memcpy(string_buffer->contents, text.contents, text.length * sizeof(wchar16));
     string_buffer->current_length = text.length;
 }
 
@@ -245,6 +295,14 @@ String make_string(char *contents, uint32 length) {
 
 String make_string(String_Buffer string_buffer) {
     String result = {};
+    result.contents = string_buffer.contents;
+    result.length = string_buffer.current_length;
+    result.allocator = string_buffer.allocator;
+    return result;
+}
+
+WString make_string(WString_Buffer string_buffer) {
+    WString result = {};
     result.contents = string_buffer.contents;
     result.length = string_buffer.current_length;
     result.allocator = string_buffer.allocator;
@@ -333,6 +391,25 @@ String make_string(Allocator *allocator, char *base, char *to_append) {
     char *buffer = (char *) allocate(allocator, length);
 
     memcpy(buffer, base, n_base);
+    memcpy(buffer + n_base, to_append, n_to_append);
+    // no need for null terminator, since it's a String
+
+    String result;
+    result.allocator = allocator;
+    result.contents = buffer;
+    result.length = length;
+
+    return result;
+}
+
+String make_string(Allocator *allocator, WString base, wchar16 *to_append) {
+    int32 n_base = base.length;
+    int32 n_to_append = string_length(to_append);
+
+    int32 length = n_base + n_to_append;
+    char *buffer = (char *) allocate(allocator, length);
+
+    memcpy(buffer, base.contents, n_base);
     memcpy(buffer + n_base, to_append, n_to_append);
     // no need for null terminator, since it's a String
 
@@ -494,6 +571,13 @@ void append_string(String_Buffer *buffer, String to_append) {
     assert(buffer->current_length + to_append.length <= buffer->size);
 
     memcpy(&buffer->contents[buffer->current_length], to_append.contents, to_append.length);
+    buffer->current_length += to_append.length;
+}
+
+void append_string(WString_Buffer *buffer, WString to_append) {
+    assert(buffer->current_length + to_append.length <= buffer->size_chars);
+
+    memcpy(&buffer->contents[buffer->current_length], to_append.contents, to_append.length*sizeof(wchar16));
     buffer->current_length += to_append.length;
 }
 

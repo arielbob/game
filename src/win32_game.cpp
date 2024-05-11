@@ -55,6 +55,7 @@ global_variable Asset_Manager *asset_manager;
 global_variable Game_State *game_state;
 global_variable Render_State *render_state;
 global_variable Win32_Directory_Watcher_Manager directory_watcher_manager;
+global_variable DWORD main_thread_id;
 
 #include "memory.cpp"
 #include "math.cpp"
@@ -447,6 +448,24 @@ bool32 platform_path_is_directory(wchar16 *path) {
     assert(file_attributes != INVALID_FILE_ATTRIBUTES);
 
     return (file_attributes & FILE_ATTRIBUTE_DIRECTORY);
+}
+
+bool32 path_equals(String path1, String path2) {
+    // MAX_PATH includes null-terminator, String does not, so < and not <=
+    assert(path1.length < MAX_PATH); 
+    assert(path2.length < MAX_PATH);
+
+    char path1_c_string[MAX_PATH];
+    char path2_c_string[MAX_PATH];
+    to_char_array(path1, path1_c_string, MAX_PATH);
+    to_char_array(path2, path2_c_string, MAX_PATH);
+
+    char path1_abs_path[MAX_PATH];
+    char path2_abs_path[MAX_PATH];
+    platform_get_absolute_path(path1_c_string, path1_abs_path, MAX_PATH);
+    platform_get_absolute_path(path2_c_string, path2_abs_path, MAX_PATH);
+
+    return string_equals(path1_abs_path, path2_abs_path);
 }
 
 bool32 platform_read_file(Platform_File platform_file, File_Data *file_data) {
@@ -1190,6 +1209,13 @@ void file_watcher_completion_routine(DWORD errorCode, DWORD bytesTransferred, LP
     
     Win32_Directory_Watcher_Data *data = (Win32_Directory_Watcher_Data *) overlapped->hEvent;
     assert(data->change_callback);
+
+    Allocator *temp_region = begin_region((Allocator *) &data->manager->temp_stack);
+
+    // make a full path of the file (i.e. "dir/filename")
+    WString_Buffer string_buf = make_string_buffer(temp_region, data->dir_abs_path, MAX_PATH);
+    append_string(&string_buf, make_wstring(L"/"));
+    int32 length_without_filename = string_buf.current_length;
     
     // TODO: finish this
     FILE_NOTIFY_INFORMATION *event  = (FILE_NOTIFY_INFORMATION *) data->dir_changes_buffer;
@@ -1199,7 +1225,10 @@ void file_watcher_completion_routine(DWORD errorCode, DWORD bytesTransferred, LP
         filename.contents = event->FileName;
         // FileNameLength is in bytes, WString length is in characters
         filename.length = event->FileNameLength / sizeof(WCHAR);
+        append_string(&string_buf, filename);
 
+        WString full_path = make_string(string_buf);
+        
         Directory_Change_Type change_type = DIR_CHANGE_NONE;
         switch (event->Action) {
             case FILE_ACTION_MODIFIED: {
@@ -1218,7 +1247,7 @@ void file_watcher_completion_routine(DWORD errorCode, DWORD bytesTransferred, LP
             } break;
         }
 
-        data->change_callback(change_type, filename);
+        data->change_callback(change_type, full_path);
         
         if (event->NextEntryOffset) {
             *((uint8 **) &event) += event->NextEntryOffset;
@@ -1226,8 +1255,14 @@ void file_watcher_completion_routine(DWORD errorCode, DWORD bytesTransferred, LP
             event = NULL;
             break;
         }
+
+        // remove the filename, but keep the directory, because that's constant
+        // across iterations.
+        set_string_buffer_end(&string_buf, length_without_filename);
     }
 
+    end_region(temp_region);
+    
     // make sure to clear this before using it again
     data->overlapped = {};
     data->overlapped.hEvent = data;
@@ -1296,6 +1331,7 @@ void file_watcher_add_directory_routine(ULONG_PTR param) {
 
         // add an arena for the watcher data (strings and changes buffer)
         data->arena = make_arena_allocator(arena_start, watcher_arena_size);
+        data->manager = manager;
     }
 
     // initialize the changes buffer again, since we clear the watcher's arena when we
@@ -1693,6 +1729,10 @@ void watcher_callback(Directory_Change_Type change_type, WString filename) {
     }
 }
 
+bool32 platform_is_main_thread() {
+    return (GetCurrentThreadId() == main_thread_id);
+}
+
 int WinMain(HINSTANCE hInstance,
             HINSTANCE hPrevInstance,
             LPSTR lpCmdLine,
@@ -1765,6 +1805,8 @@ int WinMain(HINSTANCE hInstance,
     UINT desired_min_timer_resolution_ms = 1;
     bool32 sleep_is_granular = timeBeginPeriod(desired_min_timer_resolution_ms) == TIMERR_NOERROR;
 
+    main_thread_id = GetCurrentThreadId();
+    
     Win32_Display_Output display_output = {};
     display_output.width = 1280;
     display_output.height = 720;
@@ -1867,12 +1909,16 @@ int WinMain(HINSTANCE hInstance,
                 uint32 file_watcher_arena_size = MEGABYTES(128);
                 void *file_watcher_arena_start = arena_push(&memory.game_data, file_watcher_arena_size);
 
+                uint32 file_watcher_stack_size = MEGABYTES(8);
+                void *file_watcher_stack_start = arena_push(&memory.game_data, file_watcher_stack_size);
+                
                 uint32 file_watcher_heap_size = MEGABYTES(8);
                 void *file_watcher_heap_start = arena_push(&memory.game_data, file_watcher_heap_size);
 
                 directory_watcher_manager = {
                     make_heap_allocator(file_watcher_heap_start, file_watcher_heap_size),
-                    make_arena_allocator(file_watcher_arena_start, file_watcher_arena_size)
+                    make_arena_allocator(file_watcher_arena_start, file_watcher_arena_size),
+                    make_stack_allocator(file_watcher_stack_start, file_watcher_stack_size)
                 };
 
                 directory_watcher_manager.is_running = true;
