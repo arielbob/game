@@ -1228,6 +1228,12 @@ void file_watcher_completion_routine(DWORD errorCode, DWORD bytesTransferred, LP
         append_string(&string_buf, filename);
 
         WString full_path = make_string(string_buf);
+
+        wchar16 full_path_c_str[MAX_PATH];
+        to_c_string(full_path, full_path_c_str, MAX_PATH);
+        OutputDebugStringA("file updated: ");
+        OutputDebugStringW(full_path_c_str);
+        OutputDebugStringA("\n");
         
         Directory_Change_Type change_type = DIR_CHANGE_NONE;
         switch (event->Action) {

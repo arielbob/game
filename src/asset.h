@@ -12,6 +12,7 @@
 #define NUM_ANIMATION_BUCKETS  128
 #define NUM_FONT_BUCKETS      128
 #define NUM_FONT_FILE_BUCKETS 128
+#define MAX_ASSET_UPDATES 64
 
 #define MAX_BONE_INDICES 4
 
@@ -211,6 +212,14 @@ void deallocate(Material *material) {
     deallocate(material->name);    
 }
 
+// cleared every frame; can only add, no delete
+struct Asset_Update_Queue {
+    Platform_Critical_Section critical_section;
+    
+    int32 ids[MAX_ASSET_UPDATES];
+    int32 num_ids;
+};
+
 struct Asset_Manager {
     Allocator *allocator;
 
@@ -230,6 +239,8 @@ struct Asset_Manager {
     Font_File *font_file_table[NUM_FONT_FILE_BUCKETS]; // for caching font files
 
     bool32 gpu_should_unload_level_assets;
+
+    Asset_Update_Queue mesh_update_queue;
 };
 
 real32 get_width(Font font, char *text);

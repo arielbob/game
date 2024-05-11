@@ -63,6 +63,27 @@ Mesh *get_mesh(int32 id) {
     return NULL;
 }
 
+void init_asset_update_queue(Asset_Update_Queue *queue) {
+    *queue = {};
+    queue->critical_section = platform_make_critical_section();
+}
+
+void deinit_asset_update_queue(Asset_Update_Queue *queue) {
+    platform_delete_critical_section(&queue->critical_section);
+}
+
+void mark_asset_needs_update(Asset_Update_Queue *queue, int32 asset_id) {
+    platform_enter_critical_section(&queue->critical_section);
+
+    assert(queue->num_ids < MAX_ASSET_UPDATES);
+    queue->ids[queue->num_ids++] = asset_id;
+    
+    platform_leave_critical_section(&queue->critical_section);
+}
+
+void clear_asset_update_queue(Asset_Update_Queue *queue) {
+    queue->num_ids = 0;
+}
 
 void mesh_file_update_callback(Directory_Change_Type change_type, WString path) {
     // note that this callback runs on the file watcher thread
@@ -71,10 +92,26 @@ void mesh_file_update_callback(Directory_Change_Type change_type, WString path) 
     platform_wide_char_to_multi_byte(path, filepath_c_str, MAX_PATH);
     String filepath = make_string(filepath_c_str);
 
-    OutputDebugStringA("mesh_changed");
-    Mesh *mesh = get_mesh_by_path(filepath);
+    OutputDebugStringA("mesh_changed\n");
 
-    // TODO: update the mesh!
+    switch (change_type) {
+        case DIR_CHANGE_FILE_MODIFIED: {
+            Mesh *mesh = get_mesh_by_path(filepath);
+
+            // mark it for update
+            mark_asset_needs_update(&asset_manager->mesh_update_queue, mesh->id);
+        } break;
+            // TODO: we need to handle the rename event, because we also get a FILE_MODIFIED
+            //       event for the new named file, but it doesn't exist, so we assert.
+            // NOTE: we aren't doing the update right now.. so the mesh won't be renamed right away
+            // - this is annoying.. the updates should be by id.
+            // - when we get the old_name event, save the id
+            // - when the new_name event comes in, look for the old_name, make a special event for this
+            // - TODO: we probably want to store some more information in the update queue
+
+            // TODO: handle other change types
+            // TODO: file renamed
+    }
 }
 
 Skeletal_Animation *get_animation(int32 id) {
@@ -159,6 +196,11 @@ void delete_mesh(int32 id) {
     Mesh *default_mesh = get_mesh(make_string("cube"));
     assert(default_mesh);
     replace_entity_meshes(id, default_mesh->id);
+}
+
+void reload_mesh(int32 id) {
+    // you can literally just delete_mesh_no_replace
+    // then load it, right?
 }
 
 bool32 load_mesh(Allocator *allocator, Mesh **mesh_result, Mesh_Type type, String name, String filename) {

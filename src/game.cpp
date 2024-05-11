@@ -16,6 +16,9 @@ void init_asset_manager(Arena_Allocator *game_data) {
 
     *asset_manager = {};
     asset_manager->allocator = (Allocator *) heap;
+
+    // init asset update queues
+    init_asset_update_queue(&asset_manager->mesh_update_queue);
 }
 
 void init_level(Level *level, Arena_Allocator *game_data) {
