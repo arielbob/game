@@ -66,6 +66,10 @@ inline bool32 is_empty(String string) {
     return (string.length == 0);
 }
 
+inline bool32 is_empty(WString string) {
+    return (string.length == 0);
+}
+
 inline bool32 is_empty(String_Buffer string) {
     return (string.current_length == 0);
 }

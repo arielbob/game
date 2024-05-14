@@ -52,6 +52,7 @@ void platform_watch_directory(String directory, Directory_Change_Callback change
 void platform_wide_char_to_multi_byte(WString wstring, char *buffer, int32 buffer_size);
 bool32 platform_is_main_thread();
 bool32 path_equals(String path1, String path2);
+String platform_wide_char_to_multi_byte(Allocator *allocator, WString wstring);
 
 // TODO: remove this and put the callback in asset.cpp or whatever
 void watcher_callback(Directory_Change_Type change_type, WString filename);

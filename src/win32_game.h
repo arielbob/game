@@ -14,7 +14,7 @@ enum Directory_Change_Type {
     DIR_CHANGE_FILE_MODIFIED,
     DIR_CHANGE_FILE_RENAMED
 };
-typedef void (*Directory_Change_Callback)(Directory_Change_Type, WString);
+typedef void (*Directory_Change_Callback)(Allocator *, Directory_Change_Type, WString, WString, WString);
 
 struct Win32_Display_Output {
     int32 width;

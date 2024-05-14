@@ -63,44 +63,85 @@ Mesh *get_mesh(int32 id) {
     return NULL;
 }
 
-void init_asset_update_queue(Asset_Update_Queue *queue) {
+void init_asset_update_queue(Arena_Allocator *game_arena, Asset_Update_Queue *queue) {
     *queue = {};
+
+    int32 queue_arena_size = MEGABYTES(8);
+    Arena_Allocator queue_arena = make_arena_allocator(arena_push(game_arena, queue_arena_size),
+                                                      queue_arena_size);
+    queue->arena = queue_arena;
     queue->critical_section = platform_make_critical_section();
 }
 
 void deinit_asset_update_queue(Asset_Update_Queue *queue) {
+    // this should be done after stopping the directory watching thread
     platform_delete_critical_section(&queue->critical_section);
 }
 
-void mark_asset_needs_update(Asset_Update_Queue *queue, int32 asset_id) {
+void push_update(Asset_Update_Queue *queue, Asset_Update update) {
     platform_enter_critical_section(&queue->critical_section);
 
-    assert(queue->num_ids < MAX_ASSET_UPDATES);
-    queue->ids[queue->num_ids++] = asset_id;
+    assert(queue->num_updates < MAX_ASSET_UPDATES);
     
+    // copy the update
+    switch (update.type) {
+        case ASSET_UPDATE_FILENAME_RENAMED: {
+            update.filename_change.old_filename = copy((Allocator *) &queue->arena,
+                                                       update.filename_change.old_filename);
+            update.filename_change.new_filename = copy((Allocator *) &queue->arena,
+                                                       update.filename_change.new_filename);
+        } break;
+        case ASSET_UPDATE_MODIFIED: {
+            update.filename = copy((Allocator *) &queue->arena,
+                                   update.filename);
+        } break;
+        default: {
+            assert(!"Unhandled asset file update type!");
+        } break;
+    }
+
+    queue->updates[queue->num_updates++] = update;
+
     platform_leave_critical_section(&queue->critical_section);
 }
 
 void clear_asset_update_queue(Asset_Update_Queue *queue) {
-    queue->num_ids = 0;
+    platform_enter_critical_section(&queue->critical_section);
+
+    clear_arena(&queue->arena);
+    queue->num_updates = 0;
+
+    platform_leave_critical_section(&queue->critical_section);
 }
 
-void mesh_file_update_callback(Directory_Change_Type change_type, WString path) {
+static int32 mesh_id_waiting_for_rename = -1;
+
+void mesh_file_update_callback(Allocator *temp_stack, Directory_Change_Type change_type, WString path,
+                               WString old_path = {}, WString new_path = {}) {
     // note that this callback runs on the file watcher thread
 
+    Allocator *temp_region = begin_region(temp_stack);
+
+#if 0
     char filepath_c_str[MAX_PATH];
     platform_wide_char_to_multi_byte(path, filepath_c_str, MAX_PATH);
     String filepath = make_string(filepath_c_str);
+#endif
 
     OutputDebugStringA("mesh_changed\n");
 
+    Asset_Update update = {};
+    
     switch (change_type) {
         case DIR_CHANGE_FILE_MODIFIED: {
+            String filepath = platform_wide_char_to_multi_byte(temp_region, path);
             Mesh *mesh = get_mesh_by_path(filepath);
 
             // mark it for update
-            mark_asset_needs_update(&asset_manager->mesh_update_queue, mesh->id);
+            update.type = ASSET_UPDATE_MODIFIED;
+            update.filename = filepath;
         } break;
+        case DIR_CHANGE_FILE_RENAMED: {
             // TODO: we need to handle the rename event, because we also get a FILE_MODIFIED
             //       event for the new named file, but it doesn't exist, so we assert.
             // NOTE: we aren't doing the update right now.. so the mesh won't be renamed right away
@@ -108,10 +149,49 @@ void mesh_file_update_callback(Directory_Change_Type change_type, WString path) 
             // - when we get the old_name event, save the id
             // - when the new_name event comes in, look for the old_name, make a special event for this
             // - TODO: we probably want to store some more information in the update queue
+            
+            // - we get the rename_old event
+            //   - we save it in the update queue with the old name
+            //   - we need to assume that the previous one will always be old_name...
 
+            // - just save a single old_name thing in the asset_manager, then when you get the new_name,
+            //   then add something to the queue
+            // - what if we get multiple old/new name events in the same loop???
+            //   - fuck, maybe it is just easier to try and update it...
+            //   - wait, actually, all you need to do is when you get old_name, store old_name->id
+            //     - then, any old_name/new_name pairs, just search for it in the map, if it exists,
+            //       replace old_name, if it doesn't create a new entry. that's pretty simple, i think.
+
+            // - just store all the old name, new names
+            // - why don't we just store all the updates?
+            //   - then just loop through and do the updates
+            //   - that makes this callback super simple..
+            //   - and it's better that it's simple because it's happening on a different thread
+            // - it's possible that the user deletes the mesh or whatever asset before we run these updates
+            //   - i don't think that's an issue; we just ignore the change because the assets gone
+            //   - that seems like completely fine and expected behaviour
+
+            // push_update will copy the strings to the queue's arena
+            assert(!is_empty(old_path));
+            assert(!is_empty(new_path));
+            String old_filepath = platform_wide_char_to_multi_byte(temp_region, old_path);
+            String new_filepath = platform_wide_char_to_multi_byte(temp_region, new_path);
+
+            update.type = ASSET_UPDATE_FILENAME_RENAMED;
+            update.filename_change.old_filename = old_filepath;
+            update.filename_change.new_filename = new_filepath;
+                
             // TODO: handle other change types
-            // TODO: file renamed
+        } break;
+        default: {
+            assert(!"Unhandled directory update type!");
+        } break;
     }
+    
+    assert(update.type != ASSET_UPDATE_NONE);
+    push_update(&asset_manager->mesh_update_queue, update);
+
+    end_region(temp_region);
 }
 
 Skeletal_Animation *get_animation(int32 id) {

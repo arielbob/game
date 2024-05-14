@@ -212,12 +212,32 @@ void deallocate(Material *material) {
     deallocate(material->name);    
 }
 
+enum Asset_Update_Type {
+    ASSET_UPDATE_NONE,
+    ASSET_UPDATE_MODIFIED,
+    ASSET_UPDATE_FILENAME_RENAMED
+};
+
+struct Asset_Update_Filename_Change {
+    String old_filename;
+    String new_filename;
+};
+
+struct Asset_Update {
+    Asset_Update_Type type;
+    union {
+        String filename;
+        Asset_Update_Filename_Change filename_change;
+    };
+};
+
 // cleared every frame; can only add, no delete
 struct Asset_Update_Queue {
     Platform_Critical_Section critical_section;
+    Arena_Allocator arena; // should be accessed in critical_section, cleared end of frame
     
-    int32 ids[MAX_ASSET_UPDATES];
-    int32 num_ids;
+    Asset_Update updates[MAX_ASSET_UPDATES];
+    int32 num_updates;
 };
 
 struct Asset_Manager {

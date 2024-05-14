@@ -18,7 +18,7 @@ void init_asset_manager(Arena_Allocator *game_data) {
     asset_manager->allocator = (Allocator *) heap;
 
     // init asset update queues
-    init_asset_update_queue(&asset_manager->mesh_update_queue);
+    init_asset_update_queue(game_data, &asset_manager->mesh_update_queue);
 }
 
 void init_level(Level *level, Arena_Allocator *game_data) {
@@ -1565,6 +1565,9 @@ void update(Controller_State *controller_state,
     ui_manager->last_frame_active = ui_manager->active;
 
     //update_render_state(render_state);
+
+    // TODO: go through the queue and update the entities
+    clear_asset_update_queue(&asset_manager->mesh_update_queue);
     
     if (game_state->mode == Game_Mode::EDITING) {
         update_editor(controller_state, dt);

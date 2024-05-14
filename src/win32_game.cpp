@@ -1216,6 +1216,9 @@ void file_watcher_completion_routine(DWORD errorCode, DWORD bytesTransferred, LP
     WString_Buffer string_buf = make_string_buffer(temp_region, data->dir_abs_path, MAX_PATH);
     append_string(&string_buf, make_wstring(L"/"));
     int32 length_without_filename = string_buf.current_length;
+
+    WString old_filename = {};
+    WString new_filename = {};
     
     // TODO: finish this
     FILE_NOTIFY_INFORMATION *event  = (FILE_NOTIFY_INFORMATION *) data->dir_changes_buffer;
@@ -1234,14 +1237,20 @@ void file_watcher_completion_routine(DWORD errorCode, DWORD bytesTransferred, LP
         OutputDebugStringA("file updated: ");
         OutputDebugStringW(full_path_c_str);
         OutputDebugStringA("\n");
+
+        // just in case the callback needs to do temp allocation.
+        // note that this allocator is platform-independent, unlike the watcher data struct.
+        Allocator *temp_stack = (Allocator *) &data->manager->temp_stack;
         
-        Directory_Change_Type change_type = DIR_CHANGE_NONE;
+        //Directory_Change_Type change_type = DIR_CHANGE_NONE;
         switch (event->Action) {
             case FILE_ACTION_MODIFIED: {
                 OutputDebugString("file modified!\n");
-                change_type = DIR_CHANGE_FILE_MODIFIED;
+                data->change_callback(temp_stack, DIR_CHANGE_FILE_MODIFIED, full_path, {}, {});
             } break;
             case FILE_ACTION_RENAMED_OLD_NAME: {
+                // copy just because full_path is temp per loop (it's gonna get overwritten)
+                old_filename = copy(temp_region, full_path);
                 // TODO: we need to be able to convert this to a single event
                 // - like we set a flag if we get this, then on the new name event,
                 //   we call the callback. we would have to modify the callback to
@@ -1249,12 +1258,16 @@ void file_watcher_completion_routine(DWORD errorCode, DWORD bytesTransferred, LP
                 OutputDebugString("file renamed (old name event)!\n");
             } break;
             case FILE_ACTION_RENAMED_NEW_NAME: {
+                assert(!is_empty(old_filename));
+                // no need to copy since we're done with this path after we call the callback
+                new_filename = full_path;
+                data->change_callback(temp_stack, DIR_CHANGE_FILE_RENAMED, {}, old_filename, new_filename);
+                old_filename = {};
+                new_filename = {};
                 OutputDebugString("file renamed (new name event)!\n");
             } break;
         }
 
-        data->change_callback(change_type, full_path);
-        
         if (event->NextEntryOffset) {
             *((uint8 **) &event) += event->NextEntryOffset;
         } else {
@@ -1948,8 +1961,10 @@ int WinMain(HINSTANCE hInstance,
 
                 directory_watcher_manager.thread_handle = file_watcher_thread_handle;
 
+#if 0
                 platform_watch_directory(make_string("assets"), watcher_callback);
                 platform_unwatch_directory(make_string("assets"));
+#endif
 
 #if 0
                 Win32_Directory_Watcher_Start_Request start_request = {

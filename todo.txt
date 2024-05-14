@@ -80,7 +80,8 @@ TODO: fix bugs with mesh directory watching
 
 
 TODO: update mesh when file updated
-- TODO: handle rename event
+- TODO: handle rename event - DONE
+- TODO: do the actual update
 - probably need to delete everything, then reload it
 - or maybe load it first, and then delete the old stuff
   - just in case load fails
