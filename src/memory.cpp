@@ -196,6 +196,8 @@ void *stack_region_allocate(Stack_Region *region, uint32 size, bool32 zero_memor
             assert(!"Region size limit reached!");
         }
     }
+
+    assert(stack->top >= stack->base);
     
     // get the start of the aligned allocated memory, which is just base + used + the amount of bytes we
     // added for alignment
