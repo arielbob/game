@@ -6,6 +6,7 @@ meshes {
 mesh "plane" ".\assets\meshes\plane.mesh"
 mesh "beach woods" ".\assets\meshes\beach-woods.mesh"
 mesh "beach woods terrain" ".\assets\meshes\beach-woods-terrain.mesh"
+mesh "test_mesh" ".\assets\meshes\test_mesh.mesh"
 }
 
 textures {
@@ -33,12 +34,19 @@ animations {
 
 entities {
 entity {
-position 0.000000 0.000000 0.000000
+position 7.707911 2.793780 -12.605277
 rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
-mesh "beach woods terrain"
-material "grass"
-has_collider 1
+mesh "test_mesh"
+material "default_material"
+}
+entity {
+position 0.025938 4.180701 0.000000
+rotation 0.923424 -0.127838 -0.049623 -0.358444
+scale 1.000000 1.000000 1.000000
+light_type sun
+sun_color 0.105467 0.132587 0.376667
+sun_intensity 1078.000000
 }
 entity {
 position 0.000000 0.000000 0.000000
@@ -49,12 +57,12 @@ material "wood"
 has_collider 1
 }
 entity {
-position 0.025938 4.180701 0.000000
-rotation 0.923424 -0.127838 -0.049623 -0.358444
+position 0.000000 0.000000 0.000000
+rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
-light_type sun
-sun_color 0.105467 0.132587 0.376667
-sun_intensity 1078.000000
+mesh "beach woods terrain"
+material "grass"
+has_collider 1
 }
 }
 

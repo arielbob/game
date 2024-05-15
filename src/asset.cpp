@@ -105,16 +105,47 @@ void push_update(Asset_Update_Queue *queue, Asset_Update update) {
     platform_leave_critical_section(&queue->critical_section);
 }
 
-void clear_asset_update_queue(Asset_Update_Queue *queue) {
+void update_meshes_from_queue(Asset_Update_Queue *queue) {
     platform_enter_critical_section(&queue->critical_section);
 
+    for (int32 i = 0; i < queue->num_updates; i++) {
+        Asset_Update *update = &queue->updates[i];
+        if (update->type == ASSET_UPDATE_FILENAME_RENAMED) {
+            // TODO: i'm actually not even sure if we should handle this case..
+            //       because we also have to update the level file..
+            //       - i guess if we haven't saved already then it's fine
+            //       - also we shouldn't rename non-user added meshes, but i guess
+            //         it's fine if it happens. we'll just crash.
+#if 0
+            Mesh *mesh = get_mesh_by_path(update->old_filename);
+            assert(mesh);
+            replace_contents(&mesh->filename, update->new_filename);
+#endif
+        } else if (update->type == ASSET_UPDATE_MODIFIED) {
+            Allocator *temp_region = begin_region();
+
+            Mesh *mesh = get_mesh_by_path(update->filename);
+            assert(mesh);
+
+            int32 id = mesh->id;
+            Mesh_Type type = mesh->type;
+            String name = copy(temp_region, mesh->name);
+            String filename = copy(temp_region, mesh->filename);
+            delete_mesh_no_replace(mesh->id);
+
+            add_mesh(name, filename, type, id);
+
+            end_region(temp_region);
+        }
+    }
+
+    // this stuff should be done in the same critical section so that
+    // we don't miss any updates.
     clear_arena(&queue->arena);
     queue->num_updates = 0;
 
     platform_leave_critical_section(&queue->critical_section);
 }
-
-static int32 mesh_id_waiting_for_rename = -1;
 
 void mesh_file_update_callback(Allocator *temp_stack, Directory_Change_Type change_type, WString path,
                                WString old_path = {}, WString new_path = {}) {
@@ -278,11 +309,6 @@ void delete_mesh(int32 id) {
     replace_entity_meshes(id, default_mesh->id);
 }
 
-void reload_mesh(int32 id) {
-    // you can literally just delete_mesh_no_replace
-    // then load it, right?
-}
-
 bool32 load_mesh(Allocator *allocator, Mesh **mesh_result, Mesh_Type type, String name, String filename) {
     Allocator *temp_region = begin_region();
 
@@ -314,7 +340,7 @@ bool32 mesh_exists(String name) {
     return mesh != NULL;
 }
 
-Mesh *add_mesh(String name, String filename, Mesh_Type type, int32 id = -1) {
+Mesh *add_mesh(String name, String filename, Mesh_Type type, int32 id) {
     if (mesh_exists(name)) {
         assert(!"Mesh with name already exists.");
         return NULL;
@@ -362,7 +388,7 @@ Mesh *add_mesh(String name, String filename, Mesh_Type type, int32 id = -1) {
     return mesh;
 }
 
-inline Mesh *add_mesh(char *name, char *filename, Mesh_Type type, int32 id = 1) {
+inline Mesh *add_mesh(char *name, char *filename, Mesh_Type type, int32 id) {
     return add_mesh(make_string(name), make_string(filename), type, id);
 }
 

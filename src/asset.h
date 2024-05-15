@@ -264,5 +264,8 @@ struct Asset_Manager {
 };
 
 real32 get_width(Font font, char *text);
+void delete_mesh_no_replace(int32 id);
+Mesh *add_mesh(String name, String filename, Mesh_Type type, int32 id = -1);
+inline Mesh *add_mesh(char *name, char *filename, Mesh_Type type, int32 id = -1);
 
 #endif

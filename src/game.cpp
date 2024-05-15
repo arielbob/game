@@ -1566,8 +1566,9 @@ void update(Controller_State *controller_state,
 
     //update_render_state(render_state);
 
-    // TODO: go through the queue and update the entities
-    clear_asset_update_queue(&asset_manager->mesh_update_queue);
+    // go through the asset update queues and update them
+    // TODO: finish this
+    update_meshes_from_queue(&asset_manager->mesh_update_queue);
     
     if (game_state->mode == Game_Mode::EDITING) {
         update_editor(controller_state, dt);
