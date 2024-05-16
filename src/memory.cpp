@@ -292,7 +292,7 @@ void end_region(Allocator *allocator) {
     if (top_region) {
         region->stack->top = (uint8 *) top_region->base + top_region->used;
     } else {
-        region->stack->top = memory.global_stack.base;
+        region->stack->top = region->stack->base;
     }
     
 }

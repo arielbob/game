@@ -21,7 +21,7 @@ void watch_directory_for_file(String filename, Directory_Change_Callback callbac
 }
 
 Mesh *get_mesh(String name) {
-    for (int32 i = 0; i < NUM_MESH_BUCKETS; i++) {
+    for (int32 i = 0; i < NUM_TABLE_BUCKETS; i++) {
         Mesh *current = asset_manager->mesh_table[i];
         while (current) {
             if (string_equals(current->name, name)) {
@@ -35,7 +35,7 @@ Mesh *get_mesh(String name) {
 }
 
 Mesh *get_mesh_by_path(String path) {
-    for (int32 i = 0; i < NUM_MESH_BUCKETS; i++) {
+    for (int32 i = 0; i < NUM_TABLE_BUCKETS; i++) {
         Mesh *current = asset_manager->mesh_table[i];
         while (current) {
             if (path_equals(current->filename, path)) {
@@ -49,7 +49,7 @@ Mesh *get_mesh_by_path(String path) {
 }
 
 Mesh *get_mesh(int32 id) {
-    uint32 hash = get_hash(id, NUM_MESH_BUCKETS);
+    uint32 hash = get_hash(id, NUM_TABLE_BUCKETS);
 
     Mesh *current = asset_manager->mesh_table[hash];
     while (current) {
@@ -133,6 +133,11 @@ void update_meshes_from_queue(Asset_Update_Queue *queue) {
             String filename = copy(temp_region, mesh->filename);
             delete_mesh_no_replace(mesh->id);
 
+            // TODO: if add_mesh fails.. we should do something.
+            // we want to keep the old mesh..
+            // how about we just try add_mesh with a new id.
+            // if it succeeds, delete the old one, then set the id back
+            
             add_mesh(name, filename, type, id);
 
             end_region(temp_region);
@@ -226,7 +231,7 @@ void mesh_file_update_callback(Allocator *temp_stack, Directory_Change_Type chan
 }
 
 Skeletal_Animation *get_animation(int32 id) {
-    uint32 hash = get_hash(id, NUM_ANIMATION_BUCKETS);
+    uint32 hash = get_hash(id, NUM_TABLE_BUCKETS);
 
     Skeletal_Animation *current = asset_manager->animation_table[hash];
     while (current) {
@@ -241,7 +246,7 @@ Skeletal_Animation *get_animation(int32 id) {
 }
 
 Skeletal_Animation *get_animation(String name) {
-    for (int32 i = 0; i < NUM_ANIMATION_BUCKETS; i++) {
+    for (int32 i = 0; i < NUM_TABLE_BUCKETS; i++) {
         Skeletal_Animation *current = asset_manager->animation_table[i];
         while (current) {
             if (string_equals(current->name, name)) {
@@ -272,6 +277,21 @@ void replace_entity_meshes(int32 mesh_id_to_replace, int32 new_mesh_id) {
     }
 }
 
+// if we're first in list, we need to update bucket array when we delete
+#define TABLE_DELETE(table_ptr, key)                                    \
+    {                                                                   \
+        int32 hash = get_hash(key, NUM_TABLE_BUCKETS);                  \
+        auto entry_ptr = table_ptr[hash];                               \
+        if (entry_ptr->table_prev) {                                    \
+            entry_ptr->table_prev->table_next = entry_ptr->table_next;  \
+        } else {                                                        \
+            table_ptr[hash] = entry_ptr->table_next;                    \
+        }                                                               \
+        if (entry_ptr->table_next) {                                    \
+            entry_ptr->table_next->table_prev = entry_ptr->table_prev;  \
+        }                                                               \
+    }                                                                   \
+
 // delete a mesh without replacing entities with that mesh
 void delete_mesh_no_replace(int32 id) {
     Mesh *mesh = get_mesh(id);
@@ -281,7 +301,7 @@ void delete_mesh_no_replace(int32 id) {
         return;
     }
     
-    uint32 hash = get_hash(id, NUM_MESH_BUCKETS);
+    uint32 hash = get_hash(id, NUM_TABLE_BUCKETS);
     
     if (mesh->table_prev) {
         mesh->table_prev->table_next = mesh->table_next;
@@ -314,6 +334,14 @@ bool32 load_mesh(Allocator *allocator, Mesh **mesh_result, Mesh_Type type, Strin
 
     char *c_filename = to_char_array(temp_region, filename);
     File_Data file_data = platform_open_and_read_file(temp_region, filename);
+
+    if (!file_data.contents) {
+        char *error = "Could not open mesh file";
+        debug_print(error);
+        add_message(Context::message_manager, make_string(error));
+        end_region(temp_region);
+        return false;
+    }
 
     char *error;
 
@@ -370,7 +398,7 @@ Mesh *add_mesh(String name, String filename, Mesh_Type type, int32 id) {
         mesh->id = id;
     }
     
-    uint32 hash = get_hash(mesh->id, NUM_MESH_BUCKETS);
+    uint32 hash = get_hash(mesh->id, NUM_TABLE_BUCKETS);
 
     Mesh *current = asset_manager->mesh_table[hash];
     mesh->table_next = current;
@@ -386,6 +414,13 @@ Mesh *add_mesh(String name, String filename, Mesh_Type type, int32 id) {
     watch_directory_for_file(filename, mesh_file_update_callback);
     
     return mesh;
+}
+
+void set_mesh_id(int32 old_id, int32 new_id) {
+    Mesh *mesh = get_mesh(old_id);
+    assert(mesh);
+
+    
 }
 
 inline Mesh *add_mesh(char *name, char *filename, Mesh_Type type, int32 id) {
@@ -446,7 +481,7 @@ Skeletal_Animation *add_animation(String name, String filename, int32 id = -1) {
         animation->id = id;
     }
     
-    uint32 hash = get_hash(animation->id, NUM_ANIMATION_BUCKETS);
+    uint32 hash = get_hash(animation->id, NUM_TABLE_BUCKETS);
 
     Skeletal_Animation *current = asset_manager->animation_table[hash];
     animation->table_next = current;
@@ -480,7 +515,7 @@ void delete_animation_no_replace(int32 id) {
         return;
     }
     
-    uint32 hash = get_hash(id, NUM_ANIMATION_BUCKETS);
+    uint32 hash = get_hash(id, NUM_TABLE_BUCKETS);
     
     if (animation->table_prev) {
         animation->table_prev->table_next = animation->table_next;
@@ -520,7 +555,7 @@ void set_animation_file(int32 id, String new_filename) {
 }
 
 Texture *get_texture(int32 id) {
-    uint32 hash = get_hash(id, NUM_TEXTURE_BUCKETS);
+    uint32 hash = get_hash(id, NUM_TABLE_BUCKETS);
 
     Texture *current = asset_manager->texture_table[hash];
     while (current) {
@@ -535,7 +570,7 @@ Texture *get_texture(int32 id) {
 }
 
 Texture *get_texture(String name) {
-    for (int32 i = 0; i < NUM_TEXTURE_BUCKETS; i++) {
+    for (int32 i = 0; i < NUM_TABLE_BUCKETS; i++) {
         Texture *current = asset_manager->texture_table[i];
         while (current) {
             if (string_equals(current->name, name)) {
@@ -556,7 +591,7 @@ void delete_texture_no_replace(int32 id) {
         return;
     }
     
-    uint32 hash = get_hash(id, NUM_TEXTURE_BUCKETS);
+    uint32 hash = get_hash(id, NUM_TABLE_BUCKETS);
     
     if (texture->table_prev) {
         texture->table_prev->table_next = texture->table_next;
@@ -577,7 +612,7 @@ void delete_texture_no_replace(int32 id) {
 
 void get_texture_names(Allocator *allocator, char **names, int max_names, int *num_names) {
     int32 num_texture_names = 0;
-    for (int32 i = 0; i < NUM_TEXTURE_BUCKETS; i++) {
+    for (int32 i = 0; i < NUM_TABLE_BUCKETS; i++) {
         Texture *current = asset_manager->texture_table[i];
         bool32 should_exit = false;
         while (current) {
@@ -607,7 +642,7 @@ void replace_texture_if_equal(int32 *texture_id_to_replace, int32 id) {
 void delete_texture(int32 id) {
     delete_texture_no_replace(id);
     
-    for (int32 i = 0; i < NUM_MATERIAL_BUCKETS; i++) {
+    for (int32 i = 0; i < NUM_TABLE_BUCKETS; i++) {
         Material *current = asset_manager->material_table[i];
         while (current) {
             replace_texture_if_equal(&current->albedo_texture_id, id);
@@ -621,7 +656,7 @@ void delete_texture(int32 id) {
 
 #if 0
 void delete_texture(String name) {
-    uint32 hash = get_hash(name, NUM_TEXTURE_BUCKETS);
+    uint32 hash = get_hash(name, NUM_TABLE_BUCKETS);
 
     Texture *current = asset_manager->texture_table[hash];
     while (current) {
@@ -687,7 +722,7 @@ Texture *add_texture(String name, String filename, Texture_Type type, int32 id =
     texture->filename = copy(asset_manager->allocator, filename);
     texture->type     = type;
     
-    uint32 hash = get_hash(texture->id, NUM_TEXTURE_BUCKETS);
+    uint32 hash = get_hash(texture->id, NUM_TABLE_BUCKETS);
 
     Texture *current = asset_manager->texture_table[hash];
     texture->table_next = current;
@@ -722,7 +757,7 @@ void set_texture_file(int32 id, String new_filename) {
 }
 
 bool32 material_exists(String name) {
-    for (int32 i = 0; i < NUM_MATERIAL_BUCKETS; i++) {
+    for (int32 i = 0; i < NUM_TABLE_BUCKETS; i++) {
         Material *current = asset_manager->material_table[i];
         while (current) {
             if (string_equals(current->name, name)) {
@@ -764,7 +799,7 @@ Material *add_material(Material_Info *material_info, Material_Type type) {
     material->roughness_texture_id = roughness_texture->id;
     material->roughness            = material_info->roughness;
 
-    uint32 hash = get_hash(material->id, NUM_MATERIAL_BUCKETS);
+    uint32 hash = get_hash(material->id, NUM_TABLE_BUCKETS);
 
     Material *current = asset_manager->material_table[hash];
     material->table_next = current;
@@ -778,7 +813,7 @@ Material *add_material(Material_Info *material_info, Material_Type type) {
 }
 
 Material *get_material(String name) {
-    for (int32 i = 0; i < NUM_MATERIAL_BUCKETS; i++) {
+    for (int32 i = 0; i < NUM_TABLE_BUCKETS; i++) {
         Material *current = asset_manager->material_table[i];
         while (current) {
             if (string_equals(current->name, name)) {
@@ -792,7 +827,7 @@ Material *get_material(String name) {
 }
 
 Material *get_material(int32 id) {
-    uint32 hash = get_hash(id, NUM_MATERIAL_BUCKETS);
+    uint32 hash = get_hash(id, NUM_TABLE_BUCKETS);
 
     Material *current = asset_manager->material_table[hash];
     while (current) {
@@ -814,7 +849,7 @@ void delete_material(int32 id) {
         return;
     }
     
-    uint32 hash = get_hash(id, NUM_MATERIAL_BUCKETS);
+    uint32 hash = get_hash(id, NUM_TABLE_BUCKETS);
     
     if (material->table_prev) {
         material->table_prev->table_next = material->table_next;
@@ -847,7 +882,7 @@ void delete_material(int32 id) {
 
 void get_material_names(Allocator *allocator, char **names, int max_names, int *num_names) {
     int32 num_material_names = 0;
-    for (int32 i = 0; i < NUM_MATERIAL_BUCKETS; i++) {
+    for (int32 i = 0; i < NUM_TABLE_BUCKETS; i++) {
         Material *current = asset_manager->material_table[i];
         bool32 should_exit = false;
         while (current) {
@@ -870,7 +905,7 @@ void get_material_names(Allocator *allocator, char **names, int max_names, int *
 
 void get_mesh_names(Allocator *allocator, Mesh_Type types, char **names, int max_names, int *num_names) {
     int32 num_mesh_names = 0;
-    for (int32 i = 0; i < NUM_MESH_BUCKETS; i++) {
+    for (int32 i = 0; i < NUM_TABLE_BUCKETS; i++) {
         Mesh *current = asset_manager->mesh_table[i];
         bool32 should_exit = false;
         while (current) {
@@ -903,7 +938,7 @@ void get_animation_names(Allocator *allocator, char **names, int max_names, int 
     names[0] = "None";
     num_animation_names++;
     
-    for (int32 i = 0; i < NUM_ANIMATION_BUCKETS; i++) {
+    for (int32 i = 0; i < NUM_TABLE_BUCKETS; i++) {
         Skeletal_Animation *current = asset_manager->animation_table[i];
         bool32 should_exit = false;
         while (current) {
@@ -926,7 +961,7 @@ void get_animation_names(Allocator *allocator, char **names, int max_names, int 
 }
 
 Font_File *get_font_file(char *filename) {
-    uint32 hash = get_hash(make_string(filename), NUM_FONT_FILE_BUCKETS);
+    uint32 hash = get_hash(make_string(filename), NUM_TABLE_BUCKETS);
 
     Font_File *current = asset_manager->font_file_table[hash];
     while (current) {
@@ -947,7 +982,7 @@ Font_File *add_font_file(char *filename, File_Data font_file_data) {
     }
 
     Font_File *font_file = (Font_File *) allocate(asset_manager->allocator, sizeof(Font_File));
-    uint32 hash = get_hash(filename, NUM_FONT_FILE_BUCKETS);
+    uint32 hash = get_hash(filename, NUM_TABLE_BUCKETS);
 
     Font_File *current = asset_manager->font_file_table[hash];
     font_file->table_next = current;
@@ -964,7 +999,7 @@ Font_File *add_font_file(char *filename, File_Data font_file_data) {
 }
 
 bool32 font_exists(char *font_name) {
-    uint32 hash = get_hash(font_name, NUM_FONT_BUCKETS);
+    uint32 hash = get_hash(font_name, NUM_TABLE_BUCKETS);
 
     Font *current = asset_manager->font_table[hash];
     while (current) {
@@ -1038,7 +1073,7 @@ Font *add_font(char *font_name, char *font_filename,
     font->is_baked = true;
     
     // add to table
-    uint32 hash = get_hash(font_name, NUM_FONT_BUCKETS);
+    uint32 hash = get_hash(font_name, NUM_TABLE_BUCKETS);
     Font *current = asset_manager->font_table[hash];
     font->table_next = current;
     font->table_prev = NULL;
@@ -1054,7 +1089,7 @@ Font *add_font(char *font_name, char *font_filename,
 }
 
 Font *get_font(String name) {
-    uint32 hash = get_hash(name, NUM_FONT_BUCKETS);
+    uint32 hash = get_hash(name, NUM_TABLE_BUCKETS);
 
     Font *current = asset_manager->font_table[hash];
     while (current) {
@@ -1069,7 +1104,7 @@ Font *get_font(String name) {
 }
 
 Font *get_font(char *name) {
-    uint32 hash = get_hash(name, NUM_FONT_BUCKETS);
+    uint32 hash = get_hash(name, NUM_TABLE_BUCKETS);
 
     Font *current = asset_manager->font_table[hash];
     while (current) {
@@ -1086,7 +1121,7 @@ Font *get_font(char *name) {
 void unload_level_meshes() {
     Mesh **mesh_table = asset_manager->mesh_table;
     
-    for (int32 i = 0; i < NUM_MESH_BUCKETS; i++) {
+    for (int32 i = 0; i < NUM_TABLE_BUCKETS; i++) {
         Mesh *current = mesh_table[i];
         while (current) {
             Mesh *next = current->table_next;
@@ -1121,7 +1156,7 @@ void unload_level_meshes() {
 void unload_level_materials() {
     Material **material_table = asset_manager->material_table;
 
-    for (int32 i = 0; i < NUM_MATERIAL_BUCKETS; i++) {
+    for (int32 i = 0; i < NUM_TABLE_BUCKETS; i++) {
         Material *current = material_table[i];
         while (current) {
             Material *next = current->table_next;
@@ -1154,7 +1189,7 @@ void unload_level_materials() {
 void unload_level_textures() {
     Texture **texture_table = asset_manager->texture_table;
     
-    for (int32 i = 0; i < NUM_TEXTURE_BUCKETS; i++) {
+    for (int32 i = 0; i < NUM_TABLE_BUCKETS; i++) {
         Texture *current = texture_table[i];
         while (current) {
             Texture *next = current->table_next;
@@ -1189,7 +1224,7 @@ void unload_level_textures() {
 void unload_level_animations() {
     Skeletal_Animation **animation_table = asset_manager->animation_table;
     
-    for (int32 i = 0; i < NUM_ANIMATION_BUCKETS; i++) {
+    for (int32 i = 0; i < NUM_TABLE_BUCKETS; i++) {
         Skeletal_Animation *current = animation_table[i];
         while (current) {
             Skeletal_Animation *next = current->table_next;

@@ -387,6 +387,10 @@ bool32 platform_open_file(char *filename, Platform_File *file_result) {
 
     DWORD last_error = GetLastError();
 
+    if (last_error == ERROR_SHARING_VIOLATION) {
+        assert(!"File is in use!");
+    }
+
     return false;
 }
 
@@ -525,6 +529,10 @@ bool32 platform_file_exists(String filename) {
 File_Data platform_open_and_read_file(Allocator *allocator, char *filename) {
     Platform_File platform_file;
     bool32 file_exists = platform_open_file(filename, &platform_file);
+    if (!file_exists) {
+        return {};
+    }
+
     assert(file_exists);
 
     File_Data file_data = {};

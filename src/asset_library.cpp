@@ -81,7 +81,7 @@ void draw_mesh_library() {
         {
             // don't use i for the button indices because that's for buckets and
             // not the actual meshes we've visited
-            for (int32 i = 0; i < NUM_MESH_BUCKETS; i++) {
+            for (int32 i = 0; i < NUM_TABLE_BUCKETS; i++) {
                 Mesh *current = asset_manager->mesh_table[i];
                 while (current) {
                     if (current->type == Mesh_Type::LEVEL) {
@@ -314,7 +314,7 @@ void draw_material_library() {
         {
             // don't use i for the button indices because that's for buckets and
             // not the actual materials we've visited
-            for (int32 i = 0; i < NUM_MATERIAL_BUCKETS; i++) {
+            for (int32 i = 0; i < NUM_TABLE_BUCKETS; i++) {
                 Material *current = asset_manager->material_table[i];
                 while (current) {
                     if (current->type == Material_Type::LEVEL) {
@@ -681,7 +681,7 @@ void draw_texture_library() {
                 thumbnail_height = computed_thumbnail->computed_size.x;
             }
 
-            for (int32 i = 0; i < NUM_TEXTURE_BUCKETS; i++) {
+            for (int32 i = 0; i < NUM_TABLE_BUCKETS; i++) {
                 Texture *current = asset_manager->texture_table[i];
                 while (current) {
                     if (current->type == Texture_Type::LEVEL) {
@@ -974,7 +974,7 @@ void draw_animation_library() {
         {
             // don't use i for the button indices because that's for buckets and
             // not the actual animations we've visited
-            for (int32 i = 0; i < NUM_ANIMATION_BUCKETS; i++) {
+            for (int32 i = 0; i < NUM_TABLE_BUCKETS; i++) {
                 Skeletal_Animation *current = asset_manager->animation_table[i];
                 while (current) {
                     assert(num_animations_listed < MAX_ANIMATIONS);

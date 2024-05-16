@@ -267,10 +267,10 @@ struct GL_State {
     Heap_Allocator heap;
     
     // we just use the same keys across GL and game code.
-    GL_Mesh         *mesh_table[NUM_MESH_BUCKETS];
-    GL_Texture      *texture_table[NUM_TEXTURE_BUCKETS];
-    GL_Font         *font_table[NUM_FONT_BUCKETS];
-    GL_Shader       *shader_table[NUM_SHADER_BUCKETS];
+    GL_Mesh         *mesh_table[NUM_TABLE_BUCKETS];
+    GL_Texture      *texture_table[NUM_TABLE_BUCKETS];
+    GL_Font         *font_table[NUM_TABLE_BUCKETS];
+    GL_Shader       *shader_table[NUM_TABLE_BUCKETS];
 
     // TODO: will have to delete these and remake them on window resize
     GL_Framebuffer gizmo_framebuffer;

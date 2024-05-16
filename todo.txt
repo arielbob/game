@@ -86,7 +86,11 @@ TODO: update mesh when file updated
 - or maybe load it first, and then delete the old stuff
   - just in case load fails
 
-TODO: fix stack allocator getting corrupted after get_mesh_by_path after two file changes
+TODO: fix stack allocator getting corrupted after get_mesh_by_path after two file changes - DONE
+
+TODO: replace duplicate code and test TABLE_DELETE macro
+TODO: do the "keep old mesh until new one is guaranteed added" thing in update_meshes_from_queue
+TODO: test the updating again when a file is in use
 
 TODO: if we delete meshes, then we need to also delete the watcher for it..
 - we probably need to keep a counter on the watcher_data

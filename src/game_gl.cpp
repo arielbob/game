@@ -979,7 +979,7 @@ inline GL_Texture *gl_get_texture(char *texture_name) {
 #endif
 
 GL_Texture *gl_get_texture(int32 texture_id) {
-    uint32 hash = get_hash(texture_id, NUM_TEXTURE_BUCKETS);
+    uint32 hash = get_hash(texture_id, NUM_TABLE_BUCKETS);
     GL_Texture *current = g_gl_state->texture_table[hash];
     while (current) {
         if (current->id == texture_id) {
@@ -1003,7 +1003,7 @@ GL_Texture *gl_get_texture(String texture_name) {
 #endif
 
 #define GL_GET_FONT_DEF                                         \
-    uint32 hash = get_hash(font_name, NUM_FONT_BUCKETS);        \
+    uint32 hash = get_hash(font_name, NUM_TABLE_BUCKETS);        \
     GL_Font *current = g_gl_state->font_table[hash];            \
     while (current) {                                           \
         if (string_equals(current->name, font_name)) {          \
@@ -1026,7 +1026,7 @@ GL_Font *gl_get_font(String font_name) {
 // TODO: replace calls to this to use the gl_get_mesh(int32 mesh_id) version
 #if 0
 GL_Mesh *gl_get_mesh(String mesh_name) {
-    for (int32 i = 0; i < NUM_MESH_BUCKETS; i++) {
+    for (int32 i = 0; i < NUM_TABLE_BUCKETS; i++) {
         GL_Mesh *current = g_gl_state->mesh_table[i];
         while (current) {
             if (string_equals(current->name, mesh_name)) {
@@ -1046,7 +1046,7 @@ inline GL_Mesh *gl_get_mesh(char *mesh_name) {
 #endif
 
 GL_Mesh *gl_get_mesh(int32 mesh_id) {
-    uint32 hash = get_hash(mesh_id, NUM_MESH_BUCKETS);
+    uint32 hash = get_hash(mesh_id, NUM_TABLE_BUCKETS);
     GL_Mesh *current = g_gl_state->mesh_table[hash];
     while (current) {
         if (current->id == mesh_id) {
@@ -1091,7 +1091,7 @@ bool32 gl_load_shader(char *vertex_shader_filename, char *fragment_shader_filena
     end_region(temp_region);
 
     // add shader to gl shader table
-    uint32 hash = get_hash(make_string(shader_name), NUM_SHADER_BUCKETS);
+    uint32 hash = get_hash(make_string(shader_name), NUM_TABLE_BUCKETS);
     GL_Shader *current = g_gl_state->shader_table[hash];
     GL_Shader *last_visited = current;
     while (current) {
@@ -1186,7 +1186,7 @@ bool32 gl_load_texture(Texture *texture, bool32 has_alpha = false) {
     end_region(temp_region);
 
     // add gl_texture to the gl texture table
-    uint32 hash = get_hash(texture->id, NUM_TEXTURE_BUCKETS);
+    uint32 hash = get_hash(texture->id, NUM_TABLE_BUCKETS);
     GL_Texture *current = g_gl_state->texture_table[hash];
     GL_Texture *last_visited = current;
     while (current) {
@@ -1233,7 +1233,7 @@ void gl_init_font(Font *font) {
     end_region(temp_region);
 
     // add baked font to the gl_font table
-    uint32 hash = get_hash(font->name, NUM_FONT_BUCKETS);
+    uint32 hash = get_hash(font->name, NUM_TABLE_BUCKETS);
     GL_Font *current = g_gl_state->font_table[hash];
     GL_Font *last_visited = current;
     while (current) {
@@ -1272,7 +1272,7 @@ bool32 gl_add_mesh(int32 id, Mesh_Type type, uint32 vao, uint32 vbo, uint32 num_
     }
 
     // add gl_mesh to the gl mesh table
-    uint32 hash = get_hash(id, NUM_MESH_BUCKETS);
+    uint32 hash = get_hash(id, NUM_TABLE_BUCKETS);
     GL_Mesh *current = g_gl_state->mesh_table[hash];
     GL_Mesh *last = NULL;
     while (current) {
@@ -1936,7 +1936,7 @@ void gl_delete_framebuffer(GL_Framebuffer framebuffer) {
 }
 
 void gl_unload_mesh(int32 id) {
-    uint32 hash = get_hash(id, NUM_MESH_BUCKETS);
+    uint32 hash = get_hash(id, NUM_TABLE_BUCKETS);
 
     GL_Mesh *current = g_gl_state->mesh_table[hash];
     while (current) {
@@ -1971,7 +1971,7 @@ void gl_unload_mesh(int32 id) {
 }
 
 void gl_unload_texture(int32 id) {
-    uint32 hash = get_hash(id, NUM_TEXTURE_BUCKETS);
+    uint32 hash = get_hash(id, NUM_TABLE_BUCKETS);
 
     GL_Texture *current = g_gl_state->texture_table[hash];
     while (current) {

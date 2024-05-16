@@ -6,12 +6,7 @@
 #include "animation.h"
 
 #define MAX_TOKEN_TEXT_SIZE   1024
-#define NUM_MESH_BUCKETS      128
-#define NUM_TEXTURE_BUCKETS   128
-#define NUM_MATERIAL_BUCKETS  128
-#define NUM_ANIMATION_BUCKETS  128
-#define NUM_FONT_BUCKETS      128
-#define NUM_FONT_FILE_BUCKETS 128
+#define NUM_TABLE_BUCKETS 128
 #define MAX_ASSET_UPDATES 64
 
 #define MAX_BONE_INDICES 4
@@ -243,20 +238,20 @@ struct Asset_Update_Queue {
 struct Asset_Manager {
     Allocator *allocator;
 
-    Mesh      *mesh_table[NUM_MESH_BUCKETS];
+    Mesh      *mesh_table[NUM_TABLE_BUCKETS];
     int32     total_meshes_added_ever;
 
-    Texture   *texture_table[NUM_TEXTURE_BUCKETS];
+    Texture   *texture_table[NUM_TABLE_BUCKETS];
     int32      total_textures_added_ever;
     
-    Material  *material_table[NUM_MATERIAL_BUCKETS];
+    Material  *material_table[NUM_TABLE_BUCKETS];
     int32     total_materials_added_ever;
 
-    Skeletal_Animation *animation_table[NUM_ANIMATION_BUCKETS];
+    Skeletal_Animation *animation_table[NUM_TABLE_BUCKETS];
     int32 total_animations_added_ever;
     
-    Font      *font_table[NUM_FONT_BUCKETS];
-    Font_File *font_file_table[NUM_FONT_FILE_BUCKETS]; // for caching font files
+    Font      *font_table[NUM_TABLE_BUCKETS];
+    Font_File *font_file_table[NUM_TABLE_BUCKETS]; // for caching font files
 
     bool32 gpu_should_unload_level_assets;
 

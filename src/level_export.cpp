@@ -76,7 +76,7 @@ void export_level(Level *level, char *filename) {
     append_string(&working_buffer, "meshes {\n");
     {
         Mesh **mesh_table = asset_manager->mesh_table;
-        for (int32 i = 0; i < NUM_MESH_BUCKETS; i++) {
+        for (int32 i = 0; i < NUM_TABLE_BUCKETS; i++) {
             Mesh *current = mesh_table[i];
             
             while (current) {
@@ -97,7 +97,7 @@ void export_level(Level *level, char *filename) {
     append_string(&working_buffer, "textures {\n");
     {
         Texture **texture_table = asset_manager->texture_table;
-        for (int32 i = 0; i < NUM_TEXTURE_BUCKETS; i++) {
+        for (int32 i = 0; i < NUM_TABLE_BUCKETS; i++) {
             Texture *current = texture_table[i];
             
             while (current) {
@@ -120,7 +120,7 @@ void export_level(Level *level, char *filename) {
     append_string(&working_buffer, "materials {\n");
     {
         Material **material_table = asset_manager->material_table;
-        for (int32 i = 0; i < NUM_MATERIAL_BUCKETS; i++) {
+        for (int32 i = 0; i < NUM_TABLE_BUCKETS; i++) {
             Material *current = material_table[i];
             
             while (current) {
@@ -165,7 +165,7 @@ void export_level(Level *level, char *filename) {
     append_string(&working_buffer, "animations {\n");
     {
         Skeletal_Animation **animation_table = asset_manager->animation_table;
-        for (int32 i = 0; i < NUM_ANIMATION_BUCKETS; i++) {
+        for (int32 i = 0; i < NUM_TABLE_BUCKETS; i++) {
             Skeletal_Animation *current = animation_table[i];
             
             while (current) {
