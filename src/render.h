@@ -27,7 +27,7 @@ struct Display_Output {
 enum class Command_Type {
     NONE,
     LOAD_FONT,
-    LOAD_MESH, UNLOAD_MESH,
+    LOAD_MESH, UNLOAD_MESH, SET_MESH_ID,
     LOAD_TEXTURE, UNLOAD_TEXTURE
 };
 
@@ -41,6 +41,11 @@ struct Command_Load_Mesh {
 
 struct Command_Unload_Mesh {
     int32 mesh_id;
+};
+
+struct Command_Set_Mesh_ID {
+    int32 mesh_id;
+    int32 new_id;
 };
 
 struct Command_Load_Texture {
@@ -57,6 +62,7 @@ struct Command {
         Command_Load_Font load_font;
         Command_Load_Mesh load_mesh;
         Command_Unload_Mesh unload_mesh;
+        Command_Set_Mesh_ID set_mesh_id;
         Command_Load_Texture load_texture;
         Command_Unload_Texture unload_texture;
     };

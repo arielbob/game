@@ -41,5 +41,36 @@ void deallocate(int32) {
     // no-op
 }
 
+#define TABLE_ADD(table_ptr, key, value_ptr)            \
+    {                                                   \
+        int32 hash = get_hash(key, NUM_TABLE_BUCKETS);  \
+        auto last_ptr = table_ptr[hash];                \
+        while (last_ptr) {                              \
+            last_ptr = last_ptr->table_next;            \
+        }                                               \
+        if (!last_ptr) {                                \
+            table_ptr[hash] = value_ptr;                \
+        } else {                                        \
+            last_ptr->table_next = value_ptr;           \
+            value_ptr->table_prev = last_ptr;           \
+        }                                               \
+        value_ptr->id = key;                            \
+    }
+
+// if we're first in list, we need to update bucket array when we delete
+#define TABLE_DELETE(table_ptr, key)                                    \
+    {                                                                   \
+        int32 hash = get_hash(key, NUM_TABLE_BUCKETS);                  \
+        auto entry_ptr = table_ptr[hash];                               \
+        if (entry_ptr->table_prev) {                                    \
+            entry_ptr->table_prev->table_next = entry_ptr->table_next;  \
+        } else {                                                        \
+            table_ptr[hash] = entry_ptr->table_next;                    \
+        }                                                               \
+        if (entry_ptr->table_next) {                                    \
+            entry_ptr->table_next->table_prev = entry_ptr->table_prev;  \
+        }                                                               \
+    }                                                                   \
+
 #define COMMON_H
 #endif

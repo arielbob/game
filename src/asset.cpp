@@ -63,6 +63,17 @@ Mesh *get_mesh(int32 id) {
     return NULL;
 }
 
+void set_mesh_id(Mesh *mesh, int32 new_id) {
+    assert(mesh);
+    
+    TABLE_DELETE(asset_manager->mesh_table, mesh->id);
+
+    // note that TABLE_ADD sets mesh->id to new_id
+    TABLE_ADD(asset_manager->mesh_table, new_id, mesh);
+    
+    r_set_mesh_id(mesh->id, new_id);
+}
+
 void init_asset_update_queue(Arena_Allocator *game_arena, Asset_Update_Queue *queue) {
     *queue = {};
 
@@ -127,18 +138,19 @@ void update_meshes_from_queue(Asset_Update_Queue *queue) {
             Mesh *mesh = get_mesh_by_path(update->filename);
             assert(mesh);
 
-            int32 id = mesh->id;
-            Mesh_Type type = mesh->type;
-            String name = copy(temp_region, mesh->name);
-            String filename = copy(temp_region, mesh->filename);
-            delete_mesh_no_replace(mesh->id);
+            // ignore_file_in_use here, since sometimes when we save in another program,
+            // ex: blender, we get an update, but the file is still in use. we do still
+            // get another update after that one where the file is not still in use.
+            // see: https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-writefile
+            // - "When writing to a file, the last write time is not fully updated until all handles
+            //    used for writing have been closed."
+            bool32 result = refresh_mesh(mesh, true);
 
-            // TODO: if add_mesh fails.. we should do something.
-            // we want to keep the old mesh..
-            // how about we just try add_mesh with a new id.
-            // if it succeeds, delete the old one, then set the id back
-            
-            add_mesh(name, filename, type, id);
+            if (!result) {
+                // this is expected when another process has access to the file.
+                // hopefully when they let go of the handle, we get an update? idk
+                debug_print("add_mesh() failed in update from file.");
+            }
 
             end_region(temp_region);
         }
@@ -277,21 +289,6 @@ void replace_entity_meshes(int32 mesh_id_to_replace, int32 new_mesh_id) {
     }
 }
 
-// if we're first in list, we need to update bucket array when we delete
-#define TABLE_DELETE(table_ptr, key)                                    \
-    {                                                                   \
-        int32 hash = get_hash(key, NUM_TABLE_BUCKETS);                  \
-        auto entry_ptr = table_ptr[hash];                               \
-        if (entry_ptr->table_prev) {                                    \
-            entry_ptr->table_prev->table_next = entry_ptr->table_next;  \
-        } else {                                                        \
-            table_ptr[hash] = entry_ptr->table_next;                    \
-        }                                                               \
-        if (entry_ptr->table_next) {                                    \
-            entry_ptr->table_next->table_prev = entry_ptr->table_prev;  \
-        }                                                               \
-    }                                                                   \
-
 // delete a mesh without replacing entities with that mesh
 void delete_mesh_no_replace(int32 id) {
     Mesh *mesh = get_mesh(id);
@@ -329,16 +326,17 @@ void delete_mesh(int32 id) {
     replace_entity_meshes(id, default_mesh->id);
 }
 
-bool32 load_mesh(Allocator *allocator, Mesh **mesh_result, Mesh_Type type, String name, String filename) {
+bool32 load_mesh(Allocator *allocator, Mesh **mesh_result, Mesh_Type type, String name, String filename,
+                 bool32 *is_in_use = NULL) {
     Allocator *temp_region = begin_region();
 
     char *c_filename = to_char_array(temp_region, filename);
-    File_Data file_data = platform_open_and_read_file(temp_region, filename);
+    File_Data file_data = platform_open_and_read_file(temp_region, filename, is_in_use);
 
     if (!file_data.contents) {
         char *error = "Could not open mesh file";
         debug_print(error);
-        add_message(Context::message_manager, make_string(error));
+        //add_message(Context::message_manager, make_string(error));
         end_region(temp_region);
         return false;
     }
@@ -366,6 +364,37 @@ bool32 load_mesh(Allocator *allocator, Mesh **mesh_result, Mesh_Type type, Strin
 bool32 mesh_exists(String name) {
     Mesh *mesh = get_mesh(name);
     return mesh != NULL;
+}
+
+bool32 refresh_mesh(Mesh *mesh, bool32 ignore_file_in_use) {
+    int32 id = mesh->id;
+
+    Mesh *new_mesh;
+    bool32 is_in_use;
+    bool32 result = load_mesh(asset_manager->allocator, &new_mesh, mesh->type, mesh->name, mesh->filename,
+                              &is_in_use);
+    if (!result) {
+        if (is_in_use && ignore_file_in_use) {
+            debug_print("Mesh loading failed. File was in use, but ignoring.");
+        } else {
+            assert(!"Mesh loading failed.");
+        }
+        
+        return false;
+    }
+
+    // if we succeed in loading, delete the old one
+    // TODO: if we update delete_mesh_no_replace to also unwatch folder, we need to watch again here
+    // note that we don't just call add_mesh because this is a bit more special case
+    delete_mesh_no_replace(id);
+    new_mesh->id = id;
+    TABLE_ADD(asset_manager->mesh_table, id, new_mesh);
+
+    // delete_mesh_no_replace calls r_unload_mesh, so we need to load it again, except with
+    // the new data.
+    r_load_mesh(id);
+
+    return true;
 }
 
 Mesh *add_mesh(String name, String filename, Mesh_Type type, int32 id) {
@@ -414,13 +443,6 @@ Mesh *add_mesh(String name, String filename, Mesh_Type type, int32 id) {
     watch_directory_for_file(filename, mesh_file_update_callback);
     
     return mesh;
-}
-
-void set_mesh_id(int32 old_id, int32 new_id) {
-    Mesh *mesh = get_mesh(old_id);
-    assert(mesh);
-
-    
 }
 
 inline Mesh *add_mesh(char *name, char *filename, Mesh_Type type, int32 id) {

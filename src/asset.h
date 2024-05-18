@@ -71,7 +71,7 @@ struct Mesh {
     String name;
     String filename;
     bool32 is_skinned;
-    
+
     Allocator *allocator;
     
     Mesh *table_prev;
@@ -259,8 +259,12 @@ struct Asset_Manager {
 };
 
 real32 get_width(Font font, char *text);
+bool32 mesh_exists(String name);
 void delete_mesh_no_replace(int32 id);
 Mesh *add_mesh(String name, String filename, Mesh_Type type, int32 id = -1);
 inline Mesh *add_mesh(char *name, char *filename, Mesh_Type type, int32 id = -1);
+bool32 refresh_mesh(Mesh *mesh, bool32 ignore_file_in_use = false);
+bool32 generate_asset_name(Allocator *allocator, char *asset_type, int32 max_attempts, int32 buffer_size,
+                           String *result, bool32 (*exists_fn)(String));
 
 #endif

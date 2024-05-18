@@ -27,6 +27,12 @@ void r_unload_mesh(int32 mesh_id) {
     r_add_command(command);
 }
 
+void r_set_mesh_id(int32 mesh_id, int32 new_id) {
+    Command command = { Command_Type::SET_MESH_ID };
+    command.set_mesh_id = { mesh_id, new_id };
+    r_add_command(command);
+}
+
 void r_load_texture(int32 texture_id) {
     Command command = { Command_Type::LOAD_TEXTURE };
     command.load_texture = { texture_id };

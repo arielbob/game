@@ -364,7 +364,7 @@ void platform_get_absolute_path(wchar16 *relative_path,
 //       memory. to loop through it, we need to know the size of it, since it is not null-terminated, so we use
 //       the value we got from the call to GetFileSize. we do not want the file size or its contents to change
 //       while we're using it, or else our file size we're using to read the file would be out of date.
-bool32 platform_open_file(char *filename, Platform_File *file_result) {
+bool32 platform_open_file(char *filename, Platform_File *file_result, bool32 *is_in_use) {
     // TODO: may want to handle long paths
     // TODO: this does not handle unicode paths; would have to use GetFullPathNameW
     char path_result[MAX_PATH];
@@ -386,9 +386,8 @@ bool32 platform_open_file(char *filename, Platform_File *file_result) {
     }
 
     DWORD last_error = GetLastError();
-
-    if (last_error == ERROR_SHARING_VIOLATION) {
-        assert(!"File is in use!");
+    if (is_in_use) {
+        *is_in_use = last_error == ERROR_SHARING_VIOLATION;
     }
 
     return false;
@@ -526,9 +525,9 @@ bool32 platform_file_exists(String filename) {
     return result;
 }
 
-File_Data platform_open_and_read_file(Allocator *allocator, char *filename) {
+File_Data platform_open_and_read_file(Allocator *allocator, char *filename, bool32 *is_in_use) {
     Platform_File platform_file;
-    bool32 file_exists = platform_open_file(filename, &platform_file);
+    bool32 file_exists = platform_open_file(filename, &platform_file, is_in_use);
     if (!file_exists) {
         return {};
     }
@@ -546,9 +545,9 @@ File_Data platform_open_and_read_file(Allocator *allocator, char *filename) {
     return file_data;
 }
 
-File_Data platform_open_and_read_file(Allocator *allocator, String filename) {
+File_Data platform_open_and_read_file(Allocator *allocator, String filename, bool32 *is_in_use) {
     char *filename_c_string = to_char_array(allocator, filename);
-    File_Data result = platform_open_and_read_file(allocator, filename_c_string);
+    File_Data result = platform_open_and_read_file(allocator, filename_c_string, is_in_use);
     return result;
 }
 

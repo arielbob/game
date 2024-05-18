@@ -1287,7 +1287,7 @@ bool32 gl_add_mesh(int32 id, Mesh_Type type, uint32 vao, uint32 vbo, uint32 num_
     //gl_mesh->name       = copy((Allocator *) &g_gl_state->heap, name);
     gl_mesh->table_prev = last;
     gl_mesh->table_next = NULL;
-    
+
     if (!last) {
         g_gl_state->mesh_table[hash] = gl_mesh;
     } else {
@@ -3706,6 +3706,13 @@ void gl_render(Controller_State *controller_state,
                 Command_Load_Mesh c = command->load_mesh;
                 Mesh *mesh = get_mesh(c.mesh_id);
                 gl_load_mesh(mesh);
+            } break;
+            case Command_Type::SET_MESH_ID: {
+                Command_Set_Mesh_ID c = command->set_mesh_id;
+                GL_Mesh *mesh = gl_get_mesh(c.mesh_id);
+
+                TABLE_DELETE(g_gl_state->mesh_table, c.mesh_id);
+                TABLE_ADD(g_gl_state->mesh_table, c.new_id, mesh);
             } break;
             case Command_Type::UNLOAD_MESH: {
                 Command_Unload_Mesh c = command->unload_mesh;
