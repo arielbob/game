@@ -13,11 +13,65 @@ Material_Info default_material_info = {
 };
 
 // filename should be the file itself
-void watch_directory_for_file(String filename, Directory_Change_Callback callback) {
+Directory_Watcher *watch_directory_for_file(Allocator *allocator, Directory_Watcher **watchers,
+                                            String filename, Directory_Change_Callback callback) {
     Allocator *temp_region = begin_region();
     String folder_to_watch = platform_get_folder_path(temp_region, filename);
-    platform_watch_directory(folder_to_watch, callback);
+
+    Directory_Watcher *watcher = NULL;
+    Directory_Watcher *last = NULL;
+    
+    if (*watchers) {
+        Directory_Watcher *current = *watchers;
+        while (current) {
+            if (path_equals(current->path, folder_to_watch)) {
+                watcher = current;
+                add_message(Context::message_manager, make_string("Adding another watcher"));
+                break;
+            }
+            last = current;
+            current = current->next;
+        }
+    }
+
+    if (watcher) {
+        watcher->num_watchers++;
+    } else {
+        int32 id = platform_watch_directory(folder_to_watch, callback);
+        if (id < 0) {
+            assert(!"Could not watch directory!");
+            end_region(temp_region);
+            return NULL;
+        }
+        
+        watcher = (Directory_Watcher *) allocate(allocator,
+                                                 sizeof(Directory_Watcher), true);
+        watcher->allocator = allocator;
+        watcher->path = copy(allocator, folder_to_watch);
+        watcher->next = NULL;
+        watcher->num_watchers = 1;
+        watcher->id = id;
+
+        if (!last) {
+            // first one in list
+            *watchers = watcher;
+        } else {
+            last->next = watcher;
+        }
+    }
+
     end_region(temp_region);
+
+    return watcher;
+}
+
+void unwatch_directory(Directory_Watcher *watcher) {
+    watcher->num_watchers--;
+    if (watcher->num_watchers == 0) {
+        platform_unwatch_directory(watcher->id);
+        deallocate(watcher->path);
+        deallocate(watcher->allocator, watcher);
+    }
 }
 
 Mesh *get_mesh(String name) {
@@ -310,6 +364,8 @@ void delete_mesh_no_replace(int32 id) {
     if (mesh->table_next) {
         mesh->table_next->table_prev = mesh->table_prev;
     }
+
+    // TODO: unwatch directory
     
     deallocate(mesh);
     deallocate(asset_manager->allocator, mesh);
@@ -440,7 +496,8 @@ Mesh *add_mesh(String name, String filename, Mesh_Type type, int32 id) {
     r_load_mesh(mesh->id);
     
     // watch the directory
-    watch_directory_for_file(filename, mesh_file_update_callback);
+    watch_directory_for_file(asset_manager->allocator, &asset_manager->mesh_dir_watchers,
+                             filename, mesh_file_update_callback);
     
     return mesh;
 }

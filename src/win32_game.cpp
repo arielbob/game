@@ -1330,6 +1330,7 @@ void file_watcher_add_directory_routine(ULONG_PTR param) {
     deallocate(request->abs_filepath);
     deallocate((Allocator *) &manager->heap, request);
 
+#if 0
     // see if it exists first
     Win32_Directory_Watcher_Data *current = manager->watchers;
     while (current) {
@@ -1341,6 +1342,7 @@ void file_watcher_add_directory_routine(ULONG_PTR param) {
         }
         current = current->next;
     }
+#endif
     
     if (manager->first_free_watcher) {
         data = manager->first_free_watcher;
@@ -1366,6 +1368,7 @@ void file_watcher_add_directory_routine(ULONG_PTR param) {
     data->dir_changes_buffer_size = changes_buffer_size;
     // changes buffer needs to be DWORD aligned
     data->dir_changes_buffer = allocate(&data->arena, changes_buffer_size, sizeof(DWORD));
+    data->id = request->id;
     
     Arena_Allocator *watcher_arena = &data->arena;
 
@@ -1424,17 +1427,7 @@ void file_watcher_end_routine(ULONG_PTR param) {
     EnterCriticalSection(&manager->critical_section);
     Win32_Directory_Watcher_Data *current = manager->watchers;
 
-    // let's assume that end_request's filepath is a wide string already
 #if 0
-    // MAX_PATH includes null-terminator
-    WCHAR wide_end_dir_path[MAX_PATH];
-    // TODO: move this conversion to a platform-independent function
-    int mb_to_wide_result = MultiByteToWideChar(CP_ACP, 0,
-                                                end_request->filepath.contents, end_request->filepath.length,
-                                                wide_end_dir_path, MAX_PATH);
-    assert(mb_to_wide_result);
-#endif
-
     WCHAR end_dir_c_string[MAX_PATH];
     to_c_string(end_request->filepath, end_dir_c_string, MAX_PATH*sizeof(WCHAR));
     
@@ -1446,16 +1439,18 @@ void file_watcher_end_routine(ULONG_PTR param) {
     OutputDebugStringA("\n");
     
     deallocate(end_request->filepath);
-    deallocate((Allocator *) &manager->heap, end_request);
+#endif
 
     while (current) {
-        if (string_equals(current->dir_abs_path, end_dir_abs_path)) {
+        if (current->id == end_request->id) {
             break;
         }
         prev = current;
         current = current->next;
     }
-
+    
+    deallocate((Allocator *) &manager->heap, end_request);
+    
     if (!current) {
         // we didn't find it.. this isn't really an error.
         // it could happen that you try and stop watching, then the end all watchers
@@ -1568,7 +1563,7 @@ DWORD watch_files_thread_function(void *param) {
     return 0;
 }
 
-void platform_watch_directory(String directory, Directory_Change_Callback change_callback) {
+int32 platform_watch_directory(String directory, Directory_Change_Callback change_callback) {
     assert(directory.length <= MAX_PATH);
 
     // convert the ascii string to a WCHAR (16-bit chars) string
@@ -1591,7 +1586,7 @@ void platform_watch_directory(String directory, Directory_Change_Callback change
     bool32 is_directory = platform_path_is_directory(wide_filepath);
     if (!is_directory) {
         assert(!"Path is not a directory!");
-        return;
+        return -1;
     }
     
     Allocator *heap = (Allocator *) &directory_watcher_manager.heap;
@@ -1599,20 +1594,26 @@ void platform_watch_directory(String directory, Directory_Change_Callback change
 
     Win32_Directory_Watcher_Start_Request *start_request = (Win32_Directory_Watcher_Start_Request *) allocate(heap,
                                                                     sizeof(Win32_Directory_Watcher_Start_Request));
+
+    int32 watcher_id = ++directory_watcher_manager.num_watchers_added_ever;
     *start_request = {
         &directory_watcher_manager,
         abs_dir,
-        change_callback
+        change_callback,
+        watcher_id
     };
     QueueUserAPC(file_watcher_add_directory_routine, directory_watcher_manager.thread_handle,
                  (ULONG_PTR) start_request);
+    
+    return watcher_id;
 }
 
 // notice that we know that we need to convert to wide string, because arg is String
 // and not WString
-void platform_unwatch_directory(String directory) {
-    assert(directory.length <= MAX_PATH);
+void platform_unwatch_directory(int32 id) {
+    //assert(directory.length <= MAX_PATH);
 
+#if 0
     // convert the ascii string to a WCHAR (16-bit chars) string
     // before converting, we need to convert the string to be a null-terminated string.
     // MultiByteToWideChar doesn't automatically add a null-terminator if the original
@@ -1638,12 +1639,14 @@ void platform_unwatch_directory(String directory) {
     
     Allocator *heap = (Allocator *) &directory_watcher_manager.heap;
     WString abs_dir = make_wstring(heap, wide_filepath);
+#endif
 
+    Allocator *heap = (Allocator *) &directory_watcher_manager.heap;
     Win32_Directory_Watcher_End_Request *end_request = (Win32_Directory_Watcher_End_Request *) allocate(heap,
                                                                                                         sizeof(Win32_Directory_Watcher_End_Request));
     *end_request = {
         &directory_watcher_manager,
-        abs_dir
+        id
     };
     QueueUserAPC(file_watcher_end_routine, directory_watcher_manager.thread_handle,
                  (ULONG_PTR) end_request);
@@ -1947,6 +1950,7 @@ int WinMain(HINSTANCE hInstance,
                     make_stack_allocator(file_watcher_stack_start, file_watcher_stack_size)
                 };
 
+                directory_watcher_manager.num_watchers_added_ever = 0;
                 directory_watcher_manager.is_running = true;
 
                 InitializeCriticalSection(&directory_watcher_manager.critical_section);
@@ -2219,7 +2223,7 @@ int WinMain(HINSTANCE hInstance,
                     // end all the watchers
                     *end_request = {
                         &directory_watcher_manager,
-                        copy((Allocator *) &directory_watcher_manager.heap, current->dir_abs_path)
+                        current->id
                     };
 
                     QueueUserAPC(file_watcher_end_routine, file_watcher_thread_handle,

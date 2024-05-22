@@ -75,8 +75,10 @@ struct Win32_Directory_Watcher_Data {
     void *dir_changes_buffer;
     HANDLE dir_handle;
     WString dir_abs_path;
+    int32 num_watching;
     Directory_Change_Callback change_callback;
     OVERLAPPED overlapped;
+    int32 id;
     Win32_Directory_Watcher_Data *next_free;
     Win32_Directory_Watcher_Data *next; // to iterate through them
 };
@@ -91,17 +93,20 @@ struct Win32_Directory_Watcher_Manager {
     volatile uint32 num_watchers;
     Win32_Directory_Watcher_Data *first_free_watcher;
     Win32_Directory_Watcher_Data *watchers;
+    int32 num_watchers_added_ever;
 };
 
 struct Win32_Directory_Watcher_Start_Request {
     Win32_Directory_Watcher_Manager *manager;
     WString abs_filepath;
     Directory_Change_Callback change_callback;
+    int32 id;
 };
 
 struct Win32_Directory_Watcher_End_Request {
     Win32_Directory_Watcher_Manager *manager;
-    WString filepath; // TODO: we may want to convert some of our stuff use wide strings...
+    int32 id;
+    //WString filepath; // TODO: we may want to convert some of our stuff use wide strings...
 };
 
 #endif

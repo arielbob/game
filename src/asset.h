@@ -105,6 +105,31 @@ struct Mesh {
     AABB aabb;
 
     bool32 is_double_sided;
+
+    int32 watcher_id;
+};
+
+/*
+- each mesh watches their directory
+- multiple meshes can be in the same directory
+- if we add one and the directory AND the callback are the same,
+  then we just increment it
+- i think we should just allow anything in the directory watching code
+  - i.e. if we request to add a folder, we do it; we don't check if it exists already
+- we can just leave that logic out of the directory watching code
+  - for meshes, it's a given that they all use the same update callback
+ */
+
+// this is to keep track all the watchers on the same path that also use
+// the same update callback.
+// if you need to watch the same directory, but with a different callback,
+// you can do that fine on the platform watcher, but you shouldn't use this struct.
+struct Directory_Watcher {
+    Allocator *allocator;
+    String path;
+    Directory_Watcher *next;
+    int32 id;
+    int32 num_watchers;
 };
 
 void deallocate(Mesh *mesh) {
@@ -240,6 +265,7 @@ struct Asset_Manager {
 
     Mesh      *mesh_table[NUM_TABLE_BUCKETS];
     int32     total_meshes_added_ever;
+    Directory_Watcher *mesh_dir_watchers;
 
     Texture   *texture_table[NUM_TABLE_BUCKETS];
     int32      total_textures_added_ever;
