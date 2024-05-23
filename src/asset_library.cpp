@@ -953,7 +953,7 @@ void draw_animation_library() {
                 assert(gen_result);
 
                 Skeletal_Animation *new_animation = add_animation(new_animation_name,
-                                                                  make_string("src/animations/test2.animation"));
+                                                                  make_string("assets/animations/test2.animation"));
                 assert(new_animation);
                 asset_library_state->selected_animation_id = new_animation->id;
 

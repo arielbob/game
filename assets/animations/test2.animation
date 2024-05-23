@@ -2,6 +2,10 @@ animation_info {
     frame_end 120 ;; 4 seconds; this is actually inclusive
     fps 30
     num_bones 2
+	bone_to_model 1.00000 0.00000 0.00000 0.00000
+0.00000 1.00000 0.00000 0.00000
+0.00000 0.00000 -1.00000 0.00000
+0.00000 0.00000 0.00000 1.00000
 }
 
 ;; every bone should have a channel

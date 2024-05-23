@@ -72,8 +72,8 @@ void deallocate(int32) {
         }                                                               \
     }                                                                   \
 
-#define LINKED_LIST_FOR(list_ptr)                                       \
-    for (list_ptr current = list_ptr; current; current = current->next) \
+#define LINKED_LIST_FOR(entry_type, list_ptr)                            \
+    for (entry_type *current = (list_ptr); current != NULL; current = current->next)
 
 #define COMMON_H
 #endif

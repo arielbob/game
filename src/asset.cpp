@@ -65,9 +65,29 @@ Directory_Watcher *watch_directory_for_file(Allocator *allocator, Directory_Watc
     return watcher;
 }
 
-void unwatch_directory(Directory_Watcher *watcher) {
+void unwatch_directory(Directory_Watcher **watchers, int32 watcher_id) {
+    assert(watchers);
+
+    Directory_Watcher *watcher = NULL;
+    Directory_Watcher *prev = NULL;
+    LINKED_LIST_FOR(Directory_Watcher, *watchers) {
+        if (current->id == watcher_id) {
+            watcher = current;
+            break;
+        }
+        prev = current;
+    }
+
+    assert(watcher);
+
     watcher->num_watchers--;
     if (watcher->num_watchers == 0) {
+        if (!prev) {
+            *watchers = watcher->next;
+        } else {
+            prev->next = watcher->next;
+        }
+        
         platform_unwatch_directory(watcher->id);
         deallocate(watcher->path);
         deallocate(watcher->allocator, watcher);
@@ -365,7 +385,7 @@ void delete_mesh_no_replace(int32 id) {
         mesh->table_next->table_prev = mesh->table_prev;
     }
 
-    // TODO: unwatch directory
+    unwatch_directory(&asset_manager->mesh_dir_watchers, mesh->watcher_id);
     
     deallocate(mesh);
     deallocate(asset_manager->allocator, mesh);
@@ -496,8 +516,10 @@ Mesh *add_mesh(String name, String filename, Mesh_Type type, int32 id) {
     r_load_mesh(mesh->id);
     
     // watch the directory
-    watch_directory_for_file(asset_manager->allocator, &asset_manager->mesh_dir_watchers,
-                             filename, mesh_file_update_callback);
+    Directory_Watcher *watcher = watch_directory_for_file(asset_manager->allocator,
+                                                          &asset_manager->mesh_dir_watchers,
+                                                          filename, mesh_file_update_callback);
+    mesh->watcher_id = watcher->id;
     
     return mesh;
 }
@@ -1397,8 +1419,10 @@ void load_default_assets() {
              Mesh_Type::ENGINE, ENGINE_CAPSULE_CAP_MESH_ID);
     add_mesh("cube",             "assets/meshes/engine/cube.mesh",  Mesh_Type::PRIMITIVE, ENGINE_DEFAULT_CUBE_MESH_ID);
 
+#if 0
     add_mesh("skinned_cube",     "assets/meshes/skinned_mesh_test.mesh", Mesh_Type::PRIMITIVE,
              ENGINE_DEFAULT_SKINNED_CUBE_MESH_ID);
+#endif
 
     // if you're seeing white borders around semi-transparent parts of exported PNGs, make sure the
     // fully transparent parts of your image have an RGB value of (0, 0, 0) (use eyedropper tool in

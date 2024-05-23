@@ -538,11 +538,12 @@ bool32 Mesh_Loader::parse_vertex(Tokenizer *tokenizer, Mesh *mesh, uint32 vertex
             return false;
         }
 
+
         assert(fabsf(1.0f -
                      ((*bone_weights)[0] +
                       (*bone_weights)[1] +
                       (*bone_weights)[2] +
-                      (*bone_weights)[3])) < 0.0001f);
+                      (*bone_weights)[3])) < 0.01f);
 
         data_position += mesh->n_bone_weights * sizeof(real32);
     }

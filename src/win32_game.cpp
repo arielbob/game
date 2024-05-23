@@ -386,8 +386,11 @@ bool32 platform_open_file(char *filename, Platform_File *file_result, bool32 *is
     }
 
     DWORD last_error = GetLastError();
-    if (is_in_use) {
-        *is_in_use = last_error == ERROR_SHARING_VIOLATION;
+    if (last_error == ERROR_SHARING_VIOLATION) {
+        debug_print("File \"%s\" is in use!", filename);
+        if (is_in_use) {
+            *is_in_use = last_error == ERROR_SHARING_VIOLATION;
+        }
     }
 
     return false;
