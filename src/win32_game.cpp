@@ -2255,6 +2255,8 @@ int WinMain(HINSTANCE hInstance,
 
                 DeleteCriticalSection(&directory_watcher_manager.critical_section);
 
+                deinit_asset_manager();
+
                 debug_print("exiting program");
             } else {
                 // TODO: logging

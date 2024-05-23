@@ -19,6 +19,15 @@ void init_asset_manager(Arena_Allocator *game_data) {
 
     // init asset update queues
     init_asset_update_queue(game_data, &asset_manager->mesh_update_queue);
+    init_asset_update_queue(game_data, &asset_manager->texture_update_queue);
+    init_asset_update_queue(game_data, &asset_manager->animation_update_queue);
+}
+
+void deinit_asset_manager() {
+    // deinit asset update queues
+    deinit_asset_update_queue(&asset_manager->mesh_update_queue);
+    deinit_asset_update_queue(&asset_manager->texture_update_queue);
+    deinit_asset_update_queue(&asset_manager->animation_update_queue);
 }
 
 void init_level(Level *level, Arena_Allocator *game_data) {
@@ -1567,8 +1576,7 @@ void update(Controller_State *controller_state,
     //update_render_state(render_state);
 
     // go through the asset update queues and update them
-    // TODO: finish this
-    update_meshes_from_queue(&asset_manager->mesh_update_queue);
+    update_assets_from_queues();
     
     if (game_state->mode == Game_Mode::EDITING) {
         update_editor(controller_state, dt);

@@ -107,12 +107,15 @@ TODO: if we delete meshes, then we need to also delete the watcher for it..
     - just have a list and look for it..
     - store the watcher id in the asset's struct
 
+TODO: fix the assert firing with weird t's when loading in the monkey animation - DONE
 
 
-vvvvv LEFT OFF HERE vvvvv
-TODO: fix the assert firing with weird t's when loading in the monkey animation
 
+TODO: gl_reload_texture()
+- make it act like when we reload meshes
+  - keep the old texture if we can't access the file
 
+TODO: what happens if we delete a file we're watching?
 
 - TODO: textures
 - TODO: animations

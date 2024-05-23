@@ -153,7 +153,7 @@ void init_asset_update_queue(Arena_Allocator *game_arena, Asset_Update_Queue *qu
 
     int32 queue_arena_size = MEGABYTES(8);
     Arena_Allocator queue_arena = make_arena_allocator(arena_push(game_arena, queue_arena_size),
-                                                      queue_arena_size);
+                                                       queue_arena_size);
     queue->arena = queue_arena;
     queue->critical_section = platform_make_critical_section();
 }
@@ -190,14 +190,56 @@ void push_update(Asset_Update_Queue *queue, Asset_Update update) {
     platform_leave_critical_section(&queue->critical_section);
 }
 
-void update_meshes_from_queue(Asset_Update_Queue *queue) {
+void handle_mesh_update(String filename) {
+    Mesh *mesh = get_mesh_by_path(filename);
+    assert(mesh);
+
+    // ignore_file_in_use here, since sometimes when we save in another program,
+    // ex: blender, we get an update, but the file is still in use. we do still
+    // get another update after that one where the file is not still in use.
+    // see: https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-writefile
+    // - "When writing to a file, the last write time is not fully updated until all handles
+    //    used for writing have been closed."
+    bool32 result = refresh_mesh(mesh, true);
+
+    if (!result) {
+        // this is expected when another process has access to the file.
+        // hopefully when they let go of the handle, we get an update? idk
+        debug_print("refresh_mesh() failed in update from file.");
+    }
+}
+
+void handle_texture_update(String filename) {
+    Texture *texture = get_texture_by_path(filename);
+    assert(texture);
+
+    bool32 result = refresh_texture(texture, true);
+
+    if (!result) {
+        debug_print("refresh_texture() failed in update from file.");
+    }
+}
+
+void handle_animation_update(String filename) {
+    Animation *animation = get_animation_by_path(filename);
+    assert(animation);
+
+    bool32 result = refresh_animation(animation, true);
+
+    if (!result) {
+        debug_print("refresh_animation() failed in update from file.");
+    }
+}
+
+void handle_asset_updates_from_queue(Asset_Update_Queue *queue, Handle_Asset_Update_Callback *handle_update) {
     platform_enter_critical_section(&queue->critical_section);
 
     for (int32 i = 0; i < queue->num_updates; i++) {
         Asset_Update *update = &queue->updates[i];
         if (update->type == ASSET_UPDATE_FILENAME_RENAMED) {
             // TODO: i'm actually not even sure if we should handle this case..
-            //       because we also have to update the level file..
+            //       because we would also end up having to update the level file
+            //       with the new filepaths
             //       - i guess if we haven't saved already then it's fine
             //       - also we shouldn't rename non-user added meshes, but i guess
             //         it's fine if it happens. we'll just crash.
@@ -207,26 +249,7 @@ void update_meshes_from_queue(Asset_Update_Queue *queue) {
             replace_contents(&mesh->filename, update->new_filename);
 #endif
         } else if (update->type == ASSET_UPDATE_MODIFIED) {
-            Allocator *temp_region = begin_region();
-
-            Mesh *mesh = get_mesh_by_path(update->filename);
-            assert(mesh);
-
-            // ignore_file_in_use here, since sometimes when we save in another program,
-            // ex: blender, we get an update, but the file is still in use. we do still
-            // get another update after that one where the file is not still in use.
-            // see: https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-writefile
-            // - "When writing to a file, the last write time is not fully updated until all handles
-            //    used for writing have been closed."
-            bool32 result = refresh_mesh(mesh, true);
-
-            if (!result) {
-                // this is expected when another process has access to the file.
-                // hopefully when they let go of the handle, we get an update? idk
-                debug_print("add_mesh() failed in update from file.");
-            }
-
-            end_region(temp_region);
+            handle_update(update->filename);
         }
     }
 
@@ -238,8 +261,16 @@ void update_meshes_from_queue(Asset_Update_Queue *queue) {
     platform_leave_critical_section(&queue->critical_section);
 }
 
-void mesh_file_update_callback(Allocator *temp_stack, Directory_Change_Type change_type, WString path,
-                               WString old_path = {}, WString new_path = {}) {
+void update_assets_from_queues() {
+    handle_asset_updates_from_queue(&asset_manager->mesh_update_queue, &handle_mesh_update);
+    handle_asset_updates_from_queue(&asset_manager->texture_update_queue, &handle_texture_update);
+    handle_asset_updates_from_queue(&asset_manager->animation_update_queue, &handle_animation_update);
+}
+
+// called by the directory watcher
+void asset_file_update_callback(Asset_Type type, Allocator *temp_stack,
+                                Directory_Change_Type change_type, WString path,
+                                WString old_path = {}, WString new_path = {}) {
     // note that this callback runs on the file watcher thread
 
     Allocator *temp_region = begin_region(temp_stack);
@@ -257,7 +288,6 @@ void mesh_file_update_callback(Allocator *temp_stack, Directory_Change_Type chan
     switch (change_type) {
         case DIR_CHANGE_FILE_MODIFIED: {
             String filepath = platform_wide_char_to_multi_byte(temp_region, path);
-            Mesh *mesh = get_mesh_by_path(filepath);
 
             // mark it for update
             update.type = ASSET_UPDATE_MODIFIED;
@@ -309,11 +339,41 @@ void mesh_file_update_callback(Allocator *temp_stack, Directory_Change_Type chan
             assert(!"Unhandled directory update type!");
         } break;
     }
-    
+
     assert(update.type != ASSET_UPDATE_NONE);
     push_update(&asset_manager->mesh_update_queue, update);
 
     end_region(temp_region);
+}
+
+void mesh_file_update_callback(Allocator *temp_stack,
+                               Directory_Change_Type change_type, WString path,
+                               WString old_path = {}, WString new_path = {}) {
+    asset_file_update_callback(Asset_Type::MESH,
+                               &asset_manager->mesh_update_queue,
+                               temp_stack,
+                               change_type, path,
+                               old_path, new_path);
+}
+
+void texture_file_update_callback(Allocator *temp_stack,
+                               Directory_Change_Type change_type, WString path,
+                               WString old_path = {}, WString new_path = {}) {
+    asset_file_update_callback(Asset_Type::TEXTURE,
+                               &asset_manager->texture_update_queue,
+                               temp_stack,
+                               change_type, path,
+                               old_path, new_path);
+}
+
+void animation_file_update_callback(Allocator *temp_stack,
+                               Directory_Change_Type change_type, WString path,
+                               WString old_path = {}, WString new_path = {}) {
+    asset_file_update_callback(Asset_Type::ANIMATION,
+                               &asset_manager->animation_update_queue,
+                               temp_stack,
+                               change_type, path,
+                               old_path, new_path);
 }
 
 Skeletal_Animation *get_animation(int32 id) {
@@ -336,6 +396,20 @@ Skeletal_Animation *get_animation(String name) {
         Skeletal_Animation *current = asset_manager->animation_table[i];
         while (current) {
             if (string_equals(current->name, name)) {
+                return current;
+            }
+            current = current->table_next;
+        }
+    }
+
+    return NULL;
+}
+
+Skeletal_Animation *get_animation_by_path(String path) {
+    for (int32 i = 0; i < NUM_TABLE_BUCKETS; i++) {
+        Skeletal_Animation *current = asset_manager->animation_table[i];
+        while (current) {
+            if (path_equals(current->filename, path)) {
                 return current;
             }
             current = current->table_next;
@@ -684,6 +758,20 @@ Texture *get_texture(String name) {
     return NULL;
 }
 
+Texture *get_texture_by_path(String path) {
+    for (int32 i = 0; i < NUM_TABLE_BUCKETS; i++) {
+        Texture *current = asset_manager->texture_table[i];
+        while (current) {
+            if (path_equals(current->filename, path)) {
+                return current;
+            }
+            current = current->table_next;
+        }
+    }
+
+    return NULL;
+}
+
 void delete_texture_no_replace(int32 id) {
     Texture *texture = get_texture(id);
 
@@ -794,6 +882,53 @@ bool32 texture_exists(String name) {
     return texture != NULL;
 }
 
+bool32 refresh_texture(Texture *texture, bool32 ignore_file_in_use) {
+    int32 id = texture->id;
+
+    //Texture *new_texture;
+    bool32 is_in_use;
+
+#if 0
+    bool32 result = load_texture(asset_manager->allocator, &new_texture, texture->type, texture->name, texture->filename,
+                              &is_in_use);
+    if (!result) {
+        if (is_in_use && ignore_file_in_use) {
+            debug_print("Texture loading failed. File was in use, but ignoring.");
+        } else {
+            assert(!"Texture loading failed.");
+        }
+        
+        return false;
+    }
+
+    // if we succeed in loading, delete the old one
+    // TODO: if we update delete_texture_no_replace to also unwatch folder, we need to watch again here
+    // note that we don't just call add_texture because this is a bit more special case
+    delete_texture_no_replace(id);
+    new_texture->id = id;
+    TABLE_ADD(asset_manager->texture_table, id, new_texture);
+
+    // delete_texture_no_replace calls r_unload_texture, so we need to load it again, except with
+    // the new data.
+    r_load_texture(id);
+#endif
+
+    // TODO: we might want to create a new render command for reloading textures
+    // - because i mean, we don't actually have things on the CPU side we need to update
+    // - we just need to refresh the image data, which is in game_gl
+    // - we don't save the data on the CPU for textures, unlike meshes. we just load it
+    //   temporarily and send it to the GPU.
+    // - in other words, there's nothing that we need to refresh on the game data (CPU)
+    //   side when textures refresh. for meshes, since we store that data on the CPU,
+    //   we need to delete and reload the mesh on the CPU side when mesh files update.
+
+    //delete_texture_no_replace(id);
+    //add_texture()
+    
+
+    return true;
+}
+
 Texture *add_texture(String name, String filename, Texture_Type type, int32 id = 0) {
     if (texture_exists(name)) {
         assert(!"Texture with name already exists.");
@@ -834,6 +969,10 @@ Texture *add_texture(String name, String filename, Texture_Type type, int32 id =
     asset_manager->texture_table[hash] = texture;
 
     r_load_texture(texture->id);
+
+    Directory_Watcher *watcher = watch_directory_for_file(asset_manager->allocator,
+                                                          &asset_manager->texture_dir_watchers,
+                                                          filename, texture_file_update_callback);
     
     return texture;
 }
@@ -843,7 +982,7 @@ inline Texture *add_texture(char *name, char *filename, Texture_Type type, int32
 }
 
 void set_texture_file(int32 id, String new_filename) {
-    // this is based on set_mesh_file()
+    // this is based on set_texture_file()
     Texture *texture = get_texture(id);
     assert(texture);
 

@@ -39,6 +39,15 @@
 #define ENGINE_EDITOR_CHECK_TEXTURE_ID      -3
 #define ENGINE_SUN_TEXTURE_ID               -4
 
+typedef void (*Handle_Asset_Update_Callback)(String filename);
+
+enum class Asset_Type {
+    NONE,
+    MESH,
+    TEXTURE,
+    ANIMATION
+};
+
 // LEVEL is for meshes specifically loaded in for a level by the user or by a level file.
 // PRIMITIVE is for meshes you can use in levels, but can't be deleted. also used for default meshes when a
 // mesh can't be found or an entity is just created in the editor.
@@ -266,22 +275,25 @@ struct Asset_Manager {
     Mesh      *mesh_table[NUM_TABLE_BUCKETS];
     int32     total_meshes_added_ever;
     Directory_Watcher *mesh_dir_watchers;
+    Asset_Update_Queue mesh_update_queue;
 
     Texture   *texture_table[NUM_TABLE_BUCKETS];
     int32      total_textures_added_ever;
+    Directory_Watcher *texture_dir_watchers;
+    Asset_Update_Queue texture_update_queue;
     
     Material  *material_table[NUM_TABLE_BUCKETS];
     int32     total_materials_added_ever;
 
     Skeletal_Animation *animation_table[NUM_TABLE_BUCKETS];
     int32 total_animations_added_ever;
+    Directory_Watcher *animation_dir_watchers;
+    Asset_Update_Queue animation_update_queue;
     
     Font      *font_table[NUM_TABLE_BUCKETS];
     Font_File *font_file_table[NUM_TABLE_BUCKETS]; // for caching font files
 
     bool32 gpu_should_unload_level_assets;
-
-    Asset_Update_Queue mesh_update_queue;
 };
 
 real32 get_width(Font font, char *text);
