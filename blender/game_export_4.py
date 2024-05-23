@@ -138,6 +138,7 @@ def game_export(context, filename, replace_existing, is_skinned):
         
         if mesh_copy.location != mesh_copy.parent.location:
             show_message_box('Mesh origin and armature origin must match!', 'Error', 'ERROR')
+            temp_output_file.close()
             return
         
         bones = get_ordered_bones(skeleton_data)
@@ -216,6 +217,7 @@ def game_export(context, filename, replace_existing, is_skinned):
         # get object's skeleton
         if mesh_copy.parent == None or mesh_copy.parent.type != 'ARMATURE':
             show_message_box('Object must have an armature object as its parent', 'Error', 'ERROR')
+            temp_output_file.close()
             return
         
         skeleton_data = mesh_copy.parent.data
@@ -343,6 +345,7 @@ def game_export(context, filename, replace_existing, is_skinned):
             if len(vert.bone_indices):
                 if len(vert.bone_indices) > 4:
                     show_message_box('Each vertex can only have a maximum of 4 bones influencing it', 'Error', 'ERROR')
+                    temp_output_file.close()
                     return
                 
                 temp_output_file.write('bi')
@@ -635,7 +638,9 @@ def anim_export(context, filename, replace_existing):
         
         # output samples
         for sample in samples:
-            temp_output_file.write('\n{:d} {{\n'.format(sample['frame_num']))
+            # frame numbers are zero-indexed in the file-format, but 1-indexed when
+            # we're working with them above
+            temp_output_file.write('\n{:d} {{\n'.format(sample['frame_num'] - 1))
             
             temp_output_file.write('pos {:f} {:f} {:f}\n'.format(sample['position'].x, sample['position'].y, sample['position'].z))
             temp_output_file.write('rot {:f} {:f} {:f} {:f}\n'.format(sample['rotation'].w, sample['rotation'].x, sample['rotation'].y, sample['rotation'].z))
