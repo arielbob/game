@@ -46,6 +46,8 @@ struct Skeletal_Animation {
     Mat4 bone_to_model;
     Bone_Channel *bone_channels; // skeleton->num_bones channels
 
+    int32 watcher_id;
+    
     Skeletal_Animation *table_next;
     Skeletal_Animation *table_prev;
 };

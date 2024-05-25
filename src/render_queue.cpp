@@ -45,6 +45,12 @@ void r_unload_texture(int32 texture_id) {
     r_add_command(command);
 }
 
+void r_reload_texture(int32 texture_id) {
+    Command command = { Command_Type::RELOAD_TEXTURE };
+    command.reload_texture = { texture_id };
+    r_add_command(command);
+}
+
 void r_queue_frame_end() {
     Command_Queue *queue = &render_state->command_queue;
     queue->num_commands = 0;

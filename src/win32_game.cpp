@@ -371,6 +371,10 @@ bool32 platform_open_file(char *filename, Platform_File *file_result, bool32 *is
     DWORD path_length_without_null = GetFullPathNameA(filename, MAX_PATH, path_result, NULL);
     assert(path_length_without_null > 0 && path_length_without_null < MAX_PATH);
 
+    if (is_in_use) {
+        *is_in_use = false;
+    }
+    
     HANDLE file_handle = CreateFile(path_result, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
     if (file_handle != INVALID_HANDLE_VALUE) {
         file_result->file_handle = file_handle;
@@ -1207,7 +1211,7 @@ bool32 platform_write_file(char *filename, void *buffer, uint32 num_bytes_to_wri
 }
 
 void file_watcher_completion_routine(DWORD errorCode, DWORD bytesTransferred, LPOVERLAPPED overlapped) {
-    OutputDebugStringA("something changed!!!!!\n");
+    //OutputDebugStringA("something changed!!!!!\n");
 
     if (errorCode == ERROR_OPERATION_ABORTED) {
         // CancelIo was called
@@ -1242,11 +1246,15 @@ void file_watcher_completion_routine(DWORD errorCode, DWORD bytesTransferred, LP
 
         WString full_path = make_string(string_buf);
 
+#if 1
         wchar16 full_path_c_str[MAX_PATH];
         to_c_string(full_path, full_path_c_str, MAX_PATH);
+#if 0
         OutputDebugStringA("file updated: ");
         OutputDebugStringW(full_path_c_str);
         OutputDebugStringA("\n");
+#endif
+#endif
 
         // just in case the callback needs to do temp allocation.
         // note that this allocator is platform-independent, unlike the watcher data struct.
@@ -1255,7 +1263,9 @@ void file_watcher_completion_routine(DWORD errorCode, DWORD bytesTransferred, LP
         //Directory_Change_Type change_type = DIR_CHANGE_NONE;
         switch (event->Action) {
             case FILE_ACTION_MODIFIED: {
-                OutputDebugString("file modified!\n");
+                OutputDebugString("file updated: ");
+                OutputDebugStringW(full_path_c_str);
+                OutputDebugString("\n");
                 data->change_callback(temp_stack, DIR_CHANGE_FILE_MODIFIED, full_path, {}, {});
             } break;
             case FILE_ACTION_RENAMED_OLD_NAME: {
@@ -1265,7 +1275,9 @@ void file_watcher_completion_routine(DWORD errorCode, DWORD bytesTransferred, LP
                 // - like we set a flag if we get this, then on the new name event,
                 //   we call the callback. we would have to modify the callback to
                 //   have an extra optional parameter.
-                OutputDebugString("file renamed (old name event)!\n");
+                OutputDebugString("file renamed (old name event): ");
+                OutputDebugStringW(full_path_c_str);
+                OutputDebugString("\n");
             } break;
             case FILE_ACTION_RENAMED_NEW_NAME: {
                 assert(!is_empty(old_filename));
@@ -1274,7 +1286,9 @@ void file_watcher_completion_routine(DWORD errorCode, DWORD bytesTransferred, LP
                 data->change_callback(temp_stack, DIR_CHANGE_FILE_RENAMED, {}, old_filename, new_filename);
                 old_filename = {};
                 new_filename = {};
-                OutputDebugString("file renamed (new name event)!\n");
+                OutputDebugString("file renamed (new name event): ");
+                OutputDebugStringW(full_path_c_str);
+                OutputDebugString("\n");
             } break;
         }
 

@@ -158,7 +158,8 @@ namespace Animation_Loader {
     bool32 parse_bones(Tokenizer *tokenizer, Skeletal_Animation *animation, char **error);
 
     bool32 load_animation(Allocator *allocator, String name, String filename,
-                                            Skeletal_Animation **animation_result, char **error);
+                          Skeletal_Animation **animation_result, char **error,
+                          bool32 *is_in_use = NULL);
 }
 
 inline Animation_Loader::Token Animation_Loader::make_token(Token_Type type, char *contents, int32 length) {
@@ -604,7 +605,8 @@ bool32 Animation_Loader::parse_bones(Tokenizer *tokenizer, Skeletal_Animation *a
 }
 
 bool32 Animation_Loader::load_animation(Allocator *allocator, String name, String filename,
-                                        Skeletal_Animation **animation_result, char **error) {
+                                        Skeletal_Animation **animation_result, char **error,
+                                        bool32 *is_in_use) {
     // do all allocations on the temp region, so that we don't have to do annoying conditional
     // deletions based on what we've actually allocated up to a failure point.
     // when we fail, we just throw away the temp region. when we succeed, we just do a copy.
@@ -612,7 +614,12 @@ bool32 Animation_Loader::load_animation(Allocator *allocator, String name, Strin
     // just replace the temp region with the actual allocator. easy.
     Allocator *temp_region = begin_region();
 
-    File_Data file_data = platform_open_and_read_file(temp_region, filename);
+    File_Data file_data = platform_open_and_read_file(temp_region, filename, is_in_use);
+    if (!file_data.contents) {
+        end_region(temp_region);
+        return false;
+    }
+    
     Tokenizer tokenizer = make_tokenizer(file_data);
     
     Skeletal_Animation animation = {};
@@ -628,6 +635,7 @@ bool32 Animation_Loader::load_animation(Allocator *allocator, String name, Strin
         return false;
     }
 
+    // note no copy here because we copy entire contents later
     animation.name = name;
     animation.filename = filename;
     

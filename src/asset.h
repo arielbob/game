@@ -159,7 +159,9 @@ struct Texture {
     Texture_Type type;
     String name;
     String filename;
-    
+
+    int32 watcher_id;
+
     Texture *table_next;
     Texture *table_prev;
 };
@@ -304,5 +306,12 @@ inline Mesh *add_mesh(char *name, char *filename, Mesh_Type type, int32 id = -1)
 bool32 refresh_mesh(Mesh *mesh, bool32 ignore_file_in_use = false);
 bool32 generate_asset_name(Allocator *allocator, char *asset_type, int32 max_attempts, int32 buffer_size,
                            String *result, bool32 (*exists_fn)(String));
+Texture *get_texture_by_path(String filename);
+bool32 refresh_texture(Texture *texture);
+
+Skeletal_Animation *get_animation_by_path(String filename);
+bool32 refresh_animation(Skeletal_Animation *animation, bool32 ignore_file_in_use = false);
+void delete_animation_no_replace(int32 id);
+Skeletal_Animation *add_animation(Skeletal_Animation *loaded_animation, int32 id = -1);
 
 #endif

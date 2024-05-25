@@ -632,7 +632,8 @@ void draw_texture_library() {
                                                         &new_texture_name, texture_exists);
                 assert(gen_result);
 
-                Texture *new_texture = add_texture(new_texture_name, make_string("blender/debug-texture.jpg"),
+                Texture *new_texture = add_texture(new_texture_name,
+                                                   make_string("assets/textures/debug-texture.jpg"),
                                                    Texture_Type::LEVEL);
                 assert(new_texture);
                 asset_library_state->selected_texture_id = new_texture->id;

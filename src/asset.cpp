@@ -177,6 +177,12 @@ void push_update(Asset_Update_Queue *queue, Asset_Update update) {
                                                        update.filename_change.new_filename);
         } break;
         case ASSET_UPDATE_MODIFIED: {
+            char filename_c_str[MAX_PATH];
+            to_char_array(update.filename, filename_c_str, MAX_PATH);
+            OutputDebugStringA("pushing ASSET_UPDATE_MODIFIED for: ");
+            OutputDebugStringA(filename_c_str);
+            OutputDebugStringA("\n");
+            
             update.filename = copy((Allocator *) &queue->arena,
                                    update.filename);
         } break;
@@ -192,7 +198,10 @@ void push_update(Asset_Update_Queue *queue, Asset_Update update) {
 
 void handle_mesh_update(String filename) {
     Mesh *mesh = get_mesh_by_path(filename);
-    assert(mesh);
+
+    if (!mesh) {
+        return;
+    }
 
     // ignore_file_in_use here, since sometimes when we save in another program,
     // ex: blender, we get an update, but the file is still in use. we do still
@@ -211,9 +220,16 @@ void handle_mesh_update(String filename) {
 
 void handle_texture_update(String filename) {
     Texture *texture = get_texture_by_path(filename);
-    assert(texture);
 
-    bool32 result = refresh_texture(texture, true);
+    if (!texture) {
+        // just in case it got deleted previously during the frame
+        return;
+    }
+
+    char filename_c_str[MAX_PATH];
+    to_char_array(filename, filename_c_str, MAX_PATH);
+    debug_print("handling texture update for: %s\n", filename_c_str);
+    bool32 result = refresh_texture(texture);
 
     if (!result) {
         debug_print("refresh_texture() failed in update from file.");
@@ -221,8 +237,11 @@ void handle_texture_update(String filename) {
 }
 
 void handle_animation_update(String filename) {
-    Animation *animation = get_animation_by_path(filename);
-    assert(animation);
+    Skeletal_Animation *animation = get_animation_by_path(filename);
+
+    if (!animation) {
+        return;
+    }
 
     bool32 result = refresh_animation(animation, true);
 
@@ -231,7 +250,7 @@ void handle_animation_update(String filename) {
     }
 }
 
-void handle_asset_updates_from_queue(Asset_Update_Queue *queue, Handle_Asset_Update_Callback *handle_update) {
+void handle_asset_updates_from_queue(Asset_Update_Queue *queue, Handle_Asset_Update_Callback handle_update) {
     platform_enter_critical_section(&queue->critical_section);
 
     for (int32 i = 0; i < queue->num_updates; i++) {
@@ -268,7 +287,9 @@ void update_assets_from_queues() {
 }
 
 // called by the directory watcher
-void asset_file_update_callback(Asset_Type type, Allocator *temp_stack,
+void asset_file_update_callback(Asset_Type type,
+                                Asset_Update_Queue *asset_update_queue,
+                                Allocator *temp_stack,
                                 Directory_Change_Type change_type, WString path,
                                 WString old_path = {}, WString new_path = {}) {
     // note that this callback runs on the file watcher thread
@@ -281,7 +302,7 @@ void asset_file_update_callback(Asset_Type type, Allocator *temp_stack,
     String filepath = make_string(filepath_c_str);
 #endif
 
-    OutputDebugStringA("mesh_changed\n");
+    //OutputDebugStringA("mesh_changed\n");
 
     Asset_Update update = {};
     
@@ -341,7 +362,7 @@ void asset_file_update_callback(Asset_Type type, Allocator *temp_stack,
     }
 
     assert(update.type != ASSET_UPDATE_NONE);
-    push_update(&asset_manager->mesh_update_queue, update);
+    push_update(asset_update_queue, update);
 
     end_region(temp_region);
 }
@@ -534,15 +555,23 @@ bool32 refresh_mesh(Mesh *mesh, bool32 ignore_file_in_use) {
     }
 
     // if we succeed in loading, delete the old one
-    // TODO: if we update delete_mesh_no_replace to also unwatch folder, we need to watch again here
-    // note that we don't just call add_mesh because this is a bit more special case
     delete_mesh_no_replace(id);
+
+    // note that we don't just call add_mesh because this is a bit more special case.
+    // we may want to extract out load_mesh so that we can do a similar thing we did
+    // for textures.. which is a bit cleaner than this.
     new_mesh->id = id;
     TABLE_ADD(asset_manager->mesh_table, id, new_mesh);
 
     // delete_mesh_no_replace calls r_unload_mesh, so we need to load it again, except with
     // the new data.
     r_load_mesh(id);
+
+    // watch the directory again, since we didn't call add_mesh()
+    Directory_Watcher *watcher = watch_directory_for_file(asset_manager->allocator,
+                                                          &asset_manager->mesh_dir_watchers,
+                                                          new_mesh->filename, mesh_file_update_callback);
+    new_mesh->watcher_id = watcher->id;
 
     return true;
 }
@@ -625,6 +654,66 @@ bool32 animation_exists(String name) {
     return animation != NULL;
 }
 
+bool32 refresh_animation(Skeletal_Animation *animation, bool32 ignore_file_in_use) {
+    int32 id = animation->id;
+
+    char *error;
+    Skeletal_Animation *new_animation;
+    bool32 is_in_use;
+    bool32 result = Animation_Loader::load_animation(asset_manager->allocator,
+                                                     animation->name, animation->filename,
+                                                     &new_animation, &error, &is_in_use);
+    if (!result) {
+        if (is_in_use && ignore_file_in_use) {
+            debug_print("Animation loading failed. File was in use, but ignoring.");
+        } else {
+            assert(!"Mesh loading failed.");
+        }
+        
+        return false;
+    }
+
+    delete_animation_no_replace(id);
+    add_animation(new_animation, id);
+
+    return true;
+}
+
+Skeletal_Animation *add_animation(Skeletal_Animation *loaded_animation, int32 id) {
+    assert(loaded_animation);
+    assert(loaded_animation->id == 0);
+
+    if (id < 0) {
+        id = asset_manager->total_animations_added_ever++;
+    }
+    
+    Skeletal_Animation *found_animation = get_animation(id);
+    if (found_animation) {
+        assert(!"Animation with ID already exists!");
+    } else {
+        loaded_animation->id = id;
+    }
+    
+    uint32 hash = get_hash(loaded_animation->id, NUM_TABLE_BUCKETS);
+
+    Skeletal_Animation *current = asset_manager->animation_table[hash];
+    loaded_animation->table_next = current;
+    loaded_animation->table_prev = NULL;
+    if (current) {
+        current->table_prev = loaded_animation;
+    }
+    asset_manager->animation_table[hash] = loaded_animation;
+
+    // watch the directory
+    Directory_Watcher *watcher = watch_directory_for_file(asset_manager->allocator,
+                                                          &asset_manager->animation_dir_watchers,
+                                                          loaded_animation->filename,
+                                                          animation_file_update_callback);
+    loaded_animation->watcher_id = watcher->id;
+    
+    return loaded_animation;
+}
+
 Skeletal_Animation *add_animation(String name, String filename, int32 id = -1) {
     if (animation_exists(name)) {
         assert(!"Animation with name already exists.");
@@ -645,28 +734,7 @@ Skeletal_Animation *add_animation(String name, String filename, int32 id = -1) {
         return NULL;
     }
 
-    if (id < 0) {
-        id = asset_manager->total_animations_added_ever++;
-    }
-    
-    Skeletal_Animation *found_animation = get_animation(id);
-    if (found_animation) {
-        assert(!"Animation with ID already exists!");
-    } else {
-        animation->id = id;
-    }
-    
-    uint32 hash = get_hash(animation->id, NUM_TABLE_BUCKETS);
-
-    Skeletal_Animation *current = asset_manager->animation_table[hash];
-    animation->table_next = current;
-    animation->table_prev = NULL;
-    if (current) {
-        current->table_prev = animation;
-    }
-    asset_manager->animation_table[hash] = animation;
-    
-    return animation;
+    return add_animation(animation, id);
 }
 
 // remove animations from entities that have animation_id_to_remove
@@ -705,6 +773,8 @@ void delete_animation_no_replace(int32 id) {
     
     deallocate(animation);
     deallocate(asset_manager->allocator, animation);
+
+    unwatch_directory(&asset_manager->animation_dir_watchers, animation->watcher_id);
 }
 
 void delete_animation(int32 id) {
@@ -796,6 +866,8 @@ void delete_texture_no_replace(int32 id) {
     deallocate(texture);
     deallocate(asset_manager->allocator, texture);
 
+    unwatch_directory(&asset_manager->texture_dir_watchers, texture->watcher_id);
+    
     r_unload_texture(id);
 }
 
@@ -882,38 +954,9 @@ bool32 texture_exists(String name) {
     return texture != NULL;
 }
 
-bool32 refresh_texture(Texture *texture, bool32 ignore_file_in_use) {
-    int32 id = texture->id;
-
-    //Texture *new_texture;
-    bool32 is_in_use;
-
-#if 0
-    bool32 result = load_texture(asset_manager->allocator, &new_texture, texture->type, texture->name, texture->filename,
-                              &is_in_use);
-    if (!result) {
-        if (is_in_use && ignore_file_in_use) {
-            debug_print("Texture loading failed. File was in use, but ignoring.");
-        } else {
-            assert(!"Texture loading failed.");
-        }
-        
-        return false;
-    }
-
-    // if we succeed in loading, delete the old one
-    // TODO: if we update delete_texture_no_replace to also unwatch folder, we need to watch again here
-    // note that we don't just call add_texture because this is a bit more special case
-    delete_texture_no_replace(id);
-    new_texture->id = id;
-    TABLE_ADD(asset_manager->texture_table, id, new_texture);
-
-    // delete_texture_no_replace calls r_unload_texture, so we need to load it again, except with
-    // the new data.
-    r_load_texture(id);
-#endif
-
-    // TODO: we might want to create a new render command for reloading textures
+// no need for ignore_file_in_use bool here because that's handled in GL code
+bool32 refresh_texture(Texture *texture) {
+    // we might create a new render command for reloading textures
     // - because i mean, we don't actually have things on the CPU side we need to update
     // - we just need to refresh the image data, which is in game_gl
     // - we don't save the data on the CPU for textures, unlike meshes. we just load it
@@ -921,10 +964,9 @@ bool32 refresh_texture(Texture *texture, bool32 ignore_file_in_use) {
     // - in other words, there's nothing that we need to refresh on the game data (CPU)
     //   side when textures refresh. for meshes, since we store that data on the CPU,
     //   we need to delete and reload the mesh on the CPU side when mesh files update.
-
-    //delete_texture_no_replace(id);
-    //add_texture()
     
+    assert(texture);
+    r_reload_texture(texture->id);
 
     return true;
 }
@@ -973,7 +1015,8 @@ Texture *add_texture(String name, String filename, Texture_Type type, int32 id =
     Directory_Watcher *watcher = watch_directory_for_file(asset_manager->allocator,
                                                           &asset_manager->texture_dir_watchers,
                                                           filename, texture_file_update_callback);
-    
+    texture->watcher_id = watcher->id;
+
     return texture;
 }
 

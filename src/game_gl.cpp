@@ -1154,16 +1154,13 @@ GL_Texture gl_load_texture(GL_State *gl_state, char *texture_filename, bool32 ha
 }
 #endif
 
-bool32 gl_load_texture(Texture *texture, bool32 has_alpha = false) {
-    Allocator *temp_region = begin_region();
-    Allocator *temp_allocator = (Allocator *) &memory.global_stack;
-    char *temp_texture_filename = to_char_array(temp_allocator, texture->filename);
-    File_Data texture_file_data = platform_open_and_read_file(temp_allocator,
-                                                              temp_texture_filename);
-
+bool32 gl_load_texture(File_Data *file_data, Texture *texture, bool32 has_alpha = false) {
+    assert(file_data);
+    assert(file_data->contents);
+    
     int32 width, height, num_channels;
     stbi_set_flip_vertically_on_load(true);
-    uint8 *data = stbi_load_from_memory((uint8 *) texture_file_data.contents, texture_file_data.size,
+    uint8 *data = stbi_load_from_memory((uint8 *) file_data->contents, file_data->size,
                                         &width, &height, &num_channels, 0);
     assert(data);
     
@@ -1182,8 +1179,6 @@ bool32 gl_load_texture(Texture *texture, bool32 has_alpha = false) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
-
-    end_region(temp_region);
 
     // add gl_texture to the gl texture table
     uint32 hash = get_hash(texture->id, NUM_TABLE_BUCKETS);
@@ -1212,6 +1207,41 @@ bool32 gl_load_texture(Texture *texture, bool32 has_alpha = false) {
     }
 
     return true;
+}
+
+// we extracted this out because in the case of texture reloading, we need to
+// check the result of the file load before deleting the existing data.
+File_Data gl_load_texture_file_data(Allocator *allocator, Texture *texture, bool32 ignore_file_in_use) {
+    char *temp_texture_filename = to_char_array(allocator, texture->filename);
+
+    bool32 is_in_use;
+    File_Data texture_file_data = platform_open_and_read_file(allocator, temp_texture_filename, &is_in_use);
+
+    if (!texture_file_data.contents) {
+        if (is_in_use && ignore_file_in_use) {
+            debug_print("Texture loading failed. File was in use, but ignoring.");
+        } else {
+            assert(!"Texture loading failed.");
+        }
+    }
+
+    return texture_file_data;
+}
+
+bool32 gl_load_texture(Texture *texture, bool32 has_alpha = false, bool32 ignore_file_in_use = false) {
+    Allocator *temp_region = begin_region();
+
+    File_Data texture_file_data = gl_load_texture_file_data(temp_region, texture, ignore_file_in_use);
+    if (!texture_file_data.contents) {
+        end_region(temp_region);
+        return false;
+    }
+
+    bool32 result = gl_load_texture(&texture_file_data, texture, has_alpha);
+
+    end_region(temp_region);
+
+    return result;
 }
 
 // TODO: use the better stb_truetype packing procedures
@@ -1966,7 +1996,7 @@ void gl_unload_mesh(int32 id) {
 
         current = current->table_next;
     }
-    
+
     assert(!"GL mesh does not exist!");
 }
 
@@ -1999,6 +2029,31 @@ void gl_unload_texture(int32 id) {
     }
     
     assert(!"GL texture does not exist!");
+}
+
+void gl_reload_texture(int32 id) {
+    // note that we assume that it exists at this point.
+    // we assume that the caller checks that it exists before pushing this
+    // render command (texture can be deleted in same frame before this gets ran).
+    // and so we assume we never have an unload_texture before this when we have
+    // a reload_texture in the queue.
+
+    Texture *texture = get_texture(id);
+    assert(texture);
+
+    // we don't want to unload unless load succeeded
+
+    Allocator *temp_region = begin_region();
+    File_Data texture_file_data = gl_load_texture_file_data(temp_region, texture, true);
+    if (texture_file_data.contents) {
+        gl_unload_texture(id);
+        gl_load_texture(&texture_file_data, texture);
+    }
+    else {
+        debug_print("GL failed to reload texture.");
+    }
+    
+    end_region(temp_region);
 }
 
 void generate_circle_vertices(real32 *buffer, int32 buffer_size,
@@ -3726,6 +3781,11 @@ void gl_render(Controller_State *controller_state,
             case Command_Type::UNLOAD_TEXTURE: {
                 Command_Unload_Texture c = command->unload_texture;
                 gl_unload_texture(c.texture_id);
+            } break;
+            case Command_Type::RELOAD_TEXTURE: {
+                Command_Reload_Texture c = command->reload_texture;
+                debug_print("reloading texture %d\n", c.texture_id);
+                gl_reload_texture(c.texture_id);
             } break;
             default: {
                 assert(!"Unhandled command type.");

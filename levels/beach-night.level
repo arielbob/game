@@ -10,11 +10,14 @@ mesh "test_mesh" ".\assets\meshes\test_mesh.mesh"
 }
 
 textures {
+texture "grass" ".\assets\textures\grass2.png"
 }
 
 materials {
 material {
 name "grass"
+use_albedo_texture 1
+albedo_texture "grass"
 albedo_color 0.127997 0.430000 0.078833
 metalness 0.000000
 roughness 0.000000
@@ -42,20 +45,12 @@ animations {
 
 entities {
 entity {
-position 7.707911 2.793780 -12.605277
-rotation 0.999345 0.000000 0.000000 0.036181
+position 0.000000 0.000000 0.000000
+rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
-mesh "test_mesh"
-material "shiny red"
-animation "New Animation"
-}
-entity {
-position 0.025938 4.180701 0.000000
-rotation 0.923424 -0.127838 -0.049623 -0.358444
-scale 1.000000 1.000000 1.000000
-light_type sun
-sun_color 0.105467 0.132587 0.376667
-sun_intensity 1078.000000
+mesh "beach woods terrain"
+material "grass"
+has_collider 1
 }
 entity {
 position 0.000000 0.000000 0.000000
@@ -66,12 +61,20 @@ material "wood"
 has_collider 1
 }
 entity {
-position 0.000000 0.000000 0.000000
-rotation 1.000000 0.000000 0.000000 0.000000
+position 0.025938 4.180701 0.000000
+rotation 0.923424 -0.127838 -0.049623 -0.358444
 scale 1.000000 1.000000 1.000000
-mesh "beach woods terrain"
-material "grass"
-has_collider 1
+light_type sun
+sun_color 0.105467 0.132587 0.376667
+sun_intensity 1078.000000
+}
+entity {
+position 7.707911 2.793780 -12.605277
+rotation 0.999345 0.000000 0.000000 0.036181
+scale 1.000000 1.000000 1.000000
+mesh "test_mesh"
+material "shiny red"
+animation "New Animation"
 }
 }
 

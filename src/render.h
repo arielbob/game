@@ -28,7 +28,7 @@ enum class Command_Type {
     NONE,
     LOAD_FONT,
     LOAD_MESH, UNLOAD_MESH, SET_MESH_ID,
-    LOAD_TEXTURE, UNLOAD_TEXTURE
+    LOAD_TEXTURE, UNLOAD_TEXTURE, RELOAD_TEXTURE
 };
 
 struct Command_Load_Font {
@@ -56,6 +56,10 @@ struct Command_Unload_Texture {
     int32 texture_id;
 };
 
+struct Command_Reload_Texture {
+    int32 texture_id;
+};
+
 struct Command {
     Command_Type type;
     union {
@@ -65,6 +69,7 @@ struct Command {
         Command_Set_Mesh_ID set_mesh_id;
         Command_Load_Texture load_texture;
         Command_Unload_Texture unload_texture;
+        Command_Reload_Texture reload_texture;
     };
 };
 
