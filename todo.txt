@@ -127,11 +127,8 @@ TODO: fix this; sometimes we don't get updates.. - DONE
 
 
 
+vvvvv LEFT OFF HERE vvvvv
 TODO: what happens if we delete a file we're watching?
-
-- TODO: textures
-- TODO: animations
-- TODO: levels - i don't think we need this..? levels are only really ever edited in our program
 
 TODO: we may want to step through the refreshing code
 - verify that the old data is getting unloaded in GL code
@@ -141,13 +138,10 @@ TODO: we may want to step through the refreshing code
 
 TODO: replace duplicate code and test TABLE_DELETE macro
 
-TODO: actually update the stuff when the file changes
+TODO: actually update the stuff when the file changes - DONE
 - TODO: meshes
-- TODO: levels
 - TODO: textures
 - TODO: animations
-
-TODO: do logging for the updates we get
 
 TODO: thread-local temp regions
 - can use GetCurrentThreadId()
@@ -155,9 +149,6 @@ TODO: thread-local temp regions
 
 
 
-TODO: we need to mark entities as needing an update
-- we could just have an array in a critical section with IDs in it, then every game loop, just go through
-them and update them if they're in the array
 
 
 
