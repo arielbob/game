@@ -118,28 +118,14 @@ TODO: gl_reload_texture() - DONE
 TODO: unwatch folders when deleted (animations and textures) - DONE
 TODO: watch animation/texture folders when added - DONE
 
-
-
-vvvvv LEFT OFF HERE vvvvv
-TODO: fix this; sometimes we don't get updates..
+TODO: fix this; sometimes we don't get updates.. - DONE
 - the way paint.net updates its files involves renaming
 - but that shouldn't matter because at the end, we do get an update event for the original file
 - but for some reason we end up pushing an ASSET_UPDATE_MODIFIED for the temp file it creates then renames
   - sometimes it does work, sometimes it doesn't
   - in the cases that it doesn't, it seems it's because the path is wrong in the pushed update
 
-awaken from infinite sleep!
-file updated: C:\Users\Ariel\source\game\assets\textures/grass2.png.0.pdnSave
-pushing ASSET_UPDATE_MODIFIED for: C:\Users\Ariel\source\game\assets\textures/grass2.png.0.pdnSave
-awaken from infinite sleep!
-file updated: C:\Users\Ariel\source\game\assets\textures/grass2.png.0.pdnSave
-pushing ASSET_UPDATE_MODIFIED for: C:\Users\Ariel\source\game\assets\textures/grass2.png.0.pdnSave
-file renamed (old name event): C:\Users\Ariel\source\game\assets\textures/grass2.png
-file renamed (new name event): C:\Users\Ariel\source\game\assets\textures/grass2.png~RF13fefc92.TMP
-file renamed (old name event): C:\Users\Ariel\source\game\assets\textures/grass2.png.0.pdnSave
-file renamed (new name event): C:\Users\Ariel\source\game\assets\textures/grass2.png
-file updated: C:\Users\Ariel\source\game\assets\textures/grass2.png
-pushing ASSET_UPDATE_MODIFIED for: C:\Users\Ariel\source\game\assets\textures/grass2.png.0.pdnSave
+
 
 TODO: what happens if we delete a file we're watching?
 

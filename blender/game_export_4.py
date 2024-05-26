@@ -97,6 +97,11 @@ def game_export(context, filename, replace_existing, is_skinned):
         show_message_box('File already exists', 'Error', 'ERROR')
         return
 
+    if context.active_object.type != 'MESH':
+        show_message_box('Object must be a mesh!', 'Error', 'ERROR')
+        temp_output_file.close()
+        return
+
     bpy.ops.object.mode_set(mode='OBJECT')
     mesh_copy = context.active_object.copy()
     mesh_copy.data = mesh_copy.data.copy()
