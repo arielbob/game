@@ -3784,7 +3784,6 @@ void gl_render(Controller_State *controller_state,
             } break;
             case Command_Type::RELOAD_TEXTURE: {
                 Command_Reload_Texture c = command->reload_texture;
-                debug_print("reloading texture %d\n", c.texture_id);
                 gl_reload_texture(c.texture_id);
             } break;
             default: {

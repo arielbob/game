@@ -1708,6 +1708,8 @@ String platform_wide_char_to_multi_byte(Allocator *allocator, WString wstring) {
                                                NULL);
     assert(num_bytes_needed);
 
+    // note that num_bytes_needed doesn't include null-terminator
+    // because original string doesn't include null-terminator.
     char *buffer = (char *) allocate(allocator, num_bytes_needed);
     int result = WideCharToMultiByte(CP_UTF8,
                                      0,
@@ -1721,10 +1723,16 @@ String platform_wide_char_to_multi_byte(Allocator *allocator, WString wstring) {
 
     String ret = {};
     ret.contents = buffer;
-    // technically, we shouldn't do this because string_length assumes each character is
-    // a single byte. but, we only ever use ascii strings, so we should be fine for now..
-    ret.length = string_length(buffer);
+    // we are assuming here that each character is a single byte.
+    // we probably shouldn't do this, but, we only ever use ascii strings,
+    // so we should be fine for now..
+    // if the string needs more than a byte for a character, then the string
+    // will just be truncated.
+    assert(num_bytes_needed == wstring.length);
+    ret.length = num_bytes_needed;
     ret.allocator = allocator;
+
+    assert(wstring.length == ret.length);
 
     return ret;
 };

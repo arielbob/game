@@ -177,12 +177,6 @@ void push_update(Asset_Update_Queue *queue, Asset_Update update) {
                                                        update.filename_change.new_filename);
         } break;
         case ASSET_UPDATE_MODIFIED: {
-            char filename_c_str[MAX_PATH];
-            to_char_array(update.filename, filename_c_str, MAX_PATH);
-            OutputDebugStringA("pushing ASSET_UPDATE_MODIFIED for: ");
-            OutputDebugStringA(filename_c_str);
-            OutputDebugStringA("\n");
-            
             update.filename = copy((Allocator *) &queue->arena,
                                    update.filename);
         } break;
@@ -226,11 +220,7 @@ void handle_texture_update(String filename) {
         return;
     }
 
-    char filename_c_str[MAX_PATH];
-    to_char_array(filename, filename_c_str, MAX_PATH);
-    debug_print("handling texture update for: %s\n", filename_c_str);
     bool32 result = refresh_texture(texture);
-
     if (!result) {
         debug_print("refresh_texture() failed in update from file.");
     }
