@@ -60,6 +60,14 @@ struct Command_Reload_Texture {
     int32 texture_id;
 };
 
+struct Command_Load_Cube_Map {
+    int32 cube_map_id;
+};
+
+struct Command_Unload_Cube_Map {
+    int32 cube_map_id;
+};
+
 struct Command {
     Command_Type type;
     union {
@@ -70,6 +78,8 @@ struct Command {
         Command_Load_Texture load_texture;
         Command_Unload_Texture unload_texture;
         Command_Reload_Texture reload_texture;
+        Command_Load_Cube_Map load_cube_map;
+        Command_Unload_Cube_Map unload_cube_map;
     };
 };
 

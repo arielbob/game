@@ -51,6 +51,18 @@ void r_reload_texture(int32 texture_id) {
     r_add_command(command);
 }
 
+void r_load_cube_map(int32 cube_map_id) {
+    Command command = { Command_Type::LOAD_CUBE_MAP };
+    command.load_cube_map = { cube_map_id };
+    r_add_command(command);
+}
+
+void r_unload_cube_map(int32 cube_map_id) {
+    Command command = { Command_Type::UNLOAD_CUBE_MAP };
+    command.unload_cube_map = { cube_map_id };
+    r_add_command(command);
+}
+
 void r_queue_frame_end() {
     Command_Queue *queue = &render_state->command_queue;
     queue->num_commands = 0;

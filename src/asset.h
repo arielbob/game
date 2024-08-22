@@ -68,6 +68,9 @@ Mesh_Type operator|(Mesh_Type a, Mesh_Type b) {
 }
 
 enum class Texture_Type  { NONE, LEVEL, DEFAULT, ENGINE };
+enum class Cube_Map_Type  { NONE, DEFAULT };
+enum class Texture_Load_Type { 2D, CUBE_MAP };
+
 enum class Material_Type  { NONE, LEVEL, DEFAULT };
 
 // TODO: we need more types of Mesh objects. since not all meshes require all the data. for example, a nav mesh
@@ -151,6 +154,17 @@ void deallocate(Mesh *mesh) {
         deallocate(mesh->skeleton);
         deallocate(mesh->allocator, mesh->skeleton);
     }
+}
+
+struct Cube_Map {
+    int32 id;
+    Cube_Map_Type type;
+
+    String name;
+    String filenames[6];
+
+    Cube_Map *table_next;
+    Cube_Map *table_prev;
 }
 
 struct Texture {
@@ -283,6 +297,9 @@ struct Asset_Manager {
     int32      total_textures_added_ever;
     Directory_Watcher *texture_dir_watchers;
     Asset_Update_Queue texture_update_queue;
+
+    Cube_Map  *cube_map_table[NUM_TABLE_BUCKETS];
+    int32     total_cube_maps_added_ever;
     
     Material  *material_table[NUM_TABLE_BUCKETS];
     int32     total_materials_added_ever;

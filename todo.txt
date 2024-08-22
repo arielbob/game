@@ -125,10 +125,8 @@ TODO: fix this; sometimes we don't get updates.. - DONE
   - sometimes it does work, sometimes it doesn't
   - in the cases that it doesn't, it seems it's because the path is wrong in the pushed update
 
-
-
-vvvvv LEFT OFF HERE vvvvv
-TODO: what happens if we delete a file we're watching?
+TODO: what happens if we delete a file we're watching? - DONE
+- nothing really happens.. which is fine i guess
 
 TODO: we may want to step through the refreshing code
 - verify that the old data is getting unloaded in GL code
@@ -146,9 +144,6 @@ TODO: actually update the stuff when the file changes - DONE
 TODO: thread-local temp regions
 - can use GetCurrentThreadId()
 - so we can use begin_region() without having to use locks
-
-
-
 
 
 
@@ -227,11 +222,11 @@ TODO: could we really not just have had a CRITICAL_SECTION object in the win32_d
 
 TODO: adding folders to watcher
 
-TODO: actually handle the different change notifications
+TODO: actually handle the different change notifications - DONE
 - just put in the switch
 - then, actually make it affect the game
 
-TODO: watching multiple folders
+TODO: watching multiple folders - DONE
 - you need to just call multiple ReadDirectoryChanges on the same thread
 - i think we just need multiple dir_watcher_datas, one for each ReadDirectoryChanges call
 - and then a new struct that manages them all
@@ -241,12 +236,15 @@ TODO: watching multiple folders
   thread and adds a new directory!
 
 TODO: error handling (bytesReturned + bytesTransferred)
-TODO: close handles - need to do for multiple folders case
+TODO: close handles - need to do for multiple folders case - DONE
 - CancelIO
 - CloseHandle()
-TODO: break from loop on WM_QUIT? instead of having loop run a single time after getting message
 
 
 
 
 
+
+
+
+TODO: shadows

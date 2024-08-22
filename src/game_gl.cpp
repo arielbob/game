@@ -1154,6 +1154,37 @@ GL_Texture gl_load_texture(GL_State *gl_state, char *texture_filename, bool32 ha
 }
 #endif
 
+// TODO: finish this (need to load file_data from the Cube_Map struct)
+bool32 gl_load_cube_map(Cube_Map *cube_map) {
+    uint32 texture_id;
+    glGenTextures(1, &texture_id);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, texture_id);
+    
+    for (int32 i = 0; i < 6; i++) {
+        File_Data *file_data = files[i];
+        assert(file_data);
+        assert(file_data->contents);
+
+        int32 width, height, num_channels;
+        stbi_set_flip_vertically_on_load(true);
+        uint8 *data = stbi_load_from_memory((uint8 *) file_data->contents, file_data->size,
+                                            &width, &height, &num_channels, 0);
+        assert(data);
+
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X  + i,
+                     0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+    }
+
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+    
+    
+}
+
 bool32 gl_load_texture(File_Data *file_data, Texture *texture, bool32 has_alpha = false) {
     assert(file_data);
     assert(file_data->contents);
@@ -3786,6 +3817,17 @@ void gl_render(Controller_State *controller_state,
                 Command_Reload_Texture c = command->reload_texture;
                 gl_reload_texture(c.texture_id);
             } break;
+            case Command_Type::LOAD_CUBE_MAP: {
+                Command_Load_Cube_Map c = command->load_cube_map;
+                Cube_Map *cube_map = get_cube_map(c.cube_map_id);
+                gl_load_cube_map(cube_map);
+            } break;
+            case Command_Type::UNLOAD_CUBE_MAP: {
+                Command_Unload_Cube_Map c = command->unload_cube_map;
+
+                // TODO: implement this
+                gl_unload_cube_map(c.cube_map_id);
+            } break;
             default: {
                 assert(!"Unhandled command type.");
             } break;
@@ -3797,6 +3839,9 @@ void gl_render(Controller_State *controller_state,
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLineWidth(1.0f);
+
+    // TODO: extract more common things out to here..
+    
     
     if (game_state->mode == Game_Mode::PLAYING) {
         gl_render_game();

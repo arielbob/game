@@ -122,6 +122,15 @@ String copy(Allocator *allocator, String src) {
     return result;
 }
 
+void copy_array(String *array, Allocator *allocator, String *src_array, int32 n) {
+    assert(array);
+    // String array is expected to be already allocated, but contents are not allocated
+
+    for (int32 i = 0; i < n; i++) {
+        array[i] = copy(allocator, src_array[i]);
+    }
+}
+
 WString copy(Allocator *allocator, WString src) {
     WString result;
     result.allocator = allocator;

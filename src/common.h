@@ -41,6 +41,22 @@ void deallocate(int32) {
     // no-op
 }
 
+#define TABLE_FIND(table_ptr, key, result)              \
+    {                                                   \
+        result = NULL;                                  \
+        uint32 hash = get_hash(id, NUM_TABLE_BUCKETS);  \
+                                                        \
+        auto *current = table_ptr[hash];                \
+        while (current) {                               \
+            if (current->id == id) {                    \
+                result = current;                       \
+                break;                                  \
+            }                                           \
+                                                        \
+            current = current->table_next;              \
+        }                                               \
+    }                                                   \
+
 #define TABLE_ADD(table_ptr, key, value_ptr)            \
     {                                                   \
         int32 hash = get_hash(key, NUM_TABLE_BUCKETS);  \

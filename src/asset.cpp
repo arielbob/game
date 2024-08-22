@@ -1029,6 +1029,58 @@ void set_texture_file(int32 id, String new_filename) {
     end_region(temp_region);
 }
 
+Cube_Map *get_cube_map(int32 id) {
+    Texture *current;
+    TABLE_FIND(asset_manager->cube_map_table, id, current);
+    return current;
+}
+
+// TODO: finish this
+Cube_Map *add_cube_map(String name, String filenames[6], Cube_Map_Type type, int32 id = -1) {
+    if (cube_map_exists(name)) {
+        assert(!"Cube map with name already exists.");
+        return NULL;
+    }
+
+    Cube_Map *cube_map = (Cube_Map *) allocate(asset_manager->allocator, sizeof(Cube_Map), true);
+
+    if (type == Cube_Map_Type::LEVEL) {
+        if (id <= 0) {
+            id = ++asset_manager->total_cube_maps_added_ever;
+        }
+    } else {
+        // non-level assets have non-positive IDs
+        // we make the default debug cube_map 0 just for easy initialization
+        assert(id <= 0);
+    }
+
+    Cube_Map *found_with_id = get_cube_map(id);
+    if (found_with_id) {
+        assert(!"Texture with ID already exists!");
+    } else {
+        cube_map->id = id;
+    }
+
+    cube_map->name      = copy(asset_manager->allocator, name);
+    // array elements are already allocated in the struct; just need to copy the data
+    cube_map->filenames = copy_array(&cube_map->filenames, asset_manager->allocator, filenames, 6);
+    cube_map->type      = type;
+
+    TABLE_ADD(asset_manager->cube_map_table, cube_map->id, cube_map);
+    
+    r_load_cube_map(texture->id);
+
+    // no directory watching for now?
+#if 0
+    Directory_Watcher *watcher = watch_directory_for_file(asset_manager->allocator,
+                                                          &asset_manager->texture_dir_watchers,
+                                                          filename, texture_file_update_callback);
+    texture->watcher_id = watcher->id;
+#endif
+
+    return cube_map;
+}
+
 bool32 material_exists(String name) {
     for (int32 i = 0; i < NUM_TABLE_BUCKETS; i++) {
         Material *current = asset_manager->material_table[i];
@@ -1614,6 +1666,18 @@ void load_default_assets() {
     add_texture("sun_icon",          "assets/textures/sun-icon.png",          Texture_Type::ENGINE,
                 ENGINE_SUN_TEXTURE_ID);
 
+    String skybox_files[6] = {
+        make_string("assets/textures/skybox/right.jpg"),
+        make_string("lassets/textures/skybox/left.jpg"),
+        make_string("tassets/textures/skybox/top.jpg"),
+        make_string("bassets/textures/skybox/bottom.jpg"),
+        make_string("fassets/textures/skybox/front.jpg"),
+        make_string("bassets/textures/skybox/back.jpg)")
+    };
+
+    add_cube_map(make_string("sky"), skybox_files, Cube_Map_Type::DEFAULT,
+                 ENGINE_SKYBOX_CUBE_MAP_ID);
+    
     add_font("times32",         "c:/windows/fonts/times.ttf",    32.0f);
     add_font("times24",         "c:/windows/fonts/times.ttf",    24.0f);
     add_font("courier24b",      "c:/windows/fonts/courbd.ttf",   24.0f);
