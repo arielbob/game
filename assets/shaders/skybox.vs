@@ -19,8 +19,7 @@ cube samplers are sampled with a vector from the center of the cube
  */
 
 void main() {
-    //texture_sample_dir = vec3(model_matrix * vec4(pos, 1.0));
-    texture_sample_dir = vec3(pos.x, -pos.y, pos.z);
+    texture_sample_dir = pos;
 
     // get the translation out of the view matrix.
     // keep the perspective clip as it is.

@@ -1166,6 +1166,9 @@ bool32 gl_load_cube_map(Cube_Map *cube_map) {
     glGenTextures(1, &texture_id);
     glBindTexture(GL_TEXTURE_CUBE_MAP, texture_id);
 
+    // cube maps are flipped..
+    stbi_set_flip_vertically_on_load(false);
+    
     Allocator *temp_region = begin_region();
     String *filenames = cube_map->filenames;
     for (int32 i = 0; i < 6; i++) {
@@ -1174,7 +1177,6 @@ bool32 gl_load_cube_map(Cube_Map *cube_map) {
         assert(file_data.contents);
 
         int32 width, height, num_channels;
-        stbi_set_flip_vertically_on_load(true);
         uint8 *data = stbi_load_from_memory((uint8 *) file_data.contents, file_data.size,
                                             &width, &height, &num_channels, 0);
         assert(data);
@@ -1183,6 +1185,8 @@ bool32 gl_load_cube_map(Cube_Map *cube_map) {
                      0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
     }
 
+    stbi_set_flip_vertically_on_load(true);
+    
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
