@@ -39,6 +39,9 @@
 #define ENGINE_EDITOR_CHECK_TEXTURE_ID      -3
 #define ENGINE_SUN_TEXTURE_ID               -4
 
+// engine cube maps
+#define ENGINE_DEFAULT_SKYBOX_CUBE_MAP_ID -1
+
 typedef void (*Handle_Asset_Update_Callback)(String filename);
 
 enum class Asset_Type {
@@ -67,11 +70,9 @@ Mesh_Type operator|(Mesh_Type a, Mesh_Type b) {
     return (Mesh_Type) ((int32) a | (int32) b);
 }
 
-enum class Texture_Type  { NONE, LEVEL, DEFAULT, ENGINE };
-enum class Cube_Map_Type  { NONE, DEFAULT };
-enum class Texture_Load_Type { 2D, CUBE_MAP };
-
+enum class Texture_Type { NONE, LEVEL, DEFAULT, ENGINE };
 enum class Material_Type  { NONE, LEVEL, DEFAULT };
+enum class Cube_Map_Type { NONE, LEVEL, DEFAULT };
 
 // TODO: we need more types of Mesh objects. since not all meshes require all the data. for example, a nav mesh
 //       doesn't need UVs. and something like a rock mesh won't need joint data. we will also need to modify
@@ -165,7 +166,7 @@ struct Cube_Map {
 
     Cube_Map *table_next;
     Cube_Map *table_prev;
-}
+};
 
 struct Texture {
     int32 id;

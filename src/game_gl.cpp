@@ -992,6 +992,13 @@ GL_Texture *gl_get_texture(int32 texture_id) {
     return NULL;
 }
 
+GL_Cube_Map *gl_get_cube_map(int32 cube_map_id) {
+    GL_Cube_Map *result;
+    TABLE_FIND(g_gl_state->cube_map_table, id, cube_map_id, result);
+
+    return result;
+}
+
 #if 0
 GL_Texture *gl_get_texture(char *texture_name) {
     GL_GET_TEXTURE_DEF;
@@ -1154,20 +1161,21 @@ GL_Texture gl_load_texture(GL_State *gl_state, char *texture_filename, bool32 ha
 }
 #endif
 
-// TODO: finish this (need to load file_data from the Cube_Map struct)
 bool32 gl_load_cube_map(Cube_Map *cube_map) {
     uint32 texture_id;
     glGenTextures(1, &texture_id);
     glBindTexture(GL_TEXTURE_CUBE_MAP, texture_id);
-    
+
+    Allocator *temp_region = begin_region();
+    String *filenames = cube_map->filenames;
     for (int32 i = 0; i < 6; i++) {
-        File_Data *file_data = files[i];
-        assert(file_data);
-        assert(file_data->contents);
+        File_Data file_data = platform_open_and_read_file(temp_region, filenames[i]);
+        
+        assert(file_data.contents);
 
         int32 width, height, num_channels;
         stbi_set_flip_vertically_on_load(true);
-        uint8 *data = stbi_load_from_memory((uint8 *) file_data->contents, file_data->size,
+        uint8 *data = stbi_load_from_memory((uint8 *) file_data.contents, file_data.size,
                                             &width, &height, &num_channels, 0);
         assert(data);
 
@@ -1181,8 +1189,36 @@ bool32 gl_load_cube_map(Cube_Map *cube_map) {
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
-    
-    
+    end_region(temp_region);
+
+    // make sure it doesn't already exist
+    GL_Cube_Map *found;
+    TABLE_FIND(g_gl_state->cube_map_table, id, cube_map->id, found);
+    if (found) {
+        assert(!"GL_Cube_Map with this ID already exists!");
+        // we don't clean up, but who cares; this should path should not ever happen
+        return false;
+    }
+
+    // insert it
+    GL_Cube_Map *gl_cube_map = (GL_Cube_Map *) allocate(&g_gl_state->heap, sizeof(GL_Cube_Map));
+    *gl_cube_map = { cube_map->type, cube_map->id, texture_id };
+    TABLE_ADD(g_gl_state->cube_map_table, cube_map->id, gl_cube_map);
+
+    return true;
+}
+
+void gl_unload_cube_map(int32 id) {
+    GL_Cube_Map *to_delete;
+    TABLE_DELETE_GET(g_gl_state->cube_map_table, id, id, to_delete);
+
+    if (to_delete) {
+        glDeleteTextures(1, &to_delete->gl_texture_id);
+        deallocate(to_delete);
+        deallocate((Allocator *) &g_gl_state->heap, to_delete);
+    } else {
+        assert(!"GL cube map does not exist!");
+    }
 }
 
 bool32 gl_load_texture(File_Data *file_data, Texture *texture, bool32 has_alpha = false) {
@@ -1441,6 +1477,15 @@ uint32 gl_use_texture(int32 texture_id, int32 slot_index = 0) {
     return texture->gl_texture_id;
 }
 
+uint32 gl_use_cube_map(int32 cube_map_id) {
+    GL_Cube_Map *cube_map = gl_get_cube_map(cube_map_id);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, cube_map->gl_texture_id);
+
+    return cube_map->gl_texture_id;
+}
+
 uint32 gl_use_font_texture(String font_name) {
     GL_Font *font = gl_get_font(font_name);
     
@@ -1603,6 +1648,31 @@ void gl_draw_wireframe(int32 mesh_id, Vec4 color, Transform transform) {
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     glDepthFunc(GL_LESS);
 
+    glUseProgram(0);
+    glBindVertexArray(0);
+}
+
+void gl_draw_skybox(int32 cube_map_id) {
+    uint32 shader_id = gl_use_shader("skybox");
+
+    gl_use_cube_map(cube_map_id);
+
+    // the cube model is too small.. it doesn't consume the entire view.
+    // the cube basically needs to consume the view frustum. you can probably calculate
+    // how big it needs to be based on your fov.
+    Mat4 model_matrix = make_scale_matrix(make_vec3(2.0f, 2.0f, 2.0f));
+    gl_set_uniform_mat4(shader_id, "model_matrix", &model_matrix);
+    gl_set_uniform_mat4(shader_id, "view_matrix", &render_state->view_matrix);
+    gl_set_uniform_mat4(shader_id, "perspective_clip_matrix", &render_state->perspective_clip_matrix);
+    Vec3 test_point = truncate_v4_to_v3(render_state->perspective_clip_matrix *
+                                        render_state->view_matrix *
+                                        model_matrix *
+                                        make_vec4(0.0f, 0.0f, 0.5f, 1.0f));
+    
+    GL_Mesh *gl_mesh = gl_use_mesh(ENGINE_DEFAULT_CUBE_MESH_ID);
+    
+    glDrawElements(GL_TRIANGLES, gl_mesh->num_triangles * 3, GL_UNSIGNED_INT, 0);
+    
     glUseProgram(0);
     glBindVertexArray(0);
 }
@@ -2428,6 +2498,8 @@ void gl_init(Arena_Allocator *game_data, Display_Output display_output) {
                    "pbr");
     gl_load_shader("assets/shaders/ui.vs",                       "assets/shaders/ui.fs",
                    "ui");
+    gl_load_shader("assets/shaders/skybox.vs",                   "assets/shaders/skybox.fs",
+                   "skybox");
 
     // NOTE: ui buffer
     gl_init_ui();
@@ -2459,7 +2531,6 @@ void gl_init(Arena_Allocator *game_data, Display_Output display_output) {
     glUniformBlockBinding(shader_id, uniform_block_index, 0);
     glUseProgram(0);
 
-    // NOTE: disable culling for now, just for easier debugging...
 #if 1
     glEnable(GL_BLEND);
     glEnable(GL_CULL_FACE);
@@ -3797,7 +3868,7 @@ void gl_render(Controller_State *controller_state,
                 Command_Set_Mesh_ID c = command->set_mesh_id;
                 GL_Mesh *mesh = gl_get_mesh(c.mesh_id);
 
-                TABLE_DELETE(g_gl_state->mesh_table, c.mesh_id);
+                TABLE_DELETE(g_gl_state->mesh_table, id, c.mesh_id);
                 TABLE_ADD(g_gl_state->mesh_table, c.new_id, mesh);
             } break;
             case Command_Type::UNLOAD_MESH: {
@@ -3825,7 +3896,6 @@ void gl_render(Controller_State *controller_state,
             case Command_Type::UNLOAD_CUBE_MAP: {
                 Command_Unload_Cube_Map c = command->unload_cube_map;
 
-                // TODO: implement this
                 gl_unload_cube_map(c.cube_map_id);
             } break;
             default: {
@@ -3841,7 +3911,12 @@ void gl_render(Controller_State *controller_state,
     glLineWidth(1.0f);
 
     // TODO: extract more common things out to here..
-    
+    // render the skybox
+    glDisable(GL_DEPTH_TEST);
+    glCullFace(GL_FRONT); // TODO: change this to front?
+    gl_draw_skybox(ENGINE_DEFAULT_SKYBOX_CUBE_MAP_ID);
+    glCullFace(GL_BACK);
+    glEnable(GL_DEPTH_TEST);
     
     if (game_state->mode == Game_Mode::PLAYING) {
         gl_render_game();

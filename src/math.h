@@ -159,7 +159,7 @@ struct Vec4_uint32 {
     inline bool32 operator!=(Vec4_uint32 v);
 };
 
-// NOTE: we define it this way (column manjor) so we can send it easily to opengl shaders
+// NOTE: we define it this way (column major) so we can send it easily to opengl shaders
 struct Mat4 {
     union {
         Vec4 values[4];

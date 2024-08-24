@@ -41,21 +41,26 @@ void deallocate(int32) {
     // no-op
 }
 
-#define TABLE_FIND(table_ptr, key, result)              \
-    {                                                   \
-        result = NULL;                                  \
-        uint32 hash = get_hash(id, NUM_TABLE_BUCKETS);  \
-                                                        \
-        auto *current = table_ptr[hash];                \
-        while (current) {                               \
-            if (current->id == id) {                    \
-                result = current;                       \
-                break;                                  \
-            }                                           \
-                                                        \
-            current = current->table_next;              \
-        }                                               \
-    }                                                   \
+// table_ptr is just the array of entries.. i.e. the table.
+// result is a variable of type of the contents of the table
+// for example, for Mesh *mesh_table, you would do
+// Mesh *current;
+// TABLE_FIND(mesh_table, id, current);
+#define TABLE_FIND(table_ptr, key_name, key, result)     \
+    {                                                    \
+        result = NULL;                                   \
+        uint32 hash = get_hash(key, NUM_TABLE_BUCKETS);   \
+                                                         \
+        auto current = table_ptr[hash];                  \
+        while (current) {                                \
+            if (current->key_name == key) {              \
+                result = current;                        \
+                break;                                   \
+            }                                            \
+                                                         \
+            current = current->table_next;               \
+        }                                                \
+    }                                                    \
 
 #define TABLE_ADD(table_ptr, key, value_ptr)            \
     {                                                   \
@@ -73,22 +78,59 @@ void deallocate(int32) {
         value_ptr->id = key;                            \
     }
 
-// if we're first in list, we need to update bucket array when we delete
-#define TABLE_DELETE(table_ptr, key)                                    \
+// if we're first in list, we need to update bucket array when we delete.
+// (we do this in the macro; the above comment is meant to be inside the
+// macro, but you can't put comments inside..)
+// note that this doesn't deallocate the entry; it just removes it from
+// the hash table.
+// k is key; had to rename it from key because table entries have a member
+// called key.. and it was replacing it with the macro argument.
+#define TABLE_DELETE(table_ptr, key_name, key)                          \
     {                                                                   \
-        int32 hash = get_hash(key, NUM_TABLE_BUCKETS);                  \
-        auto entry_ptr = table_ptr[hash];                               \
-        if (entry_ptr->table_prev) {                                    \
-            entry_ptr->table_prev->table_next = entry_ptr->table_next;  \
-        } else {                                                        \
-            table_ptr[hash] = entry_ptr->table_next;                    \
-        }                                                               \
-        if (entry_ptr->table_next) {                                    \
-            entry_ptr->table_next->table_prev = entry_ptr->table_prev;  \
+        int32 hash = get_hash(key, NUM_TABLE_BUCKETS);                    \
+        auto current = table_ptr[hash];                                 \
+        while (current) {                                               \
+            if (current->key_name == key) {                             \
+                if (current->table_prev) {                              \
+                    current->table_prev->table_next = current->table_next; \
+                } else {                                                \
+                    table_ptr[hash] = current->table_next;              \
+                }                                                       \
+                if (current->table_next) {                              \
+                    current->table_next->table_prev = current->table_prev; \
+                }                                                       \
+                break;                                                  \
+            } else {                                                    \
+                current = current->table_next;                          \
+            }                                                           \
         }                                                               \
     }                                                                   \
 
-#define LINKED_LIST_FOR(entry_type, list_ptr)                            \
+// delete it from table, but get the result as well
+#define TABLE_DELETE_GET(table_ptr, key_name, key, result)              \
+    {                                                                   \
+        int32 hash = get_hash(key, NUM_TABLE_BUCKETS);                  \
+        result = NULL;                                                  \
+        auto current = table_ptr[hash];                                 \
+        while (current) {                                               \
+            if (current->key_name == key) {                             \
+                if (current->table_prev) {                              \
+                    current->table_prev->table_next = current->table_next; \
+                } else {                                                \
+                    table_ptr[hash] = current->table_next;              \
+                }                                                       \
+                if (current->table_next) {                              \
+                    current->table_next->table_prev = current->table_prev; \
+                }                                                       \
+                result = current;                                       \
+                break;                                                  \
+            } else {                                                    \
+                current = current->table_next;                          \
+            }                                                           \
+        }                                                               \
+    }
+
+#define LINKED_LIST_FOR(entry_type, list_ptr)                           \
     for (entry_type *current = (list_ptr); current != NULL; current = current->next)
 
 #define COMMON_H

@@ -1389,6 +1389,8 @@ Mat4 get_view_matrix(Vec3 eye_pos, Vec3 forward, Vec3 right, Vec3 up) {
     return result;
 }
 
+// TODO: the clipping part of this will only work for opengl, since it's based on opengl's
+//       clip-space
 Mat4 make_perspective_clip_matrix(real32 fov_x_degrees, real32 aspect_ratio, real32 near, real32 far) {
     real32 fov_x_rads = degs_to_rads(fov_x_degrees);
     real32 right = tanf(fov_x_rads / 2) * near;

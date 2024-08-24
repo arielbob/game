@@ -536,10 +536,9 @@ File_Data platform_open_and_read_file(Allocator *allocator, char *filename, bool
     Platform_File platform_file;
     bool32 file_exists = platform_open_file(filename, &platform_file, is_in_use);
     if (!file_exists) {
+        assert(!"File does not exist!");
         return {};
     }
-
-    assert(file_exists);
 
     File_Data file_data = {};
     file_data.contents = (char *) allocate(allocator, platform_file.file_size, false);

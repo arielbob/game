@@ -140,7 +140,7 @@ Mesh *get_mesh(int32 id) {
 void set_mesh_id(Mesh *mesh, int32 new_id) {
     assert(mesh);
     
-    TABLE_DELETE(asset_manager->mesh_table, mesh->id);
+    TABLE_DELETE(asset_manager->mesh_table, id, mesh->id);
 
     // note that TABLE_ADD sets mesh->id to new_id
     TABLE_ADD(asset_manager->mesh_table, new_id, mesh);
@@ -1030,12 +1030,30 @@ void set_texture_file(int32 id, String new_filename) {
 }
 
 Cube_Map *get_cube_map(int32 id) {
-    Texture *current;
-    TABLE_FIND(asset_manager->cube_map_table, id, current);
-    return current;
+    Cube_Map *result;
+    TABLE_FIND(asset_manager->cube_map_table, id, id, result);
+    return result;
 }
 
-// TODO: finish this
+Cube_Map *get_cube_map(String name) {
+    for (int32 i = 0; i < NUM_TABLE_BUCKETS; i++) {
+        Cube_Map *current = asset_manager->cube_map_table[i];
+        while (current) {
+            if (string_equals(current->name, name)) {
+                return current;
+            }
+            current = current->table_next;
+        }
+    }
+
+    return NULL;
+}
+
+bool32 cube_map_exists(String name) {
+    Cube_Map *cube_map = get_cube_map(name);
+    return cube_map != NULL;
+}
+
 Cube_Map *add_cube_map(String name, String filenames[6], Cube_Map_Type type, int32 id = -1) {
     if (cube_map_exists(name)) {
         assert(!"Cube map with name already exists.");
@@ -1063,12 +1081,12 @@ Cube_Map *add_cube_map(String name, String filenames[6], Cube_Map_Type type, int
 
     cube_map->name      = copy(asset_manager->allocator, name);
     // array elements are already allocated in the struct; just need to copy the data
-    cube_map->filenames = copy_array(&cube_map->filenames, asset_manager->allocator, filenames, 6);
+    copy_array(cube_map->filenames, asset_manager->allocator, filenames, 6);
     cube_map->type      = type;
 
     TABLE_ADD(asset_manager->cube_map_table, cube_map->id, cube_map);
     
-    r_load_cube_map(texture->id);
+    r_load_cube_map(cube_map->id);
 
     // no directory watching for now?
 #if 0
@@ -1668,15 +1686,15 @@ void load_default_assets() {
 
     String skybox_files[6] = {
         make_string("assets/textures/skybox/right.jpg"),
-        make_string("lassets/textures/skybox/left.jpg"),
-        make_string("tassets/textures/skybox/top.jpg"),
-        make_string("bassets/textures/skybox/bottom.jpg"),
-        make_string("fassets/textures/skybox/front.jpg"),
-        make_string("bassets/textures/skybox/back.jpg)")
+        make_string("assets/textures/skybox/left.jpg"),
+        make_string("assets/textures/skybox/bottom.jpg"), // bottom/top are swapped..
+        make_string("assets/textures/skybox/top.jpg"),
+        make_string("assets/textures/skybox/front.jpg"),
+        make_string("assets/textures/skybox/back.jpg")
     };
 
     add_cube_map(make_string("sky"), skybox_files, Cube_Map_Type::DEFAULT,
-                 ENGINE_SKYBOX_CUBE_MAP_ID);
+                 ENGINE_DEFAULT_SKYBOX_CUBE_MAP_ID);
     
     add_font("times32",         "c:/windows/fonts/times.ttf",    32.0f);
     add_font("times24",         "c:/windows/fonts/times.ttf",    24.0f);

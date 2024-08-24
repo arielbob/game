@@ -146,6 +146,15 @@
 #define GL_TEXTURE29                      0x84DD
 #define GL_TEXTURE30                      0x84DE
 #define GL_TEXTURE31                      0x84DF
+#define GL_TEXTURE_CUBE_MAP               0x8513
+#define GL_TEXTURE_CUBE_MAP_POSITIVE_X    0x8515
+#define GL_TEXTURE_CUBE_MAP_NEGATIVE_X    0x8516
+#define GL_TEXTURE_CUBE_MAP_POSITIVE_Y    0x8517
+#define GL_TEXTURE_CUBE_MAP_NEGATIVE_Y    0x8518
+#define GL_TEXTURE_CUBE_MAP_POSITIVE_Z    0x8519
+#define GL_TEXTURE_CUBE_MAP_NEGATIVE_Z    0x851A
+#define GL_CLAMP_TO_EDGE                  0x812F
+#define GL_TEXTURE_WRAP_R                 0x8072
 
 #define GL_HEAP_SIZE MEGABYTES(128)
 #define NUM_SHADER_BUCKETS 128
@@ -213,6 +222,19 @@ void deallocate(GL_Texture *gl_texture) {
     // nothing to do
 }
 
+struct GL_Cube_Map {
+    Cube_Map_Type type;
+    int32 id; // cube map id, same as id for Cube_Map objects in asset.h
+    uint32 gl_texture_id; // gl texture id
+
+    GL_Cube_Map *table_prev;
+    GL_Cube_Map *table_next;
+};
+
+void deallocate(GL_Cube_Map *gl_cube_map) {
+    // nothing to do
+}
+
 // TODO: there are different variations of this (like depth + stencil, instead of just depth).
 //       will need to make different ones if necessary.
 struct GL_Framebuffer {
@@ -269,6 +291,7 @@ struct GL_State {
     // we just use the same keys across GL and game code.
     GL_Mesh         *mesh_table[NUM_TABLE_BUCKETS];
     GL_Texture      *texture_table[NUM_TABLE_BUCKETS];
+    GL_Cube_Map     *cube_map_table[NUM_TABLE_BUCKETS];
     GL_Font         *font_table[NUM_TABLE_BUCKETS];
     GL_Shader       *shader_table[NUM_TABLE_BUCKETS];
 
