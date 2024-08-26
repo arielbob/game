@@ -1181,8 +1181,16 @@ bool32 gl_load_cube_map(Cube_Map *cube_map) {
                                             &width, &height, &num_channels, 0);
         assert(data);
 
+        GLint internal_format = GL_RGB;
+        GLenum format = GL_RGB;
+        
+        if (num_channels == 4) {
+            internal_format = GL_RGBA;
+            format = GL_RGBA;
+        }
+
         glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X  + i,
-                     0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+                     0, internal_format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
     }
 
     stbi_set_flip_vertically_on_load(true);

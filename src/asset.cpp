@@ -1685,12 +1685,12 @@ void load_default_assets() {
                 ENGINE_SUN_TEXTURE_ID);
 
     String skybox_files[6] = {
-        make_string("assets/textures/skybox/right.jpg"),
-        make_string("assets/textures/skybox/left.jpg"),
-        make_string("assets/textures/skybox/top.jpg"),
-        make_string("assets/textures/skybox/bottom.jpg"),
-        make_string("assets/textures/skybox/front.jpg"),
-        make_string("assets/textures/skybox/back.jpg")
+        make_string("assets/textures/skyboxes/night/right.png"),
+        make_string("assets/textures/skyboxes/night/left.png"),
+        make_string("assets/textures/skyboxes/night/top.png"),
+        make_string("assets/textures/skyboxes/night/bottom.png"),
+        make_string("assets/textures/skyboxes/night/front.png"),
+        make_string("assets/textures/skyboxes/night/back.png")
     };
 
     add_cube_map(make_string("sky"), skybox_files, Cube_Map_Type::DEFAULT,

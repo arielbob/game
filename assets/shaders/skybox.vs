@@ -13,11 +13,6 @@ uniform mat4 model_matrix;
 uniform mat4 view_matrix;
 uniform mat4 perspective_clip_matrix;
 
-/*
-cube samplers are sampled with a vector from the center of the cube
-
- */
-
 void main() {
     texture_sample_dir = pos;
 
