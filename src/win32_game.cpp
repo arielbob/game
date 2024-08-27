@@ -534,9 +534,15 @@ bool32 platform_file_exists(String filename) {
 
 File_Data platform_open_and_read_file(Allocator *allocator, char *filename, bool32 *is_in_use) {
     Platform_File platform_file;
-    bool32 file_exists = platform_open_file(filename, &platform_file, is_in_use);
-    if (!file_exists) {
-        assert(!"File does not exist!");
+    bool32 success = platform_open_file(filename, &platform_file, is_in_use);
+    if (!success) {
+        if (is_in_use && *is_in_use) {
+            // was in use.. don't assert because sometimes we want to ignore
+            // fails due to in_use (for hot reloading)
+        } else {
+            assert(!"File opening failed! Does the file exist?");
+        }
+        
         return {};
     }
 
