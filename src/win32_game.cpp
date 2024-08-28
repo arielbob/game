@@ -54,6 +54,8 @@ global_variable UI_Manager *ui_manager;
 global_variable Asset_Manager *asset_manager;
 global_variable Game_State *game_state;
 global_variable Render_State *render_state;
+global_variable Message_Manager *message_manager;
+
 global_variable Win32_Directory_Watcher_Manager directory_watcher_manager;
 global_variable DWORD main_thread_id;
 

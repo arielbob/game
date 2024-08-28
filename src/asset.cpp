@@ -26,7 +26,7 @@ Directory_Watcher *watch_directory_for_file(Allocator *allocator, Directory_Watc
         while (current) {
             if (path_equals(current->path, folder_to_watch)) {
                 watcher = current;
-                add_message(Context::message_manager, make_string("Adding another watcher"));
+                add_message(message_manager, make_string("Adding another watcher"));
                 break;
             }
             last = current;
@@ -514,7 +514,7 @@ bool32 load_mesh(Allocator *allocator, Mesh **mesh_result, Mesh_Type type, Strin
     } else {
         // we can call load_mesh before we're rendering, so.. just print the error too
         debug_print(error);
-        add_message(Context::message_manager, make_string(error));
+        add_message(message_manager, make_string(error));
     }
     
     end_region(temp_region);
@@ -719,7 +719,7 @@ Skeletal_Animation *add_animation(String name, String filename, int32 id = -1) {
     bool32 result = Animation_Loader::load_animation(allocator, name, filename, &animation, &error);
     if (!result) {
         debug_print(error);
-        add_message(Context::message_manager, make_string(error));
+        add_message(message_manager, make_string(error));
 
         return NULL;
     }

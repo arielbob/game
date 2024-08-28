@@ -154,7 +154,7 @@ void draw_mesh_library() {
                             if (!mesh_exists(name_result.text)) {
                                 replace_contents(&selected_mesh->name, name_result.text);
                             } else {
-                                add_message(Context::message_manager, make_string("Mesh name already exists!"));
+                                add_message(message_manager, make_string("Mesh name already exists!"));
                             }
                         }
                     }
@@ -182,7 +182,7 @@ void draw_mesh_library() {
                                 if (platform_file_exists(filepath_result.text)) {
                                     set_mesh_file(selected_mesh->id, filepath_result.text);
                                 } else {
-                                    add_message(Context::message_manager, make_string("File does not exist!"));
+                                    add_message(message_manager, make_string("File does not exist!"));
                                 }
                             }
                         }
@@ -387,7 +387,7 @@ void draw_material_library() {
                             if (!material_exists(name_result.text)) {
                                 replace_contents(&selected_material->name, name_result.text);
                             } else {
-                                add_message(Context::message_manager, make_string("Material name already exists!"));
+                                add_message(message_manager, make_string("Material name already exists!"));
                             }
                         }
                     }
@@ -805,7 +805,7 @@ void draw_texture_library() {
                             if (!texture_exists(name_result.text)) {
                                 replace_contents(&selected_texture->name, name_result.text);
                             } else {
-                                add_message(Context::message_manager, make_string("Texture name already exists!"));
+                                add_message(message_manager, make_string("Texture name already exists!"));
                             }
                         }
                     }
@@ -833,7 +833,7 @@ void draw_texture_library() {
                                 if (platform_file_exists(filepath_result.text)) {
                                     set_texture_file(selected_texture->id, filepath_result.text);
                                 } else {
-                                    add_message(Context::message_manager, make_string("File does not exist!"));
+                                    add_message(message_manager, make_string("File does not exist!"));
                                 }
                             }
                         }
@@ -1046,7 +1046,7 @@ void draw_animation_library() {
                             if (!animation_exists(name_result.text)) {
                                 replace_contents(&selected_animation->name, name_result.text);
                             } else {
-                                add_message(Context::message_manager, make_string("Animation name already exists!"));
+                                add_message(message_manager, make_string("Animation name already exists!"));
                             }
                         }
                     }
@@ -1074,7 +1074,7 @@ void draw_animation_library() {
                                 if (platform_file_exists(filepath_result.text)) {
                                     set_animation_file(selected_animation->id, filepath_result.text);
                                 } else {
-                                    add_message(Context::message_manager, make_string("File does not exist!"));
+                                    add_message(message_manager, make_string("File does not exist!"));
                                 }
                             }
                         }

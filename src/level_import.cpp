@@ -255,26 +255,35 @@ bool32 Level_Loader::parse_level_info_block(Allocator *temp_allocator, Tokenizer
     }
 
     token = get_token(tokenizer);
+    while (token.type == KEYWORD) {
+        if (string_equals(token.string, "level_name")) {
+            token = get_token(tokenizer);
+            if (token.type != STRING) {
+                return level_parse_error(error, "Expected level name to be a string.");
+            }
 
-    if (!(token.type == KEYWORD && string_equals(token.string, "level_name"))) {
-        return level_parse_error(error, "Expected level_name keyword.");
+            if (token.string.length == 0) {
+                return level_parse_error(error, "Level name cannot be empty.");
+            }
+
+            level_info->name = token.string;
+        } else if (string_equals(token.string, "spawn_point")) {
+            if (!parse_spawn_point(tokenizer, &level_info->spawn_point, error)) {
+                return false;
+            }
+        } else {
+            return level_parse_error(error, "Expected level_name or spawn_point or close bracket for level info");
+        }
+
+        token = get_token(tokenizer);
     }
-
-    token = get_token(tokenizer);
-
-    if (token.type != STRING) {
-        return level_parse_error(error, "Expected level name to be a string.");
-    }
-
-    if (token.string.length == 0) {
-        return level_parse_error(error, "Level name cannot be empty.");
-    }
-
-    level_info->name = token.string;
-    token = get_token(tokenizer);
 
     if (token.type != CLOSE_BRACKET) {
-        return level_parse_error(error, "Expected close bracket for level_info_block");
+        return level_parse_error(error, "Expected close bracket for level_info block.");
+    }
+    
+    if (level_info->name.length == 0) {
+        return level_parse_error(error, "Level name cannot be empty.");
     }
 
     return true;
@@ -368,6 +377,66 @@ bool32 Level_Loader::parse_textures_block(Allocator *temp_allocator, Tokenizer *
         return level_parse_error(error, "Expected close bracket for textures block.");
     }
     
+    return true;
+}
+
+bool32 Level_Loader::parse_spawn_point(Tokenizer *tokenizer, Spawn_Point *result, char **error) {
+    Token token = get_token(tokenizer);
+
+    if (token.type != OPEN_BRACKET) {
+        return level_parse_error(error, "Expected open bracket for spawn_point block.");
+    }
+
+    token = get_token(tokenizer);
+    
+    if (!(token.type == KEYWORD && string_equals(token.string, "position"))) {
+        return level_parse_error(error, "Expected spawn point position vector.");
+    }
+
+    if (!parse_vec3(tokenizer, &result->position, error)) {
+        return false;
+    }
+
+    // heading
+    token = get_token(tokenizer);
+
+    if (!(token.type == KEYWORD && string_equals(token.string, "heading"))) {
+        return level_parse_error(error, "Expected spawn point heading.");
+    }
+
+    if (!parse_real(tokenizer, &result->heading, error)) {
+        return false;
+    }
+
+    // pitch
+    token = get_token(tokenizer);
+
+    if (!(token.type == KEYWORD && string_equals(token.string, "pitch"))) {
+        return level_parse_error(error, "Expected spawn point pitch.");
+    }
+
+    if (!parse_real(tokenizer, &result->pitch, error)) {
+        return false;
+    }
+
+    // roll
+    token = get_token(tokenizer);
+    
+    if (!(token.type == KEYWORD && string_equals(token.string, "roll"))) {
+        return level_parse_error(error, "Expected spawn point roll.");
+    }
+
+    if (!parse_real(tokenizer, &result->roll, error)) {
+        return false;
+    }
+
+    // close bracket
+    token = get_token(tokenizer);
+
+    if (token.type != CLOSE_BRACKET) {
+        return level_parse_error(error, "Expected close bracket for level spawn point info.");
+    }
+
     return true;
 }
 

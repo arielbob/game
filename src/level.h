@@ -4,6 +4,13 @@
 #include "parse.h"
 #include "entity.h"
 
+struct Spawn_Point {
+    Vec3 position;
+    real32 heading;
+    real32 pitch;
+    real32 roll;
+};
+
 struct Level {
     Heap_Allocator heap;
     
@@ -14,6 +21,8 @@ struct Level {
     int32 total_entities_added_ever;
 
     bool32 is_loaded;
+
+    Spawn_Point spawn_point;
 };
 
 struct Mesh_Info {
@@ -73,6 +82,8 @@ struct Level_Info {
     
     int32 num_materials;
     Material_Info materials[MAX_LEVEL_INFO_ARRAY_SIZE];
+
+    Spawn_Point spawn_point;
 };
 
 namespace Level_Loader {
@@ -100,6 +111,7 @@ namespace Level_Loader {
                        Level_Info *level_info, char **error_out);
     bool32 parse_level_info_block(Allocator *temp_allocator, Tokenizer *tokenizer,
                                   Level_Info *level_info, char **error);
+    bool32 parse_spawn_point(Tokenizer *tokenizer, Spawn_Point *result,char **error);
     bool32 parse_meshes_block(Allocator *temp_allocator, Tokenizer *tokenizer,
                               Level_Info *level_info, char **error);
     bool32 parse_material(Allocator *temp_allocator, Tokenizer *tokenizer,

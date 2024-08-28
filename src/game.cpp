@@ -487,7 +487,20 @@ void init_player() {
     *player = {};
     player->height = Player_Constants::player_height;
     player->speed = Player_Constants::initial_speed;
+
     player->position.y = 10.0f;
+}
+
+void reset_player(Level *level) {
+    init_player();
+
+    Player *player = &game_state->player;
+    Spawn_Point spawn_point = level->spawn_point;
+
+    player->position = spawn_point.position;
+    player->heading = spawn_point.heading;
+    player->pitch = spawn_point.pitch;
+    player->roll = spawn_point.roll;
 }
 
 void init_game(Sound_Output *sound_output, uint32 num_samples) {
@@ -520,7 +533,7 @@ void init_game(Sound_Output *sound_output, uint32 num_samples) {
     // init message manager
     game_state->message_manager = {};
     game_state->message_manager.message_time_limit = MESSAGE_TIME_LIMIT;
-    Context::message_manager = &game_state->message_manager;
+    message_manager = &game_state->message_manager;
 
     // init asset manager
     game_state->asset_manager = {};

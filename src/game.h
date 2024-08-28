@@ -239,7 +239,6 @@ struct Game_State {
 
 namespace Context {
     Controller_State *controller_state;
-    Message_Manager *message_manager;
 };
 
 #if 0
@@ -296,6 +295,7 @@ bool32 get_walkable_triangle_on_mesh(Vec3 center, real32 radius,
 void add_debug_line(Debug_State *debug_state, Vec3 start, Vec3 end, Vec4 color);
 void add_message(Message_Manager *manager, String text);
 void init_player();
+void reset_player(Level *level);
 //void set_entity_transform(Asset_Manager *asset_manager, Entity *entity, Transform transform);
 
 #endif

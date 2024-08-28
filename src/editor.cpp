@@ -1542,9 +1542,33 @@ void draw_editor(Controller_State *controller_state) {
         if (editor_state->is_collision_debugger_window_open) {
             draw_collision_debugger();
         }
+
+        ui_y_pad(20.0f);
+
+        bool32 set_spawn_point_clicked = do_text_button("Set Spawn Point", editor_button_theme,
+                                                       "set_spawn_point");
+        if (set_spawn_point_clicked) {
+            Spawn_Point spawn_point = {};
+            spawn_point.position = game_state->player.position;
+            spawn_point.heading = game_state->player.heading;
+            spawn_point.pitch = game_state->player.pitch;
+            spawn_point.roll = game_state->player.roll;
+
+            game_state->level.spawn_point = spawn_point;
+            add_message(message_manager, make_string("Set spawn point!"));
+        }
+
+        ui_y_pad(1.0f);
+        
+        bool32 reset_player_position_clicked = do_text_button("Reset Player Position", editor_button_theme,
+                                                              "reset_player_position");
+        if (reset_player_position_clicked) {
+            reset_player(&game_state->level);
+            add_message(message_manager, make_string("Reset player!"));
+        }
     }
     ui_pop_widget();
-    #endif
+#endif
 
     if (editor_state->selected_entity_id >= 0) {
         // if we changed entities this frame, then hide it so it can reset and show up next frame

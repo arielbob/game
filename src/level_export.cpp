@@ -61,6 +61,21 @@ void append_default_entity_info(Level *level, String_Buffer *buffer, Entity *ent
     end_region(temp_region);
 }
 
+void append_spawn_point_info(Level *level, String_Buffer *buffer) {
+    Spawn_Point spawn_point = level->spawn_point;
+
+    append_string(buffer, "spawn_point {\n");
+
+    append_string(buffer, "position %f %f %f\n",
+                  spawn_point.position.x, spawn_point.position.y, spawn_point.position.z);
+
+    append_string(buffer, "heading %f\n", spawn_point.heading);
+    append_string(buffer, "pitch %f\n", spawn_point.pitch);
+    append_string(buffer, "roll %f\n", spawn_point.roll);
+    
+    append_string(buffer, "}\n");
+}
+
 void export_level(Level *level, char *filename) {
     Allocator *temp_region = begin_region();
 
@@ -68,11 +83,14 @@ void export_level(Level *level, char *filename) {
     String_Buffer working_buffer = make_string_buffer(temp_region, buffer_size);
 
     append_string(&working_buffer, "level_info {\n");
+    
     append_string(&working_buffer, "level_name ");
     append_string_add_quotes(&working_buffer, level->name);
     append_string(&working_buffer, "\n");
-    append_string(&working_buffer, "}\n\n");
 
+    append_spawn_point_info(level, &working_buffer);
+    append_string(&working_buffer, "}\n\n");
+    
     append_string(&working_buffer, "meshes {\n");
     {
         Mesh **mesh_table = asset_manager->mesh_table;

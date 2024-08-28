@@ -1,5 +1,11 @@
 level_info {
 level_name "beach night"
+spawn_point {
+position -1.241588 0.018061 -14.631215
+heading 0.200031
+pitch -2.999981
+roll 0.000000
+}
 }
 
 meshes {

@@ -140,15 +140,17 @@ void load_level(Level *level, Level_Info *level_info) {
         return;
     }
 
-    level->name         = copy((Allocator *) &level->heap, level_info->name);
-    level->filename     = copy((Allocator *) &level->heap, level_info->filename);
+    level->name        = copy((Allocator *) &level->heap, level_info->name);
+    level->filename    = copy((Allocator *) &level->heap, level_info->filename);
+    level->spawn_point = level_info->spawn_point;
     
     load_level_assets(level_info);
     load_level_entities(&game_state->level, level_info);
 
     level->is_loaded = true;
 
-    init_player();
+    // reset player based on level info
+    reset_player(level);
 
 #if 0
     Vec3 capsule_position = make_vec3(0.0f, 1.0f, 0.0f);
