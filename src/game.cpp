@@ -1608,7 +1608,7 @@ void update(Controller_State *controller_state,
     fill_sound_buffer_with_audio(sound_output, game_state->is_playing_music, &game_state->music, num_samples);
 
     update_messages(&game_state->message_manager, dt);
-    draw_messages(&game_state->message_manager, display_output->height - 175.0f);
+    draw_messages(&game_state->message_manager, display_output->height - MESSAGE_Y_OFFSET_FROM_BOTTOM);
     
     ui_post_update();
 

@@ -26,7 +26,7 @@ Directory_Watcher *watch_directory_for_file(Allocator *allocator, Directory_Watc
         while (current) {
             if (path_equals(current->path, folder_to_watch)) {
                 watcher = current;
-                add_message(message_manager, make_string("Adding another watcher"));
+                //add_message(message_manager, make_string("Adding another watcher"));
                 break;
             }
             last = current;
@@ -558,6 +558,10 @@ bool32 refresh_mesh(Mesh *mesh, bool32 ignore_file_in_use) {
     r_load_mesh(id);
 
     // watch the directory again, since we didn't call add_mesh()
+    String_Buffer buf = make_string_buffer(asset_manager->allocator, make_string(""), 128);
+    append_string(&buf, "adding mesh watcher for: ");
+    append_string(&buf, new_mesh->filename);
+    add_message(message_manager, make_string(buf));
     Directory_Watcher *watcher = watch_directory_for_file(asset_manager->allocator,
                                                           &asset_manager->mesh_dir_watchers,
                                                           new_mesh->filename, mesh_file_update_callback);
@@ -609,6 +613,10 @@ Mesh *add_mesh(String name, String filename, Mesh_Type type, int32 id) {
     r_load_mesh(mesh->id);
     
     // watch the directory
+    String_Buffer buf = make_string_buffer(asset_manager->allocator, make_string(""), 128);
+    append_string(&buf, "adding mesh watcher for: ");
+    append_string(&buf, filename);
+    add_message(message_manager, make_string(buf));
     Directory_Watcher *watcher = watch_directory_for_file(asset_manager->allocator,
                                                           &asset_manager->mesh_dir_watchers,
                                                           filename, mesh_file_update_callback);
@@ -695,6 +703,10 @@ Skeletal_Animation *add_animation(Skeletal_Animation *loaded_animation, int32 id
     asset_manager->animation_table[hash] = loaded_animation;
 
     // watch the directory
+    String_Buffer buf = make_string_buffer(asset_manager->allocator, make_string(""), 128);
+    append_string(&buf, "adding animation watcher for: ");
+    append_string(&buf, loaded_animation->filename);
+    add_message(message_manager, make_string(buf));
     Directory_Watcher *watcher = watch_directory_for_file(asset_manager->allocator,
                                                           &asset_manager->animation_dir_watchers,
                                                           loaded_animation->filename,
@@ -1002,6 +1014,12 @@ Texture *add_texture(String name, String filename, Texture_Type type, int32 id =
 
     r_load_texture(texture->id);
 
+    String_Buffer buf = make_string_buffer(asset_manager->allocator, make_string(""), 128);
+    append_string(&buf, "adding texture watcher for: ");
+    append_string(&buf, filename);
+    append_string(&buf, "\n");
+    add_message(message_manager, make_string(buf));
+    debug_print(to_char_array((Allocator*)frame_arena, make_string(buf)));
     Directory_Watcher *watcher = watch_directory_for_file(asset_manager->allocator,
                                                           &asset_manager->texture_dir_watchers,
                                                           filename, texture_file_update_callback);

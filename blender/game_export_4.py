@@ -97,13 +97,13 @@ def game_export(context, filename, replace_existing, is_skinned):
         show_message_box('File already exists', 'Error', 'ERROR')
         return
 
-    if context.active_object.type != 'MESH':
+    if context.object.type != 'MESH':
         show_message_box('Object must be a mesh!', 'Error', 'ERROR')
         temp_output_file.close()
         return
 
     bpy.ops.object.mode_set(mode='OBJECT')
-    mesh_copy = context.active_object.copy()
+    mesh_copy = context.object.copy()
     mesh_copy.data = mesh_copy.data.copy()
     bpy.context.collection.objects.link(mesh_copy)
     
@@ -430,7 +430,7 @@ def anim_export(context, filename, replace_existing):
         return
 
     bpy.ops.object.mode_set(mode='OBJECT')
-    active_object = context.active_object
+    active_object = context.object
     
     armature_object = active_object.parent
     assert(armature_object.type == 'ARMATURE')
@@ -569,7 +569,7 @@ def anim_export(context, filename, replace_existing):
             
             '''
             - you could get the local transform by multiplying by inverse of the rest pose matrix
-            - bpy.context.active_object.data.bones[0].matrix_local.inverted() @ bpy.context.active_object.pose.bones[0].matrix
+            - bpy.context.object.data.bones[0].matrix_local.inverted() @ bpy.context.object.pose.bones[0].matrix
             - so we have the bone local transform
             - but we don't actually want the bone local transform.. we still need the offset!
             - it feels like we just want to do what we were doing before
@@ -739,12 +739,12 @@ class GameExportOperator(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return context.active_object is not None
+        return context.object is not None
 
     def execute(self, context):
         props = context.scene.game_export_props
-        print('filename: ' + props.filename)
-        game_export(context, props.filename, props.replace_existing, props.is_skinned)
+        print('filename: ' + context.object.filename_string)
+        game_export(context, context.object.filename_string, props.replace_existing, context.object.is_skinned)
         return {'FINISHED'}
 
 class AnimExportOperator(bpy.types.Operator):
@@ -756,24 +756,16 @@ class AnimExportOperator(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return context.active_object is not None
+        return context.object is not None
 
     def execute(self, context):
         props = context.scene.game_export_props
-        print('anim_filename: ' + props.anim_filename)
-        anim_export(context, props.anim_filename, props.anim_replace_existing)
+        print('anim_filename: ' + context.object.anim_filename_string)
+        anim_export(context, context.object.anim_filename_string, props.anim_replace_existing)
         return {'FINISHED'}
 
-def filename_update_func(self, context):
-    object_to_filename[context.active_object] = self.filename
-#    print(context.active_object)
-#    print("filename updated!", self.filename)
-    
 class GameExportPropertyGroup(PropertyGroup):
-    filename: bpy.props.StringProperty(name="Filename", update=filename_update_func)
     replace_existing: bpy.props.BoolProperty(name="Replace Existing")
-    is_skinned: bpy.props.BoolProperty(name="Enable Skinning")
-    anim_filename: bpy.props.StringProperty(name="Animation filename")
     anim_replace_existing: bpy.props.BoolProperty(name="Replace Existing Animation")
 #    actions: bpy.props.EnumProperty(
 #        name="",
@@ -808,13 +800,13 @@ class GameExportPanel(bpy.types.Panel):
 #        if context.object not in object_to_filename:
 #            object_to_filename[context.object] = ""
 #        filename = str(object_to_filename[context.object])
-#        props.filename = filename
+#        obj.filename = filename
        
         row.prop(obj, 'filename_string', text="File name")
         row = layout.row()
-        row.prop(props, "replace_existing", text="Replace Existing")
+        row.prop(props, 'replace_existing', text="Replace Existing")
         row = layout.row()
-        row.prop(props, "is_skinned", text="Skinned")
+        row.prop(obj, 'is_skinned', text="Skinned")
 
         row = layout.row()
         row.operator("object.game_export")
@@ -828,11 +820,7 @@ class GameExportPanel(bpy.types.Panel):
         
         if action_name:
             row = layout.row()
-#            if obj not in object_to_anim_filename:
-#                object_to_anim_filename[obj] = ""
-                
-#            props.anim_filename = object_to_anim_filename[obj]
-            row.prop(props, "anim_filename", text="File name")
+            row.prop(obj, 'anim_filename_string', text="File name")
             
             row = layout.row()
             row.prop(props, "anim_replace_existing", text="Replace Existing")
@@ -846,7 +834,7 @@ class GameExportPanel(bpy.types.Panel):
         # bone.matrix converts from bone-space to armature space
         # - i think armature space is actually same coordinate-system as blender world-space
         #
-        # bpy.context.active_object.pose.bones[0].matrix.inverted() @ bpy.context.active_object.pose.bones[0].matrix
+        # bpy.context.object.pose.bones[0].matrix.inverted() @ bpy.context.object.pose.bones[0].matrix
         # = pose.parent_bone.matrix.inverted() * pose.bone.matrix
         # = the bone's local transform matrix
         # 
@@ -897,7 +885,7 @@ class GameExportPanel(bpy.types.Panel):
         # the model->bone (inverse_bind) matrix converts points to bone-space, though.
         # so, first, it's expected that the local transform transforms to armature-space
         #
-        # rel_to_parent = bpy.context.active_object.pose.bones[0].matrix.inverted() @ bpy.context.active_object.pose.bones[1].matrix
+        # rel_to_parent = bpy.context.object.pose.bones[0].matrix.inverted() @ bpy.context.object.pose.bones[1].matrix
         # = pose.parent.matrix.inverted() * pose.bone.matrix()
         # parent armature->bone * bone->armature * bone_p
         # so, if you imagine a point bone_p here in bone_space (we get from multiplying our
@@ -981,43 +969,9 @@ if __name__ == "__main__":
     bpy.utils.register_class(GameExportOperator)
     bpy.utils.register_class(AnimExportOperator)
     bpy.utils.register_class(GameExportPanel)
-    
-old_active_object = None
-    
-def active_object_callback():
-    global old_active_object
-    
-    active_object = bpy.context.object
-    
-    if active_object == old_active_object:
-        return
-    
-    old_active_object = active_object
-    
-    if active_object not in object_to_filename:
-        object_to_filename[active_object] = '../assets/meshes/DEFAULT.mesh'
-        
-    bpy.context.scene.game_export_props.filename = object_to_filename[active_object]
-    print(object_to_filename[active_object])
-    print("current active object: ", active_object)
 
-owner = object()
-
-def subscribe_to_active_object_change():
-    subscribe_to = bpy.types.LayerObjects
-
-    bpy.msgbus.subscribe_rna(
-        key=subscribe_to,
-        # owner of msgbus subcribe (for clearing later)
-        owner=owner,
-        # Args passed to callback function (tuple)
-        args=(),
-        # Callback function for property update
-        notify=active_object_callback,
-    )
-
-subscribe_to_active_object_change()
-
-# the filename
+# the export filename
 bpy.types.Object.filename_string = bpy.props.StringProperty(default='../assets/meshes/DEFAULT.mesh')
-bpy.types.Object.anim_filename_string = bpy.props.StringProperty('../assets/animations/DEFAULT.mesh')
+# the animation export filename
+bpy.types.Object.anim_filename_string = bpy.props.StringProperty(default='../assets/animations/DEFAULT.mesh')
+bpy.types.Object.is_skinned = bpy.props.BoolProperty(default=False)

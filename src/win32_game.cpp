@@ -1350,9 +1350,7 @@ void file_watcher_add_directory_routine(ULONG_PTR param) {
     
     WCHAR abs_filepath[MAX_PATH];
     to_c_string(request->abs_filepath, abs_filepath, MAX_PATH*sizeof(WCHAR));
-
     deallocate(request->abs_filepath);
-    deallocate((Allocator *) &manager->heap, request);
 
 #if 0
     // see if it exists first
@@ -1437,6 +1435,9 @@ void file_watcher_add_directory_routine(ULONG_PTR param) {
         file_watcher_completion_routine
     );
     assert(success);
+
+    // we don't need the request object anymore because we copied everything to the watcher arena
+    deallocate((Allocator*)&manager->heap, request);
 
     // if CreateFile fails.. we might be deadlocked.. but let's just hope that doesn't happen
     LeaveCriticalSection(&manager->critical_section);
