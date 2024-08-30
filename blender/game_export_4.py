@@ -764,8 +764,13 @@ class AnimExportOperator(bpy.types.Operator):
         anim_export(context, props.anim_filename, props.anim_replace_existing)
         return {'FINISHED'}
 
+def filename_update_func(self, context):
+    object_to_filename[context.active_object] = self.filename
+#    print(context.active_object)
+#    print("filename updated!", self.filename)
+    
 class GameExportPropertyGroup(PropertyGroup):
-    filename: bpy.props.StringProperty(name="Filename")
+    filename: bpy.props.StringProperty(name="Filename", update=filename_update_func)
     replace_existing: bpy.props.BoolProperty(name="Replace Existing")
     is_skinned: bpy.props.BoolProperty(name="Enable Skinning")
     anim_filename: bpy.props.StringProperty(name="Animation filename")
@@ -799,7 +804,13 @@ class GameExportPanel(bpy.types.Panel):
 
         props = context.scene.game_export_props
         row = layout.row()
-        row.prop(props, "filename", text="File name")
+       
+#        if context.object not in object_to_filename:
+#            object_to_filename[context.object] = ""
+#        filename = str(object_to_filename[context.object])
+#        props.filename = filename
+       
+        row.prop(obj, 'filename_string', text="File name")
         row = layout.row()
         row.prop(props, "replace_existing", text="Replace Existing")
         row = layout.row()
@@ -817,6 +828,10 @@ class GameExportPanel(bpy.types.Panel):
         
         if action_name:
             row = layout.row()
+#            if obj not in object_to_anim_filename:
+#                object_to_anim_filename[obj] = ""
+                
+#            props.anim_filename = object_to_anim_filename[obj]
             row.prop(props, "anim_filename", text="File name")
             
             row = layout.row()
@@ -967,3 +982,42 @@ if __name__ == "__main__":
     bpy.utils.register_class(AnimExportOperator)
     bpy.utils.register_class(GameExportPanel)
     
+old_active_object = None
+    
+def active_object_callback():
+    global old_active_object
+    
+    active_object = bpy.context.object
+    
+    if active_object == old_active_object:
+        return
+    
+    old_active_object = active_object
+    
+    if active_object not in object_to_filename:
+        object_to_filename[active_object] = '../assets/meshes/DEFAULT.mesh'
+        
+    bpy.context.scene.game_export_props.filename = object_to_filename[active_object]
+    print(object_to_filename[active_object])
+    print("current active object: ", active_object)
+
+owner = object()
+
+def subscribe_to_active_object_change():
+    subscribe_to = bpy.types.LayerObjects
+
+    bpy.msgbus.subscribe_rna(
+        key=subscribe_to,
+        # owner of msgbus subcribe (for clearing later)
+        owner=owner,
+        # Args passed to callback function (tuple)
+        args=(),
+        # Callback function for property update
+        notify=active_object_callback,
+    )
+
+subscribe_to_active_object_change()
+
+# the filename
+bpy.types.Object.filename_string = bpy.props.StringProperty(default='../assets/meshes/DEFAULT.mesh')
+bpy.types.Object.anim_filename_string = bpy.props.StringProperty('../assets/animations/DEFAULT.mesh')
