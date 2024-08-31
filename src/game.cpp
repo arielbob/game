@@ -1317,8 +1317,9 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
     Vec3 player_forward, player_right;
     orthonormalize(rotated_player_forward, rotated_player_right, &player_forward, &player_right);
 
+#if 0
     if (player->is_grounded) {
-        // make basis for walking on triangl.
+        // make basis for walking on triangle.
         // this makes it so we can actually set the speeds ourselves for when we're traveling
         // up or down slopes and not just be based on either the push out vector or the "go down"
         // vector (the vector that we use to push the player down when going down shallow slopes
@@ -1347,6 +1348,7 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
                        player->position, player->position + player_forward, make_vec4(z_axis, 1.0f));
 #endif
     }
+#endif
 
     bool32 is_wasd_move = false;
     Vec3 move_vector = make_vec3();
@@ -1373,7 +1375,6 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
             player->velocity = make_vec3(0.0f, 5.0f, 0.0f);
         }
         is_wasd_move = false;
-        //move_vector += y_axis;
     }
     if (controller_state->key_shift.is_down) {
         move_vector += -y_axis;
@@ -1393,9 +1394,7 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
 
     move_vector += displacement_vector;
     
-    //player->position += move_vector;
     bool32 was_grounded = player->is_grounded;
-
     Vec3 old_position = player->position;
     
     do_collisions(collision_debug_frame, player, player->position + move_vector);
@@ -1407,6 +1406,12 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
         // when when we're falling down and we're almost at the ground.
         Vec3 go_down_vector = make_vec3(0.0f, -0.1f, 0.0f);
         do_collisions(collision_debug_frame, player, player->position + go_down_vector);
+    }
+
+    // fix speed up or slow down cause by going down or up slopes.
+    Vec3 delta = player->position - old_position;
+    if (distance(delta) > player->speed*dt) {
+        player->position = old_position + normalize(delta)*player->speed*dt; 
     }
     
     if (player->is_grounded) {
