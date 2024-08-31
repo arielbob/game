@@ -1,9 +1,9 @@
 level_info {
 level_name "beach night"
 spawn_point {
-position -0.016840 9.921389 0.698259
-heading 181.799133
-pitch 19.600052
+position -1.700039 0.028876 -14.221501
+heading 9.199249
+pitch -19.399979
 roll 0.000000
 }
 }
@@ -13,10 +13,14 @@ mesh "plane" ".\assets\meshes\plane.mesh"
 mesh "beach woods" ".\assets\meshes\beach-woods.mesh"
 mesh "beach woods terrain" ".\assets\meshes\beach-woods-terrain.mesh"
 mesh "test_mesh" ".\assets\meshes\test_mesh.mesh"
+mesh "beach" "assets/meshes/beach.mesh"
+mesh "water" "assets/meshes/water.mesh"
 }
 
 textures {
 texture "grass" ".\assets\textures\grass2.png"
+texture "sand" "assets/textures/sand.png"
+texture "water" "assets/textures/water.png"
 }
 
 materials {
@@ -43,6 +47,24 @@ metalness 0.000000
 roughness 0.062280
 }
 
+material {
+name "sand"
+use_albedo_texture 1
+albedo_texture "sand"
+albedo_color 0.500000 0.500000 0.500000
+metalness 0.000000
+roughness 0.000000
+}
+
+material {
+name "water"
+use_albedo_texture 1
+albedo_texture "water"
+albedo_color 0.473600 0.440000 1.000000
+metalness 0.000000
+roughness 0.000000
+}
+
 }
 
 animations {
@@ -51,28 +73,27 @@ animations {
 
 entities {
 entity {
-position 0.000000 5.572945 6.592227
-rotation 0.465302 0.885152 -0.000000 -0.000000
-scale 1.000000 16.912827 0.303958
-mesh "cube"
-material "default_material"
+position 0.000000 0.000000 0.000000
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+mesh "water"
+material "water"
+}
+entity {
+position 0.000000 0.000000 0.000000
+rotation 1.000000 0.000000 0.000000 0.000000
+scale 1.000000 1.000000 1.000000
+mesh "beach"
+material "sand"
 has_collider 1
 }
 entity {
-position 7.707911 2.793780 -12.605277
-rotation 0.999345 0.000000 0.000000 0.036181
+position 0.000000 0.000000 0.000000
+rotation 1.000000 0.000000 0.000000 0.000000
 scale 1.000000 1.000000 1.000000
-mesh "test_mesh"
-material "shiny red"
-animation "New Animation"
-}
-entity {
-position 0.025938 4.180701 0.000000
-rotation 0.923424 -0.127838 -0.049623 -0.358444
-scale 1.000000 1.000000 1.000000
-light_type sun
-sun_color 0.105467 0.132587 0.376667
-sun_intensity 1078.000000
+mesh "beach woods terrain"
+material "grass"
+has_collider 1
 }
 entity {
 position 0.000000 0.000000 0.000000
@@ -83,11 +104,27 @@ material "wood"
 has_collider 1
 }
 entity {
-position 0.000000 0.000000 0.000000
-rotation 1.000000 0.000000 0.000000 0.000000
+position 0.025938 4.180701 0.000000
+rotation 0.923424 -0.127838 -0.049623 -0.358444
 scale 1.000000 1.000000 1.000000
-mesh "beach woods terrain"
-material "grass"
+light_type sun
+sun_color 0.105467 0.132587 0.376667
+sun_intensity 1078.000000
+}
+entity {
+position 7.707911 2.793780 -12.605277
+rotation 0.999345 0.000000 0.000000 0.036181
+scale 1.000000 1.000000 1.000000
+mesh "test_mesh"
+material "shiny red"
+animation "New Animation"
+}
+entity {
+position 0.000000 5.572945 6.592227
+rotation 0.465302 0.885152 0.000000 0.000000
+scale 1.000000 16.912827 0.303958
+mesh "cube"
+material "default_material"
 has_collider 1
 }
 }
