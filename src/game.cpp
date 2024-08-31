@@ -692,8 +692,9 @@ void do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 new_
     Level *level = &game_state->level;
 
     real32 player_radius = 0.5f;
-    bool32 has_collision = false;
     bool32 found_ground = false;
+    real32 min_ground_distance = INFINITY;
+    Vec3 min_ground_normal = {};
 
     player->position = new_pos;
     Capsule current_capsule = make_capsule(player->position,
@@ -739,8 +740,17 @@ void do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 new_
             if (hit_bottom_player_capsule_sphere(&current_capsule, &penetration_point)) {
                 real32 abs_normal_y = fabsf(triangle_normal.y);
                 real32 y_at_45_deg = 0.707106781f;
-                if (abs_normal_y > y_at_45_deg)
+                if (abs_normal_y > y_at_45_deg) {
                     found_ground = true;
+                    // find the closest ground.. i.e. the one that is penetrating the deepest
+                    real32 ground_distance = current_capsule.radius - penetration_depth;
+                    if (ground_distance < min_ground_distance) {
+                        min_ground_distance = ground_distance;
+                        min_ground_normal = triangle_normal;
+
+                        player->walk_state.triangle_normal = min_ground_normal;
+                    }
+                }
             }
 
             // TODO: we get pushed out on the same frame.
@@ -783,28 +793,32 @@ void do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 new_
                                            player->position + make_vec3(0.0f, player->height, 0.0f),
                                            Player_Constants::capsule_radius);
 #endif
-
-            has_collision = true;
         }
     }
 
-    if (!has_collision) {
-        player->position = new_pos;
-    }
-
+    // define a push out threshold, since we want to be somewhat inside the mesh
+    // to prevent constantly switching between is_grounded=false and true
+    #define PUSH_OUT_THRESHOLD 0.00001f
     if (num_collisions) {
         real32 min_distance = INFINITY;
         Collision *closest_collision = NULL;
         int32 min_dist_index = -1;
         for (int32 i = 0; i < num_collisions; i++) {
             Collision *c = &collisions[i];
-            if (c->distance_from_center < min_distance) {
+            if ((c->distance_from_center < min_distance) && (distance(c->push_out) > 0.00001f)) {
                 closest_collision = c;
                 min_distance = c->distance_from_center;
             }
         }
 
-        player->position += closest_collision->push_out;
+        // TODO: we only push out on a single collision..
+        // - may want to push out on more, so we don't get jerky collisions
+        if (closest_collision) {
+            player->position += closest_collision->push_out;
+        }
+    } else {
+        // TODO: just move directly down if we found a point close enough
+        player->position = new_pos;
     }
         
     Collision_Debug_Subframe position_subframe = {
@@ -1303,13 +1317,15 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
     Vec3 player_forward, player_right;
     orthonormalize(rotated_player_forward, rotated_player_right, &player_forward, &player_right);
 
-    real32 normal_proj_y_axis = dot(player->walk_state.triangle_normal, y_axis);
-    // between 0 and 45 degrees from the y axis
-    real32 one_over_root_two = 0.7071067f;
-    bool32 slope_is_shallow = normal_proj_y_axis >= one_over_root_two && normal_proj_y_axis <= 1.0f;
-    
-    if (player->is_grounded && slope_is_shallow) {
-        // make basis
+    if (player->is_grounded) {
+        // make basis for walking on triangl.
+        // this makes it so we can actually set the speeds ourselves for when we're traveling
+        // up or down slopes and not just be based on either the push out vector or the "go down"
+        // vector (the vector that we use to push the player down when going down shallow slopes
+        // to prevent air time due to a move vector that isn't along the triangle's plane).
+        // right now we're always just going at the default player speed whether we're going
+        // up or down a slope. without this, going up slopes would be slow and going down slopes
+        // would be fast (compared to walking on flat surface).
         Walk_State walk_state = player->walk_state;
 
         Vec3 forward_point = player->position + player_forward;
@@ -1332,25 +1348,31 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
 #endif
     }
 
+    bool32 is_wasd_move = false;
     Vec3 move_vector = make_vec3();
     if (controller_state->key_w.is_down) {
         //move_vector = dot(heading_direction, player_direction) * heading_direction;
         move_vector += player_forward;
+        is_wasd_move = true;
     }
     if (controller_state->key_s.is_down) {
         move_vector += -player_forward;
+        is_wasd_move = true;
     }
     if (controller_state->key_d.is_down) {
         move_vector += player_right;
+        is_wasd_move = true;
     }
     if (controller_state->key_a.is_down) {
         move_vector += -player_right;
+        is_wasd_move = true;
     }
     if (controller_state->key_space.is_down) {
         if (player->is_grounded) {
             // TODO: i'm not sure why we have to have such high values for y velocity... we might be doing something wrong?
             player->velocity = make_vec3(0.0f, 5.0f, 0.0f);
         }
+        is_wasd_move = false;
         //move_vector += y_axis;
     }
     if (controller_state->key_shift.is_down) {
@@ -1374,18 +1396,24 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
     //player->position += move_vector;
     bool32 was_grounded = player->is_grounded;
 
+    Vec3 old_position = player->position;
+    
     do_collisions(collision_debug_frame, player, player->position + move_vector);
 
+    if (!player->is_grounded && was_grounded && is_wasd_move) {
+        // try moving the player down. this should only be for when we're
+        // walking down a shallow slope to prevent air-time. the conditions
+        // for this is to prevent weird behaviour where we snap to the ground
+        // when when we're falling down and we're almost at the ground.
+        Vec3 go_down_vector = make_vec3(0.0f, -0.1f, 0.0f);
+        do_collisions(collision_debug_frame, player, player->position + go_down_vector);
+    }
+    
     if (player->is_grounded) {
         player->velocity = {};
         player->acceleration = {};
     } else {
         player->acceleration = gravity_acceleration;
-        #if 0
-        if (was_grounded) {
-            player->velocity = {};
-        }
-        #endif
     }
     
     #if 0
