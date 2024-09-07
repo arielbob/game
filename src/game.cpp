@@ -1405,7 +1405,136 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
         // for this is to prevent weird behaviour where we snap to the ground
         // when when we're falling down and we're almost at the ground.
         Vec3 go_down_vector = make_vec3(0.0f, -0.1f, 0.0f);
+        Vec3 test_position = player->position + go_down_vector;
         do_collisions(collision_debug_frame, player, player->position + go_down_vector);
+
+        Vec3 push_out_delta = player->position - test_position;
+        Vec3 push_out_dir = normalize(push_out_delta);
+        // only if we really pushed out a significant amount
+        if (fabsf(distance(push_out_delta)) > EPSILON) {
+            // check if the delta is very close to being straight down
+            bool32 is_delta_straight_down = fabsf(push_out_dir.y - (-1.0f)) < EPSILON;
+            if (!is_delta_straight_down) {
+                // if it's not, then we need to make it straight down
+                // i.e. we shouldn't push out along the push out vector, but straight up
+                // such that we're still pushed out of the geometry, but the new position
+                // is straight above the old position (the position we passed to do_collisions())
+
+                // make a basis from the push out vector
+                Vec3 push_out_right, push_out_up;
+                make_basis(push_out_dir, &push_out_right, &push_out_up);
+
+                Vec3 b1 = push_out_right;
+                Vec3 b2 = push_out_up;
+
+                Vec3 p = push_out_dir;
+
+                // TODO: this is still fucked
+                // TODO: figure out why this math is wrong..
+                real32 t2 = (test_position.z - b1.z*test_position.x/b1.x - b1.z*p.x/b1.x - p.z) /
+                    (-b1.z*b2.x/b1.x + b2.z);
+
+                //real32 t2 = (b1.z*test_position.x - test_position.z + b1.z*p.x + p.z) / (b1.z*b2.x - b2.z);
+                real32 t1 = (test_position.x - t2*b2.x - p.x) / b1.x;
+                real32 new_y = t1*b1.y + t2*b2.y + p.y;
+
+                
+                player->position = { test_position.x, new_y, test_position.z };
+
+                
+                
+                
+#if 0
+                player->position.x -= push_out_delta.x;
+                player->position.z -= push_out_delta.z;
+                player->position.y += push_out_delta.y;
+#endif
+                
+            }
+        }
+
+        // (x, y, z) + (p.x, p.y, p.z) = (x', y', z')
+        // (x_2, y_2, z_2) + (p.x, p.y, p.z) = (x, y', z)
+
+        // we can just push out, then figure out the x and y that makes the
+        // push out vector the same. we know x since it's just the difference.
+
+        // (x, y) + (p.x, p.y) = (x', y')
+        // (x_2, y_2) + (p.x, p.y) = (x, y_2')
+        // (x, y_2) + (p.x, p.y) = (x, y_2')
+
+        // (x, y) + (a, b) + (p.x, p.y) = (x, y')
+        // x = x + a + p.x
+        // -> a = -p.x
+
+        // (x, y) 
+        
+        // y' = y + b + p.y
+
+        // (x, y) + (p.x, p.y) = (x', y')
+        // (x - a, y) + (p.x, p.y) = (x, y_2)
+
+        // (x, y) + t*(vec orthogonal to p) + (p.x, p.y) = (x, y_2)
+        // x + t*ortho_p.x + p.x = x
+        // -> t*ortho_p.x + p.x = 0
+        // -> t = -p.x / ortho_p.x
+
+        // y + t*ortho_p.y + p.y = y_2
+        // we know all of these..
+
+        // NOTE: this is how this works..
+        // - get basis vectors for the push out vector
+        //   - basically coordinate space for the triangle's plane
+        // - figure out linear combination of the basis vectors such that the point
+        //   created from the linear combination + the push out vector (p) = (x, y', z)
+        // - where x, z are the x, z of test_position (the pushed down position of the player, i.e.
+        //   the position we call do_collisions() with)
+        // - but y' is the y where the capsule is no longer colliding with any geometry, but is still
+        //   straight above the test_position
+
+        // t1*b1 + t2*b2 + (p.x, p.y, p.z) = (x, y', z)
+        // (t1*b1.x, t1*b1.y, t1*b1.z) + (t2*b2.x, t2*b2.y, t2*b2.z) + (p.x, p.y, p.z) = (x, y', z)
+
+        // TODO: test the solution out...
+
+        // three equations:
+        // t1*b1.x + t2*b2.x + p.x = x
+        // t1*b1.y + t2*b2.y + p.y = y'
+        // t1*b1.z + t2*b2.z + p.z = z
+
+        // unknowns: t1, t2, y'
+
+        // t1 = (x - t2*b2.x - p.x) / b1.x
+
+        // ((x - t2*b2.x - p.x) / b1.x)*b1.y + t2*b2.y + p.y = y'
+        // ((x - t2*b2.x - p.x) / b1.x)*b1.z + t2*b2.z + p.z = z
+
+        // unknowns: t2, y'
+        // ((x - t2*b2.x - p.x) / b1.x)*b1.z + t2*b2.z + p.z = z
+        // rearrange to get t2
+        // (b1.z/b1.x) * (x - t2*b2.x - p.x) + t2*b2.z + p.z = z
+        
+        // (x - t2*b2.x - p.x)*b1.z/b1.x + t2*b2.z + p.z = z
+        // rearrange to get t2
+        // b1.z*x/b1.x - b1.z*t2*b2.x/b1.x + b1.z*p.x/b1.x + t2*b2.z + p.z = z
+        // -b1.z*t2*b2.x/b1.x + t2*b2.z = z - b1.z*x/b1.x - b1.z*p.x/b1.x - p.z
+        // t2 * (-b1.z*b2.x/b1.x + b2.z) = z - b1.z*x/b1.x - b1.z*p.x/b1.x - p.z
+        // t2 = (z - b1.z*x/b1.x - b1.z*p.x/b1.x - p.z) / (-b1.z*b2.x/b1.x + b2.z)
+        
+        
+
+        // push out vector should be the same
+        
+        // we want x and z to be the same as before.
+        // we need a y such that the push out vector is the same distance.
+
+        // it's not even true that it'll still be on the same triangle if we
+        // move the player up instead of along the penetration vector..
+        // it doesn't matter, i think.
+
+        // it is the same distance out.. even if we move up.
+        // so if we just push out, then move along the triangle such that we
+        // end up in the same spot, that should be basically the same thing
     }
 
     // fix speed up or slow down cause by going down or up slopes.
