@@ -1411,10 +1411,15 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
         Vec3 push_out_delta = player->position - test_position;
         Vec3 push_out_dir = normalize(push_out_delta);
         // only if we really pushed out a significant amount
+        // TODO: do we always want to do this? error might accumulate if we don't always do this..
         if (fabsf(distance(push_out_delta)) > EPSILON) {
-            // check if the delta is very close to being straight down
-            bool32 is_delta_straight_down = fabsf(push_out_dir.y - (-1.0f)) < EPSILON;
-            if (!is_delta_straight_down) {
+            // TODO: debug this.. we aren't hitting a breakpoint here
+
+            // check if the delta is very close to being straight up
+            // TODO: test what happens when we're pushed out downwards, but that
+            //       shouldn't happen because this is for walking on the ground..
+            bool32 is_delta_straight_up = fabsf(push_out_dir.y - 1.0f) > EPSILON;
+            if (!is_delta_straight_up) {
                 // if it's not, then we need to make it straight down
                 // i.e. we shouldn't push out along the push out vector, but straight up
                 // such that we're still pushed out of the geometry, but the new position
@@ -1431,12 +1436,34 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
 
                 // TODO: this is still fucked
                 // TODO: figure out why this math is wrong..
+                #if 0
                 real32 t2 = (test_position.z - b1.z*test_position.x/b1.x - b1.z*p.x/b1.x - p.z) /
                     (-b1.z*b2.x/b1.x + b2.z);
+                #endif
 
-                //real32 t2 = (b1.z*test_position.x - test_position.z + b1.z*p.x + p.z) / (b1.z*b2.x - b2.z);
-                real32 t1 = (test_position.x - t2*b2.x - p.x) / b1.x;
-                real32 new_y = t1*b1.y + t2*b2.y + p.y;
+                if (fabsf(b1.x) < 0.0001f) {
+                    // swap to avoid divide by zero
+                    Vec3 temp = b1;
+                    b1 = b2;
+                    b2 = temp;
+                }
+                
+                assert(fabsf(b1.x) > 0.0001f);
+                assert(fabsf(-b1.z*b2.x/b1.x + b2.z) > 0.00001f);
+
+                //real32 t2 = -p.z / ((-b2.x*b1.z)/b1.x + b2.z);
+                //real32 t1 = (-t2*b2.x) / b1.x;
+                
+                //real32 t2 = (-p.z + p.x*b1.z) / ((-b2.x*b1.z) + b2.z*b1.x);
+                real32 t2 = ( -p.z + (p.x*b1.z) / b1.x ) / ( (-b2.x*b1.z)/b1.x + b2.z );
+                real32 t1 = (-t2*b2.x - p.x) / b1.x;
+
+                //real32 t2 = (b1.z*p.x/b1.x - p.z) / (-b1.z*b2.x/b1.x + b2.z);
+                //real32 t1 = (-t2*b2.x - p.x) / b1.x;
+
+                //real32 t1 = (test_position.x - t2*b2.x - p.x) / b1.x;
+                real32 new_y = test_position.y + t1*b1.y + t2*b2.y + p.y;
+                //real32 new_y = t1*b1.y + t2*b2.y + p.y;
 
                 
                 player->position = { test_position.x, new_y, test_position.z };
@@ -1492,36 +1519,76 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
         // - but y' is the y where the capsule is no longer colliding with any geometry, but is still
         //   straight above the test_position
 
-        // t1*b1 + t2*b2 + (p.x, p.y, p.z) = (x, y', z)
-        // (t1*b1.x, t1*b1.y, t1*b1.z) + (t2*b2.x, t2*b2.y, t2*b2.z) + (p.x, p.y, p.z) = (x, y', z)
+        // (x, y, z) + t1*b1 + t2*b2 + (p.x, p.y, p.z) = (x, y', z)
+        // (x, y, z) + (t1*b1.x, t1*b1.y, t1*b1.z) + (t2*b2.x, t2*b2.y, t2*b2.z) + (p.x, p.y, p.z) = (x, y', z)
 
         // TODO: test the solution out...
 
         // three equations:
-        // t1*b1.x + t2*b2.x + p.x = x
-        // t1*b1.y + t2*b2.y + p.y = y'
-        // t1*b1.z + t2*b2.z + p.z = z
+        // x + t1*b1.x + t2*b2.x + p.x = x
+        // y + t1*b1.y + t2*b2.y + p.y = y'
+        // z + t1*b1.z + t2*b2.z + p.z = z
 
         // unknowns: t1, t2, y'
 
-        // t1 = (x - t2*b2.x - p.x) / b1.x
+        // t1*b1.x + t2*b2.x + p.x = 0
+        // t1*b1.z + t2*b2.z + p.z = 0
 
-        // ((x - t2*b2.x - p.x) / b1.x)*b1.y + t2*b2.y + p.y = y'
-        // ((x - t2*b2.x - p.x) / b1.x)*b1.z + t2*b2.z + p.z = z
+        //pg 191
+        
+        /*
+          isolate t1
+          t1 = (-t2*b2.x - p.x) / b1.x
+          
+          sub into other equations:
+          1. y + ((-t2*b2.x - p.x) / b1.x)*b1.y + t2*b2.y + p.y = y'
+          2. ((-t2*b2.x - p.x) / b1.x)*b1.z + t2*b2.z + p.z = 0
+
+          isolate t2 in eqn. 2
+          ((-t2*b2.x - p.x) / b1.x)*b1.z + t2*b2.z + p.z = 0
+          (-t2*b2.x*b1.z - p.x*b1.z) / b1.x + t2*b2.z + p.z = 0
+
+          ditsribute b1.x
+          (-t2*b2.x*b1.z) / b1.x - (p.x*b1.z) / b1.x + t2*b2.z = -p.z
+          (-t2*b2.x*b1.z) / b1.x + t2*b2.z = -p.z + (p.x*b1.z) / b1.x
+
+          factor out t2
+          t2 * [ (-b2.x*b1.z)/b1.x + b2.z ] = -p.z + (p.x*b1.z) / b1.x
+          t2 = [-p.z + (p.x*b1.z) / b1.x ] / [ (-b2.x*b1.z)/b1.x + b2.z ]
+          t2 = (-p.z + p.x*b1.z) / ((-b2.x*b1.z) + b2.z*b1.x)
+
+
+
+
+          t2 * [ (-b2.x*b1.z)/b1.x + b2.z ] = -p.z
+          t2 = -p.z / [ (-b2.x*b1.z)/b1.x + b2.z ]
+
+
+          
+
+
+         */
+
+        
+        // t1 = (-t2*b2.x - p.x) / b1.x
+
+        // y + ((-t2*b2.x - p.x) / b1.x)*b1.y + t2*b2.y + p.y = y'
+        // z + ((-t2*b2.x - p.x) / b1.x)*b1.z + t2*b2.z + p.z = z
 
         // unknowns: t2, y'
-        // ((x - t2*b2.x - p.x) / b1.x)*b1.z + t2*b2.z + p.z = z
-        // rearrange to get t2
-        // (b1.z/b1.x) * (x - t2*b2.x - p.x) + t2*b2.z + p.z = z
-        
-        // (x - t2*b2.x - p.x)*b1.z/b1.x + t2*b2.z + p.z = z
-        // rearrange to get t2
-        // b1.z*x/b1.x - b1.z*t2*b2.x/b1.x + b1.z*p.x/b1.x + t2*b2.z + p.z = z
-        // -b1.z*t2*b2.x/b1.x + t2*b2.z = z - b1.z*x/b1.x - b1.z*p.x/b1.x - p.z
-        // t2 * (-b1.z*b2.x/b1.x + b2.z) = z - b1.z*x/b1.x - b1.z*p.x/b1.x - p.z
-        // t2 = (z - b1.z*x/b1.x - b1.z*p.x/b1.x - p.z) / (-b1.z*b2.x/b1.x + b2.z)
-        
-        
+        // z + ((-t2*b2.x - p.x) / b1.x)*b1.z + t2*b2.z + p.z = z
+
+        // rearrange to get t2:
+        // ((-t2*b2.x - p.x) / b1.x)*b1.z + t2*b2.z + p.z = 0
+        // (b1.z/b1.x) * (-t2*b2.x - p.x) + t2*b2.z + p.z = 0
+        // (-b1.z*t2*b2.x - b1.z*p.x)/b1.x + t2*b2.z + p.z = 0
+        // t2*(-b1.z*b2.x/b1.x) - b1.z*p.x/b1.x + t2*b2.z + p.z = 0
+        // t2 + t2*b2.z = b1.z*p.x/b1.x - p.z
+        // t2 * (-b1.z*b2.x/b1.x + b2.z) = b1.z*p.x/b1.x - p.z
+        // t2 = (b1.z*p.x/b1.x - p.z) / (-b1.z*b2.x/b1.x + b2.z)
+
+        // unknown: y'
+        // y + t1*b1.y + t2*b2.y + p.y = y'
 
         // push out vector should be the same
         
