@@ -297,6 +297,7 @@ void add_debug_line(Debug_State *debug_state, Vec3 start, Vec3 end, Vec4 color);
 void add_message(Message_Manager *manager, String text);
 void init_player();
 void reset_player(Level *level);
+void draw_debug_text(Vec2 position, char *text);
 //void set_entity_transform(Asset_Manager *asset_manager, Entity *entity, Transform transform);
 
 #endif

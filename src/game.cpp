@@ -1290,6 +1290,7 @@ void old_do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 
 void update_player(Player *player ,Controller_State *controller_state, real32 dt) {
     Debug_State *debug_state = &game_state->debug_state;
 
+    // cap dt.. just to reduce issues
     dt = min(1.0f / TARGET_FRAMERATE, dt);
 
     if (platform_window_has_focus()) {
@@ -1404,7 +1405,7 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
         // walking down a shallow slope to prevent air-time. the conditions
         // for this is to prevent weird behaviour where we snap to the ground
         // when when we're falling down and we're almost at the ground.
-        Vec3 go_down_vector = make_vec3(0.0f, -0.1f, 0.0f);
+        Vec3 go_down_vector = make_vec3(0.0f, -5.0f * dt, 0.0f);
         Vec3 test_position = player->position + go_down_vector;
         do_collisions(collision_debug_frame, player, player->position + go_down_vector);
 
@@ -1412,14 +1413,14 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
         Vec3 push_out_dir = normalize(push_out_delta);
         // only if we really pushed out a significant amount
         // TODO: do we always want to do this? error might accumulate if we don't always do this..
-        if (fabsf(distance(push_out_delta)) > EPSILON) {
+        if (push_out_dir.y > EPSILON && fabsf(distance(push_out_delta)) > EPSILON) {
             // TODO: debug this.. we aren't hitting a breakpoint here
 
             // check if the delta is very close to being straight up
             // TODO: test what happens when we're pushed out downwards, but that
             //       shouldn't happen because this is for walking on the ground..
-            bool32 is_delta_straight_up = fabsf(push_out_dir.y - 1.0f) > EPSILON;
-            if (!is_delta_straight_up) {
+            bool32 is_delta_not_straight_up = fabsf(push_out_dir.y - 1.0f) > EPSILON;
+            if (is_delta_not_straight_up) {
                 // if it's not, then we need to make it straight down
                 // i.e. we shouldn't push out along the push out vector, but straight up
                 // such that we're still pushed out of the geometry, but the new position
@@ -1432,14 +1433,7 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
                 Vec3 b1 = push_out_right;
                 Vec3 b2 = push_out_up;
 
-                Vec3 p = push_out_dir;
-
-                // TODO: this is still fucked
-                // TODO: figure out why this math is wrong..
-                #if 0
-                real32 t2 = (test_position.z - b1.z*test_position.x/b1.x - b1.z*p.x/b1.x - p.z) /
-                    (-b1.z*b2.x/b1.x + b2.z);
-                #endif
+                Vec3 p = push_out_delta;
 
                 if (fabsf(b1.x) < 0.0001f) {
                     // swap to avoid divide by zero
@@ -1451,32 +1445,12 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
                 assert(fabsf(b1.x) > 0.0001f);
                 assert(fabsf(-b1.z*b2.x/b1.x + b2.z) > 0.00001f);
 
-                //real32 t2 = -p.z / ((-b2.x*b1.z)/b1.x + b2.z);
-                //real32 t1 = (-t2*b2.x) / b1.x;
-                
-                //real32 t2 = (-p.z + p.x*b1.z) / ((-b2.x*b1.z) + b2.z*b1.x);
                 real32 t2 = ( -p.z + (p.x*b1.z) / b1.x ) / ( (-b2.x*b1.z)/b1.x + b2.z );
                 real32 t1 = (-t2*b2.x - p.x) / b1.x;
 
-                //real32 t2 = (b1.z*p.x/b1.x - p.z) / (-b1.z*b2.x/b1.x + b2.z);
-                //real32 t1 = (-t2*b2.x - p.x) / b1.x;
-
-                //real32 t1 = (test_position.x - t2*b2.x - p.x) / b1.x;
                 real32 new_y = test_position.y + t1*b1.y + t2*b2.y + p.y;
-                //real32 new_y = t1*b1.y + t2*b2.y + p.y;
-
                 
                 player->position = { test_position.x, new_y, test_position.z };
-
-                
-                
-                
-#if 0
-                player->position.x -= push_out_delta.x;
-                player->position.z -= push_out_delta.z;
-                player->position.y += push_out_delta.y;
-#endif
-                
             }
         }
 
@@ -1604,12 +1578,24 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
         // end up in the same spot, that should be basically the same thing
     }
 
-    // fix speed up or slow down cause by going down or up slopes.
+    // TODO: fix speed up or slow down cause by going down or up slopes
+    // - this currently caps other collisions.. and also movement due to gravity
+    // - if we were grounded, are still grounded, and the push out vector was due to the ground,
+    //   then fix this delta..
     Vec3 delta = player->position - old_position;
-    if (distance(delta) > player->speed*dt) {
-        player->position = old_position + normalize(delta)*player->speed*dt; 
+    if (distance(delta)-player->speed*dt > EPSILON) {
+        player->position = old_position + normalize(delta)*player->speed*dt;
     }
-    
+
+    char *dist_text = string_format((Allocator *) &ui_manager->frame_arena, "distance travelled: %f",
+                                    distance(delta));
+    draw_debug_text(make_vec2(5.0f, 50.0f), dist_text);
+
+    char *expected_dist_text = string_format((Allocator *) &ui_manager->frame_arena,
+                                             "expected distance: %f",
+                                             player->speed * dt);
+    draw_debug_text(make_vec2(5.0f, 65.0f), expected_dist_text);
+
     if (player->is_grounded) {
         player->velocity = {};
         player->acceleration = {};
@@ -1738,6 +1724,18 @@ void update_game(Controller_State *controller_state, real32 dt) {
                   player->position + make_vec3(0.0f, player->height, 0.0f),
                   player->heading, player->pitch, player->roll);
     update_render_state(game_state->camera);
+}
+
+void draw_debug_text(Vec2 position, char *text) {
+    ui_push_existing_widget(ui_manager->always_on_top_layer);
+    {
+        UI_Theme white_text = NULL_THEME;
+        white_text.text_color = { 1.0f, 1.0f, 1.0f, 1.0f };
+        white_text.semantic_position = position;
+    
+        do_text(text, "", white_text);
+    }
+    ui_pop_widget();
 }
 
 void draw_ui(real32 dt) {
