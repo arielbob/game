@@ -813,6 +813,13 @@ void do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 new_
 
         // TODO: we only push out on a single collision..
         // - may want to push out on more, so we don't get jerky collisions
+        // - we probably just need to call do_collisions() a bunch of times
+        //   until we're out.. because the collisions are always based on a
+        //   single position. if we push out on one collision, the other
+        //   push out vectors based on the old position are now invalid.
+        //   we probably want to wait to do this until we actually optimize
+        //   the collisions, since call do_collisions() a bunch of times will
+        //   be very slow.
         if (closest_collision) {
             player->position += closest_collision->push_out;
         }
@@ -1411,20 +1418,23 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
 
         Vec3 push_out_delta = player->position - test_position;
         Vec3 push_out_dir = normalize(push_out_delta);
-        // only if we really pushed out a significant amount
+        // only if we are being pushed up and being pushed out by a significant amount
         // TODO: do we always want to do this? error might accumulate if we don't always do this..
         if (push_out_dir.y > EPSILON && fabsf(distance(push_out_delta)) > EPSILON) {
-            // TODO: debug this.. we aren't hitting a breakpoint here
-
             // check if the delta is very close to being straight up
-            // TODO: test what happens when we're pushed out downwards, but that
-            //       shouldn't happen because this is for walking on the ground..
             bool32 is_delta_not_straight_up = fabsf(push_out_dir.y - 1.0f) > EPSILON;
             if (is_delta_not_straight_up) {
-                // if it's not, then we need to make it straight down
+                // if it's not, then we need to make it straight down.
                 // i.e. we shouldn't push out along the push out vector, but straight up
                 // such that we're still pushed out of the geometry, but the new position
-                // is straight above the old position (the position we passed to do_collisions())
+                // is straight above the old position (the position we passed to do_collisions()).
+
+                // we do this because if you're walking in a straight line (either by
+                // going forward or strafing), if you're being pushed out along vectors that
+                // aren't straight up, your line will no longer be straight.
+                // if you center your screen on some point and walk towards it, you should
+                // end up there. this isn't the case when your push out vector is going in
+                // directions other than straight up.
 
                 // make a basis from the push out vector
                 Vec3 push_out_right, push_out_up;
@@ -1454,35 +1464,6 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
             }
         }
 
-        // (x, y, z) + (p.x, p.y, p.z) = (x', y', z')
-        // (x_2, y_2, z_2) + (p.x, p.y, p.z) = (x, y', z)
-
-        // we can just push out, then figure out the x and y that makes the
-        // push out vector the same. we know x since it's just the difference.
-
-        // (x, y) + (p.x, p.y) = (x', y')
-        // (x_2, y_2) + (p.x, p.y) = (x, y_2')
-        // (x, y_2) + (p.x, p.y) = (x, y_2')
-
-        // (x, y) + (a, b) + (p.x, p.y) = (x, y')
-        // x = x + a + p.x
-        // -> a = -p.x
-
-        // (x, y) 
-        
-        // y' = y + b + p.y
-
-        // (x, y) + (p.x, p.y) = (x', y')
-        // (x - a, y) + (p.x, p.y) = (x, y_2)
-
-        // (x, y) + t*(vec orthogonal to p) + (p.x, p.y) = (x, y_2)
-        // x + t*ortho_p.x + p.x = x
-        // -> t*ortho_p.x + p.x = 0
-        // -> t = -p.x / ortho_p.x
-
-        // y + t*ortho_p.y + p.y = y_2
-        // we know all of these..
-
         // NOTE: this is how this works..
         // - get basis vectors for the push out vector
         //   - basically coordinate space for the triangle's plane
@@ -1496,8 +1477,6 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
         // (x, y, z) + t1*b1 + t2*b2 + (p.x, p.y, p.z) = (x, y', z)
         // (x, y, z) + (t1*b1.x, t1*b1.y, t1*b1.z) + (t2*b2.x, t2*b2.y, t2*b2.z) + (p.x, p.y, p.z) = (x, y', z)
 
-        // TODO: test the solution out...
-
         // three equations:
         // x + t1*b1.x + t2*b2.x + p.x = x
         // y + t1*b1.y + t2*b2.y + p.y = y'
@@ -1508,8 +1487,6 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
         // t1*b1.x + t2*b2.x + p.x = 0
         // t1*b1.z + t2*b2.z + p.z = 0
 
-        //pg 191
-        
         /*
           isolate t1
           t1 = (-t2*b2.x - p.x) / b1.x
@@ -1530,65 +1507,31 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
           t2 * [ (-b2.x*b1.z)/b1.x + b2.z ] = -p.z + (p.x*b1.z) / b1.x
           t2 = [-p.z + (p.x*b1.z) / b1.x ] / [ (-b2.x*b1.z)/b1.x + b2.z ]
           t2 = (-p.z + p.x*b1.z) / ((-b2.x*b1.z) + b2.z*b1.x)
-
-
-
-
-          t2 * [ (-b2.x*b1.z)/b1.x + b2.z ] = -p.z
-          t2 = -p.z / [ (-b2.x*b1.z)/b1.x + b2.z ]
-
-
-          
-
-
          */
-
-        
-        // t1 = (-t2*b2.x - p.x) / b1.x
-
-        // y + ((-t2*b2.x - p.x) / b1.x)*b1.y + t2*b2.y + p.y = y'
-        // z + ((-t2*b2.x - p.x) / b1.x)*b1.z + t2*b2.z + p.z = z
-
-        // unknowns: t2, y'
-        // z + ((-t2*b2.x - p.x) / b1.x)*b1.z + t2*b2.z + p.z = z
-
-        // rearrange to get t2:
-        // ((-t2*b2.x - p.x) / b1.x)*b1.z + t2*b2.z + p.z = 0
-        // (b1.z/b1.x) * (-t2*b2.x - p.x) + t2*b2.z + p.z = 0
-        // (-b1.z*t2*b2.x - b1.z*p.x)/b1.x + t2*b2.z + p.z = 0
-        // t2*(-b1.z*b2.x/b1.x) - b1.z*p.x/b1.x + t2*b2.z + p.z = 0
-        // t2 + t2*b2.z = b1.z*p.x/b1.x - p.z
-        // t2 * (-b1.z*b2.x/b1.x + b2.z) = b1.z*p.x/b1.x - p.z
-        // t2 = (b1.z*p.x/b1.x - p.z) / (-b1.z*b2.x/b1.x + b2.z)
-
-        // unknown: y'
-        // y + t1*b1.y + t2*b2.y + p.y = y'
-
-        // push out vector should be the same
-        
-        // we want x and z to be the same as before.
-        // we need a y such that the push out vector is the same distance.
-
-        // it's not even true that it'll still be on the same triangle if we
-        // move the player up instead of along the penetration vector..
-        // it doesn't matter, i think.
-
-        // it is the same distance out.. even if we move up.
-        // so if we just push out, then move along the triangle such that we
-        // end up in the same spot, that should be basically the same thing
     }
 
-    // TODO: fix speed up or slow down cause by going down or up slopes
-    // - this currently caps other collisions.. and also movement due to gravity
-    // - if we were grounded, are still grounded, and the push out vector was due to the ground,
-    //   then fix this delta..
+
+    // this fixes speed up or slow down cause by going down or up slopes.
+    // if you're falling, we don't want to cap this.
+    // - TODO: the current conditions on when we fix the speed might be too simple
+    //         and there might be edge cases where this results in weird movement,
+    //         but it seems pretty alright for now..
+    // - more complex condition that might be better:
+    //   - if we were grounded, are still grounded, and the push out vector was due
+    //     to the ground, then fix this delta..
+    //   - the push out code is super simple and only pushes out on a single vector,
+    //     so above condition might be incorrect when we make the do_collisions()
+    //     better
     Vec3 delta = player->position - old_position;
-    if (distance(delta)-player->speed*dt > EPSILON) {
-        player->position = old_position + normalize(delta)*player->speed*dt;
+    if (was_grounded && player->is_grounded) {
+        if (fabsf(distance(delta)-player->speed*dt) > EPSILON) {
+            player->position = old_position + normalize(delta)*player->speed*dt;
+        }
     }
 
+    Vec3 new_delta = player->position - old_position;
     char *dist_text = string_format((Allocator *) &ui_manager->frame_arena, "distance travelled: %f",
-                                    distance(delta));
+                                    distance(new_delta));
     draw_debug_text(make_vec2(5.0f, 50.0f), dist_text);
 
     char *expected_dist_text = string_format((Allocator *) &ui_manager->frame_arena,
