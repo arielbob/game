@@ -189,10 +189,15 @@ struct Walk_State {
 };
 
 struct Player {
-    Vec3 position;
+    Euler_Transform transform;
+    //Vec3 position;
     Vec3 velocity;
     Vec3 acceleration;
 
+    int32 mesh_id = ENGINE_DEFAULT_CUBE_MESH_ID;
+    int32 material_id;
+    AABB transformed_aabb;
+    
     real32 heading;
     real32 pitch;
     real32 roll;
@@ -211,7 +216,8 @@ struct Game_State {
     Level level;
     Player player;
     Camera camera;
-
+    bool first_person;
+    
     real64 last_update_time;
     real64 last_fps_update_time;
     real64 fps_sum = 0.0f;

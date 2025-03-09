@@ -1130,9 +1130,21 @@ Transform make_transform() {
     return transform;
 }
 
+Euler_Transform make_euler_transform() {
+    Euler_Transform transform = {};
+    transform.scale = make_vec3(1.0f, 1.0f, 1.0f);
+    return transform;
+}
+
 inline Transform make_transform(Vec3 position, Quaternion rotation, Vec3 scale) {
     Transform transform = { position, rotation, scale };
     return transform;
+}
+
+Transform make_transform(Euler_Transform transform) {
+    Quaternion rotation = make_quaternion(transform.roll, transform.pitch, transform.heading);
+    Transform result = { transform.position, rotation, transform.scale };
+    return result;
 }
 
 Vec3 lerp(Vec3 a, Vec3 b, real32 t) {
@@ -1227,7 +1239,7 @@ Mat4 make_rotate_matrix(Quaternion q) {
 #if 0
 inline Quaternion log(Quaternion q) {
     Quaternion result = { 0.0f, 
-}
+    }
 #endif
     
 // TODO: we may just want to return a Mat3, and then
@@ -1236,1132 +1248,1132 @@ inline Quaternion log(Quaternion q) {
 //       as much space
 // TODO: maybe overload this to take in an origin argument?
 //       would basically just translate it first, then scale, then translate it back
-Mat4 make_scale_matrix(Vec3 axis, real32 factor) {
-    Mat4 result = {};
+        Mat4 make_scale_matrix(Vec3 axis, real32 factor) {
+        Mat4 result = {};
     
-    Vec4 col1 = {
-        1 + ((factor - 1)*(axis.x*axis.x)),
-        (factor - 1)*axis.x*axis.y,
-        (factor - 1)*axis.x*axis.z,
-        0.0f
-    };
-    result.col1 = col1;
+        Vec4 col1 = {
+            1 + ((factor - 1)*(axis.x*axis.x)),
+            (factor - 1)*axis.x*axis.y,
+            (factor - 1)*axis.x*axis.z,
+            0.0f
+        };
+        result.col1 = col1;
 
-    Vec4 col2 = {
-        (factor - 1)*axis.x*axis.y,        
-        1 + ((factor - 1)*(axis.y*axis.y)),
-        (factor - 1)*axis.y*axis.z,
-        0.0f
-    };
-    result.col2 = col2;
+        Vec4 col2 = {
+            (factor - 1)*axis.x*axis.y,        
+            1 + ((factor - 1)*(axis.y*axis.y)),
+            (factor - 1)*axis.y*axis.z,
+            0.0f
+        };
+        result.col2 = col2;
 
-    Vec4 col3 = {
-        (factor - 1)*axis.x*axis.z,
-        (factor - 1)*axis.y*axis.z,
-        1 + ((factor - 1)*(axis.z*axis.z)),
-        0.0f
-    };
-    result.col3 = col3;
+        Vec4 col3 = {
+            (factor - 1)*axis.x*axis.z,
+            (factor - 1)*axis.y*axis.z,
+            1 + ((factor - 1)*(axis.z*axis.z)),
+            0.0f
+        };
+        result.col3 = col3;
     
-    result.col4.w = 1.0f;
+        result.col4.w = 1.0f;
     
-    return result;
-}
+        return result;
+    }
 
-Mat4 make_scale_matrix(Vec3 scale) {
-    Mat4 result = {};
+    Mat4 make_scale_matrix(Vec3 scale) {
+        Mat4 result = {};
     
-    result.col1.x = scale.x;
-    result.col2.y = scale.y;
-    result.col3.z = scale.z;
-    result.col4.w = 1.0f;
+        result.col1.x = scale.x;
+        result.col2.y = scale.y;
+        result.col3.z = scale.z;
+        result.col4.w = 1.0f;
     
-    return result;
-}
+        return result;
+    }
 
-Mat4 make_rotate_matrix(real32 roll, real32 pitch, real32 heading) {
-    real32 roll_rads = degs_to_rads(roll);
-    real32 pitch_rads = degs_to_rads(pitch);
-    real32 heading_rads = degs_to_rads(heading);
+    Mat4 make_rotate_matrix(real32 roll, real32 pitch, real32 heading) {
+        real32 roll_rads = degs_to_rads(roll);
+        real32 pitch_rads = degs_to_rads(pitch);
+        real32 heading_rads = degs_to_rads(heading);
     
-    Mat4 result = {};
+        Mat4 result = {};
 
-    Vec4 col1 = {
-        cosf(heading_rads)*cosf(roll_rads) + sinf(heading_rads)*sinf(pitch_rads)*sinf(roll_rads),
-        sinf(roll_rads)*cosf(pitch_rads),
-        -sinf(heading_rads)*cosf(roll_rads) + cosf(heading_rads)*sinf(pitch_rads)*sinf(roll_rads),
-        0.0f
-    };
-    result.col1 = col1;
+        Vec4 col1 = {
+            cosf(heading_rads)*cosf(roll_rads) + sinf(heading_rads)*sinf(pitch_rads)*sinf(roll_rads),
+            sinf(roll_rads)*cosf(pitch_rads),
+            -sinf(heading_rads)*cosf(roll_rads) + cosf(heading_rads)*sinf(pitch_rads)*sinf(roll_rads),
+            0.0f
+        };
+        result.col1 = col1;
 
-    Vec4 col2 = {
-        -cosf(heading_rads)*sinf(roll_rads) + sinf(heading_rads)*sinf(pitch_rads)*cosf(roll_rads),
-        cosf(roll_rads)*cosf(pitch_rads),
-        sinf(roll_rads)*sinf(heading_rads) + cosf(heading_rads)*sinf(pitch_rads)*cosf(roll_rads),
-        0.0f
-    };
-    result.col2 = col2;
+        Vec4 col2 = {
+            -cosf(heading_rads)*sinf(roll_rads) + sinf(heading_rads)*sinf(pitch_rads)*cosf(roll_rads),
+            cosf(roll_rads)*cosf(pitch_rads),
+            sinf(roll_rads)*sinf(heading_rads) + cosf(heading_rads)*sinf(pitch_rads)*cosf(roll_rads),
+            0.0f
+        };
+        result.col2 = col2;
 
-    Vec4 col3 = {
-        sinf(heading_rads)*cosf(pitch_rads),
-        -sinf(pitch_rads),
-        cosf(heading_rads)*cosf(pitch_rads),
-        0.0f
-    };
-    result.col3 = col3;
+        Vec4 col3 = {
+            sinf(heading_rads)*cosf(pitch_rads),
+            -sinf(pitch_rads),
+            cosf(heading_rads)*cosf(pitch_rads),
+            0.0f
+        };
+        result.col3 = col3;
 
-    result.col4.w = 1.0f;
+        result.col4.w = 1.0f;
     
-    return result;
-}
+        return result;
+    }
 
-Mat4 make_rotate_matrix(Vec3 axis, real32 degrees) {
-    real32 rads = degs_to_rads(degrees);
-    Mat4 result = {};
+    Mat4 make_rotate_matrix(Vec3 axis, real32 degrees) {
+        real32 rads = degs_to_rads(degrees);
+        Mat4 result = {};
 
-    // TODO: make sure that cosf(rads) and sinf(rads) are hoisted out when optimized..
-    Vec4 col1 = {
-        axis.x*axis.x*(1-cosf(rads)) + cosf(rads),
-        axis.x*axis.y*(1-cosf(rads)) + axis.z*sinf(rads),
-        axis.x*axis.z*(1-cosf(rads)) - axis.y*sinf(rads),
-        0.0f
-    };
-    result.col1 = col1;
+        // TODO: make sure that cosf(rads) and sinf(rads) are hoisted out when optimized..
+        Vec4 col1 = {
+            axis.x*axis.x*(1-cosf(rads)) + cosf(rads),
+            axis.x*axis.y*(1-cosf(rads)) + axis.z*sinf(rads),
+            axis.x*axis.z*(1-cosf(rads)) - axis.y*sinf(rads),
+            0.0f
+        };
+        result.col1 = col1;
 
-    Vec4 col2 = {
-        axis.x*axis.y*(1-cosf(rads)) - axis.z*sinf(rads),
-        axis.y*axis.y*(1-cosf(rads)) + cosf(rads),
-        axis.y*axis.z*(1-cosf(rads)) + axis.x*sinf(rads),
-        0.0f
-    };
-    result.col2 = col2;
+        Vec4 col2 = {
+            axis.x*axis.y*(1-cosf(rads)) - axis.z*sinf(rads),
+            axis.y*axis.y*(1-cosf(rads)) + cosf(rads),
+            axis.y*axis.z*(1-cosf(rads)) + axis.x*sinf(rads),
+            0.0f
+        };
+        result.col2 = col2;
 
-    Vec4 col3 = {
-        axis.x*axis.z*(1-cosf(rads)) + axis.y*sinf(rads),
-        axis.y*axis.z*(1-cosf(rads)) - axis.x*sinf(rads),
-        axis.z*axis.z*(1-cosf(rads)) + cosf(rads),
-        0.0f
-    };
-    result.col3 = col3;
+        Vec4 col3 = {
+            axis.x*axis.z*(1-cosf(rads)) + axis.y*sinf(rads),
+            axis.y*axis.z*(1-cosf(rads)) - axis.x*sinf(rads),
+            axis.z*axis.z*(1-cosf(rads)) + cosf(rads),
+            0.0f
+        };
+        result.col3 = col3;
     
-    result.col4.w = 1.0f;
+        result.col4.w = 1.0f;
 
-    return result;
-}
+        return result;
+    }
 
-Mat4 make_translate_matrix(Vec3 axis, real32 distance) {
-    Mat4 result = make_mat4_identity();
-    result.col4.x = distance*axis.x;
-    result.col4.y = distance*axis.y;
-    result.col4.z = distance*axis.z;
-    return result;
-}
+    Mat4 make_translate_matrix(Vec3 axis, real32 distance) {
+        Mat4 result = make_mat4_identity();
+        result.col4.x = distance*axis.x;
+        result.col4.y = distance*axis.y;
+        result.col4.z = distance*axis.z;
+        return result;
+    }
 
-Mat4 make_translate_matrix(Vec3 offset) {
-    Mat4 result = make_mat4_identity();
-    result.col4.x = offset.x;
-    result.col4.y = offset.y;
-    result.col4.z = offset.z;
-    return result;
-}
+    Mat4 make_translate_matrix(Vec3 offset) {
+        Mat4 result = make_mat4_identity();
+        result.col4.x = offset.x;
+        result.col4.y = offset.y;
+        result.col4.z = offset.z;
+        return result;
+    }
 
-Mat4 get_view_matrix(Vec3 eye_pos, Vec3 forward, Vec3 right, Vec3 up) {
-    // NOTE: we assume that forward, right, and up form an orthonormal basis
-    Mat4 result = {};
+    Mat4 get_view_matrix(Vec3 eye_pos, Vec3 forward, Vec3 right, Vec3 up) {
+        // NOTE: we assume that forward, right, and up form an orthonormal basis
+        Mat4 result = {};
 
-    result.col1.x = right.x;
-    result.col2.x = right.y;
-    result.col3.x = right.z;
-    result.col4.x = -right.x*eye_pos.x - right.y*eye_pos.y - right.z*eye_pos.z;
+        result.col1.x = right.x;
+        result.col2.x = right.y;
+        result.col3.x = right.z;
+        result.col4.x = -right.x*eye_pos.x - right.y*eye_pos.y - right.z*eye_pos.z;
 
-    result.col1.y = up.x;
-    result.col2.y = up.y;
-    result.col3.y = up.z;
-    result.col4.y = -up.x*eye_pos.x - up.y*eye_pos.y - up.z*eye_pos.z;
+        result.col1.y = up.x;
+        result.col2.y = up.y;
+        result.col3.y = up.z;
+        result.col4.y = -up.x*eye_pos.x - up.y*eye_pos.y - up.z*eye_pos.z;
     
-    result.col1.z = forward.x;                                                   
-    result.col2.z = forward.y;                                                   
-    result.col3.z = forward.z;                                                   
-    result.col4.z = -forward.x*eye_pos.x - forward.y*eye_pos.y - forward.z*eye_pos.z;
+        result.col1.z = forward.x;                                                   
+        result.col2.z = forward.y;                                                   
+        result.col3.z = forward.z;                                                   
+        result.col4.z = -forward.x*eye_pos.x - forward.y*eye_pos.y - forward.z*eye_pos.z;
 
-    result.col4.w = 1.0f;
+        result.col4.w = 1.0f;
     
-    return result;
-}
+        return result;
+    }
 
 // TODO: the clipping part of this will only work for opengl, since it's based on opengl's
 //       clip-space
-Mat4 make_perspective_clip_matrix(real32 fov_x_degrees, real32 aspect_ratio, real32 near, real32 far) {
-    real32 fov_x_rads = degs_to_rads(fov_x_degrees);
-    real32 right = tanf(fov_x_rads / 2) * near;
-    real32 left = -right;
+    Mat4 make_perspective_clip_matrix(real32 fov_x_degrees, real32 aspect_ratio, real32 near, real32 far) {
+        real32 fov_x_rads = degs_to_rads(fov_x_degrees);
+        real32 right = tanf(fov_x_rads / 2) * near;
+        real32 left = -right;
 
-    real32 top = right / aspect_ratio;
-    real32 bottom = -top;
+        real32 top = right / aspect_ratio;
+        real32 bottom = -top;
 
-    Mat4 perspective_clip_matrix = {};
+        Mat4 perspective_clip_matrix = {};
 
-    perspective_clip_matrix.col1.x = (2 * near) / (right - left);
-    perspective_clip_matrix.col3.x = (-right - left) / (right - left);
-    perspective_clip_matrix.col2.y = (2.0f * near) / (top - bottom);
-    perspective_clip_matrix.col3.y = (-top - bottom) / (top - bottom);
-    perspective_clip_matrix.col3.z = (near + far) / (far - near);
-    perspective_clip_matrix.col4.z = (-2 * near * far) / (far - near);
-    perspective_clip_matrix.col3.w = 1.0f;
+        perspective_clip_matrix.col1.x = (2 * near) / (right - left);
+        perspective_clip_matrix.col3.x = (-right - left) / (right - left);
+        perspective_clip_matrix.col2.y = (2.0f * near) / (top - bottom);
+        perspective_clip_matrix.col3.y = (-top - bottom) / (top - bottom);
+        perspective_clip_matrix.col3.z = (near + far) / (far - near);
+        perspective_clip_matrix.col4.z = (-2 * near * far) / (far - near);
+        perspective_clip_matrix.col3.w = 1.0f;
 
-    return perspective_clip_matrix;
-}
+        return perspective_clip_matrix;
+    }
 
-Mat4 make_ortho_clip_matrix(real32 width, real32 height, real32 near, real32 far) {
-    Mat4 m = make_mat4_identity();
-    m.col1.x = 2.0f / width;
-    m.col4.x = -1.0f;
-    m.col2.y = -2.0f / height;
-    m.col4.y = 1.0f;
-    m.col3.z = 2.0f / (far - near);
-    m.col4.z = ((-2.0f * near) / (far - near)) - 1.0f;
+    Mat4 make_ortho_clip_matrix(real32 width, real32 height, real32 near, real32 far) {
+        Mat4 m = make_mat4_identity();
+        m.col1.x = 2.0f / width;
+        m.col4.x = -1.0f;
+        m.col2.y = -2.0f / height;
+        m.col4.y = 1.0f;
+        m.col3.z = 2.0f / (far - near);
+        m.col4.z = ((-2.0f * near) / (far - near)) - 1.0f;
 
-    return m;
-}
+        return m;
+    }
 
-inline Vec3 truncate_v4_to_v3(Vec4 vec4) {
-    Vec3 result = { vec4.x, vec4.y, vec4.z };
-    return result;
-}
+    inline Vec3 truncate_v4_to_v3(Vec4 vec4) {
+        Vec3 result = { vec4.x, vec4.y, vec4.z };
+        return result;
+    }
 
 // returns false if triangle is degenerate, true otherwise
-bool32 compute_barycentric_coords(Vec3 p1, Vec3 p2, Vec3 p3,
-                                  Vec3 triangle_normal, Vec3 point,
-                                  Vec3 *result) {
+    bool32 compute_barycentric_coords(Vec3 p1, Vec3 p2, Vec3 p3,
+                                      Vec3 triangle_normal, Vec3 point,
+                                      Vec3 *result) {
 
-    real32 p_x, p_y, x_1, x_2, x_3, y_1, y_2, y_3;
-    if (fabs(triangle_normal.x) > fabs(triangle_normal.y) &&
-        fabs(triangle_normal.x) > fabs(triangle_normal.z)) {
-        // drop out x coord
-        p_x = point.y;
-        p_y = point.z;
-        x_1 = p1.y;
-        x_2 = p2.y;
-        x_3 = p3.y;
-        y_1 = p1.z;
-        y_2 = p2.z;
-        y_3 = p3.z;
-    } else if (fabs(triangle_normal.y) > fabs(triangle_normal.z)) {
-        // drop out y coord
-        p_x = point.x;
-        p_y = point.z;
-        x_1 = p1.x;
-        x_2 = p2.x;
-        x_3 = p3.x;
-        y_1 = p1.z;
-        y_2 = p2.z;
-        y_3 = p3.z;
-    } else {
-        // drop out z coord
-        p_x = point.x;
-        p_y = point.y;
-        x_1 = p1.x;
-        x_2 = p2.x;
-        x_3 = p3.x;
-        y_1 = p1.y;
-        y_2 = p2.y;
-        y_3 = p3.y;
-    }
+        real32 p_x, p_y, x_1, x_2, x_3, y_1, y_2, y_3;
+        if (fabs(triangle_normal.x) > fabs(triangle_normal.y) &&
+            fabs(triangle_normal.x) > fabs(triangle_normal.z)) {
+            // drop out x coord
+            p_x = point.y;
+            p_y = point.z;
+            x_1 = p1.y;
+            x_2 = p2.y;
+            x_3 = p3.y;
+            y_1 = p1.z;
+            y_2 = p2.z;
+            y_3 = p3.z;
+        } else if (fabs(triangle_normal.y) > fabs(triangle_normal.z)) {
+            // drop out y coord
+            p_x = point.x;
+            p_y = point.z;
+            x_1 = p1.x;
+            x_2 = p2.x;
+            x_3 = p3.x;
+            y_1 = p1.z;
+            y_2 = p2.z;
+            y_3 = p3.z;
+        } else {
+            // drop out z coord
+            p_x = point.x;
+            p_y = point.y;
+            x_1 = p1.x;
+            x_2 = p2.x;
+            x_3 = p3.x;
+            y_1 = p1.y;
+            y_2 = p2.y;
+            y_3 = p3.y;
+        }
     
-    real32 denom = (y_1-y_3)*(x_2-x_3) + (y_2-y_3)*(x_3-x_1);
+        real32 denom = (y_1-y_3)*(x_2-x_3) + (y_2-y_3)*(x_3-x_1);
 
-    // check for triangle of zero area
-    if (fabs(denom) >= EPSILON) {
-        real32 one_over_denom = 1.0f / denom;
+        // check for triangle of zero area
+        if (fabs(denom) >= EPSILON) {
+            real32 one_over_denom = 1.0f / denom;
 
-        real32 b1, b2, b3;
-        b1 = ((p_y-y_3)*(x_2-x_3) + (y_2-y_3)*(x_3-p_x)) * one_over_denom;
-        b2 = ((p_y-y_1)*(x_3-x_1) + (y_3-y_1)*(x_1-p_x)) * one_over_denom;
-        b3 = 1 - b1 - b2;
+            real32 b1, b2, b3;
+            b1 = ((p_y-y_3)*(x_2-x_3) + (y_2-y_3)*(x_3-p_x)) * one_over_denom;
+            b2 = ((p_y-y_1)*(x_3-x_1) + (y_3-y_1)*(x_1-p_x)) * one_over_denom;
+            b3 = 1 - b1 - b2;
 
-        result->x = b1;
-        result->y = b2;
-        result->z = b3;
+            result->x = b1;
+            result->y = b2;
+            result->z = b3;
 
-        return true;
+            return true;
+        }
+
+        return false;
     }
-
-    return false;
-}
 
 #if 0
-bool32 bary_coords_inside_triangle(Vec3 bary_coords) {
-    if (bary_coords.x >= 0 && bary_coords.x <= 1 &&
-        bary_coords.y >= 0 && bary_coords.y <= 1 &&
-        bary_coords.z >= 0 && bary_coords.z <= 1) {
-        // inside
-        return true;
-    } else {
-        return false;
-    }
-}
-#else
-bool32 bary_coords_inside_triangle(Vec3 bary_coords) {
-    if (bary_coords.x >= -0.0001f && bary_coords.x <= 1.0001f &&
-        bary_coords.y >= -0.0001f && bary_coords.y <= 1.0001f &&
-        bary_coords.z >= -0.0001f && bary_coords.z <= 1.0001f) {
-        // inside
-        return true;
-    } else {
-        return false;
-    }
-}
-#endif
-
-inline bool32 are_collinear(Vec3 v1, Vec3 v2) {
-    real32 dotted = dot(v1, v2);
-    return (fabsf(1.0f - fabsf(dotted)) < EPSILON);
-}
-
-void make_basis(Vec3 v, Vec3 *right, Vec3 *up) {
-    Vec3 axis_v;
-    if (v.x < v.y) {
-        if (v.x < v.z) {
-            axis_v = x_axis;
-        } else {
-            axis_v = z_axis;
-        }
-    } else {
-        axis_v = y_axis;
-    }
-
-    *right = normalize(cross(v, axis_v));
-    *up = normalize(cross(v, *right));
-}
-
-// NOTE: this keeps forward the same. we're assuming that forward and right are already pretty close
-//       to perpendicular, or we're just using this to ensure that they're orthogonal.
-void orthonormalize(Vec3 forward, Vec3 right, Vec3 *new_forward, Vec3 *new_right) {
-    Vec3 up = normalize(cross(forward, right));
-    *new_right = normalize(cross(up, forward));
-    *new_forward = normalize(forward);
-}
-
-// parallel_to_this is a vector we want the plane's normal to be closest to
-Plane get_plane_containing_ray(Ray ray, Vec3 parallel_to_this) {
-    Vec3 right, up;
-    make_basis(ray.direction, &right, &up);
-
-    real32 right_similarity = fabsf(dot(right, parallel_to_this));
-    real32 up_similarity = fabsf(dot(up, parallel_to_this));
-
-    Vec3 normal;
-    real32 d;
-
-    if (right_similarity > up_similarity) {
-        normal = right;
-    } else {
-        normal = up;
-    }
-
-    d = dot(ray.origin, normal);
-
-    Plane result = { d, normal };
-    return result;
-}
-
-Plane get_plane_containing_ray(Ray ray) {
-    Vec3 right, up;
-    make_basis(ray.direction, &right, &up);
-    real32 d = dot(ray.origin, right);
-
-    Plane result = { d, right };
-    return result;
-}
-
-// TODO: this can be further optimized, but it's fine for now (see scratchapixel for more optimizations)
-bool32 ray_intersects_aabb(Ray ray, AABB aabb, real32 *t_min_result, real32 *t_max_result) {
-    Vec3 origin = ray.origin;
-    Vec3 direction = ray.direction;
-    
-    real32 x_min = aabb.p_min.x;
-    real32 y_min = aabb.p_min.y;
-    real32 z_min = aabb.p_min.z;
-    real32 x_max = aabb.p_max.x;
-    real32 y_max = aabb.p_max.y;
-    real32 z_max = aabb.p_max.z;
-
-    real32 t_min, t_max, t_y_min, t_y_max;
-
-    if (direction.x >= 0) {
-        t_min = (x_min - origin.x) / direction.x;
-        t_max = (x_max - origin.x) / direction.x;
-    } else {
-        t_min = (x_max - origin.x) / direction.x;
-        t_max = (x_min - origin.x) / direction.x;
-    }
-
-    if (direction.y >= 0) {
-        t_y_min = (y_min - origin.y) / direction.y;
-        t_y_max = (y_max - origin.y) / direction.y;
-    } else {
-        t_y_min = (y_max - origin.y) / direction.y;
-        t_y_max = (y_min - origin.y) / direction.y;
-    }
-    
-    if (t_min > t_y_max || t_y_min > t_max) return false;
-
-    t_min = max(t_min, t_y_min);
-    t_max = min(t_max, t_y_max);
-    
-    real32 t_z_min, t_z_max;
-    if (direction.z >= 0) {
-        t_z_min = (z_min - origin.z) / direction.z;
-        t_z_max = (z_max - origin.z) / direction.z;
-    } else {
-        t_z_min = (z_max - origin.z) / direction.z;
-        t_z_max = (z_min - origin.z) / direction.z;
-    }
-
-    if (t_min > t_z_max || t_z_min > t_max) return false;
-
-    // test if origin is inside AABB
-    // NOTE: this procedure actually returns true if the ray origin is inside the AABB without these checks,
-    //       but the t_result will be negative. since we want to be able to select things when we're inside them,
-    //       but not be able to select things that are behind us, we do this check.
-    if (ray.origin.x >= aabb.p_min.x && ray.origin.y >= aabb.p_min.y && ray.origin.z >= aabb.p_min.z &&
-        ray.origin.x <= aabb.p_max.x && ray.origin.y <= aabb.p_max.y && ray.origin.z <= aabb.p_max.z) {
-        *t_min_result = 0.0f;
-    } else {
-        *t_min_result = max(t_min, t_z_min);
-    }
-
-    *t_max_result = min(t_max, t_z_max);
-    
-    return true;
-}
-
-inline bool32 ray_intersects_aabb(Ray ray, AABB aabb, real32 *t_result) {
-    real32 t_max;
-    return ray_intersects_aabb(ray, aabb, t_result, &t_max);
-}
-
-// NOTE: we assume ray.direction is a unit vector
-//       if it were not, then we'd have to include the direction magnitude parts of the equation
-// TODO: DON'T assume this, and instead use the equation that does not assume direction vector of unit length
-bool32 ray_intersects_circle(Ray_2D ray, real32 radius, Vec2 center_pos, real32 *t_min, real32 *t_max) {
-    // NOTE: these names, like delta don't really mean anything; it's just from the math
-    //       see this page: https://www.geometrictools.com/Documentation/IntersectionLine2Circle2.pdf
-    Vec2 delta = ray.origin - center_pos;
-
-    real32 dir_dot_delta = dot(ray.direction, delta);
-    real32 delta_distance_squared = dot(delta, delta);
-    real32 r_squared = radius*radius;
-
-    real32 direction_length = distance(ray.direction);
-    real32 dir_squared = direction_length*direction_length;
-    
-    real32 to_sqrt = dir_dot_delta*dir_dot_delta - dir_squared*(delta_distance_squared - r_squared);
-
-    if (to_sqrt < 0.0f) {
-        return false;
-    }
-
-    real32 sqrted = sqrtf(to_sqrt);
-
-    // TODO: maybe use epsilon value here
-    if (direction_length == 0.0f) {
-        if (delta_distance_squared < r_squared) {
-            *t_min = -INFINITY;
-            *t_max = INFINITY;
+    bool32 bary_coords_inside_triangle(Vec3 bary_coords) {
+        if (bary_coords.x >= 0 && bary_coords.x <= 1 &&
+            bary_coords.y >= 0 && bary_coords.y <= 1 &&
+            bary_coords.z >= 0 && bary_coords.z <= 1) {
+            // inside
             return true;
         } else {
             return false;
         }
     }
-
-    // NOTE: ray origin is inside circle; we do this check so that we don't get a negative t_min
-    //       but, if we want to remove the if, we can just allow the negative t_min and make sure
-    //       the caller checks for negative t_min, if necessary
-    if (delta_distance_squared < r_squared) {
-        *t_min = 0;
-    } else {
-        *t_min = (-dir_dot_delta - sqrted) / dir_squared;
+#else
+    bool32 bary_coords_inside_triangle(Vec3 bary_coords) {
+        if (bary_coords.x >= -0.0001f && bary_coords.x <= 1.0001f &&
+            bary_coords.y >= -0.0001f && bary_coords.y <= 1.0001f &&
+            bary_coords.z >= -0.0001f && bary_coords.z <= 1.0001f) {
+            // inside
+            return true;
+        } else {
+            return false;
+        }
     }
-    *t_max = (-dir_dot_delta + sqrted) / dir_squared;
-    return true;
-}
+#endif
 
-bool32 ray_intersects_circle(Ray_2D ray, real32 radius, Vec2 center_pos, real32 *t_result) {
-    real32 r_squared = radius*radius;
-    Vec2 origin_to_center = center_pos - ray.origin;
-    real32 origin_to_center_dist_squared = origin_to_center.x*origin_to_center.x + origin_to_center.y*origin_to_center.y;
+    inline bool32 are_collinear(Vec3 v1, Vec3 v2) {
+        real32 dotted = dot(v1, v2);
+        return (fabsf(1.0f - fabsf(dotted)) < EPSILON);
+    }
 
-    real32 origin_to_center_proj_direction = dot(origin_to_center, ray.direction);
-    real32 origin_to_center_proj_direction_squared = origin_to_center_proj_direction*origin_to_center_proj_direction;
+    void make_basis(Vec3 v, Vec3 *right, Vec3 *up) {
+        Vec3 axis_v;
+        if (v.x < v.y) {
+            if (v.x < v.z) {
+                axis_v = x_axis;
+            } else {
+                axis_v = z_axis;
+            }
+        } else {
+            axis_v = y_axis;
+        }
 
-    real32 to_sqrt = r_squared - origin_to_center_dist_squared + origin_to_center_proj_direction_squared;
+        *right = normalize(cross(v, axis_v));
+        *up = normalize(cross(v, *right));
+    }
+
+// NOTE: this keeps forward the same. we're assuming that forward and right are already pretty close
+//       to perpendicular, or we're just using this to ensure that they're orthogonal.
+    void orthonormalize(Vec3 forward, Vec3 right, Vec3 *new_forward, Vec3 *new_right) {
+        Vec3 up = normalize(cross(forward, right));
+        *new_right = normalize(cross(up, forward));
+        *new_forward = normalize(forward);
+    }
+
+// parallel_to_this is a vector we want the plane's normal to be closest to
+    Plane get_plane_containing_ray(Ray ray, Vec3 parallel_to_this) {
+        Vec3 right, up;
+        make_basis(ray.direction, &right, &up);
+
+        real32 right_similarity = fabsf(dot(right, parallel_to_this));
+        real32 up_similarity = fabsf(dot(up, parallel_to_this));
+
+        Vec3 normal;
+        real32 d;
+
+        if (right_similarity > up_similarity) {
+            normal = right;
+        } else {
+            normal = up;
+        }
+
+        d = dot(ray.origin, normal);
+
+        Plane result = { d, normal };
+        return result;
+    }
+
+    Plane get_plane_containing_ray(Ray ray) {
+        Vec3 right, up;
+        make_basis(ray.direction, &right, &up);
+        real32 d = dot(ray.origin, right);
+
+        Plane result = { d, right };
+        return result;
+    }
+
+// TODO: this can be further optimized, but it's fine for now (see scratchapixel for more optimizations)
+    bool32 ray_intersects_aabb(Ray ray, AABB aabb, real32 *t_min_result, real32 *t_max_result) {
+        Vec3 origin = ray.origin;
+        Vec3 direction = ray.direction;
     
-    // origin is inside circle
-    if (origin_to_center_dist_squared < r_squared) {
-        *t_result = 0;
+        real32 x_min = aabb.p_min.x;
+        real32 y_min = aabb.p_min.y;
+        real32 z_min = aabb.p_min.z;
+        real32 x_max = aabb.p_max.x;
+        real32 y_max = aabb.p_max.y;
+        real32 z_max = aabb.p_max.z;
+
+        real32 t_min, t_max, t_y_min, t_y_max;
+
+        if (direction.x >= 0) {
+            t_min = (x_min - origin.x) / direction.x;
+            t_max = (x_max - origin.x) / direction.x;
+        } else {
+            t_min = (x_max - origin.x) / direction.x;
+            t_max = (x_min - origin.x) / direction.x;
+        }
+
+        if (direction.y >= 0) {
+            t_y_min = (y_min - origin.y) / direction.y;
+            t_y_max = (y_max - origin.y) / direction.y;
+        } else {
+            t_y_min = (y_max - origin.y) / direction.y;
+            t_y_max = (y_min - origin.y) / direction.y;
+        }
+    
+        if (t_min > t_y_max || t_y_min > t_max) return false;
+
+        t_min = max(t_min, t_y_min);
+        t_max = min(t_max, t_y_max);
+    
+        real32 t_z_min, t_z_max;
+        if (direction.z >= 0) {
+            t_z_min = (z_min - origin.z) / direction.z;
+            t_z_max = (z_max - origin.z) / direction.z;
+        } else {
+            t_z_min = (z_max - origin.z) / direction.z;
+            t_z_max = (z_min - origin.z) / direction.z;
+        }
+
+        if (t_min > t_z_max || t_z_min > t_max) return false;
+
+        // test if origin is inside AABB
+        // NOTE: this procedure actually returns true if the ray origin is inside the AABB without these checks,
+        //       but the t_result will be negative. since we want to be able to select things when we're inside them,
+        //       but not be able to select things that are behind us, we do this check.
+        if (ray.origin.x >= aabb.p_min.x && ray.origin.y >= aabb.p_min.y && ray.origin.z >= aabb.p_min.z &&
+            ray.origin.x <= aabb.p_max.x && ray.origin.y <= aabb.p_max.y && ray.origin.z <= aabb.p_max.z) {
+            *t_min_result = 0.0f;
+        } else {
+            *t_min_result = max(t_min, t_z_min);
+        }
+
+        *t_max_result = min(t_max, t_z_max);
+    
         return true;
     }
 
-    if (to_sqrt < 0) {
-        return false;
+    inline bool32 ray_intersects_aabb(Ray ray, AABB aabb, real32 *t_result) {
+        real32 t_max;
+        return ray_intersects_aabb(ray, aabb, t_result, &t_max);
     }
+
+// NOTE: we assume ray.direction is a unit vector
+//       if it were not, then we'd have to include the direction magnitude parts of the equation
+// TODO: DON'T assume this, and instead use the equation that does not assume direction vector of unit length
+    bool32 ray_intersects_circle(Ray_2D ray, real32 radius, Vec2 center_pos, real32 *t_min, real32 *t_max) {
+        // NOTE: these names, like delta don't really mean anything; it's just from the math
+        //       see this page: https://www.geometrictools.com/Documentation/IntersectionLine2Circle2.pdf
+        Vec2 delta = ray.origin - center_pos;
+
+        real32 dir_dot_delta = dot(ray.direction, delta);
+        real32 delta_distance_squared = dot(delta, delta);
+        real32 r_squared = radius*radius;
+
+        real32 direction_length = distance(ray.direction);
+        real32 dir_squared = direction_length*direction_length;
     
-    *t_result = origin_to_center_proj_direction - sqrtf(to_sqrt);
-    return true;
-}
+        real32 to_sqrt = dir_dot_delta*dir_dot_delta - dir_squared*(delta_distance_squared - r_squared);
+
+        if (to_sqrt < 0.0f) {
+            return false;
+        }
+
+        real32 sqrted = sqrtf(to_sqrt);
+
+        // TODO: maybe use epsilon value here
+        if (direction_length == 0.0f) {
+            if (delta_distance_squared < r_squared) {
+                *t_min = -INFINITY;
+                *t_max = INFINITY;
+                return true;
+            } else {
+                return false;
+            }
+        }
+
+        // NOTE: ray origin is inside circle; we do this check so that we don't get a negative t_min
+        //       but, if we want to remove the if, we can just allow the negative t_min and make sure
+        //       the caller checks for negative t_min, if necessary
+        if (delta_distance_squared < r_squared) {
+            *t_min = 0;
+        } else {
+            *t_min = (-dir_dot_delta - sqrted) / dir_squared;
+        }
+        *t_max = (-dir_dot_delta + sqrted) / dir_squared;
+        return true;
+    }
+
+    bool32 ray_intersects_circle(Ray_2D ray, real32 radius, Vec2 center_pos, real32 *t_result) {
+        real32 r_squared = radius*radius;
+        Vec2 origin_to_center = center_pos - ray.origin;
+        real32 origin_to_center_dist_squared = origin_to_center.x*origin_to_center.x + origin_to_center.y*origin_to_center.y;
+
+        real32 origin_to_center_proj_direction = dot(origin_to_center, ray.direction);
+        real32 origin_to_center_proj_direction_squared = origin_to_center_proj_direction*origin_to_center_proj_direction;
+
+        real32 to_sqrt = r_squared - origin_to_center_dist_squared + origin_to_center_proj_direction_squared;
+    
+        // origin is inside circle
+        if (origin_to_center_dist_squared < r_squared) {
+            *t_result = 0;
+            return true;
+        }
+
+        if (to_sqrt < 0) {
+            return false;
+        }
+    
+        *t_result = origin_to_center_proj_direction - sqrtf(to_sqrt);
+        return true;
+    }
 
 // NOTE: plane_normal is not necessarily a unit vector, thus plane_d is not necessarily the distance from the origin
 //       of the plane
-bool32 ray_intersects_plane(Ray ray, Vec3 plane_normal, real32 plane_d, real32 *t_result) {
-    real32 denom = dot(ray.direction, plane_normal);
-    if (fabsf(denom) < EPSILON) {
+    bool32 ray_intersects_plane(Ray ray, Vec3 plane_normal, real32 plane_d, real32 *t_result) {
+        real32 denom = dot(ray.direction, plane_normal);
+        if (fabsf(denom) < EPSILON) {
+            return false;
+        }
+    
+        real32 t = (plane_d - dot(ray.origin, plane_normal)) / denom;
+        if (t >= 0.0f) {
+            *t_result = (plane_d - dot(ray.origin, plane_normal)) / denom;
+            return true;
+        }
+
         return false;
     }
+
+    bool32 bidirectional_ray_intersects_plane(Ray ray, Vec3 plane_normal, real32 plane_d, real32 *t_result) {
+        real32 denom = dot(ray.direction, plane_normal);
+        if (fabsf(denom) < EPSILON) {
+            return false;
+        }
     
-    real32 t = (plane_d - dot(ray.origin, plane_normal)) / denom;
-    if (t >= 0.0f) {
+        real32 t = (plane_d - dot(ray.origin, plane_normal)) / denom;
         *t_result = (plane_d - dot(ray.origin, plane_normal)) / denom;
         return true;
     }
 
-    return false;
-}
-
-bool32 bidirectional_ray_intersects_plane(Ray ray, Vec3 plane_normal, real32 plane_d, real32 *t_result) {
-    real32 denom = dot(ray.direction, plane_normal);
-    if (fabsf(denom) < EPSILON) {
-        return false;
+    bool32 ray_intersects_plane(Ray ray, Plane plane, real32 *t_result) {
+        return ray_intersects_plane(ray, plane.normal, plane.d, t_result);
     }
-    
-    real32 t = (plane_d - dot(ray.origin, plane_normal)) / denom;
-    *t_result = (plane_d - dot(ray.origin, plane_normal)) / denom;
-    return true;
-}
 
-bool32 ray_intersects_plane(Ray ray, Plane plane, real32 *t_result) {
-    return ray_intersects_plane(ray, plane.normal, plane.d, t_result);
-}
-
-inline real32 saturate(real32 t) {
-    return min(max(t, 0.0f), 1.0f);
-}
+    inline real32 saturate(real32 t) {
+        return min(max(t, 0.0f), 1.0f);
+    }
 
 // NOTE: vertices should be in clockwise order
-Vec3 get_triangle_normal(Vec3 triangle[3]) {
-    Vec3 v1 = triangle[1] - triangle[0];
-    Vec3 v2 = triangle[2] - triangle[1];
-    Vec3 normal = normalize(cross(v1, v2));
-    return normal;
-}
-
-Vec3 closest_point_on_line_segment(Vec3 a, Vec3 b, Vec3 point) {
-    Vec3 AB = b - a;
-    // we're pretty much dividing the dot product by the length of AB, to get the projected distance
-    // of a over AB, i.e. dot(a, normalize(AB)), then dividing that projected distance by the distance of
-    // AB, to get the percentage that the projected distance makes up of the length of AB.
-    // so to do this we do
-    // dot(point - a, AB) / ||AB|| / ||AB||
-    // = dot(point - a, AB) / ||AB||^2
-    // = dot(point - a, AB) / dot(AB, AB)
-    real32 t = dot(point - a, AB) / dot(AB, AB);
-    return a + saturate(t) * AB;
-}
-
-Vec3 get_closest_point_on_triangle_to_coplanar_point(Vec3 coplanar_point, Vec3 triangle[3], Vec3 triangle_normal) {
-    // determine whether line_plane_intersection is inside the triangle
-    Vec3 p0 = triangle[0];
-    Vec3 p1 = triangle[1];
-    Vec3 p2 = triangle[2];
-
-    // TODO: we may need to do some checking here for degenerate triangles, i.e. where cross product would be
-    //       the zero vector.
-    Vec3 c0 = cross(coplanar_point - p0, p1 - p0);
-    Vec3 c1 = cross(coplanar_point - p1, p2 - p1);
-    Vec3 c2 = cross(coplanar_point - p2, p0 - p2);
-    bool is_inside = (dot(c0, triangle_normal) <= 0.0f &&
-                      dot(c1, triangle_normal) <= 0.0f &&
-                      dot(c2, triangle_normal) <= 0.0f);
- 
-    if (is_inside)  {
-        return coplanar_point;
-    } else {
-        // find the closest points on the triangle edges to the point that lies outside the triangle
-        // and we return the closest one found
-
-        // edge 1
-        Vec3 point1 = closest_point_on_line_segment(p0, p1, coplanar_point);
-        Vec3 v1 = coplanar_point - point1;
-        real32 dist_squared = dot(v1, v1);
-        real32 smallest_distance = dist_squared;
-        Vec3 closest_point = point1;
- 
-        // edge 2
-        Vec3 point2 = closest_point_on_line_segment(p1, p2, coplanar_point);
-        Vec3 v2 = coplanar_point - point2;
-        dist_squared = dot(v2, v2);
-        if(dist_squared < smallest_distance) {
-            closest_point = point2;
-            smallest_distance = dist_squared;
-        }
- 
-        // edge 3
-        Vec3 point3 = closest_point_on_line_segment(p2, p0, coplanar_point);
-        Vec3 v3 = coplanar_point - point3;
-        dist_squared = dot(v3, v3);
-        if(dist_squared < smallest_distance) {
-            closest_point = point3;
-            smallest_distance = dist_squared;
-        }
-
-        return closest_point;
-    }
-}
-
-Vec3 get_point_on_plane_from_xz(real32 x, real32 z, Vec3 plane_normal, Vec3 some_point_on_plane) {
-    Vec3 n = normalize(plane_normal);
-    real32 plane_d = dot(some_point_on_plane, n);
-
-    // NOTE: this is the case where the plane is just a straight wall; we don't support this case
-    assert(fabsf(n.y) > EPSILON);
-
-    real32 projected_y = (plane_d - n.x*x - n.z*z) / n.y;
-    return make_vec3(x, projected_y, z);
-}
-
-bool32 circle_intersects_triangle_on_xz_plane(Vec3 center, real32 radius, Vec3 triangle[3], Vec3 triangle_normal) {
-    Vec3 p0 = triangle[0];
-    Vec3 p1 = triangle[1];
-    Vec3 p2 = triangle[2];
-
-    Vec3 projected_triangle[] = {
-        make_vec3(p0.x, 0.0f, p0.z),
-        make_vec3(p1.x, 0.0f, p1.z),
-        make_vec3(p2.x, 0.0f, p2.z)
-    };
-    
-    Vec3 projected_center = make_vec3(center.x, 0.0f, center.z);
-
-    Vec3 projected_triangle_normal = normalize(make_vec3(0.0f, triangle_normal.y, 0.0f));
-    Vec3 closest_point_on_triangle = get_closest_point_on_triangle_to_coplanar_point(projected_center,
-                                                                                     projected_triangle,
-                                                                                     projected_triangle_normal);
-    Vec3 point_to_center = projected_center - closest_point_on_triangle;
-    real32 radius_squared = radius*radius;
-    if (dot(point_to_center, point_to_center) > radius_squared) {
-        // circle doesn't touch the projected triangle
-        return false;
+    Vec3 get_triangle_normal(Vec3 triangle[3]) {
+        Vec3 v1 = triangle[1] - triangle[0];
+        Vec3 v2 = triangle[2] - triangle[1];
+        Vec3 normal = normalize(cross(v1, v2));
+        return normal;
     }
 
-    return true;
-}
+    Vec3 closest_point_on_line_segment(Vec3 a, Vec3 b, Vec3 point) {
+        Vec3 AB = b - a;
+        // we're pretty much dividing the dot product by the length of AB, to get the projected distance
+        // of a over AB, i.e. dot(a, normalize(AB)), then dividing that projected distance by the distance of
+        // AB, to get the percentage that the projected distance makes up of the length of AB.
+        // so to do this we do
+        // dot(point - a, AB) / ||AB|| / ||AB||
+        // = dot(point - a, AB) / ||AB||^2
+        // = dot(point - a, AB) / dot(AB, AB)
+        real32 t = dot(point - a, AB) / dot(AB, AB);
+        return a + saturate(t) * AB;
+    }
 
-// TODO: maybe just put these params into a struct
-bool32 sphere_intersects_triangle(Vec3 center, real32 radius, Vec3 triangle[3],
-                                  Vec3 *penetration_normal, real32 *penetration_depth,
-                                  real32 *center_distance_from_plane_result) {
-    Vec3 p0 = triangle[0];
-    Vec3 p1 = triangle[1];
-    Vec3 p2 = triangle[2];
+    Vec3 get_closest_point_on_triangle_to_coplanar_point(Vec3 coplanar_point, Vec3 triangle[3], Vec3 triangle_normal) {
+        // determine whether line_plane_intersection is inside the triangle
+        Vec3 p0 = triangle[0];
+        Vec3 p1 = triangle[1];
+        Vec3 p2 = triangle[2];
+
+        // TODO: we may need to do some checking here for degenerate triangles, i.e. where cross product would be
+        //       the zero vector.
+        Vec3 c0 = cross(coplanar_point - p0, p1 - p0);
+        Vec3 c1 = cross(coplanar_point - p1, p2 - p1);
+        Vec3 c2 = cross(coplanar_point - p2, p0 - p2);
+        bool is_inside = (dot(c0, triangle_normal) <= 0.0f &&
+                          dot(c1, triangle_normal) <= 0.0f &&
+                          dot(c2, triangle_normal) <= 0.0f);
+ 
+        if (is_inside)  {
+            return coplanar_point;
+        } else {
+            // find the closest points on the triangle edges to the point that lies outside the triangle
+            // and we return the closest one found
+
+            // edge 1
+            Vec3 point1 = closest_point_on_line_segment(p0, p1, coplanar_point);
+            Vec3 v1 = coplanar_point - point1;
+            real32 dist_squared = dot(v1, v1);
+            real32 smallest_distance = dist_squared;
+            Vec3 closest_point = point1;
+ 
+            // edge 2
+            Vec3 point2 = closest_point_on_line_segment(p1, p2, coplanar_point);
+            Vec3 v2 = coplanar_point - point2;
+            dist_squared = dot(v2, v2);
+            if(dist_squared < smallest_distance) {
+                closest_point = point2;
+                smallest_distance = dist_squared;
+            }
+ 
+            // edge 3
+            Vec3 point3 = closest_point_on_line_segment(p2, p0, coplanar_point);
+            Vec3 v3 = coplanar_point - point3;
+            dist_squared = dot(v3, v3);
+            if(dist_squared < smallest_distance) {
+                closest_point = point3;
+                smallest_distance = dist_squared;
+            }
+
+            return closest_point;
+        }
+    }
+
+    Vec3 get_point_on_plane_from_xz(real32 x, real32 z, Vec3 plane_normal, Vec3 some_point_on_plane) {
+        Vec3 n = normalize(plane_normal);
+        real32 plane_d = dot(some_point_on_plane, n);
+
+        // NOTE: this is the case where the plane is just a straight wall; we don't support this case
+        assert(fabsf(n.y) > EPSILON);
+
+        real32 projected_y = (plane_d - n.x*x - n.z*z) / n.y;
+        return make_vec3(x, projected_y, z);
+    }
+
+    bool32 circle_intersects_triangle_on_xz_plane(Vec3 center, real32 radius, Vec3 triangle[3], Vec3 triangle_normal) {
+        Vec3 p0 = triangle[0];
+        Vec3 p1 = triangle[1];
+        Vec3 p2 = triangle[2];
+
+        Vec3 projected_triangle[] = {
+            make_vec3(p0.x, 0.0f, p0.z),
+            make_vec3(p1.x, 0.0f, p1.z),
+            make_vec3(p2.x, 0.0f, p2.z)
+        };
     
-    Vec3 triangle_normal = get_triangle_normal(triangle);
+        Vec3 projected_center = make_vec3(center.x, 0.0f, center.z);
 
-    // check if the sphere intersects the plane containing the triangle
-    real32 center_distance_from_plane = dot(center - p0, triangle_normal);
-    if (fabsf(center_distance_from_plane) > radius) return false;
+        Vec3 projected_triangle_normal = normalize(make_vec3(0.0f, triangle_normal.y, 0.0f));
+        Vec3 closest_point_on_triangle = get_closest_point_on_triangle_to_coplanar_point(projected_center,
+                                                                                         projected_triangle,
+                                                                                         projected_triangle_normal);
+        Vec3 point_to_center = projected_center - closest_point_on_triangle;
+        real32 radius_squared = radius*radius;
+        if (dot(point_to_center, point_to_center) > radius_squared) {
+            // circle doesn't touch the projected triangle
+            return false;
+        }
 
-    *center_distance_from_plane_result = center_distance_from_plane;
-    
-    Vec3 coplanar_point = center - triangle_normal*center_distance_from_plane;
-    Vec3 closest_point_on_triangle = get_closest_point_on_triangle_to_coplanar_point(coplanar_point, triangle,
-                                                                                     triangle_normal);
-    Vec3 point_to_center = center - closest_point_on_triangle;
-    real32 radius_squared = radius*radius;
-    if (dot(point_to_center, point_to_center) > radius_squared) return false;
-
-    Vec3 penetration_vector = center - closest_point_on_triangle;
-    *penetration_normal = normalize(penetration_vector);
-    *penetration_depth = radius - distance(penetration_vector);
-
-    /*
-      side view of sphere:
-      |   :  .   |   
-      : is the triangle collision
-      . is the center of the sphere
-      penetration_vector is vector from : to .
-      penetration_normal is the normalized penetration_vector
-      penetration_depth is the distance from the left | to :
-      penetration/intersection point is if you took a line from the sphere center to the outside of the sphere
-that intersects the triangle and is perpendicular to it, the penetration point is where the line intersects the
-sphere
-center_distance_from_plane_result is the distance from coplanar point to the center of the sphere
-      - just look at the code above to figure out what it is
-    */
-
-    Vec3 capsule_edge = closest_point_on_triangle - (*penetration_normal)*(*penetration_depth);
-
-#if DEBUG_SHOW_COLLISION_LINES
-    add_debug_line(&game_state->debug_state,
-                   closest_point_on_triangle, capsule_edge, make_vec4(1.0f, 1.0f, 0.0f, 1.0f));
-#endif
-
-#if 0
-    if (dot(penetration_vector, triangle_normal) > 0.0f) {
         return true;
     }
 
-    return false;
-#endif
-    return true;
-}
-
-// https://wickedengine.net/2020/04/26/capsule-collision-detection/
-bool32 capsule_intersects_triangle(Capsule capsule, Vec3 triangle[3],
-                                   Vec3 *penetration_normal, real32 *penetration_depth,
-                                   Vec3 *intersection_point, real32 *sphere_center_distance_from_plane) {
-    Vec3 capsule_normal = normalize(capsule.tip - capsule.base);
-    Vec3 line_end_offset = capsule_normal * capsule.radius;
-    Vec3 a = capsule.base + line_end_offset;
-    Vec3 b = capsule.tip - line_end_offset;
-
-    Vec3 triangle_normal = get_triangle_normal(triangle);
-    Ray capsule_ray = make_ray(capsule.base, capsule_normal);
-    real32 plane_d = dot(triangle[0], triangle_normal);
-    real32 plane_intersect_t;
-
-    Vec3 reference_point;
-    if (bidirectional_ray_intersects_plane(capsule_ray, triangle_normal, plane_d, &plane_intersect_t)) {
-        Vec3 plane_intersection_point = capsule.base + capsule_normal * plane_intersect_t;
-        reference_point = get_closest_point_on_triangle_to_coplanar_point(plane_intersection_point,
-                                                                          triangle, triangle_normal);
-    } else {
-        reference_point = triangle[0];
-    }
+// TODO: maybe just put these params into a struct
+    bool32 sphere_intersects_triangle(Vec3 center, real32 radius, Vec3 triangle[3],
+                                      Vec3 *penetration_normal, real32 *penetration_depth,
+                                      real32 *center_distance_from_plane_result) {
+        Vec3 p0 = triangle[0];
+        Vec3 p1 = triangle[1];
+        Vec3 p2 = triangle[2];
     
-    // the penetration normal is the direction vector of the shortest line from the triangle to the reference
-    // point. the penetration vector is NOT the distance we need to move the capsule by to get it out. the
-    // direction is the same, but the distance is the radius of the capsule - the length of the penetration vector.
+        Vec3 triangle_normal = get_triangle_normal(triangle);
 
-    // note that the reference point can be at the top or the bottom of the capsule, but we need a point
-    // that exists on the line between the centers of the capsule spheres, so we call the function below:
-    Vec3 sphere_center = closest_point_on_line_segment(a, b, reference_point);
-    if (!sphere_intersects_triangle(sphere_center, capsule.radius, triangle,
-                                    penetration_normal, penetration_depth, sphere_center_distance_from_plane)) {
-        return false;
-    }
+        // check if the sphere intersects the plane containing the triangle
+        real32 center_distance_from_plane = dot(center - p0, triangle_normal);
+        if (fabsf(center_distance_from_plane) > radius) return false;
+
+        *center_distance_from_plane_result = center_distance_from_plane;
+    
+        Vec3 coplanar_point = center - triangle_normal*center_distance_from_plane;
+        Vec3 closest_point_on_triangle = get_closest_point_on_triangle_to_coplanar_point(coplanar_point, triangle,
+                                                                                         triangle_normal);
+        Vec3 point_to_center = center - closest_point_on_triangle;
+        real32 radius_squared = radius*radius;
+        if (dot(point_to_center, point_to_center) > radius_squared) return false;
+
+        Vec3 penetration_vector = center - closest_point_on_triangle;
+        *penetration_normal = normalize(penetration_vector);
+        *penetration_depth = radius - distance(penetration_vector);
+
+        /*
+          side view of sphere:
+          |   :  .   |   
+          : is the triangle collision
+          . is the center of the sphere
+          penetration_vector is vector from : to .
+          penetration_normal is the normalized penetration_vector
+          penetration_depth is the distance from the left | to :
+          penetration/intersection point is if you took a line from the sphere center to the outside of the sphere
+          that intersects the triangle and is perpendicular to it, the penetration point is where the line intersects the
+          sphere
+          center_distance_from_plane_result is the distance from coplanar point to the center of the sphere
+          - just look at the code above to figure out what it is
+        */
+
+        Vec3 capsule_edge = closest_point_on_triangle - (*penetration_normal)*(*penetration_depth);
+
+#if DEBUG_SHOW_COLLISION_LINES
+        add_debug_line(&game_state->debug_state,
+                       closest_point_on_triangle, capsule_edge, make_vec4(1.0f, 1.0f, 0.0f, 1.0f));
+#endif
 
 #if 0
-    //DEBUG_SHOW_COLLISION_LINES
-    add_debug_line(&Context::game_state->debug_state,
-                   triangle[0], triangle[1], make_vec4(1.0f, 0.0f, 0.0f, 1.0f));
-    add_debug_line(&Context::game_state->debug_state,
-                   triangle[1], triangle[2], make_vec4(1.0f, 0.0f, 0.0f, 1.0f));
-    add_debug_line(&Context::game_state->debug_state,
-                   triangle[2], triangle[0], make_vec4(1.0f, 0.0f, 0.0f, 1.0f));
+        if (dot(penetration_vector, triangle_normal) > 0.0f) {
+            return true;
+        }
+
+        return false;
+#endif
+        return true;
+    }
+
+// https://wickedengine.net/2020/04/26/capsule-collision-detection/
+    bool32 capsule_intersects_triangle(Capsule capsule, Vec3 triangle[3],
+                                       Vec3 *penetration_normal, real32 *penetration_depth,
+                                       Vec3 *intersection_point, real32 *sphere_center_distance_from_plane) {
+        Vec3 capsule_normal = normalize(capsule.tip - capsule.base);
+        Vec3 line_end_offset = capsule_normal * capsule.radius;
+        Vec3 a = capsule.base + line_end_offset;
+        Vec3 b = capsule.tip - line_end_offset;
+
+        Vec3 triangle_normal = get_triangle_normal(triangle);
+        Ray capsule_ray = make_ray(capsule.base, capsule_normal);
+        real32 plane_d = dot(triangle[0], triangle_normal);
+        real32 plane_intersect_t;
+
+        Vec3 reference_point;
+        if (bidirectional_ray_intersects_plane(capsule_ray, triangle_normal, plane_d, &plane_intersect_t)) {
+            Vec3 plane_intersection_point = capsule.base + capsule_normal * plane_intersect_t;
+            reference_point = get_closest_point_on_triangle_to_coplanar_point(plane_intersection_point,
+                                                                              triangle, triangle_normal);
+        } else {
+            reference_point = triangle[0];
+        }
+    
+        // the penetration normal is the direction vector of the shortest line from the triangle to the reference
+        // point. the penetration vector is NOT the distance we need to move the capsule by to get it out. the
+        // direction is the same, but the distance is the radius of the capsule - the length of the penetration vector.
+
+        // note that the reference point can be at the top or the bottom of the capsule, but we need a point
+        // that exists on the line between the centers of the capsule spheres, so we call the function below:
+        Vec3 sphere_center = closest_point_on_line_segment(a, b, reference_point);
+        if (!sphere_intersects_triangle(sphere_center, capsule.radius, triangle,
+                                        penetration_normal, penetration_depth, sphere_center_distance_from_plane)) {
+            return false;
+        }
+
+#if 0
+        //DEBUG_SHOW_COLLISION_LINES
+        add_debug_line(&Context::game_state->debug_state,
+                       triangle[0], triangle[1], make_vec4(1.0f, 0.0f, 0.0f, 1.0f));
+        add_debug_line(&Context::game_state->debug_state,
+                       triangle[1], triangle[2], make_vec4(1.0f, 0.0f, 0.0f, 1.0f));
+        add_debug_line(&Context::game_state->debug_state,
+                       triangle[2], triangle[0], make_vec4(1.0f, 0.0f, 0.0f, 1.0f));
 #endif
 
-    *intersection_point = sphere_center - *penetration_normal*(capsule.radius - *penetration_depth);
+        *intersection_point = sphere_center - *penetration_normal*(capsule.radius - *penetration_depth);
 
-    return true;
-}
+        return true;
+    }
 
 // TODO: replace this with the faster ray vs triangle test
 //       (ctrl-f triangle here: https://www.iquilezles.org/www/articles/intersectors/intersectors.htm)
 //       detailed explanation of fast algorithm here: https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/moller-trumbore-ray-triangle-intersection
 // TODO: may also be able to do a ray vs many triangles SIMD version of this procedure
 #if 0
-bool32 ray_intersects_triangle(Ray ray, Vec3 v[3], real32 *t_result) {
-    Vec3 v0_v1 = v[1] - v[0];
-    Vec3 v0_v2 = v[2] - v[0];
+    bool32 ray_intersects_triangle(Ray ray, Vec3 v[3], real32 *t_result) {
+        Vec3 v0_v1 = v[1] - v[0];
+        Vec3 v0_v2 = v[2] - v[0];
 
-    Vec3 n = cross(v0_v1, v0_v2);
-    real32 d = dot(n, v[0]); // this can be negative
+        Vec3 n = cross(v0_v1, v0_v2);
+        real32 d = dot(n, v[0]); // this can be negative
 
-    real32 denom = dot(ray.direction, n);
-    // weird check to bail on NaN
+        real32 denom = dot(ray.direction, n);
+        // weird check to bail on NaN
 #if 0
-    if (!(denom < 0.0f)) {
-        // ray is hitting backside of triangle
-        return false;
-    }
+        if (!(denom < 0.0f)) {
+            // ray is hitting backside of triangle
+            return false;
+        }
 #endif
-    if (fabs(denom) < EPSILON) {
-        // ray is parallel to triangle
+        if (fabs(denom) < EPSILON) {
+            // ray is parallel to triangle
+            return false;
+        }
+
+        real32 t = (d - dot(ray.origin, n)) / denom;
+
+        if (t < 0.0f) return false;
+
+        Vec3 intersection_point = ray.origin + t*ray.direction;
+        Vec3 bary_coords;
+        bool32 triangle_is_valid = compute_barycentric_coords(v[0], v[1], v[2],
+                                                              n, intersection_point,
+                                                              &bary_coords);
+
+        if (!triangle_is_valid) return false;
+
+        bool32 inside_triangle = bary_coords_inside_triangle(bary_coords);
+        if (inside_triangle) {
+            *t_result = t;
+            return true;
+        }
+
         return false;
     }
-
-    real32 t = (d - dot(ray.origin, n)) / denom;
-
-    if (t < 0.0f) return false;
-
-    Vec3 intersection_point = ray.origin + t*ray.direction;
-    Vec3 bary_coords;
-    bool32 triangle_is_valid = compute_barycentric_coords(v[0], v[1], v[2],
-                                                          n, intersection_point,
-                                                          &bary_coords);
-
-    if (!triangle_is_valid) return false;
-
-    bool32 inside_triangle = bary_coords_inside_triangle(bary_coords);
-    if (inside_triangle) {
-        *t_result = t;
-        return true;
-    }
-
-    return false;
-}
 #endif
 
 // from https://www.iquilezles.org/www/articles/intersectors/intersectors.htm
 // explanation (i'm pretty sure this is just a slightly modified version of the above) here:
 // https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/moller-trumbore-ray-triangle-intersection
-bool32 ray_intersects_triangle(Ray ray, Vec3 triangle_verts[3], bool32 include_backside, real32 *t_result) {
-    Vec3 v1v0 = triangle_verts[1] - triangle_verts[0];
-    Vec3 v2v0 = triangle_verts[2] - triangle_verts[0];
-    Vec3 rov0 = ray.origin - triangle_verts[0];
-    Vec3 n = cross(v1v0, v2v0);
-    Vec3 q = cross(rov0, ray.direction);
+    bool32 ray_intersects_triangle(Ray ray, Vec3 triangle_verts[3], bool32 include_backside, real32 *t_result) {
+        Vec3 v1v0 = triangle_verts[1] - triangle_verts[0];
+        Vec3 v2v0 = triangle_verts[2] - triangle_verts[0];
+        Vec3 rov0 = ray.origin - triangle_verts[0];
+        Vec3 n = cross(v1v0, v2v0);
+        Vec3 q = cross(rov0, ray.direction);
 
-    real32 denom = dot(ray.direction, n);
-    if (!include_backside) {
-        // check if ray is hitting backside of triangle
-        if (!(denom < 0.0f)) return false;
+        real32 denom = dot(ray.direction, n);
+        if (!include_backside) {
+            // check if ray is hitting backside of triangle
+            if (!(denom < 0.0f)) return false;
+        }
+
+        if (fabsf(denom) < EPSILON) return false;
+    
+        real32 d = 1.0f / denom;
+        real32 u = d * dot(-q, v2v0);
+        real32 v = d * dot( q, v1v0);
+        real32 t = d * dot(-n, rov0);
+    
+        if (u < 0.0f || v < 0.0f || (u + v) > 1.0 || t < 0.0f) return false;
+
+        *t_result = t;
+        return true;
     }
-
-    if (fabsf(denom) < EPSILON) return false;
-    
-    real32 d = 1.0f / denom;
-    real32 u = d * dot(-q, v2v0);
-    real32 v = d * dot( q, v1v0);
-    real32 t = d * dot(-n, rov0);
-    
-    if (u < 0.0f || v < 0.0f || (u + v) > 1.0 || t < 0.0f) return false;
-
-    *t_result = t;
-    return true;
-}
 
 // NOTE: we note that it's coplanar because this doesn't check for skew lines
 //       checking for skew lines would require us to find both t_1 and t_2
 #if 0
-bool32 line_intersects_coplanar_ray(Line line, Ray ray, real32 *t_result) {
-    Vec3 p1 = line.origin;
-    Vec3 p2 = ray.origin;
-    Vec3 d1 = line.line;
-    Vec3 d2 = ray.direction;
+    bool32 line_intersects_coplanar_ray(Line line, Ray ray, real32 *t_result) {
+        Vec3 p1 = line.origin;
+        Vec3 p2 = ray.origin;
+        Vec3 d1 = line.line;
+        Vec3 d2 = ray.direction;
 
-    real32 d1_cross_d2_distance = distance(cross(d1, d2));
-    real32 denom = d1_cross_d2_distance * d1_cross_d2_distance;
+        real32 d1_cross_d2_distance = distance(cross(d1, d2));
+        real32 denom = d1_cross_d2_distance * d1_cross_d2_distance;
 
-    // check if lines are parellel
-    if (fabsf(denom) < EPSILON) return false;
+        // check if lines are parellel
+        if (fabsf(denom) < EPSILON) return false;
 
-    real32 t = dot(cross((p2 - p1), d2), cross(d1, d2)) / denom;
-    // make sure the t is within the line segment
-    if (t > -0.001f && t < 1.001f) {
-        *t_result = t;
-        return true;
-    } else {
-        return false;
+        real32 t = dot(cross((p2 - p1), d2), cross(d1, d2)) / denom;
+        // make sure the t is within the line segment
+        if (t > -0.001f && t < 1.001f) {
+            *t_result = t;
+            return true;
+        } else {
+            return false;
+        }
     }
-}
 #endif
 
-bool32 ray_intersects_coplanar_ray(Ray ray1, Ray ray2, real32 *t_result) {
-    Vec3 p1 = ray1.origin;
-    Vec3 p2 = ray2.origin;
-    Vec3 d1 = ray1.direction;
-    Vec3 d2 = ray2.direction;
+    bool32 ray_intersects_coplanar_ray(Ray ray1, Ray ray2, real32 *t_result) {
+        Vec3 p1 = ray1.origin;
+        Vec3 p2 = ray2.origin;
+        Vec3 d1 = ray1.direction;
+        Vec3 d2 = ray2.direction;
 
-    real32 d1_cross_d2_distance = distance(cross(d1, d2));
-    real32 denom = d1_cross_d2_distance * d1_cross_d2_distance;
+        real32 d1_cross_d2_distance = distance(cross(d1, d2));
+        real32 denom = d1_cross_d2_distance * d1_cross_d2_distance;
 
-    // check if lines are parallel
-    if (fabsf(denom) < EPSILON) return false;
+        // check if lines are parallel
+        if (fabsf(denom) < EPSILON) return false;
 
-    real32 t = dot(cross((p2 - p1), d2), cross(d1, d2)) / denom;
-    //if (t < 0.0f) return false;
+        real32 t = dot(cross((p2 - p1), d2), cross(d1, d2)) / denom;
+        //if (t < 0.0f) return false;
 
-    *t_result = t;
-    return true;
-}
+        *t_result = t;
+        return true;
+    }
 
 // TODO: optimize probably
 // NOTE: this doesn't calculate a tight AABB.
 //       it just transforms the original AABB and gives you the new AABB for that transformed AABB.
 //       the way this function does it is more efficient than transforming all 8 points and
 //       creating an AABB from that.
-void transform_aabb(AABB aabb, Mat4 transform_matrix, AABB *transformed_aabb) {
-    Vec3 new_origin = truncate_v4_to_v3(transform_matrix.col4);
+    void transform_aabb(AABB aabb, Mat4 transform_matrix, AABB *transformed_aabb) {
+        Vec3 new_origin = truncate_v4_to_v3(transform_matrix.col4);
 
-    real32 x_min = new_origin.x;
-    real32 x_max = new_origin.x;
-    real32 y_min = new_origin.y;
-    real32 y_max = new_origin.y;
-    real32 z_min = new_origin.z;
-    real32 z_max = new_origin.z;
+        real32 x_min = new_origin.x;
+        real32 x_max = new_origin.x;
+        real32 y_min = new_origin.y;
+        real32 y_max = new_origin.y;
+        real32 z_min = new_origin.z;
+        real32 z_max = new_origin.z;
 
-    if (transform_matrix.col1[0] > 0) {
-        x_min += transform_matrix.col1[0] * aabb.p_min.x;
-        x_max += transform_matrix.col1[0] * aabb.p_max.x;
-    } else {
-        x_min += transform_matrix.col1[0] * aabb.p_max.x;
-        x_max += transform_matrix.col1[0] * aabb.p_min.x;
-    }
+        if (transform_matrix.col1[0] > 0) {
+            x_min += transform_matrix.col1[0] * aabb.p_min.x;
+            x_max += transform_matrix.col1[0] * aabb.p_max.x;
+        } else {
+            x_min += transform_matrix.col1[0] * aabb.p_max.x;
+            x_max += transform_matrix.col1[0] * aabb.p_min.x;
+        }
 
-    if (transform_matrix.col1[1] > 0) {
-        y_min += transform_matrix.col1[1] * aabb.p_min.x;
-        y_max += transform_matrix.col1[1] * aabb.p_max.x;
-    } else {
-        y_min += transform_matrix.col1[1] * aabb.p_max.x;
-        y_max += transform_matrix.col1[1] * aabb.p_min.x;
-    }
+        if (transform_matrix.col1[1] > 0) {
+            y_min += transform_matrix.col1[1] * aabb.p_min.x;
+            y_max += transform_matrix.col1[1] * aabb.p_max.x;
+        } else {
+            y_min += transform_matrix.col1[1] * aabb.p_max.x;
+            y_max += transform_matrix.col1[1] * aabb.p_min.x;
+        }
     
-    if (transform_matrix.col1[2] > 0) {
-        z_min += transform_matrix.col1[2] * aabb.p_min.x;
-        z_max += transform_matrix.col1[2] * aabb.p_max.x;
-    } else {
-        z_min += transform_matrix.col1[2] * aabb.p_max.x;
-        z_max += transform_matrix.col1[2] * aabb.p_min.x;
-    }
+        if (transform_matrix.col1[2] > 0) {
+            z_min += transform_matrix.col1[2] * aabb.p_min.x;
+            z_max += transform_matrix.col1[2] * aabb.p_max.x;
+        } else {
+            z_min += transform_matrix.col1[2] * aabb.p_max.x;
+            z_max += transform_matrix.col1[2] * aabb.p_min.x;
+        }
 
-    if (transform_matrix.col2[0] > 0) {
-        x_min += transform_matrix.col2[0] * aabb.p_min.y;
-        x_max += transform_matrix.col2[0] * aabb.p_max.y;
-    } else {
-        x_min += transform_matrix.col2[0] * aabb.p_max.y;
-        x_max += transform_matrix.col2[0] * aabb.p_min.y;
-    }
+        if (transform_matrix.col2[0] > 0) {
+            x_min += transform_matrix.col2[0] * aabb.p_min.y;
+            x_max += transform_matrix.col2[0] * aabb.p_max.y;
+        } else {
+            x_min += transform_matrix.col2[0] * aabb.p_max.y;
+            x_max += transform_matrix.col2[0] * aabb.p_min.y;
+        }
 
-    if (transform_matrix.col2[1] > 0) {
-        y_min += transform_matrix.col2[1] * aabb.p_min.y;
-        y_max += transform_matrix.col2[1] * aabb.p_max.y;
-    } else {
-        y_min += transform_matrix.col2[1] * aabb.p_max.y;
-        y_max += transform_matrix.col2[1] * aabb.p_min.y;
-    }
+        if (transform_matrix.col2[1] > 0) {
+            y_min += transform_matrix.col2[1] * aabb.p_min.y;
+            y_max += transform_matrix.col2[1] * aabb.p_max.y;
+        } else {
+            y_min += transform_matrix.col2[1] * aabb.p_max.y;
+            y_max += transform_matrix.col2[1] * aabb.p_min.y;
+        }
 
-    if (transform_matrix.col2[2] > 0) {
-        z_min += transform_matrix.col2[2] * aabb.p_min.y;
-        z_max += transform_matrix.col2[2] * aabb.p_max.y;
-    } else {
-        z_min += transform_matrix.col2[2] * aabb.p_max.y;
-        z_max += transform_matrix.col2[2] * aabb.p_min.y;
-    }
+        if (transform_matrix.col2[2] > 0) {
+            z_min += transform_matrix.col2[2] * aabb.p_min.y;
+            z_max += transform_matrix.col2[2] * aabb.p_max.y;
+        } else {
+            z_min += transform_matrix.col2[2] * aabb.p_max.y;
+            z_max += transform_matrix.col2[2] * aabb.p_min.y;
+        }
     
-    if (transform_matrix.col3[0] > 0) {
-        x_min += transform_matrix.col3[0] * aabb.p_min.z;
-        x_max += transform_matrix.col3[0] * aabb.p_max.z;
-    } else {
-        x_min += transform_matrix.col3[0] * aabb.p_max.z;
-        x_max += transform_matrix.col3[0] * aabb.p_min.z;
-    }
+        if (transform_matrix.col3[0] > 0) {
+            x_min += transform_matrix.col3[0] * aabb.p_min.z;
+            x_max += transform_matrix.col3[0] * aabb.p_max.z;
+        } else {
+            x_min += transform_matrix.col3[0] * aabb.p_max.z;
+            x_max += transform_matrix.col3[0] * aabb.p_min.z;
+        }
     
-    if (transform_matrix.col3[1] > 0) {
-        y_min += transform_matrix.col3[1] * aabb.p_min.z;
-        y_max += transform_matrix.col3[1] * aabb.p_max.z;
-    } else {
-        y_min += transform_matrix.col3[1] * aabb.p_max.z;
-        y_max += transform_matrix.col3[1] * aabb.p_min.z;
-    }
+        if (transform_matrix.col3[1] > 0) {
+            y_min += transform_matrix.col3[1] * aabb.p_min.z;
+            y_max += transform_matrix.col3[1] * aabb.p_max.z;
+        } else {
+            y_min += transform_matrix.col3[1] * aabb.p_max.z;
+            y_max += transform_matrix.col3[1] * aabb.p_min.z;
+        }
 
-    if (transform_matrix.col3[2] > 0) {
-        z_min += transform_matrix.col3[2] * aabb.p_min.z;
-        z_max += transform_matrix.col3[2] * aabb.p_max.z;
-    } else {
-        z_min += transform_matrix.col3[2] * aabb.p_max.z;
-        z_max += transform_matrix.col3[2] * aabb.p_min.z;
-    }
+        if (transform_matrix.col3[2] > 0) {
+            z_min += transform_matrix.col3[2] * aabb.p_min.z;
+            z_max += transform_matrix.col3[2] * aabb.p_max.z;
+        } else {
+            z_min += transform_matrix.col3[2] * aabb.p_max.z;
+            z_max += transform_matrix.col3[2] * aabb.p_min.z;
+        }
     
-    transformed_aabb->p_min = make_vec3(x_min, y_min, z_min);
-    transformed_aabb->p_max = make_vec3(x_max, y_max, z_max);
-}
-
-AABB transform_aabb(AABB aabb, Mat4 transform_matrix) {
-    AABB transformed_aabb = {};
-    Vec3 new_origin = truncate_v4_to_v3(transform_matrix.col4);
-
-    real32 x_min = new_origin.x;
-    real32 x_max = new_origin.x;
-    real32 y_min = new_origin.y;
-    real32 y_max = new_origin.y;
-    real32 z_min = new_origin.z;
-    real32 z_max = new_origin.z;
-
-    if (transform_matrix.col1[0] > 0) {
-        x_min += transform_matrix.col1[0] * aabb.p_min.x;
-        x_max += transform_matrix.col1[0] * aabb.p_max.x;
-    } else {
-        x_min += transform_matrix.col1[0] * aabb.p_max.x;
-        x_max += transform_matrix.col1[0] * aabb.p_min.x;
+        transformed_aabb->p_min = make_vec3(x_min, y_min, z_min);
+        transformed_aabb->p_max = make_vec3(x_max, y_max, z_max);
     }
 
-    if (transform_matrix.col1[1] > 0) {
-        y_min += transform_matrix.col1[1] * aabb.p_min.x;
-        y_max += transform_matrix.col1[1] * aabb.p_max.x;
-    } else {
-        y_min += transform_matrix.col1[1] * aabb.p_max.x;
-        y_max += transform_matrix.col1[1] * aabb.p_min.x;
-    }
+    AABB transform_aabb(AABB aabb, Mat4 transform_matrix) {
+        AABB transformed_aabb = {};
+        Vec3 new_origin = truncate_v4_to_v3(transform_matrix.col4);
+
+        real32 x_min = new_origin.x;
+        real32 x_max = new_origin.x;
+        real32 y_min = new_origin.y;
+        real32 y_max = new_origin.y;
+        real32 z_min = new_origin.z;
+        real32 z_max = new_origin.z;
+
+        if (transform_matrix.col1[0] > 0) {
+            x_min += transform_matrix.col1[0] * aabb.p_min.x;
+            x_max += transform_matrix.col1[0] * aabb.p_max.x;
+        } else {
+            x_min += transform_matrix.col1[0] * aabb.p_max.x;
+            x_max += transform_matrix.col1[0] * aabb.p_min.x;
+        }
+
+        if (transform_matrix.col1[1] > 0) {
+            y_min += transform_matrix.col1[1] * aabb.p_min.x;
+            y_max += transform_matrix.col1[1] * aabb.p_max.x;
+        } else {
+            y_min += transform_matrix.col1[1] * aabb.p_max.x;
+            y_max += transform_matrix.col1[1] * aabb.p_min.x;
+        }
     
-    if (transform_matrix.col1[2] > 0) {
-        z_min += transform_matrix.col1[2] * aabb.p_min.x;
-        z_max += transform_matrix.col1[2] * aabb.p_max.x;
-    } else {
-        z_min += transform_matrix.col1[2] * aabb.p_max.x;
-        z_max += transform_matrix.col1[2] * aabb.p_min.x;
-    }
+        if (transform_matrix.col1[2] > 0) {
+            z_min += transform_matrix.col1[2] * aabb.p_min.x;
+            z_max += transform_matrix.col1[2] * aabb.p_max.x;
+        } else {
+            z_min += transform_matrix.col1[2] * aabb.p_max.x;
+            z_max += transform_matrix.col1[2] * aabb.p_min.x;
+        }
 
-    if (transform_matrix.col2[0] > 0) {
-        x_min += transform_matrix.col2[0] * aabb.p_min.y;
-        x_max += transform_matrix.col2[0] * aabb.p_max.y;
-    } else {
-        x_min += transform_matrix.col2[0] * aabb.p_max.y;
-        x_max += transform_matrix.col2[0] * aabb.p_min.y;
-    }
+        if (transform_matrix.col2[0] > 0) {
+            x_min += transform_matrix.col2[0] * aabb.p_min.y;
+            x_max += transform_matrix.col2[0] * aabb.p_max.y;
+        } else {
+            x_min += transform_matrix.col2[0] * aabb.p_max.y;
+            x_max += transform_matrix.col2[0] * aabb.p_min.y;
+        }
 
-    if (transform_matrix.col2[1] > 0) {
-        y_min += transform_matrix.col2[1] * aabb.p_min.y;
-        y_max += transform_matrix.col2[1] * aabb.p_max.y;
-    } else {
-        y_min += transform_matrix.col2[1] * aabb.p_max.y;
-        y_max += transform_matrix.col2[1] * aabb.p_min.y;
-    }
+        if (transform_matrix.col2[1] > 0) {
+            y_min += transform_matrix.col2[1] * aabb.p_min.y;
+            y_max += transform_matrix.col2[1] * aabb.p_max.y;
+        } else {
+            y_min += transform_matrix.col2[1] * aabb.p_max.y;
+            y_max += transform_matrix.col2[1] * aabb.p_min.y;
+        }
 
-    if (transform_matrix.col2[2] > 0) {
-        z_min += transform_matrix.col2[2] * aabb.p_min.y;
-        z_max += transform_matrix.col2[2] * aabb.p_max.y;
-    } else {
-        z_min += transform_matrix.col2[2] * aabb.p_max.y;
-        z_max += transform_matrix.col2[2] * aabb.p_min.y;
-    }
+        if (transform_matrix.col2[2] > 0) {
+            z_min += transform_matrix.col2[2] * aabb.p_min.y;
+            z_max += transform_matrix.col2[2] * aabb.p_max.y;
+        } else {
+            z_min += transform_matrix.col2[2] * aabb.p_max.y;
+            z_max += transform_matrix.col2[2] * aabb.p_min.y;
+        }
     
-    if (transform_matrix.col3[0] > 0) {
-        x_min += transform_matrix.col3[0] * aabb.p_min.z;
-        x_max += transform_matrix.col3[0] * aabb.p_max.z;
-    } else {
-        x_min += transform_matrix.col3[0] * aabb.p_max.z;
-        x_max += transform_matrix.col3[0] * aabb.p_min.z;
-    }
+        if (transform_matrix.col3[0] > 0) {
+            x_min += transform_matrix.col3[0] * aabb.p_min.z;
+            x_max += transform_matrix.col3[0] * aabb.p_max.z;
+        } else {
+            x_min += transform_matrix.col3[0] * aabb.p_max.z;
+            x_max += transform_matrix.col3[0] * aabb.p_min.z;
+        }
     
-    if (transform_matrix.col3[1] > 0) {
-        y_min += transform_matrix.col3[1] * aabb.p_min.z;
-        y_max += transform_matrix.col3[1] * aabb.p_max.z;
-    } else {
-        y_min += transform_matrix.col3[1] * aabb.p_max.z;
-        y_max += transform_matrix.col3[1] * aabb.p_min.z;
-    }
+        if (transform_matrix.col3[1] > 0) {
+            y_min += transform_matrix.col3[1] * aabb.p_min.z;
+            y_max += transform_matrix.col3[1] * aabb.p_max.z;
+        } else {
+            y_min += transform_matrix.col3[1] * aabb.p_max.z;
+            y_max += transform_matrix.col3[1] * aabb.p_min.z;
+        }
 
-    if (transform_matrix.col3[2] > 0) {
-        z_min += transform_matrix.col3[2] * aabb.p_min.z;
-        z_max += transform_matrix.col3[2] * aabb.p_max.z;
-    } else {
-        z_min += transform_matrix.col3[2] * aabb.p_max.z;
-        z_max += transform_matrix.col3[2] * aabb.p_min.z;
-    }
+        if (transform_matrix.col3[2] > 0) {
+            z_min += transform_matrix.col3[2] * aabb.p_min.z;
+            z_max += transform_matrix.col3[2] * aabb.p_max.z;
+        } else {
+            z_min += transform_matrix.col3[2] * aabb.p_max.z;
+            z_max += transform_matrix.col3[2] * aabb.p_min.z;
+        }
     
-    transformed_aabb.p_min = make_vec3(x_min, y_min, z_min);
-    transformed_aabb.p_max = make_vec3(x_max, y_max, z_max);
+        transformed_aabb.p_min = make_vec3(x_min, y_min, z_min);
+        transformed_aabb.p_max = make_vec3(x_max, y_max, z_max);
 
-    return transformed_aabb;
-}
-
-inline AABB transform_aabb(AABB aabb, Transform transform) {
-    return transform_aabb(aabb, get_model_matrix(transform));
-}
-
-inline bool32 is_zero(Vec3 v) {
-    return (v.x == 0 && v.y == 0 && v.z == 0);
-}
-
-inline bool32 is_zero(Vec4 v) {
-    return (v.x == 0 && v.y == 0 && v.z == 0 && v.w == 0);
-}
-
-Mat4 get_rotate_matrix_from_euler_angles(real32 roll, real32 pitch, real32 heading) {
-    Mat4 model_matrix = make_mat4_identity();
-
-    // z, x, y rotation order (blue, red, green)
-    model_matrix = make_rotate_matrix(z_axis, roll) * model_matrix;
-    model_matrix = make_rotate_matrix(x_axis, pitch) * model_matrix;
-    model_matrix = make_rotate_matrix(y_axis, heading) * model_matrix;
-    
-    return model_matrix;
-}
-
-void get_euler_angles_from_rotate_matrix(Mat4 rotate_matrix, real32 *canonical_roll, real32 *canonical_pitch, real32 *canonical_heading) {
-    real32 heading, pitch, roll;
-
-    real32 m23 = rotate_matrix.col3[1];
-    real32 sin_pitch = -m23;
-
-    real32 m13 = rotate_matrix.col3[0];
-    real32 m11 = rotate_matrix.col1[0];
-    real32 m31 = rotate_matrix.col1[2];
-
-    pitch = asinf(sin_pitch);
-    
-    // NOTE: this is the gimbal lock case - pitch is very close to -90 or +90 degrees
-    if (fabsf(sin_pitch) > 0.99999f) {
-        roll = 0.0f;
-        heading = atan2f(-m31, m11);
-    } else {
-        real32 m33 = rotate_matrix.col3[2];
-        heading = (real32) atan2(m13, m33);
-
-        real32 m21 = rotate_matrix.col1[1];
-        real32 m22 = rotate_matrix.col2[1];
-        roll = (real32) atan2(m21, m22);
+        return transformed_aabb;
     }
 
-    *canonical_heading = heading;
-    *canonical_pitch = pitch;
-    *canonical_roll = roll;
-}
+    inline AABB transform_aabb(AABB aabb, Transform transform) {
+        return transform_aabb(aabb, get_model_matrix(transform));
+    }
 
-void get_euler_angles_from_quaternion(Quaternion q, Vec3 *result) {
-    Mat4 rotate_matrix = make_rotate_matrix(q);
-    // roll    = z-axis
-    // pitch   = x-axis
-    // heading = y-axis
-    get_euler_angles_from_rotate_matrix(rotate_matrix, &result->z, &result->x, &result->y);
-}
+    inline bool32 is_zero(Vec3 v) {
+        return (v.x == 0 && v.y == 0 && v.z == 0);
+    }
 
-Mat4 get_model_matrix(Vec3 scale, Quaternion rotation, Vec3 position) {
-    Mat4 model_matrix = make_mat4_identity();
+    inline bool32 is_zero(Vec4 v) {
+        return (v.x == 0 && v.y == 0 && v.z == 0 && v.w == 0);
+    }
 
-    model_matrix = make_scale_matrix(scale) * model_matrix;
-    model_matrix = make_rotate_matrix(rotation) * model_matrix;
-    model_matrix = make_translate_matrix(position) * model_matrix;
+    Mat4 get_rotate_matrix_from_euler_angles(real32 roll, real32 pitch, real32 heading) {
+        Mat4 model_matrix = make_mat4_identity();
 
-    // TODO: maybe don't do a copy here, and just use an output parameter
-    return model_matrix;
-}
+        // z, x, y rotation order (blue, red, green)
+        model_matrix = make_rotate_matrix(z_axis, roll) * model_matrix;
+        model_matrix = make_rotate_matrix(x_axis, pitch) * model_matrix;
+        model_matrix = make_rotate_matrix(y_axis, heading) * model_matrix;
+    
+        return model_matrix;
+    }
 
-Mat4 get_model_matrix(Vec3 scale, real32 roll, real32 pitch, real32 heading, Vec3 position) {
-    Mat4 model_matrix = make_mat4_identity();
+    void get_euler_angles_from_rotate_matrix(Mat4 rotate_matrix, real32 *canonical_roll, real32 *canonical_pitch, real32 *canonical_heading) {
+        real32 heading, pitch, roll;
 
-    // transform the mesh
-    // scale
-    model_matrix = make_scale_matrix(scale) * model_matrix;
-    // rotation
-    model_matrix = make_rotate_matrix(z_axis, roll) * model_matrix;
-    model_matrix = make_rotate_matrix(x_axis, pitch) * model_matrix;
-    model_matrix = make_rotate_matrix(y_axis, heading) * model_matrix;
-    // position
-    model_matrix = make_translate_matrix(position) * model_matrix;
+        real32 m23 = rotate_matrix.col3[1];
+        real32 sin_pitch = -m23;
 
-    // TODO: maybe don't do a copy here, and just use an output parameter
-    return model_matrix;
-}
+        real32 m13 = rotate_matrix.col3[0];
+        real32 m11 = rotate_matrix.col1[0];
+        real32 m31 = rotate_matrix.col1[2];
 
-Mat4 get_model_matrix(Transform transform) {
-    return get_model_matrix(transform.scale,
-                            transform.rotation,
-                            transform.position);
-}
+        pitch = asinf(sin_pitch);
+    
+        // NOTE: this is the gimbal lock case - pitch is very close to -90 or +90 degrees
+        if (fabsf(sin_pitch) > 0.99999f) {
+            roll = 0.0f;
+            heading = atan2f(-m31, m11);
+        } else {
+            real32 m33 = rotate_matrix.col3[2];
+            heading = (real32) atan2(m13, m33);
 
-Mat4 get_model_matrix(Euler_Transform transform) {
+            real32 m21 = rotate_matrix.col1[1];
+            real32 m22 = rotate_matrix.col2[1];
+            roll = (real32) atan2(m21, m22);
+        }
+
+        *canonical_heading = heading;
+        *canonical_pitch = pitch;
+        *canonical_roll = roll;
+    }
+
+    void get_euler_angles_from_quaternion(Quaternion q, Vec3 *result) {
+        Mat4 rotate_matrix = make_rotate_matrix(q);
+        // roll    = z-axis
+        // pitch   = x-axis
+        // heading = y-axis
+        get_euler_angles_from_rotate_matrix(rotate_matrix, &result->z, &result->x, &result->y);
+    }
+
+    Mat4 get_model_matrix(Vec3 scale, Quaternion rotation, Vec3 position) {
+        Mat4 model_matrix = make_mat4_identity();
+
+        model_matrix = make_scale_matrix(scale) * model_matrix;
+        model_matrix = make_rotate_matrix(rotation) * model_matrix;
+        model_matrix = make_translate_matrix(position) * model_matrix;
+
+        // TODO: maybe don't do a copy here, and just use an output parameter
+        return model_matrix;
+    }
+
+    Mat4 get_model_matrix(Vec3 scale, real32 roll, real32 pitch, real32 heading, Vec3 position) {
+        Mat4 model_matrix = make_mat4_identity();
+
+        // transform the mesh
+        // scale
+        model_matrix = make_scale_matrix(scale) * model_matrix;
+        // rotation
+        model_matrix = make_rotate_matrix(z_axis, roll) * model_matrix;
+        model_matrix = make_rotate_matrix(x_axis, pitch) * model_matrix;
+        model_matrix = make_rotate_matrix(y_axis, heading) * model_matrix;
+        // position
+        model_matrix = make_translate_matrix(position) * model_matrix;
+
+        // TODO: maybe don't do a copy here, and just use an output parameter
+        return model_matrix;
+    }
+
+    Mat4 get_model_matrix(Transform transform) {
+        return get_model_matrix(transform.scale,
+                                transform.rotation,
+                                transform.position);
+    }
+
+    Mat4 get_model_matrix(Euler_Transform transform) {
     return get_model_matrix(transform.scale,
                             transform.roll, transform.pitch, transform.heading,
                             transform.position);

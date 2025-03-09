@@ -1582,6 +1582,7 @@ void gl_draw_mesh(int32 mesh_id,
                   Mat4 *bone_matrices = NULL, int32 num_bones = 0) {
     uint32 shader_id = gl_use_shader("pbr");
 
+    assert(material);
     GL_Mesh *gl_mesh = gl_use_mesh(mesh_id);
     gl_use_texture(material->albedo_texture_id,    0);
     gl_use_texture(material->metalness_texture_id, 1);
@@ -3483,6 +3484,13 @@ int32 get_size_for_ubo(int32 size) {
     return padded_size;
 }
 
+void gl_draw_player() {
+    Player *player = &game_state->player;
+    Material *material = get_material(player->material_id);
+    assert(material);
+    gl_draw_mesh(player->mesh_id, material, make_transform(player->transform));
+}
+
 void gl_render_editor(GL_Framebuffer framebuffer,
                       Editor_State *editor_state) {
     Display_Output display_output = render_state->display_output;
@@ -3845,6 +3853,9 @@ void gl_render_game() {
 
         current = current->next;
     }
+
+    // draw player
+    gl_draw_player();
 
     end_region(temp_region);    
 }

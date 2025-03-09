@@ -1549,10 +1549,11 @@ void draw_editor(Controller_State *controller_state) {
                                                        "set_spawn_point");
         if (set_spawn_point_clicked) {
             Spawn_Point spawn_point = {};
-            spawn_point.position = game_state->player.position;
-            spawn_point.heading = game_state->player.heading;
-            spawn_point.pitch = game_state->player.pitch;
-            spawn_point.roll = game_state->player.roll;
+            Euler_Transform transform = game_state->player.transform;
+            spawn_point.position = transform.position;
+            spawn_point.heading = transform.heading;
+            spawn_point.pitch = transform.pitch;
+            spawn_point.roll = transform.roll;
 
             game_state->level.spawn_point = spawn_point;
             add_message(message_manager, make_string("Set spawn point!"));

@@ -487,8 +487,9 @@ void init_player() {
     *player = {};
     player->height = Player_Constants::player_height;
     player->speed = Player_Constants::initial_speed;
-
-    player->position.y = 10.0f;
+    player->mesh_id = ENGINE_DEFAULT_PLAYER_CAPSULE_MESH_ID;
+    player->transform = make_euler_transform();
+    player->transform.position.y = 10.0f;
 }
 
 void reset_player(Level *level) {
@@ -497,10 +498,13 @@ void reset_player(Level *level) {
     Player *player = &game_state->player;
     Spawn_Point spawn_point = level->spawn_point;
 
-    player->position = spawn_point.position;
-    player->heading = spawn_point.heading;
-    player->pitch = spawn_point.pitch;
-    player->roll = spawn_point.roll;
+    Euler_Transform *player_transform = &player->transform;
+    player_transform->position = spawn_point.position;
+#if 0
+    player_transform->heading = spawn_point.heading;
+    player_transform->pitch = spawn_point.pitch;
+    player_transform->roll = spawn_point.roll;
+#endif
 }
 
 void init_game(Sound_Output *sound_output, uint32 num_samples) {
@@ -648,7 +652,7 @@ bool32 move_player_to_closest_ground(Player *player, real32 max_drop_distance) {
     //       has some type of chasm that doesn't fit the player, but has ground that was close enough that
     //       we moved the player to the bottom of the chasm. just don't put that type of geometry in levels.
     
-    Ray ray = make_ray(player->position, -y_axis);
+    Ray ray = make_ray(player->transform.position, -y_axis);
     real32 t_min = FLT_MAX;
     bool32 found_ground = false;
 
@@ -674,7 +678,7 @@ bool32 move_player_to_closest_ground(Player *player, real32 max_drop_distance) {
     }
     
     if (found_ground) {
-        player->position = ray.origin + ray.direction*t_min;
+        player->transform.position = ray.origin + ray.direction*t_min;
         player->is_grounded = true;
     }
 
@@ -696,9 +700,10 @@ void do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 new_
     real32 min_ground_distance = INFINITY;
     Vec3 min_ground_normal = {};
 
-    player->position = new_pos;
-    Capsule current_capsule = make_capsule(player->position,
-                                           player->position + make_vec3(0.0f, player->height, 0.0f),
+    Euler_Transform *player_transform = &player->transform;
+    player_transform->position = new_pos;
+    Capsule current_capsule = make_capsule(player_transform->position,
+                                           player_transform->position + make_vec3(0.0f, player->height, 0.0f),
                                            Player_Constants::capsule_radius);
 
     const int32 MAX_COLLISIONS = 128;
@@ -821,18 +826,18 @@ void do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 new_
         //   the collisions, since call do_collisions() a bunch of times will
         //   be very slow.
         if (closest_collision) {
-            player->position += closest_collision->push_out;
+            player_transform->position += closest_collision->push_out;
         }
     } else {
         // TODO: just move directly down if we found a point close enough
-        player->position = new_pos;
+        player_transform->position = new_pos;
     }
         
     Collision_Debug_Subframe position_subframe = {
         COLLISION_SUBFRAME_POSITION
     };
     position_subframe.position = {
-        player->position
+        player_transform->position
     };
     collision_debug_log_subframe(debug_frame, position_subframe);
 
@@ -905,13 +910,13 @@ void do_collisions_point(Collision_Debug_Frame *debug_frame, Player *player, Vec
 
             // TODO: we shouldn't do this here. instead, we should just save all the push_out_vecs, average
             // them, then do the same calculation as below.
-            player->position = new_pos + push_out_vec;
+            player->transform.position = new_pos + push_out_vec;
             has_collision = true;
         }
     }
 
     if (!has_collision) {
-        player->position = new_pos;
+        player->transform.position = new_pos;
     }
 }
 
@@ -928,10 +933,10 @@ void old_do_collisions2(Collision_Debug_Frame *debug_frame, Player *player, Vec3
     Vec3 displacement = initial_move;
     real32 displacement_length = distance(displacement);
     assert(displacement_length > EPSILON);
-    player->position += displacement;
+    player->transform.position += displacement;
 
-    Capsule player_capsule = make_capsule(player->position,
-                                          player->position + make_vec3(0.0f, player->height, 0.0f),
+    Capsule player_capsule = make_capsule(player->transform.position,
+                                          player->transform.position + make_vec3(0.0f, player->height, 0.0f),
                                           Player_Constants::capsule_radius);
     
     for (int32 num_collisions = 0; num_collisions < MAX_FRAME_COLLISIONS; num_collisions++) {
@@ -969,10 +974,10 @@ void old_do_collisions2(Collision_Debug_Frame *debug_frame, Player *player, Vec3
                 if (intersected) {
                     Vec3 normalized_displacement = displacement / displacement_length;
 
-                    Vec3 initial_position = player->position;
+                    Vec3 initial_position = player->transform.position;
 
                     Vec3 correction = penetration_normal * (penetration_depth + 0.00001f);
-                    player->position += correction;
+                    player->transform.position += correction;
 
                     // we check this so that we can nicely climb up triangles that are low enough without
                     // being pushed brought down by gravity. this is also necessary since if we didn't have this,
@@ -1006,7 +1011,7 @@ void old_do_collisions2(Collision_Debug_Frame *debug_frame, Player *player, Vec3
                         COLLISION_SUBFRAME_POSITION
                     };
                     position_subframe.position = {
-                        player->position
+                        player->transform.position
                     };
                     collision_debug_log_subframe(debug_frame, position_subframe);
                     
@@ -1014,12 +1019,12 @@ void old_do_collisions2(Collision_Debug_Frame *debug_frame, Player *player, Vec3
 
 #if 0
                     Collision_Debug_Subframe desired_move_subframe = { COLLISION_SUBFRAME_DESIRED_MOVE };
-                    desired_move_subframe.desired_move = { player->position, displacement };
+                    desired_move_subframe.desired_move = { player->transform.position, displacement };
                     collision_debug_log_subframe(debug_frame, desired_move_subframe);
 #endif
                         
-                    player_capsule = make_capsule(player->position,
-                                                  player->position + make_vec3(0.0f, player->height, 0.0f),
+                    player_capsule = make_capsule(player->transform.position,
+                                                  player->transform.position + make_vec3(0.0f, player->height, 0.0f),
                                                   Player_Constants::capsule_radius);
                         
                     //real32 displacement_length = distance(initial_move);
@@ -1072,10 +1077,10 @@ void old_do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 
     Vec3 displacement = initial_move;
     real32 displacement_length = distance(displacement);
     assert(displacement_length > EPSILON);
-    player->position += displacement;
+    player->transform.position += displacement;
 
-    Capsule player_capsule = make_capsule(player->position,
-                                          player->position + make_vec3(0.0f, player->height, 0.0f),
+    Capsule player_capsule = make_capsule(player->transform.position,
+                                          player->transform.position + make_vec3(0.0f, player->height, 0.0f),
                                           Player_Constants::capsule_radius);
     
     for (int32 num_collisions = 0; num_collisions < MAX_FRAME_COLLISIONS; num_collisions++) {
@@ -1118,15 +1123,15 @@ void old_do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 
 #if 0
                     if (distance(displacement) < EPSILON) {
                         Vec3 correction = -penetration_normal * (penetration_depth + 0.00001f);
-                        player->position += correction;
+                        player->transform.position += correction;
 
                         if (hit_bottom_player_capsule_sphere(&player_capsule, &penetration_point)) {
                             found_ground = true;
                             player->walk_state.triangle_normal = triangle_normal;
                         }
 
-                        player_capsule = make_capsule(player->position,
-                                                      player->position + make_vec3(0.0f, player->height, 0.0f),
+                        player_capsule = make_capsule(player->transform.position,
+                                                      player->transform.position + make_vec3(0.0f, player->height, 0.0f),
                                                       Player_Constants::capsule_radius);
 
                         // TODO: set the displacement and displacement_length to the correction vector
@@ -1178,21 +1183,21 @@ void old_do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 
                         //       also i think this (the commented out line) is really buggy. you can get stuck
                         //       at the common vertex of  multiple triangles in a mesh.
 
-                        Vec3 initial_position = player->position;
+                        Vec3 initial_position = player->transform.position;
                         
                         #if 1
-                        //player->position += displacement_length * normalized_correction; // line before
-                        player->position += correction;
+                        //player->transform.position += displacement_length * normalized_correction; // line before
+                        player->transform.position += correction;
                         #if 0
                         if (fabsf(dot(normalized_displacement, penetration_normal)) < (1 - EPSILON)) {
-                            player->position += displacement_length * normalized_correction; // line before
+                            player->transform.position += displacement_length * normalized_correction; // line before
                         } else {
-                            player->position += penetration_normal * (penetration_depth + 0.00001f);
-                            //player->position += displacement_length * normalized_displacement;
+                            player->transform.position += penetration_normal * (penetration_depth + 0.00001f);
+                            //player->transform.position += displacement_length * normalized_displacement;
                         }
                         #endif
                         #endif
-                        //player->position += penetration_normal * (penetration_depth + 0.00001f);
+                        //player->transform.position += penetration_normal * (penetration_depth + 0.00001f);
 
                         // we check this so that we can nicely climb up triangles that are low enough without
                         // being pushed brought down by gravity. this is also necessary since if we didn't have this,
@@ -1222,7 +1227,7 @@ void old_do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 
 #if 0
                         Collision_Debug_Intersection info = {
                             initial_position,
-                            player->position,
+                            player->transform.position,
                             displacement,
                             entity->id,
                             triangle_index,
@@ -1237,11 +1242,11 @@ void old_do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 
                         displacement = correction;
 
                         Collision_Debug_Subframe desired_move_subframe = { COLLISION_SUBFRAME_DESIRED_MOVE };
-                        desired_move_subframe.desired_move = { player->position, displacement };
+                        desired_move_subframe.desired_move = { player->transform.position, displacement };
                         collision_debug_log_subframe(debug_frame, desired_move_subframe);
                         
-                        player_capsule = make_capsule(player->position + displacement,
-                                                      player->position + make_vec3(0.0f, player->height, 0.0f),
+                        player_capsule = make_capsule(player->transform.position + displacement,
+                                                      player->transform.position + make_vec3(0.0f, player->height, 0.0f),
                                                       Player_Constants::capsule_radius);
                         
                         //real32 displacement_length = distance(initial_move);
@@ -1254,7 +1259,7 @@ void old_do_collisions(Collision_Debug_Frame *debug_frame, Player *player, Vec3 
 
 #if 0
                     // TODO: we don't actually do any correction based on displacement since 
-                    player->position += penetration_normal * (penetration_depth + 0.00001f);
+                    player->transform.position += penetration_normal * (penetration_depth + 0.00001f);
 
                     // TODO: this can lead to unexpected results
                     if (triangle_normal.y > 0.3f) {
@@ -1300,7 +1305,7 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
     // cap dt.. just to reduce issues
     dt = min(1.0f / TARGET_FRAMERATE, dt);
 
-    if (platform_window_has_focus()) {
+    if (game_state->first_person) {
         real32 delta_x = controller_state->current_mouse.x - controller_state->last_mouse.x;
         real32 delta_y = controller_state->current_mouse.y - controller_state->last_mouse.y;
 
@@ -1337,23 +1342,23 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
         // would be fast (compared to walking on flat surface).
         Walk_State walk_state = player->walk_state;
 
-        Vec3 forward_point = player->position + player_forward;
+        Vec3 forward_point = player->transform.position + player_forward;
         forward_point = get_point_on_plane_from_xz(forward_point.x, forward_point.z,
-                                                   walk_state.triangle_normal, player->position);
-        player_forward = normalize(forward_point - player->position);
+                                                   walk_state.triangle_normal, player->transform.position);
+        player_forward = normalize(forward_point - player->transform.position);
 
-        Vec3 right_point = player->position + player_right;
+        Vec3 right_point = player->transform.position + player_right;
         right_point = get_point_on_plane_from_xz(right_point.x, right_point.z,
-                                                 walk_state.triangle_normal, player->position);
-        player_right = normalize(right_point - player->position);
+                                                 walk_state.triangle_normal, player->transform.position);
+        player_right = normalize(right_point - player->transform.position);
 
 #if DEBUG_SHOW_WALK_BASIS
         add_debug_line(debug_state,
-                       player->position, player->position + player_right, make_vec4(x_axis, 1.0f));
+                       player->transform.position, player->transform.position + player_right, make_vec4(x_axis, 1.0f));
         add_debug_line(debug_state,
-                       player->position, player->position + walk_state.triangle_normal, make_vec4(y_axis, 1.0f));
+                       player->transform.position, player->transform.position + walk_state.triangle_normal, make_vec4(y_axis, 1.0f));
         add_debug_line(debug_state,
-                       player->position, player->position + player_forward, make_vec4(z_axis, 1.0f));
+                       player->transform.position, player->transform.position + player_forward, make_vec4(z_axis, 1.0f));
 #endif
     }
 #endif
@@ -1393,9 +1398,9 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
 
     Collision_Debug_State *collision_debug_state = &game_state->editor_state.collision_debug_state;
     Collision_Debug_Frame *collision_debug_frame = collision_debug_start_frame(collision_debug_state,
-                                                                               player->position);
+                                                                               player->transform.position);
 
-    collision_debug_log_position_subframe(collision_debug_frame, player->position);
+    collision_debug_log_position_subframe(collision_debug_frame, player->transform.position);
     
     Vec3 displacement_vector = player->velocity*dt + 0.5f*player->acceleration*dt*dt;
     player->velocity += player->acceleration * dt;
@@ -1403,9 +1408,9 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
     move_vector += displacement_vector;
     
     bool32 was_grounded = player->is_grounded;
-    Vec3 old_position = player->position;
+    Vec3 old_position = player->transform.position;
     
-    do_collisions(collision_debug_frame, player, player->position + move_vector);
+    do_collisions(collision_debug_frame, player, player->transform.position + move_vector);
 
     if (!player->is_grounded && was_grounded && is_wasd_move) {
         // try moving the player down. this should only be for when we're
@@ -1413,10 +1418,10 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
         // for this is to prevent weird behaviour where we snap to the ground
         // when when we're falling down and we're almost at the ground.
         Vec3 go_down_vector = make_vec3(0.0f, -5.0f * dt, 0.0f);
-        Vec3 test_position = player->position + go_down_vector;
-        do_collisions(collision_debug_frame, player, player->position + go_down_vector);
+        Vec3 test_position = player->transform.position + go_down_vector;
+        do_collisions(collision_debug_frame, player, player->transform.position + go_down_vector);
 
-        Vec3 push_out_delta = player->position - test_position;
+        Vec3 push_out_delta = player->transform.position - test_position;
         Vec3 push_out_dir = normalize(push_out_delta);
         // only if we are being pushed up and being pushed out by a significant amount
         // TODO: do we always want to do this? error might accumulate if we don't always do this..
@@ -1460,7 +1465,7 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
 
                 real32 new_y = test_position.y + t1*b1.y + t2*b2.y + p.y;
                 
-                player->position = { test_position.x, new_y, test_position.z };
+                player->transform.position = { test_position.x, new_y, test_position.z };
             }
         }
 
@@ -1522,14 +1527,14 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
     //   - the push out code is super simple and only pushes out on a single vector,
     //     so above condition might be incorrect when we make the do_collisions()
     //     better
-    Vec3 delta = player->position - old_position;
+    Vec3 delta = player->transform.position - old_position;
     if (was_grounded && player->is_grounded) {
         if (fabsf(distance(delta)-player->speed*dt) > EPSILON) {
-            player->position = old_position + normalize(delta)*player->speed*dt;
+            player->transform.position = old_position + normalize(delta)*player->speed*dt;
         }
     }
 
-    Vec3 new_delta = player->position - old_position;
+    Vec3 new_delta = player->transform.position - old_position;
     char *dist_text = string_format((Allocator *) &ui_manager->frame_arena, "distance travelled: %f",
                                     distance(new_delta));
     draw_debug_text(make_vec2(5.0f, 50.0f), dist_text);
@@ -1559,7 +1564,7 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
 
             bool32 is_player_move = distance(move_vector) > EPSILON;
             Collision_Debug_Subframe desired_move_subframe = { COLLISION_SUBFRAME_DESIRED_MOVE };
-            desired_move_subframe.desired_move = { player->position, displacement_vector, is_player_move };
+            desired_move_subframe.desired_move = { player->transform.position, displacement_vector, is_player_move };
             collision_debug_log_subframe(collision_debug_frame, desired_move_subframe);
             
             do_collisions(collision_debug_frame, player, displacement_vector);
@@ -1581,7 +1586,7 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
                 displacement_vector = make_vec3(0.0f, -0.001f, 0.0f);
 
                 desired_move_subframe = { COLLISION_SUBFRAME_DESIRED_MOVE };
-                desired_move_subframe.desired_move = { player->position, displacement_vector, false };
+                desired_move_subframe.desired_move = { player->transform.position, displacement_vector, false };
                 collision_debug_log_subframe(collision_debug_frame, desired_move_subframe);
                 
                 do_collisions(collision_debug_frame, player, displacement_vector);
@@ -1592,12 +1597,12 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
 
         if (was_grounded) {
             // TODO: should we log some collision debug info here?
-            Vec3 before_drop_move_position = player->position;
+            Vec3 before_drop_move_position = player->transform.position;
             bool32 moved = move_player_to_closest_ground(player, MAX_DROP_DISTANCE);
             if (moved) {
-                Vec3 drop_move_delta = player->position - before_drop_move_position;
+                Vec3 drop_move_delta = player->transform.position - before_drop_move_position;
                 Vec3 drop_move_direction = normalize(drop_move_delta);
-                player->position = before_drop_move_position + drop_move_direction*player->speed*dt;
+                player->transform.position = before_drop_move_position + drop_move_direction*player->speed*dt;
             }
         }
     } else {
@@ -1606,7 +1611,7 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
         player->velocity += player->acceleration * dt;
 
         Collision_Debug_Subframe desired_move_subframe = { COLLISION_SUBFRAME_DESIRED_MOVE };
-        desired_move_subframe.desired_move = { player->position, displacement_vector, false };
+        desired_move_subframe.desired_move = { player->transform.position, displacement_vector, false };
         collision_debug_log_subframe(collision_debug_frame, desired_move_subframe);
         
         if (distance(displacement_vector) > EPSILON) {
@@ -1615,7 +1620,7 @@ void update_player(Player *player ,Controller_State *controller_state, real32 dt
     }
     #endif
 
-    collision_debug_end_frame(collision_debug_state, collision_debug_frame, player->position);
+    collision_debug_end_frame(collision_debug_state, collision_debug_frame, player->transform.position);
 }
 
 void update_camera(Camera *camera, Vec3 position, real32 heading, real32 pitch, real32 roll) {
@@ -1663,9 +1668,15 @@ void update_game(Controller_State *controller_state, real32 dt) {
     update_entities(&game_state->level, dt);
     update_player(player, controller_state, dt);
 
+#if 0
     update_camera(&game_state->camera, &game_state->render_state.display_output,
-                  player->position + make_vec3(0.0f, player->height, 0.0f),
+                  player->transform.position + make_vec3(0.0f, player->height, 0.0f),
                   player->heading, player->pitch, player->roll);
+#endif
+    update_camera(&game_state->camera, &game_state->render_state.display_output,
+                  player->transform.position + make_vec3(0.0f, 10.0f, 0.0f),
+                  0.0f, 90.0f, 0.0f);
+    
     update_render_state(game_state->camera);
 }
 
